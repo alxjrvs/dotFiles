@@ -33,3 +33,5 @@
 	email = alxjrvs@gmail.com
 [credential]
 	helper = osxkeychain
+[core]
+	excludesfile = /Users/alexjarvis/.global_gitignore
