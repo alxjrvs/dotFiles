@@ -29,7 +29,7 @@
   merge = refs/heads/master
 
 [user]
-	name = Alex Jarvis
+	name = alxjrvs@gmail.com
 	email = alxjrvs@gmail.com
 [credential]
 	helper = osxkeychain
