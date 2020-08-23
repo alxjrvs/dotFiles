@@ -1,14 +1,4 @@
-#####################################
-####  ALXJRVS Git Configuration  ####
-####       Version 2.0.1         ####
-####        "Bernadeth"         ####
-#####################################
-
-#### CHANGELOG
-  ## 4.20.2014 2.0.0 There Came a Time When The Old Gods Died.
-  ## 1.19.2015 2.0.1 THEN - THERE WAS NEW LIGHT!
-    # - vim -> neovim
-  ## 1.14.2019 3.0.0 - THE PARANOID PILL!
+## There Came a time when the old gods died. 
 
 ## Ignore everything by default
 *
@@ -28,6 +18,7 @@
 !.zprezto/runcoms/zpreztorc
 !.zpreztorc
 !.zsh/*
+!.zshrc
 
 ## Tips sheet
 *.dump
