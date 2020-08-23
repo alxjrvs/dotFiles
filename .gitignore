@@ -11,5 +11,11 @@
 !.gitconfig
 !.gitignore
 
+## Zsh
+!.zshrc
+
+## tmux
+!.tmux.conf
+
 ## Tips sheet
 *.dump
