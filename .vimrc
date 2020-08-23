@@ -57,19 +57,20 @@ set splitright
 Plugin 'leafgarland/typescript-vim'
 Plugin 'Quramy/tsuquyomi'
 Plugin 'mxw/vim-jsx'
+Plugin 'ianks/vim-tsx'
 Plugin 'pangloss/vim-javascript'
 Plugin 'w0rp/ale'
 
 let g:ale_linters = {
-      \   'javascript': ['eslint'],
-      \   'vue': ['eslint']
+      \   'javascript': ['eslint', 'prettier'],
+      \   'react': ['eslint', 'prettier']
       \
       \}
 
 let g:ale_fixers = {
       \    '*': ['remove_trailing_lines', 'trim_whitespace'],
-      \    'javascript': ['eslint'],
-      \    'vue': ['eslint'],
+      \    'javascript': ['eslint', 'prettier'],
+      \    'react': ['eslint', 'prettier'],
       \    'scss': ['prettier']
       \
       \}
@@ -246,16 +247,11 @@ augroup numbertoggle
   autocmd BufLeave,FocusLost,InsertEnter * set norelativenumber
 augroup END
 
-" colorschemes
-" Dark: monokai-chris, gruvbox
-" Light: ChocolatePapaya
-Plugin 'morhetz/gruvbox'
-colorscheme gruvbox
-  let g:gruvbox_contrast_dark='default'
-  let g:gruvbox_contrast_light='default'
-" split below and right feels more natural
-set splitbelow
+Plugin 'altercation/vim-colors-solarized'
+syntax enable
 set background=dark
+colorscheme solarized
+set splitbelow
 " no wrapping
 set nowrap
 

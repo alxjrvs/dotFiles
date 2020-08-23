@@ -1,5 +1,6 @@
 export PATH="/usr/local/opt/icu4c/bin:$PATH"
 export PATH="/usr/local/opt/icu4c/sbin:$PATH"
+export PYTHON_CONFIGURE_OPTS="--enable-framework"
 export ANDROID_HOME=/Users/alexjarvis/Library/Android/sdk
 export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
 export ZSH="/Users/alexjarvis/.oh-my-zsh"
