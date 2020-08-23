@@ -1,6 +1,5 @@
 ## A Glimpse Into.... The World That's Coming!
 
-
 ## Command Line Navigation
 alias ..='cd ..'
 alias ls='ls -AFGp'
