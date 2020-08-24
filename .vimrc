@@ -7,41 +7,88 @@ set is
 set encoding=utf-8
 set rtp+=~/.vim/bundle/Vundle.vim
 
+let mapleader = ","
+
+" Brief help
+" " :PluginList       - lists configured plugins
+" " :PluginInstall    - installs plugins; append `!` to update or just
+" :PluginUpdate
+" " :PluginSearch foo - searches for foo; append `!` to refresh local cache
+" " :PluginClean      - confirms removal of unused plugins; append `!` to
+"
 call vundle#begin()
 
 Plugin 'VundleVim/Vundle.vim'
 
 Plugin 'junegunn/fzf'
-
 Plugin 'junegunn/fzf.vim'
+ nnoremap <C-p> :FZF<CR>
+
+Plugin 'tpope/vim-surround'
+Plugin 'tpope/vim-repeat'
+Plugin 'tpope/vim-fugitive'
 
 Plugin 'altercation/vim-colors-solarized'
 
-Plugin 'tpope/vim-surround'
-
-Plugin 'tpope/vim-repeat'
-
+Plugin 'airblade/vim-gitgutter'
 Plugin 'airblade/vim-rooter'
 
 Plugin 'neoclide/coc.nvim', {'branch': 'release'}
+  let g:coc_global_extensions = [
+        \ 'coc-tsserver',
+        \ 'coc-rls',
+        \ 'coc-prettier',
+        \ 'coc-eslint',
+        \ ]
+  let g:coc_user_config = {
+        \ "coc.preferences.formatOnSaveFiletypes": [
+          \ "css",
+          \ "markdown",
+          \ "javascript",
+          \ "javascriptreact",
+          \ "typescript",
+          \ "typescriptreact",
+        \ ],
+        \ "diagnostic.messageTarget": "echo",
+        \ }
+  " Symbol renaming.
+  nmap <leader>rn <Plug>(coc-rename)
+  " Formatting selected code.
+  xmap <leader>f  <Plug>(coc-format-selected)
+  nmap <leader>f  <Plug>(coc-format-selected)
 
 Plugin 'leafgarland/typescript-vim'
-
 Plugin 'peitalin/vim-jsx-typescript'
+  autocmd BufNewFile,BufRead *.tsx,*.jsx set filetype=typescript.tsx
+  autocmd CursorHold * silent call CocActionAsync('highlight')
 
 Plugin 'ervandew/supertab'
 
 Plugin 'luochen1990/rainbow'
+  let g:rainbow_active = 1
 
 Plugin 'Yggdroot/indentLine'
+  let g:indentLine_char = '.'
 
 Plugin 'mhinz/vim-startify'
-
-Plugin 'edkolev/tmuxline.vim'
-
-Plugin 'tpope/vim-fugitive'
-
-Plugin 'airblade/vim-gitgutter'
+  let g:startify_custom_header = [
+      \'-------------------------------╔═╗┌─┐┬ ┬┬─┐┌┬┐┬ ┬  ╦ ╦┌─┐┬─┐┬  ┌┬┐┌─┐',
+      \'===============================╠╣ │ ││ │├┬┘ │ ├─┤  ║║║│ │├┬┘│   ││ ┌┘',
+      \'And the son asked, what is the ╚  └─┘└─┘┴└─ ┴ ┴ ┴  ╚╩╝└─┘┴└─┴─┘─┴┘ o ',
+      \'And the Father said:',
+      \'The First World is the Old World, the world of my parents, from which they fled.',
+      \'The Second World is the New World, which they sought, which they found, where I came to be.',
+      \'The Third World is Our World as it is now, in the making, the future being born.',
+      \'And the Fourth World, my child, that is My World. The world I see when I close my eyes...',
+      \'     ...and try to',
+      \'╔═╗╔═╗╔═╗╔═╗╔═╗╔═╗',
+      \'║╣ ╚═╗║  ╠═╣╠═╝║╣ ',
+      \'╚═╝╚═╝╚═╝╩ ╩╩  ╚═╝o',
+      \ ]
+  let g:startify_files_number = 5
+  let g:startify_lists = [
+    \ { 'type': 'dir',  'header': ['   Files'] },
+    \]
 
 Plugin 'Xuyuanp/nerdtree-git-plugin'
 
@@ -51,67 +98,58 @@ Plugin 'ap/vim-css-color'
 
 Plugin 'alvan/vim-closetag'
 
-"======= eslint
-set statusline+=%#warningmsg#
-set statusline+=%{SyntasticStatuslineFlag()}
-set statusline+=%*
-autocmd FileType typescript setlocal completeopt+=menu,preview
-
-" ========= prettier
-Plugin 'prettier/vim-prettier'
-let g:prettier#autoformat = 1
-let g:prettier#autoformat_require_pragma = 0
-let g:closetag_filenames = '*.html,*.xhtml,*.xml,*.vue,*.php,*.phtml,*.js,*.jsx,*.coffee,*.erb'
-
-" ========= file tree
-Plugin  'scrooloose/nerdtree'
-
+Plugin 'scrooloose/nerdtree'
+  map <C-t><C-t> :NERDTreeToggle<CR>
   let NERDTreeIgnore = [ '\.swp', '*\.swp', 'node_modules/' ]
   let NERDTreeShowHidden=1
   let NERDTreeQuitOnOpen=1
   let NERDTreeMinimalUI = 1
   let NERDTreeDirArrows = 1
   let NERDTreeAutoDeleteBuffer = 1
-" ========= navigation
-Plugin 'christoomey/vim-tmux-navigator'
-  " autostart nerd-tree
-  autocmd StdinReadPre * let s:std_in=1
 
-  " nerdtree toggle
-  map <C-t><C-t> :NERDTreeToggle<CR>
+Plugin 'christoomey/vim-tmux-navigator'
+
 Plugin 'zhaocai/GoldenView.Vim'
   let g:goldenview__enable_default_mapping = 0
+
 Plugin 'benmills/vimux'
-  " vimux binding
   map <Leader>Lp :VimuxPromptCommand<CR>
   nmap <F8> :TagbarToggle<CR>
+  map <Leader>vp :VimuxPromptCommand<CR>
+  map <Leader>vl :VimuxRunLastCommand<CR>
+  map <Leader>vz :VimuxZoomRunner<CR>
 
-" ======= fuzzy find
-Plugin 'ctrlpvim/ctrlp.vim'
-set wildignore+=*/tmp/*,*.so,*.swp,*.zip     " MacOSX/Linux
-set wildignore+=*\\tmp\\*,*.swp,*.zip,*.exe  " Windows
-
-let g:ctrlp_custom_ignore = '\v[\/]\.(git|hg|svn)$'
-let g:ctrlp_custom_ignore = {
-  \ 'dir':  '\v[\/]\.(git|hg|svn)$',
-  \ 'file': '\v\.(exe|so|dll)$',
-  \ 'link': 'some_bad_symbolic_links',
-  \ }
-let g:ctrlp_user_command = ['.git', 'cd %s && git ls-files -co --exclude-standard']
-
-" ======= extrars
 Plugin 'majutsushi/tagbar'
+
 Plugin 'vim-airline/vim-airline'
 Plugin 'vim-airline/vim-airline-themes'
+Plugin 'edkolev/tmuxline.vim'
+  set t_Co=256
+  if !exists('g:airline_symbols')
+     let g:airline_symbols = {}
+   endif
+   let g:airline_powerline_fonts = 1
+   let g:airline#extensions#tabline#enabled = 1
+   let g:airline#extensions#tabline#left_sep = ' '
+   let g:airline#extensions#tabline#left_alt_sep = '|'
+
+let g:airline_theme='solarized'
+let g:airline_solarized_bg='dark'
+
 Plugin 'mileszs/ack.vim'
 
-let g:indentLine_char = '.'
-let g:rainbow_active = 1
+call vundle#end()            " required
+filetype plugin indent on    " required
+
+syntax enable
+colorscheme solarized
+set background=dark
 
 
-map <Leader>vp :VimuxPromptCommand<CR>
-map <Leader>vl :VimuxRunLastCommand<CR>
-map <Leader>vz :VimuxZoomRunner<CR>
+set statusline+=%#warningmsg#
+set statusline+=%{SyntasticStatuslineFlag()}
+set statusline+=%*
+autocmd FileType typescript setlocal completeopt+=menu,preview
 
 nnoremap <C-J> <C-W><C-J>
 nnoremap <C-K> <C-W><C-K>
@@ -119,84 +157,6 @@ nnoremap <C-L> <C-W><C-L>
 nnoremap <C-H> <C-W><C-H>
 set splitbelow
 set splitright
-
-
-" set up ascii fo my startify
-let g:startify_custom_header = [
-    \ '________              _____                  __  .__    .__',
-    \ '\______ \   ____     /  _  \   ____ ___.__._/  |_|  |__ |__| ____    ____',
-    \ ' |    |  \ /  _ \   /  /_\  \ /    <   |  |\   __\  |  \|  |/    \  / ___\',
-    \ ' |    `   (  <_> ) /    |    \   |  \___  | |  | |   Y  \  |   |  \/ /_/  >',
-    \ '/_______  /\____/  \____|__  /___|  / ____| |__| |___|  /__|___|  /\___  / ',
-    \  '       \/                 \/     \/\/                \/        \//_____/ ',
-    \ ]
-
-autocmd QuickFixCmdPost [^l]* nested cwindow
-autocmd QuickFixCmdPost    l* nested lwindow
-
-
-
-
-call vundle#end()            " required
-filetype plugin indent on    " required
-
-" Brief help
-" " :PluginList       - lists configured plugins
-" " :PluginInstall    - installs plugins; append `!` to update or just
-" :PluginUpdate
-" " :PluginSearch foo - searches for foo; append `!` to refresh local cache
-" " :PluginClean      - confirms removal of unused plugins; append `!` to
-" auto-approve removal
-" "
-
-let mapleader = ","
-let g:coc_global_extensions = [
-      \ 'coc-tsserver',
-      \ 'coc-rls',
-      \ 'coc-prettier',
-      \ 'coc-eslint',
-      \ ]
-let g:coc_user_config = {
-      \ "coc.preferences.formatOnSaveFiletypes": [
-        \ "css",
-        \ "markdown",
-        \ "javascript",
-        \ "javascriptreact",
-        \ "typescript",
-        \ "typescriptreact",
-      \ ],
-      \ "suggest.floatEnable": v:false,
-      \ "diagnostic.messageTarget": "echo",
-      \ }
-if !exists('g:airline_symbols')
-   let g:airline_symbols = {}
-endif
-" let g:airline_left_sep = '»'
-" let g:airline_left_sep = '▶'
-" let g:airline_right_sep = '«'
-" let g:airline_right_sep = '◀'
-" let g:airline_symbols.crypt = '🔒'
-" let g:airline_symbols.linenr = '☰'
-" let g:airline_symbols.linenr = '␊'
-" let g:airline_symbols.linenr = '␤'
-" let g:airline_symbols.linenr = '¶'
-" let g:airline_symbols.maxlinenr = ''
-" let g:airline_symbols.maxlinenr = '㏑'
-" let g:airline_symbols.branch = '⎇'
-" let g:airline_symbols.paste = 'ρ'
-" let g:airline_symbols.paste = 'Þ'
-" let g:airline_symbols.paste = '∥'
-" let g:airline_symbols.spell = 'Ꞩ'
-" let g:airline_symbols.notexists = 'Ɇ'
-" let g:airline_symbols.whitespace = 'Ξ'
-
-let g:airline_powerline_fonts = 1
-let g:airline#extensions#tabline#enabled = 1
-let g:airline#extensions#tabline#left_sep = ' '
-let g:airline#extensions#tabline#left_alt_sep = '|'
-
-" ============= extra settings
-syntax on
 
 " tabs to 2 spaces
 set smartindent
@@ -220,14 +180,12 @@ augroup numbertoggle
   autocmd BufLeave,FocusLost,InsertEnter * set norelativenumber
 augroup END
 
-let g:solarized_termtrans=1
-syntax enable
-colorscheme solarized
-set background=dark
 
 set splitbelow
-" no wrapping
 set nowrap
+
+" always show gutter
+set signcolumn=yes
 
 " allow backspace immediately after insert
 set bs=2
@@ -241,6 +199,18 @@ set undofile
 set undodir=~/.vim/undo
 set undolevels=1000
 set undoreload=10000
+
+"Undo
+set undodir=~/.vim/undodir
+set undofile " Maintain undo history between sessions
+
+set shortmess+=c
+
+"Do not become addicted to water
+noremap <Up> <Nop>
+noremap <Down> <Nop>
+noremap <Left> <Nop>
+noremap <Right> <Nop>
 
 " tmux will only forward escape sequences to the terminal if surrounded by a
 " DCS sequence
@@ -259,5 +229,17 @@ augroup XML
     autocmd!
     autocmd FileType xml setlocal foldmethod=indent foldlevelstart=999 foldminlines=0
 augroup END
+
+set list
+set listchars=tab:»\ ,extends:›,precedes:‹,nbsp:·,trail:·
+set colorcolumn=100
+
+noremap <leader>k :call TrimWhiteSpace()<CR>
+
+" Removes trailing spaces
+function TrimWhiteSpace()
+  %s/\s*$//
+  ''
+endfunction
 
 map ; :Files<CR>
