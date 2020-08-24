@@ -11,11 +11,16 @@
 !.gitconfig
 !.gitignore
 
+## Zsh theme
+!.p10k.zsh
+
 ## Zsh
 !.zshrc
 
 ## tmux
 !.tmux.conf
+
+
 
 ## Tips sheet
 *.dump

@@ -72,9 +72,9 @@ Plugin 'Yggdroot/indentLine'
 
 Plugin 'mhinz/vim-startify'
   let g:startify_custom_header = [
-      \'-------------------------------╔═╗┌─┐┬ ┬┬─┐┌┬┐┬ ┬  ╦ ╦┌─┐┬─┐┬  ┌┬┐┌─┐',
+      \'And the son asked, what is the ╔═╗┌─┐┬ ┬┬─┐┌┬┐┬ ┬  ╦ ╦┌─┐┬─┐┬  ┌┬┐┌─┐',
       \'===============================╠╣ │ ││ │├┬┘ │ ├─┤  ║║║│ │├┬┘│   ││ ┌┘',
-      \'And the son asked, what is the ╚  └─┘└─┘┴└─ ┴ ┴ ┴  ╚╩╝└─┘┴└─┴─┘─┴┘ o ',
+      \'------------------------------ ╚  └─┘└─┘┴└─ ┴ ┴ ┴  ╚╩╝└─┘┴└─┴─┘─┴┘ o ',
       \'And the Father said:',
       \'The First World is the Old World, the world of my parents, from which they fled.',
       \'The Second World is the New World, which they sought, which they found, where I came to be.',
@@ -229,6 +229,9 @@ augroup XML
     autocmd!
     autocmd FileType xml setlocal foldmethod=indent foldlevelstart=999 foldminlines=0
 augroup END
+
+autocmd QuickFixCmdPost [^l]* nested cwindow
+autocmd QuickFixCmdPost    l* nested lwindow
 
 set list
 set listchars=tab:»\ ,extends:›,precedes:‹,nbsp:·,trail:·
