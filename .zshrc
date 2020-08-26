@@ -12,7 +12,7 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
     source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
-export FZF_DEFAULT_COMMAND='ag --nocolor --ignore node_modules -g ""'
+export FZF_DEFAULT_COMMAND='rg --files --hidden'
 
 ZSH_THEME=powerlevel10k/powerlevel10k
 autoload -U promptinit; promptinit
@@ -58,9 +58,9 @@ alias q="exit"
 alias gs="git status"
 alias v="vim"
 alias zsh="vim ~/.zshrc"
-alias src="exec zsh"
 alias ohmyzsh="vim ~/.oh-my-zsh"
 alias vimrc='vim ~/.vimrc'
+alias ta='tmux attach -t'
 local ret_status="%(?:%{$fg[yellow]%}=> :%{$fg[red]%}=> %s)"
 
 bindkey -v

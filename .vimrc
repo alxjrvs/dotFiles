@@ -26,11 +26,14 @@ Plugin 'peitalin/vim-jsx-typescript'
 
 Plugin 'junegunn/fzf'
 Plugin 'junegunn/fzf.vim'
- nnoremap <c-p> :GFiles --cached --others --exclude-standard<cr>
+ "nnoremap <c-p> :GFiles --cached --others --exclude-standard<cr>
+ nnoremap <c-p> :FZF<cr>
+ nnoremap <c-f> :Rg -g<cr>
 
 Plugin 'tpope/vim-surround'
 Plugin 'tpope/vim-repeat'
 Plugin 'tpope/vim-fugitive'
+Plugin 'townk/vim-autoclose'
 
 Plugin 'altercation/vim-colors-solarized'
 
@@ -99,9 +102,6 @@ Plugin 'neoclide/coc.nvim', {'branch': 'release'}
     let col = col('.') - 1
     return !col || getline('.')[col - 1]  =~# '\s'
   endfunction
-
-  " Use <c-C> to trigger completion.
-  inoremap <silent><expr> <c-C> coc#refresh()
 
   " Symbol renaming.
   nmap <leader>rn <Plug>(coc-rename)
