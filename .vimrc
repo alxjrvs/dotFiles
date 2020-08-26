@@ -26,14 +26,11 @@ Plugin 'peitalin/vim-jsx-typescript'
 
 Plugin 'junegunn/fzf'
 Plugin 'junegunn/fzf.vim'
- "nnoremap <c-p> :GFiles --cached --others --exclude-standard<cr>
- nnoremap <c-p> :FZF<cr>
- nnoremap <c-f> :Rg -g<cr>
-
 Plugin 'tpope/vim-surround'
 Plugin 'tpope/vim-repeat'
 Plugin 'tpope/vim-fugitive'
 Plugin 'townk/vim-autoclose'
+Plugin 'airblade/vim-rooter'
 
 Plugin 'altercation/vim-colors-solarized'
 
@@ -44,7 +41,6 @@ Plugin 'airblade/vim-gitgutter'
   let g:gitgutter_sign_removed_first_line = '-'
   let g:gitgutter_sign_modified_removed = '-'
 
-Plugin 'airblade/vim-rooter'
 
 Plugin 'neoclide/coc.nvim', {'branch': 'release'}
   let g:coc_global_extensions = [
@@ -135,6 +131,7 @@ Plugin 'mhinz/vim-startify'
       \'------------------------------╚═╝╚═╝╚═╝╩ ╩╩  ╚═╝o------------------------------------------',
       \ ]
   let g:startify_files_number = 5
+  let g:startify_left_padding = 4
   let g:startify_lists = [
     \ { 'type': 'dir',  'header': ['   Files'] },
     \]
@@ -149,7 +146,7 @@ Plugin 'alvan/vim-closetag'
 Plugin 'scrooloose/nerdtree'
   map <C-t><C-t> :NERDTreeToggle<CR>
   map <C-t>f :NERDTreeFind<CR>
-  let NERDTreeIgnore = [ '\.swp', '*\.swp', 'node_modules/' ]
+  let NERDTreeIgnore = [ '\.swp', '*\.swp', '$node_modules' ]
   let NERDTreeShowHidden=1
   let NERDTreeQuitOnOpen=1
   let NERDTreeMinimalUI = 1
@@ -278,6 +275,10 @@ noremap <Up> <Nop>
 noremap <Down> <Nop>
 noremap <Left> <Nop>
 noremap <Right> <Nop>
+
+"Search
+let $FZF_DEFAULT_COMMAND = 'rg --files --hidden'
+nnoremap <c-p> :FZF<cr>
 
 " tmux will only forward escape sequences to the terminal if surrounded by a
 " DCS sequence
