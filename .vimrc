@@ -20,9 +20,13 @@ call vundle#begin()
 
 Plugin 'VundleVim/Vundle.vim'
 
+Plugin 'HerringtonDarkholme/yats.vim'
+Plugin 'peitalin/vim-jsx-typescript'
+  autocmd BufNewFile,BufRead *.tsx,*.jsx set filetype=typescript.tsx
+
 Plugin 'junegunn/fzf'
 Plugin 'junegunn/fzf.vim'
- nnoremap <C-p> :FZF<CR>
+ nnoremap <c-p> :GFiles --cached --others --exclude-standard<cr>
 
 Plugin 'tpope/vim-surround'
 Plugin 'tpope/vim-repeat'
@@ -31,38 +35,83 @@ Plugin 'tpope/vim-fugitive'
 Plugin 'altercation/vim-colors-solarized'
 
 Plugin 'airblade/vim-gitgutter'
+  let g:gitgutter_sign_added = '✚'
+  let g:gitgutter_sign_modified = '✹'
+  let g:gitgutter_sign_removed = '-'
+  let g:gitgutter_sign_removed_first_line = '-'
+  let g:gitgutter_sign_modified_removed = '-'
+
 Plugin 'airblade/vim-rooter'
 
 Plugin 'neoclide/coc.nvim', {'branch': 'release'}
   let g:coc_global_extensions = [
-        \ 'coc-tsserver',
-        \ 'coc-rls',
-        \ 'coc-prettier',
-        \ 'coc-eslint',
-        \ ]
+  \ 'coc-tsserver',
+  \ 'coc-rls',
+  \ 'coc-prettier',
+  \ 'coc-eslint',
+\ ]
   let g:coc_user_config = {
-        \ "coc.preferences.formatOnSaveFiletypes": [
-          \ "css",
-          \ "markdown",
-          \ "javascript",
-          \ "javascriptreact",
-          \ "typescript",
-          \ "typescriptreact",
-        \ ],
-        \ "diagnostic.messageTarget": "echo",
-        \ }
+  \ "coc.preferences.formatOnSaveFiletypes": [
+    \ "css",
+    \ "markdown",
+    \ "javascript",
+    \ "javascriptreact",
+    \ "typescript",
+    \ "typescriptreact",
+  \ ],
+  \ "tsserver.formatOnType": 'true',
+  \ "coc.preferences.formatOnType": 'true',
+\ }
+
+  if isdirectory('./node_modules') && isdirectory('./node_modules/prettier')
+    let g:coc_global_extensions += ['coc-prettier']
+  endif
+
+  if isdirectory('./node_modules') && isdirectory('./node_modules/eslint')
+    let g:coc_global_extensions += ['coc-eslint']
+  endif
+
+  nnoremap <silent> K :call CocAction('doHover')<CR>
+
+  function! ShowDocIfNoDiagnostic(timer_id)
+    if (coc#util#has_float() == 0)
+      silent call CocActionAsync('doHover')
+    endif
+  endfunction
+
+  function! s:show_hover_doc()
+    call timer_start(10, 'ShowDocIfNoDiagnostic')
+  endfunction
+
+  autocmd CursorHoldI * :call <SID>show_hover_doc()
+  autocmd CursorHold * :call <SID>show_hover_doc()
+
+  " Use tab for trigger completion with characters ahead and navigate.
+  " NOTE: Use command ':verbose imap <tab>' to make sure tab is not mapped by
+  " other plugin before putting this into your config.
+  inoremap <silent><expr> <TAB>
+        \ pumvisible() ? "\<C-n>" :
+        \ <SID>check_back_space() ? "\<TAB>" :
+        \ coc#refresh()
+  inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<C-h>"
+
+  function! s:check_back_space() abort
+    let col = col('.') - 1
+    return !col || getline('.')[col - 1]  =~# '\s'
+  endfunction
+
+  " Use <c-C> to trigger completion.
+  inoremap <silent><expr> <c-C> coc#refresh()
+
   " Symbol renaming.
   nmap <leader>rn <Plug>(coc-rename)
   " Formatting selected code.
   xmap <leader>f  <Plug>(coc-format-selected)
   nmap <leader>f  <Plug>(coc-format-selected)
 
-Plugin 'leafgarland/typescript-vim'
-Plugin 'peitalin/vim-jsx-typescript'
-  autocmd BufNewFile,BufRead *.tsx,*.jsx set filetype=typescript.tsx
-  autocmd CursorHold * silent call CocActionAsync('highlight')
-
-Plugin 'ervandew/supertab'
+  " Trigger Codeactions
+  nmap <leader>do <Plug>(coc-codeaction)
+  nmap <leader>qf  <Plug>(coc-fix-current)
 
 Plugin 'luochen1990/rainbow'
   let g:rainbow_active = 1
@@ -72,25 +121,24 @@ Plugin 'Yggdroot/indentLine'
 
 Plugin 'mhinz/vim-startify'
   let g:startify_custom_header = [
-      \'And the son asked, what is the ╔═╗┌─┐┬ ┬┬─┐┌┬┐┬ ┬  ╦ ╦┌─┐┬─┐┬  ┌┬┐┌─┐',
-      \'===============================╠╣ │ ││ │├┬┘ │ ├─┤  ║║║│ │├┬┘│   ││ ┌┘',
-      \'------------------------------ ╚  └─┘└─┘┴└─ ┴ ┴ ┴  ╚╩╝└─┘┴└─┴─┘─┴┘ o ',
-      \'And the Father said:',
-      \'The First World is the Old World, the world of my parents, from which they fled.',
+      \'                      And the son asked, what is the ╔═╗┌─┐┬ ┬┬─┐┌┬┐┬ ┬  ╦ ╦┌─┐┬─┐┬  ┌┬┐┌─┐',
+      \'=====================================================╠╣ │ ││ │├┬┘ │ ├─┤  ║║║│ │├┬┘│   ││ ┌┘',
+      \'---------------------------------------------------- ╚  └─┘└─┘┴└─ ┴ ┴ ┴  ╚╩╝└─┘┴└─┴─┘─┴┘ o ',
+      \'                            And the Father said:',
+      \'    The First World is the Old World, the world of my parents, from which they fled.',
       \'The Second World is the New World, which they sought, which they found, where I came to be.',
-      \'The Third World is Our World as it is now, in the making, the future being born.',
-      \'And the Fourth World, my child, that is My World. The world I see when I close my eyes...',
-      \'     ...and try to',
-      \'╔═╗╔═╗╔═╗╔═╗╔═╗╔═╗',
-      \'║╣ ╚═╗║  ╠═╣╠═╝║╣ ',
-      \'╚═╝╚═╝╚═╝╩ ╩╩  ╚═╝o',
+      \    'The Third World is Our World as it is now, in the making, the future being born.',
+      \' And the Fourth World, my child, that is My World. The world I see when I close my eyes...',
+      \'                               ...and try to',
+      \'------------------------------╔═╗╔═╗╔═╗╔═╗╔═╗╔═╗-------------------------------------------',
+      \'==============================║╣ ╚═╗║  ╠═╣╠═╝║╣ ===========================================',
+      \'------------------------------╚═╝╚═╝╚═╝╩ ╩╩  ╚═╝o------------------------------------------',
       \ ]
   let g:startify_files_number = 5
   let g:startify_lists = [
     \ { 'type': 'dir',  'header': ['   Files'] },
     \]
 
-Plugin 'Xuyuanp/nerdtree-git-plugin'
 
 Plugin 'hail2u/vim-css3-syntax'
 
@@ -100,13 +148,34 @@ Plugin 'alvan/vim-closetag'
 
 Plugin 'scrooloose/nerdtree'
   map <C-t><C-t> :NERDTreeToggle<CR>
+  map <C-t>f :NERDTreeFind<CR>
   let NERDTreeIgnore = [ '\.swp', '*\.swp', 'node_modules/' ]
   let NERDTreeShowHidden=1
   let NERDTreeQuitOnOpen=1
   let NERDTreeMinimalUI = 1
   let NERDTreeDirArrows = 1
   let NERDTreeAutoDeleteBuffer = 1
+  let g:NERDTreeGitStatusIndicatorMapCustom = {
+    \ "Modified"  : "✹",
+    \ "Staged"    : "✚",
+    \ "Untracked" : "✭",
+    \ "Renamed"   : "➜",
+    \ "Unmerged"  : "═",
+    \ "Deleted"   : "",
+    \ "Dirty"     : "✗",
+    \ "Clean"     : "✔︎",
+    \ 'Ignored'   : '☒',
+    \ "Unknown"   : "?"
+    \ }
+  autocmd VimEnter *
+  \   if !argc()
+  \ |   Startify
+  \ |   NERDTree
+  \ |   wincmd w
+  \ | endif
+  autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTree") && b:NERDTree.isTabTree()) | q | endif
 
+Plugin 'Xuyuanp/nerdtree-git-plugin'
 Plugin 'christoomey/vim-tmux-navigator'
 
 Plugin 'zhaocai/GoldenView.Vim'
@@ -145,9 +214,7 @@ syntax enable
 colorscheme solarized
 set background=dark
 
-
 set statusline+=%#warningmsg#
-set statusline+=%{SyntasticStatuslineFlag()}
 set statusline+=%*
 autocmd FileType typescript setlocal completeopt+=menu,preview
 
@@ -224,11 +291,8 @@ else
   let &t_EI = "\<Esc>]50;CursorShape=0\x7"
 endif
 
-" Folding
-augroup XML
-    autocmd!
-    autocmd FileType xml setlocal foldmethod=indent foldlevelstart=999 foldminlines=0
-augroup END
+set cmdheight=2
+"set updatetime=300
 
 autocmd QuickFixCmdPost [^l]* nested cwindow
 autocmd QuickFixCmdPost    l* nested lwindow
@@ -245,4 +309,3 @@ function TrimWhiteSpace()
   ''
 endfunction
 
-map ; :Files<CR>
