@@ -4,6 +4,8 @@
 *
 
 ## NeoVim configs
+!.config/
+!.config/nvim
 !.config/nvim/init.vim
 
 ## Git configs
