@@ -28,10 +28,6 @@ plugins=(
   asdf
   git
   docker
-<<<<<<< HEAD
-  rails
-=======
->>>>>>> f1bae01... Switching to internal
   npm
   rails
   git zsh-z
