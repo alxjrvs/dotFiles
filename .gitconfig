@@ -34,4 +34,4 @@
 [credential]
 	helper = osxkeychain
 [core]
-	excludesfile = /Users/alexjarvis/.global_gitignore
+	excludesfile = ~/.global_gitignore
