@@ -4,7 +4,7 @@
 *
 
 ## NeoVim configs
-!.vimrc
+!.config/nvim/init.vim
 
 ## Git configs
 !.gitignore_global
@@ -19,8 +19,6 @@
 
 ## tmux
 !.tmux.conf
-
-
 
 ## Tips sheet
 *.dump

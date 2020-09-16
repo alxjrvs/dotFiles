@@ -10,29 +10,34 @@ set rtp+=~/.vim/bundle/Vundle.vim
 let mapleader = ","
 
 " Brief help
-" " :PluginList       - lists configured plugins
-" " :PluginInstall    - installs plugins; append `!` to update or just
-" :PluginUpdate
-" " :PluginSearch foo - searches for foo; append `!` to refresh local cache
-" " :PluginClean      - confirms removal of unused plugins; append `!` to
+" :PluginList       - lists configured plugins
+" :PluginInstall    - installs plugins; append `!` to update or just :PluginUpdate
+" :PluginSearch foo - searches for foo; append `!` to refresh local cache
+" :PluginClean      - confirms removal of unused plugins; append `!` to auto-approve removal
+"
+" see :h vundle for more details or wiki for FAQ
+" Put your non-Plugin stuff after this line"
 "
 call vundle#begin()
 
 Plugin 'VundleVim/Vundle.vim'
 
-Plugin 'HerringtonDarkholme/yats.vim'
+Plugin 'altercation/vim-colors-solarized'
+Plugin 'pangloss/vim-javascript'
+Plugin 'leafgarland/typescript-vim'
 Plugin 'peitalin/vim-jsx-typescript'
-  autocmd BufNewFile,BufRead *.tsx,*.jsx set filetype=typescript.tsx
+Plugin 'MaxMEllon/vim-jsx-pretty'
+autocmd BufEnter *.{js,jsx,ts,tsx} :syntax sync fromstart
+autocmd BufLeave *.{js,jsx,ts,tsx} :syntax sync clear
 
 Plugin 'junegunn/fzf'
-Plugin 'junegunn/fzf.vim'
 Plugin 'tpope/vim-surround'
 Plugin 'tpope/vim-repeat'
 Plugin 'tpope/vim-fugitive'
 Plugin 'townk/vim-autoclose'
 Plugin 'airblade/vim-rooter'
-
-Plugin 'altercation/vim-colors-solarized'
+Plugin 'preservim/nerdcommenter'
+Plugin 'tpope/vim-commentary'
 
 Plugin 'airblade/vim-gitgutter'
   let g:gitgutter_sign_added = '✚'
@@ -40,7 +45,6 @@ Plugin 'airblade/vim-gitgutter'
   let g:gitgutter_sign_removed = '-'
   let g:gitgutter_sign_removed_first_line = '-'
   let g:gitgutter_sign_modified_removed = '-'
-
 
 Plugin 'neoclide/coc.nvim', {'branch': 'release'}
   let g:coc_global_extensions = [
@@ -79,7 +83,7 @@ Plugin 'neoclide/coc.nvim', {'branch': 'release'}
   endfunction
 
   function! s:show_hover_doc()
-    call timer_start(10, 'ShowDocIfNoDiagnostic')
+    call timer_start(100, 'ShowDocIfNoDiagnostic')
   endfunction
 
   autocmd CursorHoldI * :call <SID>show_hover_doc()
@@ -109,8 +113,25 @@ Plugin 'neoclide/coc.nvim', {'branch': 'release'}
   nmap <leader>do <Plug>(coc-codeaction)
   nmap <leader>qf  <Plug>(coc-fix-current)
 
+  " Use `[g` and `]g` to navigate diagnostics
+  nmap <silent> [g <Plug>(coc-diagnostic-prev)
+  nmap <silent> ]g <Plug>(coc-diagnostic-next)
+
+  " GoTo code navigation.
+  nmap <silent> gd <Plug>(coc-definition)
+  nmap <silent> gy <Plug>(coc-type-definition)
+  nmap <silent> gi <Plug>(coc-implementation)
+  nmap <silent> gr <Plug>(coc-references)
+
 Plugin 'luochen1990/rainbow'
   let g:rainbow_active = 1
+
+Plugin 'reedes/vim-pencil' 
+  augroup pencil
+    autocmd!
+    autocmd FileType markdown,mkd call pencil#init()
+    autocmd FileType text         call pencil#init()
+  augroup END
 
 Plugin 'Yggdroot/indentLine'
   let g:indentLine_char = '.'
@@ -167,7 +188,6 @@ Plugin 'scrooloose/nerdtree'
   autocmd VimEnter *
   \   if !argc()
   \ |   Startify
-  \ |   NERDTree
   \ |   wincmd w
   \ | endif
   autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTree") && b:NERDTree.isTabTree()) | q | endif
@@ -213,7 +233,6 @@ set background=dark
 
 set statusline+=%#warningmsg#
 set statusline+=%*
-autocmd FileType typescript setlocal completeopt+=menu,preview
 
 nnoremap <C-J> <C-W><C-J>
 nnoremap <C-K> <C-W><C-K>

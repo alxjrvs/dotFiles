@@ -5,6 +5,7 @@ export PYTHON_CONFIGURE_OPTS="--enable-framework"
 export ANDROID_HOME=/Users/alexjarvis/Library/Android/sdk
 export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
 export ZSH="/Users/alexjarvis/.oh-my-zsh"
+export EDITOR="/usr/local/bin/nvim"
 
 printf '\n%.0s' {1..100}
 
@@ -54,11 +55,14 @@ source $ZSH/oh-my-zsh.sh
 alias c="clear"
 alias q="exit"
 alias gs="git status"
-alias v="vim"
-alias zsh="vim ~/.zshrc"
-alias ohmyzsh="vim ~/.oh-my-zsh"
-alias vimrc='vim ~/.vimrc'
+alias v="nvim"
+alias vi="nvim"
+alias vim="nvim"
+alias zsh="nvim ~/.zshrc"
+alias ohmyzsh="nvim ~/.oh-my-zsh"
+alias vimrc='nvim ~/.config/nvim/init.vim'
 alias ta='tmux attach -t'
+alias gpr='git pull --rebase'
 local ret_status="%(?:%{$fg[yellow]%}=> :%{$fg[red]%}=> %s)"
 
 bindkey -v
