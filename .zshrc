@@ -1,10 +1,8 @@
-export PATH="/usr/local/opt/icu4c/bin:$PATH"
-export PATH="/usr/local/opt/icu4c/sbin:$PATH"
-
 export PYTHON_CONFIGURE_OPTS="--enable-framework"
-export ANDROID_HOME=/Users/alexjarvis/Library/Android/sdk
+export ANDROID_HOME=~/Library/Android/sdk
 export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
-export ZSH="/Users/alexjarvis/.oh-my-zsh"
+export ZSH=~/.oh-my-zsh
+
 export EDITOR="/usr/local/bin/nvim"
 
 printf '\n%.0s' {1..100}
@@ -71,4 +69,4 @@ export PATH=~/.npm-global/bin:$PATH
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+source ~/.p10k.zsh

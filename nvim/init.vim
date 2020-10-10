@@ -4,7 +4,7 @@ runtime macros/matchit.vim
     filetype indent plugin on
 set is
 set encoding=utf-8
-set rtp+=~/.vim/bundle/Vundle.vim
+set rtp+=~/.config/nvim/bundle/Vundle.vim
 
 let mapleader = ","
 
