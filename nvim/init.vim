@@ -130,6 +130,14 @@ Plugin 'neoclide/coc.nvim', {'branch': 'release'}
   " Symbol renaming.
   nmap <leader>rn <Plug>(coc-rename)
 
+  " Formatting selected code.
+  xmap <leader>f  <Plug>(coc-format-selected)
+  nmap <leader>f  <Plug>(coc-format-selected)
+
+  " Trigger Codeactions
+  nmap <leader>do <Plug>(coc-codeaction)
+  nmap <leader>qf  <Plug>(coc-fix-current)
+
 Plugin 'luochen1990/rainbow'
   let g:rainbow_active = 1
 
@@ -153,10 +161,9 @@ Plugin 'mhinz/vim-startify'
       \'The Second World is the New World, which they sought, which they found, where I came to be.',
       \    'The Third World is Our World as it is now, in the making, the future being born.',
       \' And the Fourth World, my child, that is My World. The world I see when I close my eyes...',
-      \'                               ...and try to',
       \'------------------------------╔═╗╔═╗╔═╗╔═╗╔═╗╔═╗-------------------------------------------',
       \'==============================║╣ ╚═╗║  ╠═╣╠═╝║╣ ===========================================',
-      \'------------------------------╚═╝╚═╝╚═╝╩ ╩╩  ╚═╝o------------------------------------------',
+      \'----------------...and try to ╚═╝╚═╝╚═╝╩ ╩╩  ╚═╝o------------------------------------------',
       \ ]
   let g:startify_files_number = 5
   let g:startify_left_padding = 4
