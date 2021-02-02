@@ -70,8 +70,6 @@ Plugin 'neoclide/coc.nvim', {'branch': 'release'}
   " delays and poor user experience.
   set updatetime=300
 
-  " Don't pass messages to |ins-completion-menu|.
-  set shortmess+=c
 
   " Always show the signcolumn, otherwise it would shift the text each time
   " diagnostics appear/become resolved.
@@ -209,9 +207,6 @@ Plugin 'scrooloose/nerdtree'
 Plugin 'Xuyuanp/nerdtree-git-plugin'
 Plugin 'christoomey/vim-tmux-navigator'
 
-Plugin 'zhaocai/GoldenView.Vim'
-  let g:goldenview__enable_default_mapping = 0
-
 Plugin 'benmills/vimux'
   map <Leader>Lp :VimuxPromptCommand<CR>
   nmap <F8> :TagbarToggle<CR>
@@ -224,7 +219,6 @@ Plugin 'majutsushi/tagbar'
 Plugin 'vim-airline/vim-airline'
 Plugin 'vim-airline/vim-airline-themes'
 Plugin 'edkolev/tmuxline.vim'
-  set t_Co=256
   if !exists('g:airline_symbols')
      let g:airline_symbols = {}
    endif
@@ -303,6 +297,10 @@ set undofile " Maintain undo history between sessions
 
 set shortmess+=c
 
+ set list
+ set listchars=tab:»\ ,extends:›,precedes:‹,nbsp:·,trail:·
+ set colorcolumn=100
+
 "Do not become addicted to water
 noremap <Up> <Nop>
 noremap <Down> <Nop>
@@ -325,9 +323,6 @@ else
   let &t_SI = "\<Esc>]50;CursorShape=1\x7"
   let &t_EI = "\<Esc>]50;CursorShape=0\x7"
 endif
-
-set cmdheight=2
-"set updatetime=300
 
 autocmd QuickFixCmdPost [^l]* nested cwindow
 autocmd QuickFixCmdPost    l* nested lwindow

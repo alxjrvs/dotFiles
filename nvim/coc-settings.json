@@ -13,7 +13,10 @@
     "javascript",
     "javascriptreact",
     "typescript",
-    "typescriptreact"
+    "typescriptreact",
+    "ruby",
+    "markdown",
+    "yaml"
   ],
   "tsserver.formatOnType": true,
   "coc.preferences.formatOnType": true
