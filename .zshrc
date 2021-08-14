@@ -23,17 +23,14 @@ COMPLETION_WAITING_DOTS="true"
 
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(
+  rake
   asdf
   git
   docker
   npm
-  rails
   git zsh-z
   bundler
-  dotenv
   osx
-  rake
-  rbenv
   ruby
   jsontools
   node
@@ -62,6 +59,8 @@ alias ta='tmux attach -t'
 alias gpr='git pull --rebase'
 local ret_status="%(?:%{$fg[yellow]%}=> :%{$fg[red]%}=> %s)"
 
+CORRECT_IGNORE_FILE=".storybook"
+
 bindkey -v
 # npm global
 export PATH=~/.npm-global/bin:$PATH
@@ -70,3 +69,4 @@ export PATH=~/.npm-global/bin:$PATH
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 source ~/.p10k.zsh
+export PATH="/usr/local/sbin:$PATH"

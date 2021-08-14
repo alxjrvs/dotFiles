@@ -5,6 +5,8 @@
 echo "Distributing dotFiles...."
 echo "Copying .zshrc..."
 ln -s ~/dotFiles/.zshrc ~/.zshrc
+echo "Copying .asdfrc..."
+ln -s ~/dotFiles/.asdfrc ~/.asdfrc
 echo "Copying .gitconfig..."
 ln -s ~/dotFiles/.gitconfig ~/.gitconfig
 echo "Copying .p10k.zsh..."

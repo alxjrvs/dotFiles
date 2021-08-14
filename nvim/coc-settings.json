@@ -1,7 +1,6 @@
 {
   "suggest.autoTrigger": "none",
   "eslint.autoFixOnSave": true,
-  "eslint.filetypes": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
   "prettier.disableSuccessMessage": true,
     "list.normalMappings": {
     "<C-c>": "do:exit"
@@ -18,6 +17,7 @@
     "markdown",
     "yaml"
   ],
+  "tsserver.tsdk": "./node_modules/typescript/lib",
   "tsserver.formatOnType": true,
   "coc.preferences.formatOnType": true
 }

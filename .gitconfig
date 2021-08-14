@@ -34,4 +34,4 @@
 [credential]
 	helper = osxkeychain
 [core]
-	excludesfile = ~/.global_gitignore
+	excludesfile = ~/.gitignore
