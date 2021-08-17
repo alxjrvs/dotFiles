@@ -34,7 +34,7 @@ call plug#begin(expand('~/.config/nvim/plugged'))
 "*****************************************************************************
 "" Plug install packages
 "*****************************************************************************
-Plug 'altercation/vim-colors-solarized'
+Plug 'overcache/NeoSolarized'
 Plug 'scrooloose/nerdtree'
 Plug 'jistr/vim-nerdtree-tabs'
 Plug 'mhinz/vim-startify'
@@ -71,7 +71,6 @@ Plug 'xolox/vim-misc'
 Plug 'xolox/vim-session'
 
 "" Snippets
-Plug 'SirVer/ultisnips'
 Plug 'honza/vim-snippets'
 
 "*****************************************************************************
@@ -182,8 +181,10 @@ set ruler
 set number
 set is
 
+set termguicolors
 let no_buffers_menu=1
-colorscheme solarized
+colorscheme NeoSolarized
+set background=dark
 
 set mousemodel=popup
 set t_Co=256
@@ -510,10 +511,10 @@ nnoremap <c-p> :FZF -m<CR>
 nmap <leader>y :History:<CR>
 
 " snippets
-let g:UltiSnipsExpandTrigger="<tab>"
-let g:UltiSnipsJumpForwardTrigger="<tab>"
-let g:UltiSnipsJumpBackwardTrigger="<c-b>"
-let g:UltiSnipsEditSplit="vertical"
+" let g:UltiSnipsExpandTrigger="<tab>"
+" let g:UltiSnipsJumpForwardTrigger="<tab>"
+" let g:UltiSnipsJumpBackwardTrigger="<c-b>"
+" let g:UltiSnipsEditSplit="vertical"
 
 " ale
 let g:ale_linters = {}
@@ -712,6 +713,10 @@ let g:startify_lists = [
 if filereadable(expand("~/.config/nvim/local_init.vim"))
   source ~/.config/nvim/local_init.vim
 endif
+
+let g:gitgutter_override_sign_column_highlight = 0
+set t_8f=^[[38;2;%lu;%lu;%lum
+set t_8b=^[[48;2;%lu;%lu;%lum
 
 "*****************************************************************************
 "" Convenience variables
