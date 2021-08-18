@@ -28,6 +28,7 @@ plugins=(
   git
   docker
   npm
+  rails
   git zsh-z
   bundler
   osx

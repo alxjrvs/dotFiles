@@ -2,6 +2,7 @@
   "suggest.autoTrigger": "none",
   "eslint.autoFixOnSave": true,
   "prettier.disableSuccessMessage": true,
+  "prettier.requireConfig": true,
     "list.normalMappings": {
     "<C-c>": "do:exit"
   },

@@ -43,7 +43,6 @@ Plug 'tpope/vim-fugitive'
 Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
 Plug 'airblade/vim-gitgutter'
-Plug 'vim-scripts/grep.vim'
 Plug 'vim-scripts/CSApprox'
 Plug 'Raimondi/delimitMate'
 Plug 'majutsushi/tagbar'
@@ -140,12 +139,21 @@ set ttyfast
 
 "" Fix backspace indent
 set backspace=indent,eol,start
+set bs=2
 
 "" Tabs. May be overridden by autocmd rules
-set tabstop=4
-set softtabstop=0
-set shiftwidth=4
+set smartindent
+set tabstop=2
+set shiftwidth=2
 set expandtab
+set ruler
+set hidden
+:set guioptions-=m " remove menu bar
+:set guioptions-=T " remove toolbar
+:set guioptions-=r " remove right-hand scroll bar
+:set guioptions-=L " remove left-hand scroll bar
+set shortmess+=A " disable swap file warning
+set nowrap
 
 "" Map leader to ,
 let mapleader=','
@@ -173,6 +181,13 @@ let g:session_autoload = "no"
 let g:session_autosave = "no"
 let g:session_command_aliases = 1
 
+"Nav
+nnoremap <C-J> <C-W><C-J>
+nnoremap <C-K> <C-W><C-K>
+nnoremap <C-L> <C-W><C-L>
+nnoremap <C-H> <C-W><C-H>
+set splitbelow
+set splitright
 "*****************************************************************************
 "" Visual Settings
 "*****************************************************************************
@@ -280,11 +295,11 @@ let g:coc_global_extensions = [
 \ ]
 
 if isdirectory('./node_modules') && isdirectory('./node_modules/prettier')
-let g:coc_global_extensions += ['coc-prettier']
+    let g:coc_global_extensions += ['coc-prettier']
 endif
 
 if isdirectory('./node_modules') && isdirectory('./node_modules/eslint')
-let g:coc_global_extensions += ['coc-eslint']
+    let g:coc_global_extensions += ['coc-eslint']
 endif
 
 " Give more space for displaying messages.
@@ -391,15 +406,23 @@ set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.pyc,*.db,*.sqlite
 nnoremap <C-t><C-t> :NERDTreeToggle<CR>
 nnoremap <C-t>f :NERDTreeFind<CR>
 
-" grep.vim
-nnoremap <c-f> :Rgrep<cr>
-let Grep_Default_Options = '-IR'
-let Grep_Skip_Files = '*.log *.db'
-let Grep_Skip_Dirs = '.git node_modules'
+
+" ripgrep
+if executable('rg')
+  let $FZF_DEFAULT_COMMAND = 'rg --files --hidden --follow --glob "!.git/*"'
+  set grepprg=rg\ --vimgrep
+  command! -bang -nargs=* Find call fzf#vim#grep('rg --column --line-number --no-heading --fixed-strings --ignore-case --hidden --follow --glob "!.git/*" --color "always" '.shellescape(<q-args>).'| tr -d "\017"', 1, <bang>0)
+endif
+nnoremap <c-f> :Rg<cr>
 
 " terminal emulation
 nnoremap <silent> <leader>sh :terminal<CR>
 
+" Wrap on markdown
+augroup Markdown
+  autocmd!
+  autocmd FileType markdown set wrap
+augroup END
 
 "*****************************************************************************
 "" Commands
@@ -495,13 +518,6 @@ let $FZF_DEFAULT_COMMAND =  "find * -path '*/\.*' -prune -o -path 'node_modules/
 if executable('ag')
   let $FZF_DEFAULT_COMMAND = 'ag --hidden --ignore .git -g ""'
   set grepprg=ag\ --nogroup\ --nocolor
-endif
-
-" ripgrep
-if executable('rg')
-  let $FZF_DEFAULT_COMMAND = 'rg --files --hidden --follow --glob "!.git/*"'
-  set grepprg=rg\ --vimgrep
-  command! -bang -nargs=* Find call fzf#vim#grep('rg --column --line-number --no-heading --fixed-strings --ignore-case --hidden --follow --glob "!.git/*" --color "always" '.shellescape(<q-args>).'| tr -d "\017"', 1, <bang>0)
 endif
 
 cnoremap <C-P> <C-R>=expand("%:p:h") . "/" <CR>
@@ -761,3 +777,16 @@ else
   let g:airline_symbols.linenr = ''
 endif
 
+noremap <leader>k :call TrimWhiteSpace()<CR>
+
+" Removes trailing spaces
+function TrimWhiteSpace()
+  %s/\s*$//
+  ''
+endfunction
+
+"Do not become addicted to water
+noremap <Up> <Nop>
+noremap <Down> <Nop>
+noremap <Left> <Nop>
+noremap <Right> <Nop>
