@@ -1,24 +1,12 @@
-tap "heroku/brew"
-tap "homebrew/bundle"
-tap "homebrew/cask"
-tap "homebrew/core"
-tap "homebrew/services"
-brew "readline"
-brew "cmake"
-brew "ctags"
-brew "zsh"
-brew "fzf"
-brew "git"
-brew "neovim"
-brew "asdf"
-brew "ripgrep"
-brew "the_silver_searcher"
-brew "tmux"
-brew "mas"
-brew "tree"
-brew "watch"
-brew "watchman"
-cask "google-chrome"
-cask "firefox"
-cask "chromedriver"
-cask "ngrok"
+tap 'homebrew/cask-fonts'
+
+cask 'font-fira-code'
+cask 'visual-studio-code'
+cask 'google-chrome'
+cask 'slack'
+cask 'discord'
+cask '1password'
+cask 'rectangle'
+
+brew 'postgresql'
+brew 'gh'
