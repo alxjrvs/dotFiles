@@ -11,9 +11,11 @@ echo "Copying .gitconfig..."
 ln -s ~/dotFiles/.gitconfig ~/.gitconfig
 echo "Copying .p10k.zsh..."
 ln -s ~/dotFiles/.p10k.zsh ~/.p10k.zsh
-echo "Copying .tmux.conf..."
-ln -s ~/dotFiles/.tmux.conf ~/.tmux.conf
-echo "Copying neovim setup"
-mkdir -p ~/.config/nvim
-ln -s ~/dotFiles/nvim/coc-settings.json  ~/.config/nvim/coc-settings.json
-ln -s ~/dotFiles/nvim/init.vim  ~/.config/nvim/init.vim
+echo "Installing breww.."
+bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+echo "Installing brew fonts..."
+brew tap homebrew/cask-fonts
+brew install --cask font-fira-code
+echo "Install PostgreSql"
+brew install postgresql
+brew services start postgresql

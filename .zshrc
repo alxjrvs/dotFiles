@@ -3,7 +3,7 @@ export ANDROID_HOME=~/Library/Android/sdk
 export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
 export ZSH=~/.oh-my-zsh
 
-export EDITOR="/usr/local/bin/nvim"
+export EDITOR="code -w"
 
 printf '\n%.0s' {1..100}
 
@@ -31,8 +31,8 @@ plugins=(
   rails
   git zsh-z
   bundler
-  osx
   ruby
+  macos
   jsontools
   node
   pip
