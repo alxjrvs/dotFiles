@@ -23,5 +23,9 @@ echo "Installing VSCode..."
 brew install --cask visual-studio-code
 echo "Installing Chrome..."
 brew install --cask google-chrome
-echo "Installing GH CLI"
+echo "Installing GH CLI..."
 brew install gh
+echo "Installing Slack..."
+brew install --cask slack
+echo "Installing Discord..."
+brew install --cask discord
