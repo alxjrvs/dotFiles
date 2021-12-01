@@ -7,10 +7,8 @@ export EDITOR="code -w"
 
 printf '\n%.0s' {1..100}
 
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-    source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+source ~/.p10k.zsh
 ZSH_THEME=powerlevel10k/powerlevel10k
 autoload -U promptinit; promptinit
 export UPDATE_ZSH_DAYS=1
@@ -68,6 +66,4 @@ export PATH=~/.npm-global/bin:$PATH
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
-# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-source ~/.p10k.zsh
 export PATH="/usr/local/sbin:$PATH"
