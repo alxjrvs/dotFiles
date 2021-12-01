@@ -31,3 +31,5 @@ echo "Installing Discord..."
 brew install --cask discord
 echo "Installing 1Password..."
 brew install --cask 1password
+echo "Installing Rectangle (window management)..."
+brew install --cask rectangle
