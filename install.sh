@@ -12,7 +12,7 @@ ln -s ~/dotFiles/.gitconfig ~/.gitconfig
 echo "Copying .p10k.zsh..."
 ln -s ~/dotFiles/.p10k.zsh ~/.p10k.zsh
 echo "Installing breww.."
-bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 echo "Brew Bundle..."
 brew bundle
 echo "Brew Services..."
