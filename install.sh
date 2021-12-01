@@ -16,6 +16,10 @@ bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEA
 echo "Installing brew fonts..."
 brew tap homebrew/cask-fonts
 brew install --cask font-fira-code
-echo "Install PostgreSql"
+echo "Installing PostgreSql..."
 brew install postgresql
 brew services start postgresql
+echo "Installing VSCode..."
+brew install --cask visual-studio-code
+echo "Installing Chrome..."
+brew install --cask google-chrome
