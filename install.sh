@@ -13,7 +13,4 @@ echo "Copying .p10k.zsh..."
 ln -s ~/dotFiles/.p10k.zsh ~/.p10k.zsh
 echo "Installing breww.."
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-echo "Brew Bundle..."
-brew bundle
-echo "Brew Services..."
-brew services start postgresql
+echo "Run brew bundle once setup concludes. Welcome to Mac!"
