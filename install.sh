@@ -23,3 +23,5 @@ echo "Installing VSCode..."
 brew install --cask visual-studio-code
 echo "Installing Chrome..."
 brew install --cask google-chrome
+echo "Installing GH CLI"
+brew install gh
