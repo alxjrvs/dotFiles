@@ -29,3 +29,5 @@ echo "Installing Slack..."
 brew install --cask slack
 echo "Installing Discord..."
 brew install --cask discord
+echo "Installing 1Password..."
+brew install --cask 1password
