@@ -3,10 +3,12 @@
 # ./install.sh
 
 echo "Distributing dotFiles...."
-echo "Copying .zshrc..."
-ln -sfn ~/dotFiles/.zshrc ~/.zshrc
+
 echo "Installing OhMyZsh..."
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+
+echo "Copying .zshrc..."
+ln -sfn ~/dotFiles/.zshrc ~/.zshrc
 
 echo "Setting up Zsh Plugins..."
 if [ ! -f ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions ]
