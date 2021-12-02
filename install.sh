@@ -54,5 +54,8 @@ asdf plugin add nodejs
 asdf install nodejs 16.9.0
 asdf global nodejs 16.9.0
 
+echo "Installing Yarn..."
+npm install --global yarn
+
 echo "GH auth login"
 gh auth login

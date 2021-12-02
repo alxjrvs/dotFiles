@@ -1,6 +1,3 @@
-export PYTHON_CONFIGURE_OPTS="--enable-framework"
-export ANDROID_HOME=~/Library/Android/sdk
-export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
 export ZSH=~/.oh-my-zsh
 
 export EDITOR="code -w"
@@ -48,13 +45,6 @@ source $ZSH/oh-my-zsh.sh
 alias c="clear"
 alias q="exit"
 alias gs="git status"
-alias v="nvim"
-alias vi="nvim"
-alias vim="nvim"
-alias zsh="nvim ~/.zshrc"
-alias ohmyzsh="nvim ~/.oh-my-zsh"
-alias vimrc='nvim ~/.config/nvim/init.vim'
-alias ta='tmux attach -t'
 alias gpr='git pull --rebase'
 local ret_status="%(?:%{$fg[yellow]%}=> :%{$fg[red]%}=> %s)"
 
@@ -63,7 +53,6 @@ CORRECT_IGNORE_FILE=".storybook"
 bindkey -v
 # npm global
 export PATH=~/.npm-global/bin:$PATH
+export PATH="/usr/local/sbin:$PATH"
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-
-export PATH="/usr/local/sbin:$PATH"
