@@ -9,7 +9,7 @@ cask '1password'
 cask 'rectangle'
 cask 'docker'
 cask 'tuple'
-cask 'gitx'
+cask 'rowanj-gitx'
 
 brew 'postgresql'
 brew 'asdf'
