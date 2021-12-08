@@ -24,7 +24,9 @@ plugins=(
   docker
   npm
   rails
-  git zsh-z
+  git
+  brew
+  zsh-z
   bundler
   ruby
   macos
@@ -56,3 +58,5 @@ export PATH=~/.npm-global/bin:$PATH
 export PATH="/usr/local/sbin:$PATH"
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+export PATH="/opt/homebrew/bin:$PATH"
