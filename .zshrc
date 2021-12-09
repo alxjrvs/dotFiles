@@ -50,8 +50,6 @@ alias gs="git status"
 alias gpr='git pull --rebase'
 local ret_status="%(?:%{$fg[yellow]%}=> :%{$fg[red]%}=> %s)"
 
-CORRECT_IGNORE_FILE=".storybook"
-
 bindkey -v
 # npm global
 export PATH=~/.npm-global/bin:$PATH
