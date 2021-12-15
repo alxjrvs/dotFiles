@@ -2,7 +2,7 @@
   "entries": {
     "tap": {
       "homebrew/cask-fonts": {
-        "revision": "9a26765a3c706504a1147e9e5c75fb316c23b3bc"
+        "revision": "11a16ae5f9fbb2727a564786ada9d79800d31f68"
       }
     },
     "cask": {
@@ -13,13 +13,13 @@
         }
       },
       "visual-studio-code": {
-        "version": "1.62.3",
+        "version": "1.63.1",
         "options": {
           "full_name": "visual-studio-code"
         }
       },
       "google-chrome": {
-        "version": "96.0.4664.93",
+        "version": "96.0.4664.110",
         "options": {
           "full_name": "google-chrome"
         }
@@ -49,7 +49,7 @@
         }
       },
       "docker": {
-        "version": "4.3.0,71786",
+        "version": "4.3.1,72247",
         "options": {
           "full_name": "docker"
         }
@@ -249,12 +249,12 @@
   "system": {
     "macos": {
       "monterey": {
-        "HOMEBREW_VERSION": "3.3.7",
+        "HOMEBREW_VERSION": "3.3.8",
         "HOMEBREW_PREFIX": "/opt/homebrew",
-        "Homebrew/homebrew-core": "631d0f057ca080399ddc589924b7a23083fadb4d",
-        "CLT": "13.1.0.0.1.1633545042",
+        "Homebrew/homebrew-core": "c9e22c7fd5680b66e6a9a946bc486046a3a73c4c",
+        "CLT": "13.2.0.0.1.1638488800",
         "Xcode": "13.1",
-        "macOS": "12.0.1"
+        "macOS": "12.1"
       }
     }
   }
