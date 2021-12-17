@@ -2,7 +2,7 @@
   "entries": {
     "tap": {
       "homebrew/cask-fonts": {
-        "revision": "11a16ae5f9fbb2727a564786ada9d79800d31f68"
+        "revision": "67e89af711b03a8a9df84b1eb63abd5c60638cb5"
       }
     },
     "cask": {
@@ -13,7 +13,7 @@
         }
       },
       "visual-studio-code": {
-        "version": "1.63.1",
+        "version": "1.63.2",
         "options": {
           "full_name": "visual-studio-code"
         }
@@ -250,11 +250,11 @@
     "macos": {
       "monterey": {
         "HOMEBREW_VERSION": "3.3.8",
-        "HOMEBREW_PREFIX": "/opt/homebrew",
-        "Homebrew/homebrew-core": "c9e22c7fd5680b66e6a9a946bc486046a3a73c4c",
-        "CLT": "13.2.0.0.1.1638488800",
+        "HOMEBREW_PREFIX": "/usr/local",
+        "Homebrew/homebrew-core": "b3ac5d99517ae80bde3dd5eaa8d30062126f5dc0",
+        "CLT": "13.1.0.0.1.1633545042",
         "Xcode": "13.1",
-        "macOS": "12.1"
+        "macOS": "12.0.1"
       }
     }
   }
