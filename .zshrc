@@ -49,10 +49,5 @@ alias gpr='git pull --rebase'
 local ret_status="%(?:%{$fg[yellow]%}=> :%{$fg[red]%}=> %s)"
 
 bindkey -v
-# npm global
-export PATH=~/.npm-global/bin:$PATH
-export PATH="/usr/local/sbin:$PATH"
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-
-export PATH="/opt/homebrew/bin:$PATH"
