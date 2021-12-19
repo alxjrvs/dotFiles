@@ -7,9 +7,6 @@ echo "Distributing dotFiles...."
 echo "Installing OhMyZsh..."
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 
-echo "Copying .zshrc..."
-ln -sfn ~/dotFiles/.zshrc ~/.zshrc
-
 echo "Setting up Zsh Plugins..."
 if [ ! -f ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions ]
 then
@@ -25,8 +22,6 @@ else
     echo "Zsh-z already installed, skipping"
 fi
 
-echo "Copying .asdfrc..."
-ln -sfn ~/dotFiles/.asdfrc ~/.asdfrc
 echo "Copying .gitconfig..."
 ln -sfn ~/dotFiles/.gitconfig ~/.gitconfig
 
@@ -39,8 +34,8 @@ if ! exists brew
 then
   echo "Installing brew.."
   bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
-  eval "$(/opt/homebrew/bin/brew shellenv)"
+  echo 'eval "$($(brew --prefix)/bin/brew shellenv)"' >> ~/.zprofile
+  eval "$($(brew --prefix)/bin/brew shellenv)"
 fi
 
 echo "Running brew bundle..."
@@ -55,6 +50,12 @@ echo "Installing Nodejs..."
 asdf plugin add nodejs
 asdf install nodejs 16.9.0
 asdf global nodejs 16.9.0
+
+echo "Copying .asdfrc..."
+ln -sfn ~/dotFiles/.asdfrc ~/.asdfrc
+
+"\n. $(brew --prefix asdf)/asdf.sh" >> .zprofile
+"\n. $(brew --prefix asdf)/etc/bash_completion.d/asdf.bash" >> ~/.bash_profile
 
 echo "Installing Yarn..."
 npm install --global yarn
