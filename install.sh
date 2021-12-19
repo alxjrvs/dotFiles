@@ -36,6 +36,8 @@ then
   bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   echo 'eval "$($(brew --prefix)/bin/brew shellenv)"' >> ~/.zprofile
   eval "$($(brew --prefix)/bin/brew shellenv)"
+  "\n. $(brew --prefix asdf)/asdf.sh" >> .zprofile
+  "\n. $(brew --prefix asdf)/etc/bash_completion.d/asdf.bash" >> ~/.zprofile
 fi
 
 echo "Running brew bundle..."
@@ -54,11 +56,10 @@ asdf global nodejs 16.9.0
 echo "Copying .asdfrc..."
 ln -sfn ~/dotFiles/.asdfrc ~/.asdfrc
 
-"\n. $(brew --prefix asdf)/asdf.sh" >> .zprofile
-"\n. $(brew --prefix asdf)/etc/bash_completion.d/asdf.bash" >> ~/.bash_profile
-
 echo "Installing Yarn..."
 npm install --global yarn
 
 echo "GH auth login"
 gh auth login
+
+echo "git clone https://github.com/agkozak/zsh-z $ZSH_CUSTOM/plugins/zsh-z"

@@ -4,11 +4,7 @@ export EDITOR="code -w"
 
 printf '\n%.0s' {1..100}
 
-# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-source ~/.p10k.zsh
-ZSH_THEME=powerlevel10k/powerlevel10k
-autoload -U promptinit; promptinit
-export UPDATE_ZSH_DAYS=1
+ZSH_THEME=minimal
 
 # Enable autocorrection
 ENABLE_CORRECTION="true"
