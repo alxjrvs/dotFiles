@@ -50,8 +50,8 @@ asdf global ruby 3.0.3
 
 echo "Installing Nodejs..."
 asdf plugin add nodejs
-asdf install nodejs 16.9.0
-asdf global nodejs 16.9.0
+asdf install nodejs 17.3.0
+asdf global nodejs 17.3.0
 
 echo "Copying .asdfrc..."
 ln -sfn ~/dotFiles/.asdfrc ~/.asdfrc
@@ -62,4 +62,6 @@ npm install --global yarn
 echo "GH auth login"
 gh auth login
 
-echo "git clone https://github.com/agkozak/zsh-z $ZSH_CUSTOM/plugins/zsh-z"
+eval "git clone https://github.com/agkozak/zsh-z $ZSH_CUSTOM/plugins/zsh-z"
+eval "git clone https://github.com/kiurchv/asdf.plugin.zsh $ZSH_CUSTOM/plugins/asdf"
+eval "$(brew --prefix)/opt/fzf/install"
