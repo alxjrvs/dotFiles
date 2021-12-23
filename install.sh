@@ -76,6 +76,4 @@ npm install --global yarn
 echo "GH auth login"
 gh auth login
 
-eval "git clone https://github.com/agkozak/zsh-z $ZSH_CUSTOM/plugins/zsh-z"
-eval "git clone https://github.com/kiurchv/asdf.plugin.zsh $ZSH_CUSTOM/plugins/asdf"
 eval "$(brew --prefix)/opt/fzf/install"
