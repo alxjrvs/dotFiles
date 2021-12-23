@@ -15,7 +15,6 @@ COMPLETION_WAITING_DOTS="true"
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(
   rake
-  asdf
   git
   docker
   npm
@@ -48,3 +47,5 @@ local ret_status="%(?:%{$fg[yellow]%}=> :%{$fg[red]%}=> %s)"
 bindkey -v
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+export PATH="/opt/homebrew/bin:$PATH"
