@@ -27,8 +27,9 @@ else
     echo "Zsh-z already installed, skipping"
 fi
 
-echo "Copying .gitconfig..."
+echo "Copying Gitconfig..."
 ln -sfn ~/dotFiles/.gitconfig ~/.gitconfig
+ln -sfn ~/dotFiles/.gitmessage ~/.gitmessage
 
 exists()
 {
@@ -75,9 +76,5 @@ npm install --global yarn
 
 echo "GH auth login"
 gh auth login
-
-echo "Git defaults"
-ln -sfn ~/dotFiles/.gitmessage ~/.gitmessage
-git config --global commit.template ~/.gitmessage
 
 eval "$(brew --prefix)/opt/fzf/install"
