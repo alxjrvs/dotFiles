@@ -76,4 +76,8 @@ npm install --global yarn
 echo "GH auth login"
 gh auth login
 
+echo "Git defaults"
+ln -sfn ~/dotFiles/.gitmessage ~/.gitmessage
+git config --global commit.template ~/.gitmessage
+
 eval "$(brew --prefix)/opt/fzf/install"
