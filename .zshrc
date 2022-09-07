@@ -45,8 +45,12 @@ alias gs="git status"
 alias gpr='git pull --rebase'
 local ret_status="%(?:%{$fg[yellow]%}=> :%{$fg[red]%}=> %s)"
 
+
+export ASDF_GEM_DEFAULT_PACKAGES_FILE=~/dotFiles/.default-gems
+export ASDF_NPM_DEFAULT_PACKAGES_FILE=~/dotFiles/.default-npm-packages
+
 bindkey -v
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
-export PATH="/opt/homebrew/bin:$PATH"
+export PATH="$(yarn global bin):/opt/homebrew/bin:$PATH"

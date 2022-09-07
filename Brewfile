@@ -7,12 +7,16 @@ cask 'visual-studio-code'
 cask 'docker'
 cask 'tuple'
 cask 'rowanj-gitx'
-brew 'postgresql'
+brew 'postgresql@14'
 brew 'asdf'
 brew 'gh'
 brew 'gpg'
 brew 'fzf'
 brew 'cmake'
+
+# Gnar
+tap 'theGnarCo/gnar'
+brew 'gnar'
 
 # Apps I like
 cask 'google-chrome'
