@@ -24,6 +24,7 @@ cask '1password'
 cask 'rectangle'
 cask 'discord'
 cask 'chromedriver'
+cask 'devutils'
 
 # Apps
 cask 'slack'
