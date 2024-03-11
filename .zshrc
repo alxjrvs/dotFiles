@@ -26,6 +26,7 @@ plugins=(
   ruby
   macos
   jsontools
+
   node
   pip
   web-search
@@ -54,3 +55,11 @@ bindkey -v
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 export PATH="$(yarn global bin):/opt/homebrew/bin:$PATH"
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export PATH=$PATH:$ANDROID_HOME/emulator
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+export DENO_INSTALL="~/.deno"
+export PATH="$DENO_INSTALL/bin:$PATH"
+
+# bun completions
+[ -s "~/.bun/_bun" ] && source "~/.bun/_bun"

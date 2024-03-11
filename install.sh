@@ -48,13 +48,13 @@ brew bundle
 
 echo "Installing Ruby..."
 asdf plugin add ruby
-asdf install ruby 3.0.3
-asdf global ruby 3.0.3
+asdf install ruby 3.3.0
+asdf global ruby 3.3.0
 
 echo "Installing Nodejs..."
 asdf plugin add nodejs
-asdf install nodejs 17.3.0
-asdf global nodejs 17.3.0
+asdf install nodejs 20.11.1
+asdf global nodejs 20.11.1
 
 echo "Copying .zshrc..."
 ln -sfn ~/dotFiles/.zshrc ~/.zshrc

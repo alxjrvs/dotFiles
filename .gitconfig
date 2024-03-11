@@ -34,7 +34,7 @@
 [credential]
 	helper = osxkeychain
 [core]
-	excludesfile = ~/.gitignore
+	excludesfile = /Users/jarvis/.gitignore
 [init]
 	defaultBranch = main
 [commit]
