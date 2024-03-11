@@ -63,3 +63,4 @@ export PATH="$DENO_INSTALL/bin:$PATH"
 
 # bun completions
 [ -s "~/.bun/_bun" ] && source "~/.bun/_bun"
+x

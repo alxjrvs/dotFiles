@@ -23,10 +23,10 @@
   changed = green
   untracked = cyan
 
-# Use `origin` as the default remote on the `master` branch in all cases
-[branch "master"]
+# Use `origin` as the default remote on the `main` branch in all cases
+[branch "main"]
   remote = origin
-  merge = refs/heads/master
+  merge = refs/heads/main
 
 [user]
 	name = alxjrvs@gmail.com
@@ -34,7 +34,7 @@
 [credential]
 	helper = osxkeychain
 [core]
-	excludesfile = /Users/jarvis/.gitignore
+	excludesfile = ~/.gitignore
 [init]
 	defaultBranch = main
 [commit]
