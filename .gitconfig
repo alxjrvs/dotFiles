@@ -39,3 +39,5 @@
 	defaultBranch = main
 [commit]
 	template = ~/.gitmessage
+[push]
+	autoSetupRemote = true
