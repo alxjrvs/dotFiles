@@ -26,7 +26,6 @@ plugins=(
   ruby
   macos
   jsontools
-
   node
   pip
   web-search

@@ -1,2 +1,4 @@
 yarn
 typescript
+prettier
+eslint
