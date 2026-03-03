@@ -22,3 +22,6 @@ yarn-error.log*
 !.claude/settings.json
 !.claude/skills/
 !.claude/agents/
+
+# Machine-specific overrides
+dot-claude/settings.local.json
