@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# Editors
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Claude
+.claude/*
+!.claude/settings.json
+!.claude/skills/
+!.claude/agents/
+
+# Machine-specific overrides
+dot-claude/settings.local.json
+**/.claude/settings.local.json

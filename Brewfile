@@ -3,7 +3,6 @@ tap "wix/brew"
 brew "asdf"
 brew "bundletool"
 brew "cmake"
-brew "docker", link: false
 brew "libsodium"
 brew "fastlane"
 brew "flyctl"
