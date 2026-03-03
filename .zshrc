@@ -58,7 +58,7 @@ eval "$(starship init zsh)"
 _transient_prompt_accept_line() {
   local saved_prompt=$PROMPT
   local saved_rprompt=$RPROMPT
-  PROMPT='%F{#fb543a}%B>%b%f '
+  PROMPT='%F{#fb543a}%B❯%b%f '
   RPROMPT=''
   zle .reset-prompt
   PROMPT=$saved_prompt
