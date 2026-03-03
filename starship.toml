@@ -1,7 +1,7 @@
 # Gnar prompt — purple — requires a Nerd Font
 
 format = """
-[╭─](fg:#8350C2 bold)[](fg:#8350C2)$directory\
+[](fg:#8350C2)$directory\
 ([](fg:#8350C2 bg:#4a4a4a)$git_branch\
 ([](fg:#4a4a4a bg:#f5c211)$git_status\
 [](fg:#f5c211))\
@@ -9,7 +9,7 @@ ${custom.git_clean})\
 ${custom.dir_closer}\
 ($nodejs$python$ruby$rust)\
 $line_break\
-[╰](fg:#8350C2 bold)$character"""
+$character"""
 
 add_newline = true
 
@@ -48,7 +48,7 @@ format = "[](fg:#8350C2)"
 shell = ["sh"]
 
 [character]
-success_symbol = "[❯](fg:#8350C2 bold)"
+success_symbol = "[❯](fg:#fb543a bold)"
 error_symbol = "[❯](fg:#cc3333 bold)"
 
 [cmd_duration]

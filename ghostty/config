@@ -5,3 +5,7 @@ font-family = FiraCode Nerd Font
 font-feature = +liga
 font-feature = +calt
 font-feature = +dlig
+
+# Cursor
+cursor-style = block
+cursor-style-blink = true
