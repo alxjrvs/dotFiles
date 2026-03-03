@@ -130,6 +130,8 @@ link "$DOTFILES_DIR/.tool-versions"      "$HOME/.tool-versions"      ".tool-vers
 link "$DOTFILES_DIR/.default-npm-packages" "$HOME/.default-npm-packages" ".default-npm-packages"
 link "$DOTFILES_DIR/.asdfrc"             "$HOME/.asdfrc"             ".asdfrc"
 link "$DOTFILES_DIR/.gitignore"          "$HOME/.gitignore"          ".gitignore"
+link "$DOTFILES_DIR/.hushlogin"        "$HOME/.hushlogin"        ".hushlogin"
+link "$DOTFILES_DIR/.npmrc"            "$HOME/.npmrc"            ".npmrc"
 
 # Sheldon config
 mkdir -p "$HOME/.config/sheldon"
@@ -142,6 +144,14 @@ link "$DOTFILES_DIR/starship.toml"        "$HOME/.config/starship.toml"         
 # Ghostty config
 mkdir -p "$HOME/.config/ghostty"
 link "$DOTFILES_DIR/ghostty/config"       "$HOME/.config/ghostty/config"        "ghostty/config"
+
+# Neovim config
+mkdir -p "$HOME/.config/nvim"
+link "$DOTFILES_DIR/nvim/init.lua"        "$HOME/.config/nvim/init.lua"         "nvim/init.lua"
+
+# GitHub CLI config
+mkdir -p "$HOME/.config/gh"
+link "$DOTFILES_DIR/gh/config.yml" "$HOME/.config/gh/config.yml" "gh/config.yml"
 
 # ── 7. Sheldon plugins ─────────────────────────────────────────────
 echo ""
