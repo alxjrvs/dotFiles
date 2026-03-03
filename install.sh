@@ -163,6 +163,9 @@ link "$DOTFILES_DIR/dot-claude/skills"        "$HOME/.claude/skills"        "cla
 link "$DOTFILES_DIR/dot-claude/agents"        "$HOME/.claude/agents"        "claude/agents"
 link "$DOTFILES_DIR/dot-claude/hooks"         "$HOME/.claude/hooks"         "claude/hooks"
 
+mkdir -p "$HOME/.claude/plugins"
+link "$DOTFILES_DIR/dot-claude/plugins/known_marketplaces.json" "$HOME/.claude/plugins/known_marketplaces.json" "claude/plugins/known_marketplaces.json"
+
 # ── 9. fzf ──────────────────────────────────────────────────────────
 echo ""
 echo "==> fzf"
