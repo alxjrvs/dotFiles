@@ -4,6 +4,7 @@ packages:
       - supabase/tap
       - wix/brew
     brews:
+      - age
       - asdf
       - bat
       - bun
@@ -13,6 +14,7 @@ packages:
       - flyctl
       - fzf
       - gh
+      - git-delta
       - gnutls
       - gnupg
       - jq
@@ -50,12 +52,14 @@ packages:
       - redis
   linux:
     apt:
+      - age
       - bat
       - curl
       - fd-find
       - fzf
       - gh
       - git
+      - git-delta
       - gnupg
       - jq
       - neovim

@@ -13,6 +13,9 @@
 
 sourceDir: {{ .chezmoi.sourceDir | quote }}
 
+diff:
+  pager: delta
+
 data:
   name: {{ $name | quote }}
   email: {{ $email | quote }}
