@@ -66,6 +66,7 @@ alias q="exit"
 alias gs="git status"
 alias gp="git push"
 alias gpr='git pull --rebase'
+alias gco='git checkout'
 alias ..="cd .."
 
 # asdf default packages

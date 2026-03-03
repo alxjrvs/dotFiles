@@ -14,16 +14,16 @@ $character"""
 add_newline = true
 
 [directory]
-format = "[ $path ](bg:#8350C2 fg:#d4c0ee bold)"
+format = "[ $path ](bg:#8350C2 fg:#ffffff bold)"
 truncation_length = 2
 truncate_to_repo = false
 truncation_symbol = ""
 
 [git_branch]
-format = "[  $branch ](bg:#4a4a4a fg:#b0b0b0 bold)"
+format = "[  $branch ](bg:#4a4a4a fg:#ffffff bold)"
 
 [git_status]
-format = "([ $all_status$ahead_behind ](bg:#f5c211 fg:#5a4400 bold))"
+format = "([ $all_status$ahead_behind ](bg:#f5c211 fg:#ffffff bold))"
 staged = "+"
 modified = "!"
 deleted = "✘"
@@ -38,7 +38,7 @@ stashed = "\\$"
 # Green checkmark when git working tree is clean and in sync with remote
 [custom.git_clean]
 when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && test -z "$(git stash list 2>/dev/null)" && { ! git rev-parse --verify @{u} >/dev/null 2>&1 || { test "$(git rev-list --count @{u}..HEAD 2>/dev/null)" = "0" && test "$(git rev-list --count HEAD..@{u} 2>/dev/null)" = "0"; }; }"""
-format = "[](fg:#4a4a4a bg:#2e8b57)[ ✓ ](bg:#2e8b57 fg:#b5e4cb bold)[](fg:#2e8b57)"
+format = "[](fg:#4a4a4a bg:#2e8b57)[ ✓ ](bg:#2e8b57 fg:#ffffff bold)[](fg:#2e8b57)"
 shell = ["sh"]
 
 # Closer arrow for directory when not in a git repo
@@ -48,8 +48,8 @@ format = "[](fg:#8350C2)"
 shell = ["sh"]
 
 [character]
-success_symbol = "[❯](fg:#fb543a bold)"
-error_symbol = "[❯](fg:#cc3333 bold)"
+success_symbol = "[](fg:#fb543a bold)"
+error_symbol = "[](fg:#cc3333 bold)"
 
 [cmd_duration]
 disabled = true
@@ -57,21 +57,21 @@ disabled = true
 # --- Language versions ---
 
 [nodejs]
-format = " [](fg:#8350C2 bold)[ v$version](fg:#8350C2 bold)"
+format = " [](fg:#2d6b2e)[ node ](bg:#2d6b2e fg:#ffffff bold)[](fg:#2d6b2e bg:#3C873A)[ $version ](bg:#3C873A fg:#ffffff bold)[](fg:#3C873A)"
 symbol = ""
 detect_files = ["package.json", ".node-version", ".nvmrc"]
 
 [python]
-format = " [](fg:#8350C2 bold)[ v$version](fg:#8350C2 bold)"
+format = " [](fg:#2a5a85)[ python ](bg:#2a5a85 fg:#ffffff bold)[](fg:#2a5a85 bg:#3776AB)[ $version ](bg:#3776AB fg:#ffffff bold)[](fg:#3776AB)"
 symbol = ""
 detect_files = ["pyproject.toml", "requirements.txt", ".python-version"]
 
 [ruby]
-format = " [](fg:#8350C2 bold)[ v$version](fg:#8350C2 bold)"
+format = " [](fg:#9c2822)[ ruby ](bg:#9c2822 fg:#ffffff bold)[](fg:#9c2822 bg:#CC342D)[ $version ](bg:#CC342D fg:#ffffff bold)[](fg:#CC342D)"
 symbol = ""
 detect_files = ["Gemfile", ".ruby-version"]
 
 [rust]
-format = " [](fg:#8350C2 bold)[ v$version](fg:#8350C2 bold)"
+format = " [](fg:#9e3220)[ rust ](bg:#9e3220 fg:#ffffff bold)[](fg:#9e3220 bg:#CE422B)[ $version ](bg:#CE422B fg:#ffffff bold)[](fg:#CE422B)"
 symbol = ""
 detect_files = ["Cargo.toml"]
