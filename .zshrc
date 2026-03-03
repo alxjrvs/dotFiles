@@ -4,6 +4,8 @@ export EDITOR="code -w"
 
 printf '\n%.0s' {1..100}
 
+zstyle ':omz:alpha:lib:git' async-prompt no
+
 ZSH_THEME=minimal
 
 # Enable autocorrection
@@ -21,7 +23,6 @@ plugins=(
   npm
   rails
   brew
-  zsh-z
   bundler
   ruby
   macos
@@ -36,7 +37,6 @@ plugins=(
   copyfile
 )
 
-source $ZSH/oh-my-zsh.sh
 
 # My useful aliases
 alias c="clear"
@@ -53,6 +53,8 @@ bindkey -v
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
+fpath+=("$(brew --prefix)/share/zsh/site-functions")
+
 export PATH="$(yarn global bin):/opt/homebrew/bin:$PATH"
 export ANDROID_HOME=$HOME/Library/Android/sdk
 export PATH=$PATH:$ANDROID_HOME/emulator
@@ -60,5 +62,12 @@ export PATH=$PATH:$ANDROID_HOME/platform-tools
 export DENO_INSTALL="~/.deno"
 export PATH="$DENO_INSTALL/bin:$PATH"
 
+export PATH="/Users/jarvis/.bun/bin:$PATH"
+export PATH="/Users/jarvis/.moon/bin:$PATH"
+
 # bun completions
 [ -s "~/.bun/_bun" ] && source "~/.bun/_bun"
+alias bun="nocorrect bun"
+source $ZSH/oh-my-zsh.sh
+
+export PATH="$HOME/.local/bin:$PATH"
