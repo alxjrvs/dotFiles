@@ -22,6 +22,21 @@
       "Read(./secrets/**)"
     ]
   },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/check-plugin-updates.sh",
+            "timeout": 60,
+            "statusMessage": "Checking for plugin updates..."
+          }
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {
     "skill-creator@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,

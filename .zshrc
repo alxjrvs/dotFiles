@@ -66,6 +66,7 @@ eval "$(zoxide init zsh)"
 alias c="clear"
 alias q="exit"
 alias gs="git status"
+alias gp="git push"
 alias gpr='git pull --rebase'
 
 # asdf default packages

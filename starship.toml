@@ -1,6 +1,6 @@
 # Prompt: [user][path][branch] »
-# Branch bg: green=clean, red=dirty
-format = """$username$directory( \\[$nodejs$python$ruby$rust\\])${custom.branch_clean}${custom.branch_dirty} $character"""
+# Branch bg: green=clean, yellow=staged/unpushed, red=dirty
+format = """$username$directory( \\[$nodejs$python$ruby$rust\\])${custom.branch_clean}${custom.branch_staged}${custom.branch_dirty} $character"""
 
 add_newline = false
 
@@ -22,14 +22,20 @@ disabled = true
 
 [custom.branch_clean]
 command = 'git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null'
-when = 'git rev-parse --git-dir 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)"'
+when = 'git rev-parse --git-dir 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && test "$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)" -eq 0'
 format = "\\[[ $output ](bg:#2d4a37 fg:#c8d6cf)\\]"
+shell = ["zsh", "-f"]
+
+[custom.branch_staged]
+command = 'git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null'
+when = 'git rev-parse --git-dir 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && test "$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)" -gt 0'
+format = "\\[[ $output ](bg:#4a3d23 fg:#d4c49a)\\]"
 shell = ["zsh", "-f"]
 
 [custom.branch_dirty]
 command = 'git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null'
 when = 'git rev-parse --git-dir 2>/dev/null && test -n "$(git status --porcelain 2>/dev/null)"'
-format = "\\[[ $output ](bg:#4d2d2d fg:#d4a0a0)\\]"
+format = "\\[[ $output ](bg:#8b1a1a fg:#ffffff)\\]"
 shell = ["zsh", "-f"]
 
 [character]
