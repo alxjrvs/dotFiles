@@ -6,8 +6,15 @@ printf '\n%.0s' {1..100}
 # Autocorrection
 setopt CORRECT
 
+# History
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt SHARE_HISTORY HIST_IGNORE_DUPS HIST_IGNORE_SPACE
+
 # Vi keybindings
 bindkey -v
+KEYTIMEOUT=1
 
 # Homebrew completions
 fpath+=("$(brew --prefix)/share/zsh/site-functions")
@@ -16,7 +23,12 @@ fpath+=("$(brew --prefix)/share/zsh/site-functions")
 eval "$(sheldon source)"
 
 # Completions (must be after fpath extensions and sheldon)
-autoload -Uz compinit && compinit
+autoload -Uz compinit
+if [ "$(find ~/.zcompdump -mtime +1 2>/dev/null)" ]; then
+  compinit
+else
+  compinit -C
+fi
 
 # Starship prompt
 eval "$(starship init zsh)"
@@ -34,17 +46,7 @@ alias gs="git status"
 alias gpr='git pull --rebase'
 
 # asdf default packages
-export ASDF_GEM_DEFAULT_PACKAGES_FILE=~/dotFiles/.default-gems
-export ASDF_NPM_DEFAULT_PACKAGES_FILE=~/dotFiles/.default-npm-packages
-
-# PATH
-export PATH="/opt/homebrew/bin:$PATH"
-export PATH="$HOME/.local/bin:$PATH"
-
-# Android SDK
-export ANDROID_HOME=$HOME/Library/Android/sdk
-export PATH=$PATH:$ANDROID_HOME/emulator
-export PATH=$PATH:$ANDROID_HOME/platform-tools
+export ASDF_NPM_DEFAULT_PACKAGES_FILE=~/.default-npm-packages
 
 # Colored man pages
 export LESS_TERMCAP_mb=$'\e[1;31m'
@@ -54,3 +56,6 @@ export LESS_TERMCAP_se=$'\e[0m'
 export LESS_TERMCAP_so=$'\e[1;44;33m'
 export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;32m'
+
+# bun completions
+[ -s "/Users/jarvis/.oh-my-zsh/completions/_bun" ] && source "/Users/jarvis/.oh-my-zsh/completions/_bun"

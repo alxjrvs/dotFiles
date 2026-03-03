@@ -27,7 +27,7 @@
 [branch "main"]
 
 [user]
-	name = alxjrvs@gmail.com
+	name = alxjrvs
 	email = alxjrvs@gmail.com
 [credential]
 	helper = osxkeychain
@@ -39,3 +39,9 @@
 	template = ~/.gitmessage
 [push]
 	autoSetupRemote = true
+[pull]
+	rebase = true
+[rerere]
+	enabled = true
+[diff]
+	algorithm = histogram

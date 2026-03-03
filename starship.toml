@@ -1,7 +1,7 @@
-# Minimal prompt: directory + git + prompt char
+# Minimal prompt: directory + git + languages + duration + prompt char
 # Docs: https://starship.rs/config/
 
-format = """$directory$git_branch$git_status$character"""
+format = """$directory$git_branch$git_status$nodejs$ruby$python$rust$cmd_duration$character"""
 
 # Don't add a blank line between prompts
 add_newline = false
@@ -21,3 +21,28 @@ style = "red"
 success_symbol = "[=>](yellow)"
 error_symbol = "[=>](red)"
 vimcmd_symbol = "[<=](green)"
+
+[cmd_duration]
+min_time = 2_000
+format = "[$duration]($style) "
+style = "yellow dimmed"
+
+[nodejs]
+format = "[$symbol$version]($style) "
+detect_files = ["package.json"]
+symbol = " "
+
+[ruby]
+format = "[$symbol$version]($style) "
+detect_files = ["Gemfile"]
+symbol = " "
+
+[python]
+format = "[$symbol$version]($style) "
+detect_files = ["pyproject.toml", "requirements.txt"]
+symbol = " "
+
+[rust]
+format = "[$symbol$version]($style) "
+detect_files = ["Cargo.toml"]
+symbol = " "

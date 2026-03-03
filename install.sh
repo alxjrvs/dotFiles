@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 # ── Colors & helpers ────────────────────────────────────────────────
 GREEN='\033[0;32m'  YELLOW='\033[0;33m'  RED='\033[0;31m'  NC='\033[0m'
@@ -7,7 +6,7 @@ ok()   { printf "${GREEN}  ✓ %s${NC}\n" "$1"; }
 warn() { printf "${YELLOW}  → %s${NC}\n" "$1"; }
 fail() { printf "${RED}  ✗ %s${NC}\n" "$1"; }
 
-DOTFILES_DIR=~/dotFiles
+DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # ── link() — idempotent symlink with interactive conflict resolution ─
 link() {
@@ -45,6 +44,13 @@ echo ""
 echo "==> Homebrew"
 if command -v brew &>/dev/null; then
   ok "Homebrew installed"
+  warn "Updating Homebrew..."
+  brew update
+  if brew doctor &>/dev/null; then
+    ok "brew doctor: all good"
+  else
+    fail "brew doctor found issues — run 'brew doctor' for details"
+  fi
 else
   warn "Installing Homebrew..."
   bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -54,12 +60,9 @@ fi
 # ── 2. Brew Bundle ──────────────────────────────────────────────────
 echo ""
 echo "==> Brew Bundle"
-if brew bundle check --file="$DOTFILES_DIR/Brewfile" &>/dev/null; then
-  ok "All Brewfile dependencies satisfied"
-else
-  warn "Installing missing Brewfile dependencies..."
-  brew bundle --file="$DOTFILES_DIR/Brewfile"
-fi
+warn "Installing/upgrading Brewfile dependencies..."
+brew bundle --file="$DOTFILES_DIR/Brewfile"
+ok "Brewfile dependencies up to date"
 
 # ── 3. Sheldon (plugin manager) ─────────────────────────────────────
 echo ""
@@ -82,6 +85,9 @@ fi
 # ── 5. asdf languages (from .tool-versions) ─────────────────────────
 echo ""
 echo "==> asdf languages"
+warn "Updating asdf plugins..."
+asdf plugin update --all &>/dev/null && ok "asdf plugins updated" || warn "asdf plugin update failed"
+
 while IFS=' ' read -r lang version; do
   [ -z "$lang" ] && continue
 
@@ -106,31 +112,7 @@ while IFS=' ' read -r lang version; do
   fi
 done < "$DOTFILES_DIR/.tool-versions"
 
-# ── 6. Bun via asdf ────────────────────────────────────────────────
-echo ""
-echo "==> Bun (via asdf)"
-if ! asdf plugin list 2>/dev/null | grep -q "^bun$"; then
-  warn "Adding asdf plugin: bun"
-  asdf plugin add bun
-fi
-
-bun_latest="$(asdf latest bun 2>/dev/null)"
-if asdf list bun 2>/dev/null | grep -q "$bun_latest"; then
-  ok "bun $bun_latest installed"
-else
-  warn "Installing bun $bun_latest..."
-  asdf install bun latest
-fi
-
-current_bun="$(asdf current bun 2>/dev/null | awk '{print $2}')"
-if [ "$current_bun" = "$bun_latest" ]; then
-  ok "bun global set to $bun_latest"
-else
-  asdf global bun latest
-  warn "bun global set to latest ($bun_latest)"
-fi
-
-# ── 7. Symlinks ─────────────────────────────────────────────────────
+# ── 6. Symlinks ─────────────────────────────────────────────────────
 echo ""
 echo "==> Symlinks"
 link "$DOTFILES_DIR/.gitconfig"          "$HOME/.gitconfig"          ".gitconfig"
@@ -139,8 +121,8 @@ link "$DOTFILES_DIR/.zshrc"              "$HOME/.zshrc"              ".zshrc"
 link "$DOTFILES_DIR/.zprofile"           "$HOME/.zprofile"           ".zprofile"
 link "$DOTFILES_DIR/.tool-versions"      "$HOME/.tool-versions"      ".tool-versions"
 link "$DOTFILES_DIR/.default-npm-packages" "$HOME/.default-npm-packages" ".default-npm-packages"
-link "$DOTFILES_DIR/.default-gems"       "$HOME/.default-gems"       ".default-gems"
 link "$DOTFILES_DIR/.asdfrc"             "$HOME/.asdfrc"             ".asdfrc"
+link "$DOTFILES_DIR/.gitignore"          "$HOME/.gitignore"          ".gitignore"
 
 # Sheldon config
 mkdir -p "$HOME/.config/sheldon"
@@ -150,35 +132,36 @@ link "$DOTFILES_DIR/sheldon/plugins.toml" "$HOME/.config/sheldon/plugins.toml" "
 mkdir -p "$HOME/.config"
 link "$DOTFILES_DIR/starship.toml"        "$HOME/.config/starship.toml"         "starship.toml"
 
-# ── 8. Sheldon plugins ─────────────────────────────────────────────
+# ── 7. Sheldon plugins ─────────────────────────────────────────────
 echo ""
 echo "==> Sheldon plugins"
-if sheldon lock --check &>/dev/null 2>&1; then
-  ok "Sheldon plugins up to date"
+warn "Updating Sheldon plugins..."
+sheldon lock --update
+ok "Sheldon plugins up to date"
+
+# ── 8. Claude Code ────────────────────────────────────────────────
+echo ""
+echo "==> Claude Code"
+if command -v claude &>/dev/null; then
+  ok "Claude Code installed ($(claude --version 2>/dev/null))"
 else
-  warn "Downloading Sheldon plugins..."
-  sheldon lock
+  warn "Installing Claude Code..."
+  npm install -g @anthropic-ai/claude-code
 fi
 
-# ── 9. Claude config ───────────────────────────────────────────────
-echo ""
-echo "==> Claude config"
 mkdir -p "$HOME/.claude"
 link "$DOTFILES_DIR/.claude/settings.json" "$HOME/.claude/settings.json" "claude/settings.json"
 link "$DOTFILES_DIR/.claude/skills"        "$HOME/.claude/skills"        "claude/skills"
 link "$DOTFILES_DIR/.claude/agents"        "$HOME/.claude/agents"        "claude/agents"
 
-# ── 10. fzf ─────────────────────────────────────────────────────────
+# ── 9. fzf ──────────────────────────────────────────────────────────
 echo ""
 echo "==> fzf"
-if [ -f "$HOME/.fzf.zsh" ]; then
-  ok "fzf shell integration installed"
-else
-  warn "Installing fzf shell integration..."
-  "$(brew --prefix)/opt/fzf/install" --key-bindings --completion --no-update-rc --no-bash --no-fish
-fi
+warn "Installing/updating fzf shell integration..."
+"$(brew --prefix)/opt/fzf/install" --key-bindings --completion --no-update-rc --no-bash --no-fish
+ok "fzf shell integration up to date"
 
-# ── 11. GitHub CLI auth ────────────────────────────────────────────
+# ── 10. GitHub CLI auth ───────────────────────────────────────────
 echo ""
 echo "==> GitHub CLI"
 if gh auth status &>/dev/null; then
@@ -187,7 +170,48 @@ else
   warn "Not authenticated — run: gh auth login"
 fi
 
-# ── 12. Summary ────────────────────────────────────────────────────
+# ── 11. Health checks ─────────────────────────────────────────
+echo ""
+echo "==> Health checks"
+
+# Git config
+if git config user.name &>/dev/null && git config user.email &>/dev/null; then
+  ok "git: user.name and user.email configured"
+else
+  fail "git: missing user.name or user.email — check .gitconfig"
+fi
+
+# Node
+if command -v node &>/dev/null; then
+  ok "node: $(node --version)"
+else
+  fail "node: not found"
+fi
+
+# Bun
+if command -v bun &>/dev/null; then
+  ok "bun: $(bun --version)"
+else
+  fail "bun: not found"
+fi
+
+# ── 12. macOS defaults ──────────────────────────────────────────────
+echo ""
+echo "==> macOS defaults"
+# Fast key repeat (essential for vim keybindings)
+defaults write NSGlobalDomain KeyRepeat -int 2
+defaults write NSGlobalDomain InitialKeyRepeat -int 15
+# Disable press-and-hold for keys (enables key repeat everywhere)
+defaults write NSGlobalDomain ApplePressAndHoldEnabled -bool false
+# Show hidden files in Finder
+defaults write com.apple.finder AppleShowAllFiles -bool true
+# Show file extensions
+defaults write NSGlobalDomain AppleShowAllExtensions -bool true
+# Tap to click on trackpad
+defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
+ok "macOS defaults applied"
+
+# ── 13. Summary ────────────────────────────────────────────────────
 echo ""
 echo "==> Done!"
 echo "   Restart your shell or run: source ~/.zshrc"
