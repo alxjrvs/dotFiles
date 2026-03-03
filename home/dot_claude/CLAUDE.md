@@ -32,7 +32,6 @@
 
 ## Dotfiles
 
-- Managed at `~/dotFiles` with symlinks via `install.sh`
-- Changes to shell config go in `.zshrc`
-- Changes to git config go in `.gitconfig`
-- Claude settings live in `.claude/` and are symlinked to `~/.claude/`
+- Managed at `~/dotFiles` with chezmoi (`chezmoi apply` to sync)
+- Edit configs via `chezmoi edit ~/.zshrc` or edit source in `~/dotFiles/home/` directly
+- Claude settings live in `home/dot_claude/` and are applied to `~/.claude/`
