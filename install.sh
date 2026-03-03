@@ -8,6 +8,10 @@ fail() { printf "${RED}  ✗ %s${NC}\n" "$1"; }
 
 DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# ── Cancel on failure or Ctrl-C ──────────────────────────────────
+set -eo pipefail
+trap 'echo ""; fail "Cancelled — stopping install."; exit 1' INT TERM
+
 # ── link() — idempotent symlink with interactive conflict resolution ─
 link() {
   local src="$1" dst="$2" label="$3"
@@ -44,18 +48,21 @@ echo ""
 echo "==> Homebrew"
 if command -v brew &>/dev/null; then
   ok "Homebrew installed"
-  warn "Updating Homebrew..."
-  brew update
-  if brew doctor &>/dev/null; then
-    ok "brew doctor: all good"
-  else
-    fail "brew doctor found issues — run 'brew doctor' for details"
-  fi
 else
   warn "Installing Homebrew..."
   bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
+
+warn "Updating Homebrew..."
+brew update
+
+warn "Upgrading formulae and casks..."
+brew upgrade
+brew upgrade --cask --greedy
+
+warn "Removing outdated versions..."
+brew cleanup --prune=all
 
 # ── 2. Brew Bundle ──────────────────────────────────────────────────
 echo ""
@@ -212,7 +219,43 @@ defaults write NSGlobalDomain AppleShowAllExtensions -bool true
 defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
 ok "macOS defaults applied"
 
-# ── 13. Summary ────────────────────────────────────────────────────
+# ── 13. Brew doctor ────────────────────────────────────────────────
+echo ""
+echo "==> Brew doctor"
+if doctor_output="$(brew doctor 2>&1)"; then
+  ok "brew doctor: all good"
+else
+  fail "brew doctor found issues — attempting fixes..."
+  echo "$doctor_output"
+
+  # Unlinked kegs
+  if echo "$doctor_output" | grep -q "unlinked kegs"; then
+    warn "Relinking unlinked kegs..."
+    echo "$doctor_output" | sed -n '/unlinked kegs/,/^$/p' | grep '^ ' | xargs -n1 brew link --overwrite 2>/dev/null || true
+  fi
+
+  # Outdated Xcode CLI tools
+  if echo "$doctor_output" | grep -q "Command Line Tools"; then
+    warn "Updating Xcode Command Line Tools..."
+    softwareupdate --install --all 2>/dev/null || true
+  fi
+
+  # Stale lock files
+  if echo "$doctor_output" | grep -q "lock files"; then
+    warn "Removing stale lock files..."
+    brew cleanup --prune=all 2>/dev/null || true
+  fi
+
+  # Re-check
+  echo ""
+  if brew doctor 2>/dev/null; then
+    ok "brew doctor: issues resolved"
+  else
+    warn "Some brew doctor issues remain — run 'brew doctor' for details"
+  fi
+fi
+
+# ── 14. Summary ────────────────────────────────────────────────────
 echo ""
 echo "==> Done!"
 echo "   Restart your shell or run: source ~/.zshrc"
