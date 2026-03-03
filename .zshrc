@@ -54,18 +54,18 @@ fi
 # Starship prompt
 eval "$(starship init zsh)"
 
-# Transient prompt — collapse to minimal ">" after command runs
-_transient_prompt_accept_line() {
-  local saved_prompt=$PROMPT
-  local saved_rprompt=$RPROMPT
-  PROMPT='%F{#fb543a}%B❯%b%f '
-  RPROMPT=''
-  zle .reset-prompt
-  PROMPT=$saved_prompt
-  RPROMPT=$saved_rprompt
-  zle .accept-line
+# Transient prompt — collapse previous prompts to just the character
+function transient-prompt-precmd {
+  TRAPINT() { transient-prompt-func; return $(( 128 + $1 )) }
 }
-zle -N accept-line _transient_prompt_accept_line
+function transient-prompt-func {
+  local STARSHIP_TRANSIENT
+  STARSHIP_TRANSIENT="$(starship prompt --profile transient)"
+  PROMPT="$STARSHIP_TRANSIENT" RPROMPT="" zle .reset-prompt
+}
+autoload -Uz add-zsh-hook add-zle-hook-widget
+add-zsh-hook precmd transient-prompt-precmd
+add-zle-hook-widget zle-line-finish transient-prompt-func
 
 # fzf
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
