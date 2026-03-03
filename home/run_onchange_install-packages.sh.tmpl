@@ -1,4 +1,4 @@
-{{- if eq .chezmoi.os "darwin" }}
+{{- if eq .chezmoi.os "darwin" -}}
 #!/bin/bash
 set -euo pipefail
 
@@ -29,7 +29,7 @@ brew cleanup --prune=all
 
 echo "==> Packages up to date"
 
-{{- else if eq .chezmoi.os "linux" }}
+{{- else if eq .chezmoi.os "linux" -}}
 #!/bin/bash
 set -euo pipefail
 

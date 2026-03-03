@@ -1,11 +1,11 @@
-{{- if eq .chezmoi.os "darwin" }}
+{{- if eq .chezmoi.os "darwin" -}}
 #!/bin/bash
 set -euo pipefail
 echo "==> Setting up fzf shell integration..."
 "$(brew --prefix)/opt/fzf/install" --key-bindings --completion --no-update-rc --no-bash --no-fish
 echo "==> fzf integration complete"
 
-{{- else if eq .chezmoi.os "linux" }}
+{{- else if eq .chezmoi.os "linux" -}}
 #!/bin/bash
 set -euo pipefail
 echo "==> Setting up fzf shell integration..."
