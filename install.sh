@@ -145,9 +145,14 @@ link "$DOTFILES_DIR/starship.toml"        "$HOME/.config/starship.toml"         
 mkdir -p "$HOME/.config/ghostty"
 link "$DOTFILES_DIR/ghostty/config"       "$HOME/.config/ghostty/config"        "ghostty/config"
 
-# Neovim config
-mkdir -p "$HOME/.config/nvim"
-link "$DOTFILES_DIR/nvim/init.lua"        "$HOME/.config/nvim/init.lua"         "nvim/init.lua"
+# Neovim config (AstroNvim — symlink entire directory)
+# Migration: remove old single-file symlink if present
+if [ -L "$HOME/.config/nvim/init.lua" ] && [ ! -L "$HOME/.config/nvim" ]; then
+  warn "Removing old nvim/init.lua symlink (migrating to AstroNvim)"
+  rm "$HOME/.config/nvim/init.lua"
+  rmdir "$HOME/.config/nvim" 2>/dev/null || true
+fi
+link "$DOTFILES_DIR/nvim"                 "$HOME/.config/nvim"                  "nvim (AstroNvim)"
 
 # GitHub CLI config
 mkdir -p "$HOME/.config/gh"
