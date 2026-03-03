@@ -33,7 +33,7 @@ conflicted = "="
 ahead = "⇡"
 behind = "⇣"
 diverged = "⇕"
-stashed = "$"
+stashed = "\\$"
 
 # Green checkmark when git working tree is clean and in sync with remote
 [custom.git_clean]
