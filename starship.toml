@@ -1,26 +1,28 @@
 # Dark segment prompt — requires a Nerd Font (FiraCode Nerd Font)
 
 format = """
-[╭─](fg:#a6e3a1 bold)$directory\
-$git_branch\
-$git_status\
+[╭─](fg:#a6e3a1 bold)[](fg:#4a6785)$directory\
+([](fg:#4a6785 bg:#7c5cbf)$git_branch\
+([](fg:#7c5cbf bg:#f5c211)$git_status\
+[](fg:#f5c211)))\
+$custom\
 ($nodejs$python$ruby$rust)\
 $line_break\
 [╰](fg:#a6e3a1 bold)$character"""
 
-add_newline = false
+add_newline = true
 
 [directory]
-format = "[](fg:#45475a)[ $path ](bg:#45475a fg:#cdd6f4 bold)[](fg:#45475a)"
+format = "[ $path ](bg:#4a6785 fg:#e4e8f0 bold)"
 truncation_length = 2
 truncate_to_repo = false
 truncation_symbol = ""
 
 [git_branch]
-format = "[  $branch ](bg:#393552 fg:#cba6f7 bold)[](fg:#393552)"
+format = "[  $branch ](bg:#7c5cbf fg:#e4e8f0 bold)"
 
 [git_status]
-format = "([ $all_status$ahead_behind ](bg:#f9e2af fg:#1e1e2e bold)[](fg:#f9e2af))"
+format = "([ $all_status$ahead_behind ](bg:#f5c211 fg:#1e1e2e bold))"
 staged = "+"
 modified = "!"
 deleted = "✘"
@@ -31,6 +33,12 @@ ahead = "⇡"
 behind = "⇣"
 diverged = "⇕"
 stashed = "$"
+
+# Closer arrow for directory when not in a git repo
+[custom.dir_closer]
+when = "! git rev-parse --is-inside-work-tree 2>/dev/null"
+format = "[](fg:#4a6785)"
+shell = ["sh"]
 
 [character]
 success_symbol = "[❯](fg:#a6e3a1 bold)"

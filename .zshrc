@@ -1,8 +1,5 @@
 export EDITOR="nvim"
 
-# Clear scrollback
-printf '\n%.0s' {1..100}
-
 # Autocorrection
 setopt CORRECT
 
