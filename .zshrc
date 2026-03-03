@@ -22,15 +22,16 @@ fpath+=("$(brew --prefix)/share/zsh/site-functions")
 # Sheldon plugins (adds zsh-completions to fpath)
 eval "$(sheldon source)"
 
-# Syntax highlighting theme (GitHub Dark / Solarized Dark)
+# Syntax highlighting theme (GitHub Dark)
 typeset -A ZSH_HIGHLIGHT_STYLES
-ZSH_HIGHLIGHT_STYLES[command]='fg=#7ee787'
+ZSH_HIGHLIGHT_STYLES[default]='fg=#e6edf3'
+ZSH_HIGHLIGHT_STYLES[command]='fg=white'
 ZSH_HIGHLIGHT_STYLES[alias]='fg=#7ee787'
-ZSH_HIGHLIGHT_STYLES[function]='fg=#7ee787'
+ZSH_HIGHLIGHT_STYLES[function]='fg=#d2a8ff'
 ZSH_HIGHLIGHT_STYLES[builtin]='fg=#79c0ff'
 ZSH_HIGHLIGHT_STYLES[reserved-word]='fg=#ff7b72'
-ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=#ff7b72'
-ZSH_HIGHLIGHT_STYLES[precommand]='fg=#7ee787,underline'
+ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=#f85149'
+ZSH_HIGHLIGHT_STYLES[precommand]='fg=#d2a8ff,underline'
 ZSH_HIGHLIGHT_STYLES[single-quoted-argument]='fg=#a5d6ff'
 ZSH_HIGHLIGHT_STYLES[double-quoted-argument]='fg=#a5d6ff'
 ZSH_HIGHLIGHT_STYLES[dollar-quoted-argument]='fg=#a5d6ff'
@@ -42,8 +43,8 @@ ZSH_HIGHLIGHT_STYLES[globbing]='fg=#ffa657'
 ZSH_HIGHLIGHT_STYLES[redirection]='fg=#79c0ff'
 ZSH_HIGHLIGHT_STYLES[commandseparator]='fg=#79c0ff'
 ZSH_HIGHLIGHT_STYLES[assign]='fg=#ffa657'
-ZSH_HIGHLIGHT_STYLES[comment]='fg=#8b949e'
-ZSH_HIGHLIGHT_STYLES[path]='underline'
+ZSH_HIGHLIGHT_STYLES[comment]='fg=#8b949e,italic'
+ZSH_HIGHLIGHT_STYLES[path]='fg=#e6edf3,underline'
 
 # Completions (must be after fpath extensions and sheldon)
 autoload -Uz compinit

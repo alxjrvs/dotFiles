@@ -1,18 +1,18 @@
-# Prompt: [user][path][branch] »
-# Branch bg: green=clean, yellow=staged/unpushed, red=dirty
-format = """$username$directory( \\[$nodejs$python$ruby$rust\\])${custom.branch_clean}${custom.branch_staged}${custom.branch_dirty} $character"""
+# Prompt: user@path [branch] »
+# Branch bg: green=clean, yellow=unpushed, striped red/yellow=staged, red=dirty
+format = """$username$directory( \\[$nodejs$python$ruby$rust\\]) ${custom.branch_clean}${custom.branch_unpushed}${custom.branch_staged}${custom.branch_dirty} $character"""
 
 add_newline = false
 
 [username]
 show_always = true
-format = "\\[[$user]()\\]"
+format = "[$user](fg:#8b949e) @ "
 
 [directory]
 truncation_length = 2
 truncate_to_repo = false
 truncation_symbol = ""
-format = "\\[[$path]()\\]"
+format = "[$path](white)"
 
 [git_branch]
 disabled = true
@@ -23,19 +23,25 @@ disabled = true
 [custom.branch_clean]
 command = 'git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null'
 when = 'git rev-parse --git-dir 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && test "$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)" -eq 0'
-format = "\\[[ $output ](bg:#2d4a37 fg:#c8d6cf)\\]"
+format = "\\[[$output](bg:#2d4a37 fg:#ffffff)\\]"
+shell = ["zsh", "-f"]
+
+[custom.branch_unpushed]
+command = 'git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null'
+when = 'git rev-parse --git-dir 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && test "$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)" -gt 0'
+format = "\\[[$output](bg:#4a3d23 fg:#ffffff)\\]"
 shell = ["zsh", "-f"]
 
 [custom.branch_staged]
 command = 'git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null'
-when = 'git rev-parse --git-dir 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && test "$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)" -gt 0'
-format = "\\[[ $output ](bg:#4a3d23 fg:#d4c49a)\\]"
+when = 'git rev-parse --git-dir 2>/dev/null && ! git diff --cached --quiet 2>/dev/null'
+format = "\\[[$output](bg:#b35900 fg:#ffffff)\\]"
 shell = ["zsh", "-f"]
 
 [custom.branch_dirty]
 command = 'git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null'
-when = 'git rev-parse --git-dir 2>/dev/null && test -n "$(git status --porcelain 2>/dev/null)"'
-format = "\\[[ $output ](bg:#8b1a1a fg:#ffffff)\\]"
+when = 'git rev-parse --git-dir 2>/dev/null && git diff --cached --quiet 2>/dev/null && test -n "$(git status --porcelain 2>/dev/null)"'
+format = "\\[[$output](bg:#8b1a1a fg:#ffffff)\\]"
 shell = ["zsh", "-f"]
 
 [character]
@@ -46,21 +52,21 @@ error_symbol = "[»](bold red)"
 disabled = true
 
 [nodejs]
-format = "[$symbol$version]($style)"
+format = "[$symbol$version](white)"
 symbol = "⏣ "
 detect_files = ["package.json", ".node-version"]
 
 [python]
-format = "[$symbol$version]($style)"
+format = "[$symbol$version](white)"
 symbol = "py "
 detect_files = ["pyproject.toml", "requirements.txt"]
 
 [ruby]
-format = "[$symbol$version]($style)"
+format = "[$symbol$version](white)"
 symbol = "rb "
 detect_files = ["Gemfile", ".ruby-version"]
 
 [rust]
-format = "[$symbol$version]($style)"
+format = "[$symbol$version](white)"
 symbol = "rs "
 detect_files = ["Cargo.toml"]

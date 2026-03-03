@@ -150,9 +150,10 @@ else
 fi
 
 mkdir -p "$HOME/.claude"
-link "$DOTFILES_DIR/.claude/settings.json" "$HOME/.claude/settings.json" "claude/settings.json"
-link "$DOTFILES_DIR/.claude/skills"        "$HOME/.claude/skills"        "claude/skills"
-link "$DOTFILES_DIR/.claude/agents"        "$HOME/.claude/agents"        "claude/agents"
+link "$DOTFILES_DIR/dot-claude/CLAUDE.md"     "$HOME/.claude/CLAUDE.md"     "claude/CLAUDE.md"
+link "$DOTFILES_DIR/dot-claude/settings.json" "$HOME/.claude/settings.json" "claude/settings.json"
+link "$DOTFILES_DIR/dot-claude/skills"        "$HOME/.claude/skills"        "claude/skills"
+link "$DOTFILES_DIR/dot-claude/agents"        "$HOME/.claude/agents"        "claude/agents"
 
 # ── 9. fzf ──────────────────────────────────────────────────────────
 echo ""
