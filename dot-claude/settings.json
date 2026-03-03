@@ -32,6 +32,30 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$TOOL_INPUT\" | grep -qE '(Brewfile\\.lock|bun\\.lock|package-lock|yarn\\.lock|pnpm-lock|Gemfile\\.lock|Cargo\\.lock|composer\\.lock)'; then echo 'BLOCK: Do not edit lock files directly' >&2; exit 2; fi",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$TOOL_INPUT\" | jq -r '.file_path // empty') && [[ \"$FILE\" == *.sh ]] && command -v shfmt &>/dev/null && shfmt -w -i 2 \"$FILE\" || true",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {
