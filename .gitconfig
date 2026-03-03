@@ -32,6 +32,7 @@
 [credential]
 	helper = osxkeychain
 [core]
+	editor = nvim
 	excludesfile = ~/.gitignore
 [init]
 	defaultBranch = main

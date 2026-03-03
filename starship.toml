@@ -1,48 +1,60 @@
-# Minimal prompt: directory + git + languages + duration + prompt char
-# Docs: https://starship.rs/config/
+# Prompt: parent/cwd [branch●] »
+# Git dot: green=clean, red=uncommitted, yellow=staged/unpushed
+format = """$directory( \\[$nodejs$python$ruby$rust\\])$git_branch${custom.git_dot}$cmd_duration $character"""
 
-format = """$directory$git_branch$git_status$nodejs$ruby$python$rust$cmd_duration$character"""
-
-# Don't add a blank line between prompts
 add_newline = false
 
 [directory]
-truncation_length = 3
+truncation_length = 2
+truncation_symbol = ""
+format = "[$path]()"
 
 [git_branch]
-format = "[$branch]($style) "
-style = "green"
+format = " [\\[$branch]()"
 
 [git_status]
-format = '([$all_status$ahead_behind]($style) )'
-style = "red"
+disabled = true
+
+[custom.git_dot]
+description = "Git status dot indicator"
+command = '''
+if ! git diff --quiet 2>/dev/null || [ -n "$(git ls-files --others --exclude-standard 2>/dev/null)" ]; then
+  echo "red"
+elif ! git diff --cached --quiet 2>/dev/null || [ "$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)" -gt 0 ]; then
+  echo "yellow"
+else
+  echo "green"
+fi
+'''
+when = "git rev-parse --git-dir 2>/dev/null"
+format = "[●](${output})\\]"
+shell = ["bash", "--nologin"]
 
 [character]
-success_symbol = "[=>](yellow)"
-error_symbol = "[=>](red)"
-vimcmd_symbol = "[<=](green)"
+success_symbol = "[»](bold)"
+error_symbol = "[»](bold red)"
 
 [cmd_duration]
 min_time = 2_000
-format = "[$duration]($style) "
+format = " [$duration]($style)"
 style = "yellow dimmed"
 
 [nodejs]
-format = "[$symbol$version]($style) "
-detect_files = ["package.json"]
-symbol = " "
-
-[ruby]
-format = "[$symbol$version]($style) "
-detect_files = ["Gemfile"]
-symbol = " "
+format = "[$symbol$version]($style)"
+symbol = "⏣ "
+detect_files = ["package.json", ".node-version"]
 
 [python]
-format = "[$symbol$version]($style) "
+format = "[$symbol$version]($style)"
+symbol = "py "
 detect_files = ["pyproject.toml", "requirements.txt"]
-symbol = " "
+
+[ruby]
+format = "[$symbol$version]($style)"
+symbol = "rb "
+detect_files = ["Gemfile", ".ruby-version"]
 
 [rust]
-format = "[$symbol$version]($style) "
+format = "[$symbol$version]($style)"
+symbol = "rs "
 detect_files = ["Cargo.toml"]
-symbol = " "

@@ -1,4 +1,4 @@
-export EDITOR="code -w"
+export EDITOR="nvim"
 
 # Clear scrollback
 printf '\n%.0s' {1..100}
@@ -58,4 +58,4 @@ export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;32m'
 
 # bun completions
-[ -s "/Users/jarvis/.oh-my-zsh/completions/_bun" ] && source "/Users/jarvis/.oh-my-zsh/completions/_bun"
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"

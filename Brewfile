@@ -13,6 +13,7 @@ brew "bat"
 brew "bun"
 brew "fd"
 brew "jq"
+brew "neovim"
 brew "unbound", restart_service: true
 brew "gnutls"
 brew "gnupg"
