@@ -13,8 +13,15 @@ setopt SHARE_HISTORY HIST_IGNORE_DUPS HIST_IGNORE_SPACE
 bindkey -v
 KEYTIMEOUT=1
 
+{{- if eq .chezmoi.os "darwin" }}
+
 # Homebrew completions
 fpath+=("$(brew --prefix)/share/zsh/site-functions")
+{{- else }}
+
+# Linux completions
+fpath+=(/usr/share/zsh/vendor-completions)
+{{- end }}
 
 # Sheldon plugins (adds zsh-completions to fpath)
 eval "$(sheldon source)"
@@ -54,7 +61,7 @@ fi
 # Starship prompt
 eval "$(starship init zsh)"
 
-# Transient prompt — collapse previous prompts to just the character
+# Transient prompt - collapse previous prompts to just the character
 function transient-prompt-precmd {
   TRAPINT() { transient-prompt-func; return $(( 128 + $1 )) }
 }
@@ -94,8 +101,10 @@ export LESS_TERMCAP_so=$'\e[1;33;46m'
 export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;35m'
 
+{{- if eq .chezmoi.os "darwin" }}
+
 # bun completions
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
 test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
-
+{{- end }}
