@@ -54,6 +54,19 @@ fi
 # Starship prompt
 eval "$(starship init zsh)"
 
+# Transient prompt — collapse to minimal ">" after command runs
+_transient_prompt_accept_line() {
+  local saved_prompt=$PROMPT
+  local saved_rprompt=$RPROMPT
+  PROMPT='%F{#fb543a}%B>%b%f '
+  RPROMPT=''
+  zle .reset-prompt
+  PROMPT=$saved_prompt
+  RPROMPT=$saved_rprompt
+  zle .accept-line
+}
+zle -N accept-line _transient_prompt_accept_line
+
 # fzf
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 

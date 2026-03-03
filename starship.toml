@@ -7,7 +7,9 @@ format = """
 [](fg:#f5c211))\
 ${custom.git_clean})\
 ${custom.dir_closer}\
-($nodejs$python$ruby$rust)\
+$fill\
+($nodejs$python$ruby$rust)${custom.no_lang}\
+$line_break\
 $line_break\
 $character"""
 
@@ -23,7 +25,7 @@ truncation_symbol = ""
 format = "[  $branch ](bg:#4a4a4a fg:#ffffff bold)"
 
 [git_status]
-format = "([ $all_status$ahead_behind ](bg:#f5c211 fg:#ffffff bold))"
+format = "([ $all_status$ahead_behind ](bg:#f5c211 fg:#2d1f00 bold))"
 staged = "+"
 modified = "!"
 deleted = "✘"
@@ -48,30 +50,41 @@ format = "[](fg:#8350C2)"
 shell = ["sh"]
 
 [character]
-success_symbol = "[](fg:#fb543a bold)"
-error_symbol = "[](fg:#cc3333 bold)"
+success_symbol = "[❯](fg:#fb543a bold)"
+error_symbol = "[❯](fg:#cc3333 bold)"
 
 [cmd_duration]
 disabled = true
 
+[fill]
+symbol = "─"
+style = "fg:#4a4a4a"
+
+# Grey diamond fallback when no language is detected
+[custom.no_lang]
+when = '! test -f package.json && ! test -f .node-version && ! test -f .nvmrc && ! test -f pyproject.toml && ! test -f requirements.txt && ! test -f .python-version && ! test -f Gemfile && ! test -f .ruby-version && ! test -f Cargo.toml'
+format = "[](fg:#8350C2)[](fg:#8350C2)"
+shell = ["sh"]
+
 # --- Language versions ---
 
 [nodejs]
-format = " [](fg:#2d6b2e)[ node ](bg:#2d6b2e fg:#ffffff bold)[](fg:#2d6b2e bg:#3C873A)[ $version ](bg:#3C873A fg:#ffffff bold)[](fg:#3C873A)"
+format = "[](fg:#2d6b2e)[ node ](bg:#2d6b2e fg:#ffffff bold)[](fg:#3C873A bg:#2d6b2e)[ $version ](bg:#3C873A fg:#ffffff bold)[](fg:#3C873A)"
 symbol = ""
 detect_files = ["package.json", ".node-version", ".nvmrc"]
 
 [python]
-format = " [](fg:#2a5a85)[ python ](bg:#2a5a85 fg:#ffffff bold)[](fg:#2a5a85 bg:#3776AB)[ $version ](bg:#3776AB fg:#ffffff bold)[](fg:#3776AB)"
+format = "[](fg:#2a5a85)[ python ](bg:#2a5a85 fg:#ffffff bold)[](fg:#3776AB bg:#2a5a85)[ $version ](bg:#3776AB fg:#ffffff bold)[](fg:#3776AB)"
 symbol = ""
 detect_files = ["pyproject.toml", "requirements.txt", ".python-version"]
 
 [ruby]
-format = " [](fg:#9c2822)[ ruby ](bg:#9c2822 fg:#ffffff bold)[](fg:#9c2822 bg:#CC342D)[ $version ](bg:#CC342D fg:#ffffff bold)[](fg:#CC342D)"
+format = "[](fg:#9c2822)[ ruby ](bg:#9c2822 fg:#ffffff bold)[](fg:#CC342D bg:#9c2822)[ $version ](bg:#CC342D fg:#ffffff bold)[](fg:#CC342D)"
 symbol = ""
 detect_files = ["Gemfile", ".ruby-version"]
 
 [rust]
-format = " [](fg:#9e3220)[ rust ](bg:#9e3220 fg:#ffffff bold)[](fg:#9e3220 bg:#CE422B)[ $version ](bg:#CE422B fg:#ffffff bold)[](fg:#CE422B)"
+format = "[](fg:#9e3220)[ rust ](bg:#9e3220 fg:#ffffff bold)[](fg:#CE422B bg:#9e3220)[ $version ](bg:#CE422B fg:#ffffff bold)[](fg:#CE422B)"
 symbol = ""
 detect_files = ["Cargo.toml"]
+
