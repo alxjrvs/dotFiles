@@ -1,0 +1,82 @@
+{{- if eq .chezmoi.os "darwin" }}
+#!/bin/bash
+set -euo pipefail
+
+# packages.yaml hash: {{ include ".chezmoidata/packages.yaml" | sha256sum }}
+
+echo "==> Updating Homebrew..."
+brew update
+
+echo "==> Installing Brewfile packages..."
+brew bundle --no-lock --file=/dev/stdin <<EOF
+{{ range .packages.darwin.taps -}}
+tap {{ . | quote }}
+{{ end -}}
+{{ range .packages.darwin.brews -}}
+brew {{ . | quote }}
+{{ end -}}
+{{ range .packages.darwin.casks -}}
+cask {{ . | quote }}
+{{ end -}}
+EOF
+
+{{ range .packages.darwin.brew_services -}}
+brew services start {{ . }} 2>/dev/null || true
+{{ end -}}
+
+echo "==> Cleaning up..."
+brew cleanup --prune=all
+
+echo "==> Packages up to date"
+
+{{- else if eq .chezmoi.os "linux" }}
+#!/bin/bash
+set -euo pipefail
+
+# packages.yaml hash: {{ include ".chezmoidata/packages.yaml" | sha256sum }}
+
+echo "==> Updating apt..."
+sudo apt update
+
+echo "==> Installing apt packages..."
+sudo apt install -y \
+{{ range .packages.linux.apt -}}
+  {{ . }} \
+{{ end }}
+  ;
+
+# Tools not available via apt - install from GitHub releases
+ARCH=$(dpkg --print-architecture)
+
+# Starship
+if ! command -v starship &>/dev/null; then
+  echo "==> Installing Starship..."
+  curl -sS https://starship.rs/install.sh | sh -s -- --yes
+fi
+
+# Sheldon
+if ! command -v sheldon &>/dev/null; then
+  echo "==> Installing Sheldon..."
+  curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh | bash -s -- --repo rossmacarthur/sheldon --to ~/.local/bin
+fi
+
+# Zoxide
+if ! command -v zoxide &>/dev/null; then
+  echo "==> Installing Zoxide..."
+  curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
+fi
+
+# asdf
+if ! command -v asdf &>/dev/null; then
+  echo "==> Installing asdf..."
+  git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.15.0
+fi
+
+# bun
+if ! command -v bun &>/dev/null; then
+  echo "==> Installing Bun..."
+  curl -fsSL https://bun.sh/install | bash
+fi
+
+echo "==> Packages up to date"
+{{- end }}

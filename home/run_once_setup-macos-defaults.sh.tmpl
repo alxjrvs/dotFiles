@@ -1,0 +1,20 @@
+{{- if eq .chezmoi.os "darwin" }}
+#!/bin/bash
+set -euo pipefail
+
+echo "==> Applying macOS defaults..."
+
+# Fast key repeat (essential for vim keybindings)
+defaults write NSGlobalDomain KeyRepeat -int 2
+defaults write NSGlobalDomain InitialKeyRepeat -int 15
+# Disable press-and-hold for keys (enables key repeat everywhere)
+defaults write NSGlobalDomain ApplePressAndHoldEnabled -bool false
+# Show hidden files in Finder
+defaults write com.apple.finder AppleShowAllFiles -bool true
+# Show file extensions
+defaults write NSGlobalDomain AppleShowAllExtensions -bool true
+# Tap to click on trackpad
+defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
+
+echo "==> macOS defaults applied"
+{{- end }}

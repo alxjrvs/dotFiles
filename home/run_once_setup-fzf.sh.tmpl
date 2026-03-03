@@ -1,0 +1,17 @@
+{{- if eq .chezmoi.os "darwin" }}
+#!/bin/bash
+set -euo pipefail
+echo "==> Setting up fzf shell integration..."
+"$(brew --prefix)/opt/fzf/install" --key-bindings --completion --no-update-rc --no-bash --no-fish
+echo "==> fzf integration complete"
+
+{{- else if eq .chezmoi.os "linux" }}
+#!/bin/bash
+set -euo pipefail
+echo "==> Setting up fzf shell integration..."
+if [ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]; then
+  mkdir -p ~/.fzf
+  cp /usr/share/doc/fzf/examples/key-bindings.zsh ~/.fzf.zsh
+fi
+echo "==> fzf integration complete"
+{{- end }}
