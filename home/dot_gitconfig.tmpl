@@ -27,10 +27,14 @@
 [branch "main"]
 
 [user]
-	name = alxjrvs
-	email = alxjrvs@gmail.com
+	name = {{ .name }}
+	email = {{ .email }}
 [credential]
+{{- if eq .chezmoi.os "darwin" }}
 	helper = osxkeychain
+{{- else }}
+	helper = store
+{{- end }}
 [core]
 	editor = nvim
 	excludesfile = ~/.gitignore
