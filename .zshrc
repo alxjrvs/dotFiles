@@ -66,6 +66,7 @@ alias q="exit"
 alias gs="git status"
 alias gp="git push"
 alias gpr='git pull --rebase'
+alias ..="cd .."
 
 # asdf default packages
 export ASDF_NPM_DEFAULT_PACKAGES_FILE=~/.default-npm-packages
