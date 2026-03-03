@@ -4,7 +4,7 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 export XDG_CONFIG_HOME="$HOME/.config"
 
 # PATH (login shell only — prevents duplication in subshells)
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$HOME/.local/bin:$PATH"
 
 # Android SDK
 export ANDROID_HOME=$HOME/Library/Android/sdk
