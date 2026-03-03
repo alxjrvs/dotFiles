@@ -1,0 +1,23 @@
+# Minimal prompt: directory + git + prompt char
+# Docs: https://starship.rs/config/
+
+format = """$directory$git_branch$git_status$character"""
+
+# Don't add a blank line between prompts
+add_newline = false
+
+[directory]
+truncation_length = 3
+
+[git_branch]
+format = "[$branch]($style) "
+style = "green"
+
+[git_status]
+format = '([$all_status$ahead_behind]($style) )'
+style = "red"
+
+[character]
+success_symbol = "[=>](yellow)"
+error_symbol = "[=>](red)"
+vimcmd_symbol = "[<=](green)"
