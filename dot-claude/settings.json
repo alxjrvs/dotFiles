@@ -1,9 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "alwaysThinkingEnabled": true,
-  "autoUpdatesChannel": "stable",
-  "enableAllProjectMcpServers": true,
-  "outputStyle": "Concise",
   "env": {
     "EDITOR": "nvim",
     "NODE_ENV": "development"
@@ -22,6 +18,7 @@
       "Read(./secrets/**)"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "hooks": {
     "SessionStart": [
       {
@@ -58,5 +55,8 @@
     "rust-analyzer-lsp@claude-plugins-official": true,
     "elements-of-style@superpowers-marketplace": true,
     "superpowers@superpowers-marketplace": true
-  }
+  },
+  "outputStyle": "Concise",
+  "alwaysThinkingEnabled": true,
+  "autoUpdatesChannel": "stable"
 }

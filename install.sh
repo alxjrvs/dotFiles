@@ -114,7 +114,7 @@ while IFS=' ' read -r lang version; do
   if [ "$current" = "$version" ]; then
     ok "$lang global set to $version"
   else
-    asdf global "$lang" "$version"
+    asdf set --home "$lang" "$version"
     warn "$lang global set to $version"
   fi
 done < "$DOTFILES_DIR/.tool-versions"
