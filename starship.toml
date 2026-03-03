@@ -53,6 +53,10 @@ shell = ["sh"]
 success_symbol = "[❯](fg:#fb543a bold)"
 error_symbol = "[❯](fg:#cc3333 bold)"
 
+# Transient prompt — collapse previous prompts to just the character
+[profiles]
+transient = "$character"
+
 [cmd_duration]
 disabled = true
 
