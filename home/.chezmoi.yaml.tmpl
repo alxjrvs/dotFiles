@@ -1,0 +1,19 @@
+{{- $name := "alxjrvs" -}}
+{{- $email := "alxjrvs@gmail.com" -}}
+{{- $onepassword := false -}}
+
+{{- if stdinIsATTY -}}
+{{-   $onepassword = promptBoolOnce . "onepassword" "Use 1Password for secrets" -}}
+{{- end -}}
+
+{{- if $onepassword -}}
+{{-   $name = onepasswordRead "op://Personal/Git Identity/username" -}}
+{{-   $email = onepasswordRead "op://Personal/Git Identity/email" -}}
+{{- end }}
+
+sourceDir: {{ .chezmoi.sourceDir | quote }}
+
+data:
+  name: {{ $name | quote }}
+  email: {{ $email | quote }}
+  onepassword: {{ $onepassword }}

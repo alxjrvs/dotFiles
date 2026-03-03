@@ -1,0 +1,64 @@
+packages:
+  darwin:
+    taps:
+      - supabase/tap
+      - wix/brew
+    brews:
+      - asdf
+      - bat
+      - bun
+      - bundletool
+      - cmake
+      - fd
+      - flyctl
+      - fzf
+      - gh
+      - gnutls
+      - gnupg
+      - jq
+      - krb5
+      - libsodium
+      - neovim
+      - overmind
+      - redis
+      - ripgrep
+      - sheldon
+      - shfmt
+      - starship
+      - tmux
+      - unbound
+      - watchman
+      - zoxide
+    casks:
+      - 1password
+      - 1password-cli
+      - claude
+      - devutils
+      - discord
+      - docker
+      - font-fira-code-nerd-font
+      - ghostty
+      - google-chrome
+      - ngrok
+      - notunes
+      - rectangle
+      - slack
+      - tuple
+      - zulu@17
+    brew_services:
+      - unbound
+      - redis
+  linux:
+    apt:
+      - bat
+      - curl
+      - fd-find
+      - fzf
+      - gh
+      - git
+      - gnupg
+      - jq
+      - neovim
+      - ripgrep
+      - tmux
+      - zsh
