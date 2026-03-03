@@ -1,16 +1,17 @@
 # Prompt: parent/cwd [branch●] »
 # Git dot: green=clean, red=uncommitted, yellow=staged/unpushed
-format = """$directory( \\[$nodejs$python$ruby$rust\\])$git_branch${custom.git_dot}$cmd_duration $character"""
+format = """$directory( \\[$nodejs$python$ruby$rust\\])( \\[$git_branch${custom.git_dot}\\])$cmd_duration $character"""
 
 add_newline = false
 
 [directory]
 truncation_length = 2
+truncate_to_repo = false
 truncation_symbol = ""
 format = "[$path]()"
 
 [git_branch]
-format = " [\\[$branch]()"
+format = "$branch"
 
 [git_status]
 disabled = true
@@ -27,8 +28,8 @@ else
 fi
 '''
 when = "git rev-parse --git-dir 2>/dev/null"
-format = "[●](${output})\\]"
-shell = ["bash", "--nologin"]
+format = "[●]($output)"
+shell = ["bash", "--norc", "--noprofile"]
 
 [character]
 success_symbol = "[»](bold)"
