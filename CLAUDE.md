@@ -31,7 +31,7 @@ There are no build, test, or lint commands for this repo.
 | `starship.toml` | `~/.config/starship.toml` |
 | `sheldon/plugins.toml` | `~/.config/sheldon/plugins.toml` |
 | `ghostty/config` | `~/.config/ghostty/config` |
-| `nvim/init.lua` | `~/.config/nvim/init.lua` |
+| `nvim/` | `~/.config/nvim` (AstroNvim v5) |
 | `gh/config.yml` | `~/.config/gh/config.yml` |
 | `dot-claude/*` | `~/.claude/*` (CLAUDE.md, settings.json, skills/, agents/, hooks/, plugins/) |
 
