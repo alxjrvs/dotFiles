@@ -5,7 +5,7 @@
       "repo": "anthropics/claude-plugins-official"
     },
     "installLocation": "/Users/jarvis/.claude/plugins/marketplaces/claude-plugins-official",
-    "lastUpdated": "2026-03-03T16:21:04.442Z"
+    "lastUpdated": "2026-03-03T16:49:14.608Z"
   },
   "anthropic-agent-skills": {
     "source": {
@@ -13,7 +13,7 @@
       "repo": "anthropics/skills"
     },
     "installLocation": "/Users/jarvis/.claude/plugins/marketplaces/anthropic-agent-skills",
-    "lastUpdated": "2026-03-03T04:37:27.262Z"
+    "lastUpdated": "2026-03-03T16:24:21.376Z"
   },
   "superpowers-marketplace": {
     "source": {

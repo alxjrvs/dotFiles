@@ -1,0 +1,7 @@
+# Font
+font-family = FiraCode Nerd Font
+
+# Ligatures (disabled by default since v1.2.0)
+font-feature = +liga
+font-feature = +calt
+font-feature = +dlig

@@ -139,6 +139,10 @@ link "$DOTFILES_DIR/sheldon/plugins.toml" "$HOME/.config/sheldon/plugins.toml" "
 mkdir -p "$HOME/.config"
 link "$DOTFILES_DIR/starship.toml"        "$HOME/.config/starship.toml"         "starship.toml"
 
+# Ghostty config
+mkdir -p "$HOME/.config/ghostty"
+link "$DOTFILES_DIR/ghostty/config"       "$HOME/.config/ghostty/config"        "ghostty/config"
+
 # ── 7. Sheldon plugins ─────────────────────────────────────────────
 echo ""
 echo "==> Sheldon plugins"
