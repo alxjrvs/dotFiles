@@ -1,0 +1,15 @@
+shell = "zsh"
+
+# Fish-like autosuggestions
+[plugins.zsh-autosuggestions]
+github = "zsh-users/zsh-autosuggestions"
+
+# Syntax highlighting (must be last — see zsh-syntax-highlighting README)
+[plugins.zsh-syntax-highlighting]
+github = "zsh-users/zsh-syntax-highlighting"
+
+# Additional completions for docker, npm, brew, etc.
+[plugins.zsh-completions]
+github = "zsh-users/zsh-completions"
+dir = "src"
+apply = ["fpath"]
