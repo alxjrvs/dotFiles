@@ -9,15 +9,62 @@ fail() { printf "${RED}  ✗ %s${NC}\n" "$1"; }
 DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 OS="$(uname -s)"  # "Darwin" (macOS) or "Linux" (Raspberry Pi OS)
 LINK_MODE=""  # "", "overwrite", or "skip"
+ONLY=""       # "", or comma-separated section names
 
-while getopts "fs" opt; do
-  case "$opt" in
-    f) LINK_MODE="overwrite" ;;
-    s) LINK_MODE="skip" ;;
-    *) echo "Usage: $0 [-f] [-s]"; echo "  -f  Auto-overwrite conflicts (force)"; echo "  -s  Auto-skip conflicts"; exit 1 ;;
+for arg in "$@"; do
+  case "$arg" in
+    -f) LINK_MODE="overwrite" ;;
+    -s) LINK_MODE="skip" ;;
+    --only=*)
+      ONLY="${arg#--only=}"
+      ;;
+    -h|--help)
+      echo "Usage: $0 [-f] [-s] [--only=SECTION[,SECTION,...]]"
+      echo ""
+      echo "Options:"
+      echo "  -f              Auto-overwrite conflicts (force)"
+      echo "  -s              Auto-skip conflicts"
+      echo "  --only=SECTION  Only run specified section(s), comma-separated"
+      echo ""
+      echo "Sections:"
+      echo "  brew      Homebrew, Brew Bundle, Brew doctor"
+      echo "  asdf      asdf language versions"
+      echo "  sheldon   Sheldon plugin manager + config"
+      echo "  starship  Starship prompt + config"
+      echo "  symlinks  All symlinks"
+      echo "  claude    Claude Code + config"
+      echo "  fzf       fzf shell integration"
+      echo "  gh        GitHub CLI + config"
+      echo "  nvim      Neovim config"
+      echo "  ghostty   Ghostty config"
+      echo "  git       Git config files"
+      echo "  shell     Shell config (.zshrc, .zprofile)"
+      echo "  health    Health checks"
+      echo "  macos     macOS defaults"
+      echo "  linux     Linux system setup"
+      exit 0
+      ;;
+    *)
+      fail "Unknown option: $arg"
+      echo "Usage: $0 [-f] [-s] [--only=SECTION]"
+      echo "Run $0 --help for available sections."
+      exit 1
+      ;;
   esac
 done
-shift $((OPTIND - 1))
+
+# ── should_run — check if a section should execute ─────────────────
+# With no --only flag, everything runs. With --only, a section runs if
+# any of its tags appear in the comma-separated ONLY list.
+# Usage: should_run tag1 [tag2 ...]
+should_run() {
+  [ -z "$ONLY" ] && return 0
+  local tag
+  for tag in "$@"; do
+    echo ",$ONLY," | grep -q ",$tag," && return 0
+  done
+  return 1
+}
 
 # ── Cancel on failure or Ctrl-C ──────────────────────────────────
 set -eo pipefail
@@ -60,6 +107,7 @@ link() {
 if [ "$OS" = "Darwin" ]; then
 
 # ── 1. Homebrew ─────────────────────────────────────────────────────
+if should_run brew; then
 echo ""
 echo "==> Homebrew"
 if command -v brew &>/dev/null; then
@@ -87,7 +135,17 @@ warn "Installing/upgrading Brewfile dependencies..."
 brew bundle --file="$DOTFILES_DIR/Brewfile"
 ok "Brewfile dependencies up to date"
 
+# Docker Desktop provides its own docker CLI — remove the formula if both exist
+if brew list --cask docker-desktop &>/dev/null && brew list --formula docker &>/dev/null; then
+  warn "Removing docker formula (conflicts with Docker Desktop)..."
+  brew uninstall --formula docker
+  brew uninstall --formula docker-completion 2>/dev/null || true
+  ok "docker formula removed — Docker Desktop provides the CLI"
+fi
+fi # should_run brew
+
 # ── 3. Sheldon (plugin manager) ─────────────────────────────────────
+if should_run sheldon; then
 echo ""
 echo "==> Sheldon"
 if command -v sheldon &>/dev/null; then
@@ -95,8 +153,10 @@ if command -v sheldon &>/dev/null; then
 else
   fail "Sheldon not found — should have been installed by brew bundle"
 fi
+fi # should_run sheldon
 
 # ── 4. Starship (prompt) ───────────────────────────────────────────
+if should_run starship; then
 echo ""
 echo "==> Starship"
 if command -v starship &>/dev/null; then
@@ -104,12 +164,14 @@ if command -v starship &>/dev/null; then
 else
   fail "Starship not found — should have been installed by brew bundle"
 fi
+fi # should_run starship
 
 fi # Darwin
 
 if [ "$OS" = "Linux" ]; then
 
 # ── 1. System packages (apt) ────────────────────────────────────────
+if should_run linux; then
 echo ""
 echo "==> System packages"
 warn "Updating apt and installing packages..."
@@ -117,19 +179,7 @@ sudo apt update -y
 sudo apt install -y zsh neovim git curl
 ok "System packages installed"
 
-# ── 2. Sheldon (plugin manager) ─────────────────────────────────────
-echo ""
-echo "==> Sheldon"
-if command -v sheldon &>/dev/null; then
-  ok "Sheldon installed"
-else
-  warn "Installing Sheldon..."
-  curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh \
-    | bash -s -- --repo rossmacarthur/sheldon --to ~/.local/bin
-  ok "Sheldon installed"
-fi
-
-# ── 3. Default shell ────────────────────────────────────────────────
+# ── Default shell ────────────────────────────────────────────────
 echo ""
 echo "==> Default shell"
 if [ "$(basename "$SHELL")" = "zsh" ]; then
@@ -140,19 +190,35 @@ else
   warn "zsh set as default (takes effect on next login)"
 fi
 
-# ── 4. Git credential helper ────────────────────────────────────────
+# ── Git credential helper ────────────────────────────────────────
 if [ ! -f "$HOME/.gitconfig.local" ]; then
   printf '[credential]\n\thelper = cache\n' > "$HOME/.gitconfig.local"
   ok "Created ~/.gitconfig.local with credential helper = cache"
 else
   ok "~/.gitconfig.local already exists"
 fi
+fi # should_run linux
+
+# ── 2. Sheldon (plugin manager) ─────────────────────────────────────
+if should_run sheldon; then
+echo ""
+echo "==> Sheldon"
+if command -v sheldon &>/dev/null; then
+  ok "Sheldon installed"
+else
+  warn "Installing Sheldon..."
+  curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh \
+    | bash -s -- --repo rossmacarthur/sheldon --to ~/.local/bin
+  ok "Sheldon installed"
+fi
+fi # should_run sheldon
 
 fi # Linux
 
 if [ "$OS" = "Darwin" ]; then
 
 # ── 5. asdf languages (from .tool-versions) ─────────────────────────
+if should_run asdf; then
 echo ""
 echo "==> asdf languages"
 warn "Updating asdf plugins..."
@@ -166,14 +232,14 @@ while IFS=' ' read -r lang version; do
     asdf plugin add "$lang"
   fi
 
-  if asdf list "$lang" 2>/dev/null | grep -q "$version"; then
+  if asdf list "$lang" 2>/dev/null | grep -qE "^[ *]+${version}$"; then
     ok "$lang $version installed"
   else
     warn "Installing $lang $version..."
     asdf install "$lang" "$version"
   fi
 
-  current="$(asdf current "$lang" 2>/dev/null | awk '{print $2}')"
+  current="$(asdf current "$lang" 2>/dev/null | awk '{print $2}')" || true
   if [ "$current" = "$version" ]; then
     ok "$lang global set to $version"
   else
@@ -181,40 +247,62 @@ while IFS=' ' read -r lang version; do
     warn "$lang global set to $version"
   fi
 done < "$DOTFILES_DIR/.tool-versions"
+fi # should_run asdf
 
 fi # Darwin
 
 # ── 6. Symlinks ─────────────────────────────────────────────────────
+if should_run symlinks git shell asdf sheldon starship ghostty nvim gh claude; then
 echo ""
 echo "==> Symlinks"
+fi
+
+# Git config
+if should_run symlinks git; then
 link "$DOTFILES_DIR/.gitconfig"          "$HOME/.gitconfig"          ".gitconfig"
 link "$DOTFILES_DIR/.gitmessage"         "$HOME/.gitmessage"         ".gitmessage"
+link "$DOTFILES_DIR/.gitignore"          "$HOME/.gitignore"          ".gitignore"
+fi
+
+# Shell config
+if should_run symlinks shell; then
 link "$DOTFILES_DIR/.zshrc"              "$HOME/.zshrc"              ".zshrc"
 link "$DOTFILES_DIR/.zprofile"           "$HOME/.zprofile"           ".zprofile"
+link "$DOTFILES_DIR/.hushlogin"          "$HOME/.hushlogin"          ".hushlogin"
+fi
+
+# asdf config (Darwin only)
 if [ "$OS" = "Darwin" ]; then
+if should_run symlinks asdf; then
 link "$DOTFILES_DIR/.tool-versions"      "$HOME/.tool-versions"      ".tool-versions"
 link "$DOTFILES_DIR/.default-npm-packages" "$HOME/.default-npm-packages" ".default-npm-packages"
 link "$DOTFILES_DIR/.asdfrc"             "$HOME/.asdfrc"             ".asdfrc"
-link "$DOTFILES_DIR/.npmrc"            "$HOME/.npmrc"            ".npmrc"
+link "$DOTFILES_DIR/.npmrc"              "$HOME/.npmrc"              ".npmrc"
+fi
 fi # Darwin
-link "$DOTFILES_DIR/.gitignore"          "$HOME/.gitignore"          ".gitignore"
-link "$DOTFILES_DIR/.hushlogin"        "$HOME/.hushlogin"        ".hushlogin"
 
 # Sheldon config
+if should_run symlinks sheldon; then
 mkdir -p "$HOME/.config/sheldon"
 link "$DOTFILES_DIR/sheldon/plugins.toml" "$HOME/.config/sheldon/plugins.toml" "sheldon/plugins.toml"
+fi
 
 if [ "$OS" = "Darwin" ]; then
 # Starship config
+if should_run symlinks starship; then
 mkdir -p "$HOME/.config"
 link "$DOTFILES_DIR/starship.toml"        "$HOME/.config/starship.toml"         "starship.toml"
+fi
 
 # Ghostty config
+if should_run symlinks ghostty; then
 mkdir -p "$HOME/.config/ghostty"
 link "$DOTFILES_DIR/ghostty/config"       "$HOME/.config/ghostty/config"        "ghostty/config"
+fi
 fi # Darwin
 
 # Neovim config (AstroNvim — symlink entire directory)
+if should_run symlinks nvim; then
 # Migration: remove old single-file symlink if present
 if [ -L "$HOME/.config/nvim/init.lua" ] && [ ! -L "$HOME/.config/nvim" ]; then
   warn "Removing old nvim/init.lua symlink (migrating to AstroNvim)"
@@ -222,19 +310,37 @@ if [ -L "$HOME/.config/nvim/init.lua" ] && [ ! -L "$HOME/.config/nvim" ]; then
   rmdir "$HOME/.config/nvim" 2>/dev/null || true
 fi
 link "$DOTFILES_DIR/nvim"                 "$HOME/.config/nvim"                  "nvim (AstroNvim)"
+fi
 
 # GitHub CLI config
+if should_run symlinks gh; then
 mkdir -p "$HOME/.config/gh"
 link "$DOTFILES_DIR/gh/config.yml" "$HOME/.config/gh/config.yml" "gh/config.yml"
+fi
+
+# Claude Code config
+if should_run symlinks claude; then
+mkdir -p "$HOME/.claude"
+link "$DOTFILES_DIR/dot-claude/CLAUDE.md"     "$HOME/.claude/CLAUDE.md"     "claude/CLAUDE.md"
+link "$DOTFILES_DIR/dot-claude/settings.json" "$HOME/.claude/settings.json" "claude/settings.json"
+link "$DOTFILES_DIR/dot-claude/skills"        "$HOME/.claude/skills"        "claude/skills"
+link "$DOTFILES_DIR/dot-claude/agents"        "$HOME/.claude/agents"        "claude/agents"
+link "$DOTFILES_DIR/dot-claude/hooks"         "$HOME/.claude/hooks"         "claude/hooks"
+mkdir -p "$HOME/.claude/plugins"
+link "$DOTFILES_DIR/dot-claude/plugins/known_marketplaces.json" "$HOME/.claude/plugins/known_marketplaces.json" "claude/plugins/known_marketplaces.json"
+fi
 
 # ── 7. Sheldon plugins ─────────────────────────────────────────────
+if should_run sheldon; then
 echo ""
 echo "==> Sheldon plugins"
 warn "Updating Sheldon plugins..."
 sheldon lock --update
 ok "Sheldon plugins up to date"
+fi # should_run sheldon
 
 # ── 8. Claude Code ────────────────────────────────────────────────
+if should_run claude; then
 echo ""
 echo "==> Claude Code"
 if command -v claude &>/dev/null; then
@@ -247,29 +353,23 @@ else
     warn "Claude Code not found and npm not available — install manually"
   fi
 fi
-
-mkdir -p "$HOME/.claude"
-link "$DOTFILES_DIR/dot-claude/CLAUDE.md"     "$HOME/.claude/CLAUDE.md"     "claude/CLAUDE.md"
-link "$DOTFILES_DIR/dot-claude/settings.json" "$HOME/.claude/settings.json" "claude/settings.json"
-link "$DOTFILES_DIR/dot-claude/skills"        "$HOME/.claude/skills"        "claude/skills"
-link "$DOTFILES_DIR/dot-claude/agents"        "$HOME/.claude/agents"        "claude/agents"
-link "$DOTFILES_DIR/dot-claude/hooks"         "$HOME/.claude/hooks"         "claude/hooks"
-
-mkdir -p "$HOME/.claude/plugins"
-link "$DOTFILES_DIR/dot-claude/plugins/known_marketplaces.json" "$HOME/.claude/plugins/known_marketplaces.json" "claude/plugins/known_marketplaces.json"
+fi # should_run claude
 
 if [ "$OS" = "Darwin" ]; then
 
 # ── 9. fzf ──────────────────────────────────────────────────────────
+if should_run fzf; then
 echo ""
 echo "==> fzf"
 warn "Installing/updating fzf shell integration..."
 "$(brew --prefix)/opt/fzf/install" --key-bindings --completion --no-update-rc --no-bash --no-fish
 ok "fzf shell integration up to date"
+fi # should_run fzf
 
 fi # Darwin
 
 # ── 10. GitHub CLI auth ───────────────────────────────────────────
+if should_run gh; then
 echo ""
 echo "==> GitHub CLI"
 if gh auth status &>/dev/null; then
@@ -277,8 +377,10 @@ if gh auth status &>/dev/null; then
 else
   warn "Not authenticated — run: gh auth login"
 fi
+fi # should_run gh
 
 # ── 11. Health checks ─────────────────────────────────────────
+if should_run health; then
 echo ""
 echo "==> Health checks"
 
@@ -304,10 +406,12 @@ else
   fail "bun: not found"
 fi
 fi # Darwin
+fi # should_run health
 
 if [ "$OS" = "Darwin" ]; then
 
 # ── 12. macOS defaults ──────────────────────────────────────────────
+if should_run macos; then
 echo ""
 echo "==> macOS defaults"
 # Fast key repeat (essential for vim keybindings)
@@ -322,88 +426,24 @@ defaults write NSGlobalDomain AppleShowAllExtensions -bool true
 # Tap to click on trackpad
 defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
 ok "macOS defaults applied"
+fi # should_run macos
 
 # ── 13. Brew doctor ────────────────────────────────────────────────
+if should_run brew; then
 echo ""
 echo "==> Brew doctor"
-
-# Kegs that are intentionally unlinked (e.g. cask provides the CLI instead)
-KNOWN_UNLINKED="docker"
-
-if doctor_output="$(brew doctor 2>&1)"; then
+if brew doctor 2>&1 | grep -q "ready to brew"; then
   ok "brew doctor: all good"
 else
-  # Filter out known unlinked keg warnings before deciding if there are real issues
-  filtered_output="$doctor_output"
-  for keg in $KNOWN_UNLINKED; do
-    filtered_output="$(echo "$filtered_output" | grep -v "^  $keg$")"
-  done
-
-  # Check if the only issue was known unlinked kegs
-  has_real_unlinked=false
-  if echo "$doctor_output" | grep -q "unlinked kegs"; then
-    real_unlinked="$(echo "$doctor_output" | sed -n '/unlinked kegs/,/^$/p' | grep '^ ' | tr -d ' ')"
-    for keg in $real_unlinked; do
-      is_known=false
-      for known in $KNOWN_UNLINKED; do
-        [ "$keg" = "$known" ] && is_known=true
-      done
-      $is_known || has_real_unlinked=true
-    done
-  fi
-
-  # Determine if there are issues beyond known unlinked kegs
-  has_other_issues=false
-  echo "$doctor_output" | grep -q "Command Line Tools" && has_other_issues=true
-  echo "$doctor_output" | grep -q "lock files" && has_other_issues=true
-
-  if ! $has_real_unlinked && ! $has_other_issues; then
-    ok "brew doctor: all good (known unlinked kegs: $KNOWN_UNLINKED)"
-  else
-    fail "brew doctor found issues — attempting fixes..."
-    echo "$doctor_output"
-
-    # Unlinked kegs (only relink ones not in KNOWN_UNLINKED)
-    if $has_real_unlinked; then
-      warn "Relinking unlinked kegs..."
-      for keg in $real_unlinked; do
-        is_known=false
-        for known in $KNOWN_UNLINKED; do
-          [ "$keg" = "$known" ] && is_known=true
-        done
-        if $is_known; then
-          ok "$keg intentionally unlinked (cask provides CLI) — skipped"
-        else
-          brew link --overwrite "$keg" 2>/dev/null && ok "$keg relinked" || warn "$keg: relink failed"
-        fi
-      done
-    fi
-
-    # Outdated Xcode CLI tools
-    if echo "$doctor_output" | grep -q "Command Line Tools"; then
-      warn "Updating Xcode Command Line Tools..."
-      softwareupdate --install --all 2>/dev/null || true
-    fi
-
-    # Stale lock files
-    if echo "$doctor_output" | grep -q "lock files"; then
-      warn "Removing stale lock files..."
-      brew cleanup --prune=all 2>/dev/null || true
-    fi
-
-    # Re-check
-    echo ""
-    if brew doctor 2>/dev/null; then
-      ok "brew doctor: issues resolved"
-    else
-      warn "Some brew doctor issues remain — run 'brew doctor' for details"
-    fi
-  fi
+  warn "brew doctor found issues — run 'brew doctor' for details"
 fi
+fi # should_run brew
 
 fi # Darwin
 
 # ── 14. Summary ────────────────────────────────────────────────────
 echo ""
 echo "==> Done!"
-echo "   Restart your shell or run: source ~/.zshrc"
+if [ -z "$ONLY" ]; then
+  echo "   Restart your shell or run: source ~/.zshrc"
+fi

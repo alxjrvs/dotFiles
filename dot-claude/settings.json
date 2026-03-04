@@ -78,7 +78,8 @@
     "vercel@claude-plugins-official": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
     "elements-of-style@superpowers-marketplace": true,
-    "superpowers@superpowers-marketplace": true
+    "superpowers@superpowers-marketplace": true,
+    "double-shot-latte@superpowers-marketplace": true
   },
   "outputStyle": "Concise",
   "alwaysThinkingEnabled": true,
