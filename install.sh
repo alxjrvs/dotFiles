@@ -10,11 +10,11 @@ DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 OS="$(uname -s)"  # "Darwin" (macOS) or "Linux" (Raspberry Pi OS)
 LINK_MODE=""  # "", "overwrite", or "skip"
 
-while getopts "os" opt; do
+while getopts "fs" opt; do
   case "$opt" in
-    o) LINK_MODE="overwrite" ;;
+    f) LINK_MODE="overwrite" ;;
     s) LINK_MODE="skip" ;;
-    *) echo "Usage: $0 [-o] [-s]"; echo "  -o  Auto-overwrite conflicts"; echo "  -s  Auto-skip conflicts"; exit 1 ;;
+    *) echo "Usage: $0 [-f] [-s]"; echo "  -f  Auto-overwrite conflicts (force)"; echo "  -s  Auto-skip conflicts"; exit 1 ;;
   esac
 done
 shift $((OPTIND - 1))
