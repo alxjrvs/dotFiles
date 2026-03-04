@@ -57,6 +57,8 @@ link() {
   esac
 }
 
+if [ "$OS" = "Darwin" ]; then
+
 # ── 1. Homebrew ─────────────────────────────────────────────────────
 echo ""
 echo "==> Homebrew"
@@ -103,6 +105,10 @@ else
   fail "Starship not found — should have been installed by brew bundle"
 fi
 
+fi # Darwin
+
+if [ "$OS" = "Darwin" ]; then
+
 # ── 5. asdf languages (from .tool-versions) ─────────────────────────
 echo ""
 echo "==> asdf languages"
@@ -132,6 +138,8 @@ while IFS=' ' read -r lang version; do
     warn "$lang global set to $version"
   fi
 done < "$DOTFILES_DIR/.tool-versions"
+
+fi # Darwin
 
 # ── 6. Symlinks ─────────────────────────────────────────────────────
 echo ""
@@ -199,12 +207,16 @@ link "$DOTFILES_DIR/dot-claude/hooks"         "$HOME/.claude/hooks"         "cla
 mkdir -p "$HOME/.claude/plugins"
 link "$DOTFILES_DIR/dot-claude/plugins/known_marketplaces.json" "$HOME/.claude/plugins/known_marketplaces.json" "claude/plugins/known_marketplaces.json"
 
+if [ "$OS" = "Darwin" ]; then
+
 # ── 9. fzf ──────────────────────────────────────────────────────────
 echo ""
 echo "==> fzf"
 warn "Installing/updating fzf shell integration..."
 "$(brew --prefix)/opt/fzf/install" --key-bindings --completion --no-update-rc --no-bash --no-fish
 ok "fzf shell integration up to date"
+
+fi # Darwin
 
 # ── 10. GitHub CLI auth ───────────────────────────────────────────
 echo ""
@@ -226,6 +238,7 @@ else
   fail "git: missing user.name or user.email — check .gitconfig"
 fi
 
+if [ "$OS" = "Darwin" ]; then
 # Node
 if command -v node &>/dev/null; then
   ok "node: $(node --version)"
@@ -239,6 +252,9 @@ if command -v bun &>/dev/null; then
 else
   fail "bun: not found"
 fi
+fi # Darwin
+
+if [ "$OS" = "Darwin" ]; then
 
 # ── 12. macOS defaults ──────────────────────────────────────────────
 echo ""
@@ -333,6 +349,8 @@ else
     fi
   fi
 fi
+
+fi # Darwin
 
 # ── 14. Summary ────────────────────────────────────────────────────
 echo ""
