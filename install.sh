@@ -7,6 +7,17 @@ warn() { printf "${YELLOW}  → %s${NC}\n" "$1"; }
 fail() { printf "${RED}  ✗ %s${NC}\n" "$1"; }
 
 DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
+OS="$(uname -s)"  # "Darwin" (macOS) or "Linux" (Raspberry Pi OS)
+LINK_MODE=""  # "", "overwrite", or "skip"
+
+while getopts "os" opt; do
+  case "$opt" in
+    o) LINK_MODE="overwrite" ;;
+    s) LINK_MODE="skip" ;;
+    *) echo "Usage: $0 [-o] [-s]"; echo "  -o  Auto-overwrite conflicts"; echo "  -s  Auto-skip conflicts"; exit 1 ;;
+  esac
+done
+shift $((OPTIND - 1))
 
 # ── Cancel on failure or Ctrl-C ──────────────────────────────────
 set -eo pipefail
@@ -27,12 +38,15 @@ link() {
     return
   fi
 
-  # Something else exists — ask the user
+  # Something else exists — resolve conflict
   fail "$label: $dst exists but is not our symlink"
-  printf "       Overwrite with symlink to %s? [o]verwrite / [s]kip: " "$src"
-  read -r choice
+  local choice="$LINK_MODE"
+  if [ -z "$choice" ]; then
+    printf "       Overwrite with symlink to %s? [o]verwrite / [s]kip: " "$src"
+    read -r choice
+  fi
   case "$choice" in
-    o|O)
+    o|O|overwrite)
       mv "$dst" "${dst}.bak"
       ln -sfn "$src" "$dst"
       warn "$label overwritten (backup at ${dst}.bak)"
@@ -245,36 +259,78 @@ ok "macOS defaults applied"
 # ── 13. Brew doctor ────────────────────────────────────────────────
 echo ""
 echo "==> Brew doctor"
+
+# Kegs that are intentionally unlinked (e.g. cask provides the CLI instead)
+KNOWN_UNLINKED="docker"
+
 if doctor_output="$(brew doctor 2>&1)"; then
   ok "brew doctor: all good"
 else
-  fail "brew doctor found issues — attempting fixes..."
-  echo "$doctor_output"
+  # Filter out known unlinked keg warnings before deciding if there are real issues
+  filtered_output="$doctor_output"
+  for keg in $KNOWN_UNLINKED; do
+    filtered_output="$(echo "$filtered_output" | grep -v "^  $keg$")"
+  done
 
-  # Unlinked kegs
+  # Check if the only issue was known unlinked kegs
+  has_real_unlinked=false
   if echo "$doctor_output" | grep -q "unlinked kegs"; then
-    warn "Relinking unlinked kegs..."
-    echo "$doctor_output" | sed -n '/unlinked kegs/,/^$/p' | grep '^ ' | xargs -n1 brew link --overwrite 2>/dev/null || true
+    real_unlinked="$(echo "$doctor_output" | sed -n '/unlinked kegs/,/^$/p' | grep '^ ' | tr -d ' ')"
+    for keg in $real_unlinked; do
+      is_known=false
+      for known in $KNOWN_UNLINKED; do
+        [ "$keg" = "$known" ] && is_known=true
+      done
+      $is_known || has_real_unlinked=true
+    done
   fi
 
-  # Outdated Xcode CLI tools
-  if echo "$doctor_output" | grep -q "Command Line Tools"; then
-    warn "Updating Xcode Command Line Tools..."
-    softwareupdate --install --all 2>/dev/null || true
-  fi
+  # Determine if there are issues beyond known unlinked kegs
+  has_other_issues=false
+  echo "$doctor_output" | grep -q "Command Line Tools" && has_other_issues=true
+  echo "$doctor_output" | grep -q "lock files" && has_other_issues=true
 
-  # Stale lock files
-  if echo "$doctor_output" | grep -q "lock files"; then
-    warn "Removing stale lock files..."
-    brew cleanup --prune=all 2>/dev/null || true
-  fi
-
-  # Re-check
-  echo ""
-  if brew doctor 2>/dev/null; then
-    ok "brew doctor: issues resolved"
+  if ! $has_real_unlinked && ! $has_other_issues; then
+    ok "brew doctor: all good (known unlinked kegs: $KNOWN_UNLINKED)"
   else
-    warn "Some brew doctor issues remain — run 'brew doctor' for details"
+    fail "brew doctor found issues — attempting fixes..."
+    echo "$doctor_output"
+
+    # Unlinked kegs (only relink ones not in KNOWN_UNLINKED)
+    if $has_real_unlinked; then
+      warn "Relinking unlinked kegs..."
+      for keg in $real_unlinked; do
+        is_known=false
+        for known in $KNOWN_UNLINKED; do
+          [ "$keg" = "$known" ] && is_known=true
+        done
+        if $is_known; then
+          ok "$keg intentionally unlinked (cask provides CLI) — skipped"
+        else
+          brew link --overwrite "$keg" 2>/dev/null && ok "$keg relinked" || warn "$keg: relink failed"
+        fi
+      done
+    fi
+
+    # Outdated Xcode CLI tools
+    if echo "$doctor_output" | grep -q "Command Line Tools"; then
+      warn "Updating Xcode Command Line Tools..."
+      softwareupdate --install --all 2>/dev/null || true
+    fi
+
+    # Stale lock files
+    if echo "$doctor_output" | grep -q "lock files"; then
+      warn "Removing stale lock files..."
+      brew cleanup --prune=all 2>/dev/null || true
+    fi
+
+    # Re-check
+    echo ""
+    if brew doctor 2>/dev/null; then
+      ok "brew doctor: issues resolved"
+    else
+      warn "Some brew doctor issues remain — run 'brew doctor' for details"
+    fi
   fi
 fi
 
