@@ -232,8 +232,12 @@ echo "==> Claude Code"
 if command -v claude &>/dev/null; then
   ok "Claude Code installed ($(claude --version 2>/dev/null))"
 else
-  warn "Installing Claude Code..."
-  npm install -g @anthropic-ai/claude-code
+  if command -v npm &>/dev/null; then
+    warn "Installing Claude Code..."
+    npm install -g @anthropic-ai/claude-code
+  else
+    warn "Claude Code not found and npm not available — install manually"
+  fi
 fi
 
 mkdir -p "$HOME/.claude"
