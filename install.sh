@@ -183,17 +183,20 @@ link "$DOTFILES_DIR/.gitconfig"          "$HOME/.gitconfig"          ".gitconfig
 link "$DOTFILES_DIR/.gitmessage"         "$HOME/.gitmessage"         ".gitmessage"
 link "$DOTFILES_DIR/.zshrc"              "$HOME/.zshrc"              ".zshrc"
 link "$DOTFILES_DIR/.zprofile"           "$HOME/.zprofile"           ".zprofile"
+if [ "$OS" = "Darwin" ]; then
 link "$DOTFILES_DIR/.tool-versions"      "$HOME/.tool-versions"      ".tool-versions"
 link "$DOTFILES_DIR/.default-npm-packages" "$HOME/.default-npm-packages" ".default-npm-packages"
 link "$DOTFILES_DIR/.asdfrc"             "$HOME/.asdfrc"             ".asdfrc"
+link "$DOTFILES_DIR/.npmrc"            "$HOME/.npmrc"            ".npmrc"
+fi # Darwin
 link "$DOTFILES_DIR/.gitignore"          "$HOME/.gitignore"          ".gitignore"
 link "$DOTFILES_DIR/.hushlogin"        "$HOME/.hushlogin"        ".hushlogin"
-link "$DOTFILES_DIR/.npmrc"            "$HOME/.npmrc"            ".npmrc"
 
 # Sheldon config
 mkdir -p "$HOME/.config/sheldon"
 link "$DOTFILES_DIR/sheldon/plugins.toml" "$HOME/.config/sheldon/plugins.toml" "sheldon/plugins.toml"
 
+if [ "$OS" = "Darwin" ]; then
 # Starship config
 mkdir -p "$HOME/.config"
 link "$DOTFILES_DIR/starship.toml"        "$HOME/.config/starship.toml"         "starship.toml"
@@ -201,6 +204,7 @@ link "$DOTFILES_DIR/starship.toml"        "$HOME/.config/starship.toml"         
 # Ghostty config
 mkdir -p "$HOME/.config/ghostty"
 link "$DOTFILES_DIR/ghostty/config"       "$HOME/.config/ghostty/config"        "ghostty/config"
+fi # Darwin
 
 # Neovim config (AstroNvim — symlink entire directory)
 # Migration: remove old single-file symlink if present
