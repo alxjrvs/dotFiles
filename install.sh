@@ -140,6 +140,14 @@ else
   warn "zsh set as default (takes effect on next login)"
 fi
 
+# ── 4. Git credential helper ────────────────────────────────────────
+if [ ! -f "$HOME/.gitconfig.local" ]; then
+  printf '[credential]\n\thelper = cache\n' > "$HOME/.gitconfig.local"
+  ok "Created ~/.gitconfig.local with credential helper = cache"
+else
+  ok "~/.gitconfig.local already exists"
+fi
+
 fi # Linux
 
 if [ "$OS" = "Darwin" ]; then
