@@ -107,6 +107,41 @@ fi
 
 fi # Darwin
 
+if [ "$OS" = "Linux" ]; then
+
+# ── 1. System packages (apt) ────────────────────────────────────────
+echo ""
+echo "==> System packages"
+warn "Updating apt and installing packages..."
+sudo apt update -y
+sudo apt install -y zsh neovim git curl
+ok "System packages installed"
+
+# ── 2. Sheldon (plugin manager) ─────────────────────────────────────
+echo ""
+echo "==> Sheldon"
+if command -v sheldon &>/dev/null; then
+  ok "Sheldon installed"
+else
+  warn "Installing Sheldon..."
+  curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh \
+    | bash -s -- --repo rossmacarthur/sheldon --to ~/.local/bin
+  ok "Sheldon installed"
+fi
+
+# ── 3. Default shell ────────────────────────────────────────────────
+echo ""
+echo "==> Default shell"
+if [ "$(basename "$SHELL")" = "zsh" ]; then
+  ok "zsh is already the default shell"
+else
+  warn "Setting zsh as default shell..."
+  sudo chsh -s "$(which zsh)" "$USER"
+  warn "zsh set as default (takes effect on next login)"
+fi
+
+fi # Linux
+
 if [ "$OS" = "Darwin" ]; then
 
 # ── 5. asdf languages (from .tool-versions) ─────────────────────────
