@@ -14,7 +14,7 @@ bindkey -v
 KEYTIMEOUT=1
 
 # Homebrew completions
-fpath+=("$(brew --prefix)/share/zsh/site-functions")
+command -v brew &>/dev/null && fpath+=("$(brew --prefix)/share/zsh/site-functions")
 
 # Sheldon plugins (adds zsh-completions to fpath)
 eval "$(sheldon source)"
@@ -51,27 +51,29 @@ else
   compinit -C
 fi
 
-# Starship prompt
-eval "$(starship init zsh)"
+if command -v starship &>/dev/null; then
+  # Starship prompt
+  eval "$(starship init zsh)"
 
-# Transient prompt — collapse previous prompts to just the character
-function transient-prompt-precmd {
-  TRAPINT() { transient-prompt-func; return $(( 128 + $1 )) }
-}
-function transient-prompt-func {
-  local STARSHIP_TRANSIENT
-  STARSHIP_TRANSIENT="$(starship prompt --profile transient)"
-  PROMPT="$STARSHIP_TRANSIENT" RPROMPT="" zle .reset-prompt
-}
-autoload -Uz add-zsh-hook add-zle-hook-widget
-add-zsh-hook precmd transient-prompt-precmd
-add-zle-hook-widget zle-line-finish transient-prompt-func
+  # Transient prompt — collapse previous prompts to just the character
+  function transient-prompt-precmd {
+    TRAPINT() { transient-prompt-func; return $(( 128 + $1 )) }
+  }
+  function transient-prompt-func {
+    local STARSHIP_TRANSIENT
+    STARSHIP_TRANSIENT="$(starship prompt --profile transient)"
+    PROMPT="$STARSHIP_TRANSIENT" RPROMPT="" zle .reset-prompt
+  }
+  autoload -Uz add-zsh-hook add-zle-hook-widget
+  add-zsh-hook precmd transient-prompt-precmd
+  add-zle-hook-widget zle-line-finish transient-prompt-func
+fi
 
 # fzf
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 # zoxide
-eval "$(zoxide init zsh)"
+command -v zoxide &>/dev/null && eval "$(zoxide init zsh)"
 
 # Aliases
 alias c="clear"
@@ -83,7 +85,7 @@ alias gco='git checkout'
 alias ..="cd .."
 
 # asdf default packages
-export ASDF_NPM_DEFAULT_PACKAGES_FILE=~/.default-npm-packages
+command -v asdf &>/dev/null && export ASDF_NPM_DEFAULT_PACKAGES_FILE=~/.default-npm-packages
 
 # Colored man pages (CMYK)
 export LESS_TERMCAP_mb=$'\e[1;35m'
