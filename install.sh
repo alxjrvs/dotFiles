@@ -1,10 +1,11 @@
 #!/bin/bash
 
 # ── Colors & helpers ────────────────────────────────────────────────
-GREEN='\033[0;32m'  YELLOW='\033[0;33m'  RED='\033[0;31m'  NC='\033[0m'
+GREEN='\033[0;32m'  YELLOW='\033[0;33m'  RED='\033[0;31m'  DIM='\033[2m'  NC='\033[0m'
 ok()   { printf "${GREEN}  ✓ %s${NC}\n" "$1"; }
 warn() { printf "${YELLOW}  → %s${NC}\n" "$1"; }
 fail() { printf "${RED}  ✗ %s${NC}\n" "$1"; }
+dim()  { printf "${DIM}  - %s${NC}\n" "$1"; }
 
 DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 OS="$(uname -s)"  # "Darwin" (macOS) or "Linux" (Raspberry Pi OS)
@@ -75,7 +76,7 @@ link() {
   local src="$1" dst="$2" label="$3"
 
   if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
-    ok "$label already linked"
+    dim "$label already linked"
     return
   fi
 
