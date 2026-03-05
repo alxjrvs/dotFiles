@@ -26,7 +26,7 @@ There are no build, test, or lint commands for this repo.
 | Source | Destination |
 |--------|-------------|
 | `.zshrc`, `.zprofile` | `~/` |
-| `.gitconfig`, `.gitmessage` | `~/` |
+| `.gitconfig`, `.gitmessage`, `.editorconfig` | `~/` |
 | `.tool-versions`, `.asdfrc`, `.npmrc` | `~/` |
 | `starship.toml` | `~/.config/starship.toml` |
 | `sheldon/plugins.toml` | `~/.config/sheldon/plugins.toml` |

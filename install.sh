@@ -262,6 +262,7 @@ if should_run symlinks git; then
 link "$DOTFILES_DIR/.gitconfig"          "$HOME/.gitconfig"          ".gitconfig"
 link "$DOTFILES_DIR/.gitmessage"         "$HOME/.gitmessage"         ".gitmessage"
 link "$DOTFILES_DIR/.gitignore"          "$HOME/.gitignore"          ".gitignore"
+link "$DOTFILES_DIR/.editorconfig"       "$HOME/.editorconfig"       ".editorconfig"
 fi
 
 # Shell config
