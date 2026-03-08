@@ -94,6 +94,7 @@ alias ..="cd .."
 alias v="nvim"
 alias vi="nvim"
 alias vim="nvim"
+alias env-sync="~/dotFiles/sync.sh"
 
 # asdf default packages
 command -v asdf &>/dev/null && export ASDF_NPM_DEFAULT_PACKAGES_FILE=~/.default-npm-packages

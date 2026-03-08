@@ -1,8 +1,8 @@
 # Gnar prompt — purple — requires a Nerd Font
 
 format = """
-[](fg:#8350C2)$directory\
-([](fg:#8350C2 bg:#4a4a4a)$git_branch\
+[](fg:#A884D4)$directory\
+([](fg:#A884D4 bg:#4a4a4a)$git_branch\
 ([](fg:#4a4a4a bg:#f5c211)$git_status\
 [](fg:#f5c211 bg:default))\
 ${custom.git_clean})\
@@ -18,7 +18,7 @@ $character"""
 add_newline = true
 
 [directory]
-format = "[ $path ](bg:#8350C2 fg:#ffffff bold)"
+format = "[ $path ](bg:#A884D4 fg:#ffffff bold)"
 truncation_length = 2
 truncate_to_repo = false
 truncation_symbol = ""
@@ -48,7 +48,7 @@ shell = ["sh"]
 # Closer arrow for directory when not in a git repo
 [custom.dir_closer]
 when = "! git rev-parse --is-inside-work-tree 2>/dev/null"
-format = "[](fg:#8350C2)"
+format = "[](fg:#A884D4)"
 shell = ["sh"]
 
 [character]
@@ -99,5 +99,5 @@ shell = ["sh"]
 [custom.time]
 command = "date '+%-I:%M %p'"
 when = "true"
-format = "[](fg:#8350C2 bg:#4a4a4a)[ $output ](bg:#8350C2 fg:#ffffff bold)[](fg:#8350C2)"
+format = "[](fg:#A884D4 bg:#4a4a4a)[ $output ](bg:#A884D4 fg:#ffffff bold)[](fg:#A884D4)"
 shell = ["sh"]

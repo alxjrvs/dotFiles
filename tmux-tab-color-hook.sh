@@ -23,21 +23,21 @@ active_color() {
 }
 inactive_color() {
   case "$(( (($1-1)%15)+1 ))" in
-    1) printf '#264a3c' ;;
-    2) printf '#5e3040' ;;
-    3) printf '#503828' ;;
-    4) printf '#2e4760' ;;
-    5) printf '#60502e' ;;
-    6) printf '#58602e' ;;
-    7) printf '#3f602e' ;;
-    8) printf '#2e602e' ;;
-    9) printf '#2e6060' ;;
-    10) printf '#2e3360' ;;
-    11) printf '#3b2e60' ;;
-    12) printf '#4c2e60' ;;
-    13) printf '#602e47' ;;
-    14) printf '#602e37' ;;
-    15) printf '#60602e' ;;
+    1) printf '#365a4c' ;;
+    2) printf '#6e4050' ;;
+    3) printf '#604838' ;;
+    4) printf '#3e5770' ;;
+    5) printf '#70603e' ;;
+    6) printf '#68703e' ;;
+    7) printf '#4f703e' ;;
+    8) printf '#3e703e' ;;
+    9) printf '#3e7070' ;;
+    10) printf '#3e4370' ;;
+    11) printf '#4b3e70' ;;
+    12) printf '#5c3e70' ;;
+    13) printf '#703e57' ;;
+    14) printf '#703e47' ;;
+    15) printf '#70703e' ;;
   esac
 }
 right_neighbor() { printf '%s\n' "$WIN_LIST" | awk -v w="$1" '$1+0>w+0{print $1+0;exit}'; }

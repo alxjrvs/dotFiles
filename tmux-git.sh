@@ -3,12 +3,12 @@
 # Matches starship git_branch + git_status + custom.git_clean exactly
 
 dir="$1"
-cd "$dir" 2>/dev/null || { printf '#[bg=default,fg=#8350C2]'; exit 0; }
-git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { printf '#[bg=default,fg=#8350C2]'; exit 0; }
+cd "$dir" 2>/dev/null || { printf '#[bg=default,fg=#9060C8]'; exit 0; }
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { printf '#[bg=default,fg=#9060C8]'; exit 0; }
 
 branch=$(git branch --show-current 2>/dev/null)
 [ -z "$branch" ] && branch=$(git rev-parse --short HEAD 2>/dev/null)
-[ -z "$branch" ] && { printf '#[bg=default,fg=#8350C2]'; exit 0; }
+[ -z "$branch" ] && { printf '#[bg=default,fg=#9060C8]'; exit 0; }
 
 # ── Status indicators (starship git_status symbols) ──────────────────────
 porcelain=$(git status --porcelain 2>/dev/null)
@@ -45,7 +45,7 @@ if git rev-parse --verify "@{u}" >/dev/null 2>&1; then
 fi
 
 # ── Output: [purple→dark] [dark: branch_icon branch] [optional status] ───
-printf '#[bg=#4a4a4a,fg=#8350C2]#[bg=#4a4a4a,fg=#ffffff,bold]  %s ' "$branch"
+printf '#[bg=#4a4a4a,fg=#9060C8]#[bg=#4a4a4a,fg=#ffffff,bold]  %s ' "$branch"
 
 combined="${all_status}${ahead_behind}"
 if [ -n "$combined" ]; then
@@ -55,6 +55,6 @@ elif git rev-parse --verify "@{u}" >/dev/null 2>&1; then
   # clean + in sync → green ✓ (starship custom.git_clean)
   printf '#[bg=#2e8b57,fg=#4a4a4a]#[bg=#2e8b57,fg=#ffffff,bold]  ✓ #[bg=default,fg=#2e8b57]'
 else
-  printf '#[bg=default,fg=#8350C2]'
+  printf '#[bg=default,fg=#9060C8]'
 fi
 # clean + no remote: closing arrow in dir color
