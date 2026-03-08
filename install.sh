@@ -271,12 +271,24 @@ if should_run symlinks shell; then
 link "$DOTFILES_DIR/.zshrc"              "$HOME/.zshrc"              ".zshrc"
 link "$DOTFILES_DIR/.zprofile"           "$HOME/.zprofile"           ".zprofile"
 link "$DOTFILES_DIR/.hushlogin"          "$HOME/.hushlogin"          ".hushlogin"
-# Secrets file — gitignored, must be created manually on new machines
-if [ -f "$DOTFILES_DIR/.secrets" ]; then
-  link "$DOTFILES_DIR/.secrets" "$HOME/.secrets" ".secrets"
-else
-  echo "  ⚠  No .secrets file found. Create $DOTFILES_DIR/.secrets with your tokens."
+# Secrets file — gitignored, bootstrapped from .secrets.example
+if [ ! -f "$DOTFILES_DIR/.secrets" ]; then
+  echo ""
+  echo "  Setting up .secrets from .secrets.example..."
+  cp "$DOTFILES_DIR/.secrets.example" "$DOTFILES_DIR/.secrets"
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^export\ ([A-Z_]+)=\"\"$ ]]; then
+      var="${BASH_REMATCH[1]}"
+      printf "  %s (press Enter to skip): " "$var"
+      read -r value </dev/tty
+      if [ -n "$value" ]; then
+        sed -i '' "s|export ${var}=\"\"|export ${var}=\"${value}\"|" "$DOTFILES_DIR/.secrets"
+      fi
+    fi
+  done <"$DOTFILES_DIR/.secrets.example"
+  chmod 600 "$DOTFILES_DIR/.secrets"
 fi
+link "$DOTFILES_DIR/.secrets" "$HOME/.secrets" ".secrets"
 fi
 
 # asdf config (Darwin only)
