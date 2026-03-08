@@ -271,6 +271,12 @@ if should_run symlinks shell; then
 link "$DOTFILES_DIR/.zshrc"              "$HOME/.zshrc"              ".zshrc"
 link "$DOTFILES_DIR/.zprofile"           "$HOME/.zprofile"           ".zprofile"
 link "$DOTFILES_DIR/.hushlogin"          "$HOME/.hushlogin"          ".hushlogin"
+# Secrets file — gitignored, must be created manually on new machines
+if [ -f "$DOTFILES_DIR/.secrets" ]; then
+  link "$DOTFILES_DIR/.secrets" "$HOME/.secrets" ".secrets"
+else
+  echo "  ⚠  No .secrets file found. Create $DOTFILES_DIR/.secrets with your tokens."
+fi
 fi
 
 # asdf config (Darwin only)
