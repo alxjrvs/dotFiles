@@ -9,3 +9,6 @@ font-feature = +dlig
 # Cursor
 cursor-style = block
 cursor-style-blink = true
+
+# Launch tmux on startup
+command = /bin/zsh -l -c "/opt/homebrew/bin/tmux new-session -A -s main"

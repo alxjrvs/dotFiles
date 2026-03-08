@@ -2,7 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
     "EDITOR": "nvim",
-    "NODE_ENV": "development"
+    "NODE_ENV": "development",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
     "allow": [
@@ -99,8 +100,12 @@
     "vercel@claude-plugins-official": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
     "elements-of-style@superpowers-marketplace": true,
+    "superpowers@superpowers-marketplace": true,
     "double-shot-latte@superpowers-marketplace": true,
-    "hookify@claude-plugins-official": true
+    "hookify@claude-plugins-official": true,
+    "upgrading-expo@expo-plugins": true,
+    "expo-app-design@expo-plugins": true,
+    "context7@claude-plugins-official": true
   },
   "outputStyle": "Concise",
   "alwaysThinkingEnabled": true,

@@ -1,0 +1,9 @@
+# Minimal starship config for use inside tmux
+# The tmux status bar handles directory/git/time info
+
+format = "$character"
+add_newline = false
+
+[character]
+success_symbol = "[❯](fg:#fb543a bold)"
+error_symbol = "[❯](fg:#cc3333 bold)"

@@ -4,11 +4,13 @@ format = """
 [](fg:#8350C2)$directory\
 ([](fg:#8350C2 bg:#4a4a4a)$git_branch\
 ([](fg:#4a4a4a bg:#f5c211)$git_status\
-[](fg:#f5c211))\
+[](fg:#f5c211 bg:default))\
 ${custom.git_clean})\
 ${custom.dir_closer}\
 $fill\
-($nodejs$python$ruby$rust)${custom.no_lang}\
+($nodejs$python$ruby$rust)\
+$fill\
+${custom.date}${custom.time}\
 $line_break\
 $line_break\
 $character"""
@@ -64,11 +66,6 @@ disabled = true
 symbol = "─"
 style = "fg:#4a4a4a"
 
-# Grey diamond fallback when no language is detected
-[custom.no_lang]
-when = '! test -f package.json && ! test -f .node-version && ! test -f .nvmrc && ! test -f pyproject.toml && ! test -f requirements.txt && ! test -f .python-version && ! test -f Gemfile && ! test -f .ruby-version && ! test -f Cargo.toml'
-format = "[](fg:#8350C2)[](fg:#8350C2)"
-shell = ["sh"]
 
 # --- Language versions ---
 
@@ -92,3 +89,15 @@ format = "[](fg:#9e3220)[ rust ](bg:#9e3220 fg:#ffffff bold)[](fg:#CE422B 
 symbol = ""
 detect_files = ["Cargo.toml"]
 
+# Date and time on the right side (replacing no_lang)
+[custom.date]
+command = "date '+%a %b %-d'"
+when = "true"
+format = "[](fg:#4a4a4a)[ $output ](bg:#4a4a4a fg:#ffffff bold)"
+shell = ["sh"]
+
+[custom.time]
+command = "date '+%-I:%M %p'"
+when = "true"
+format = "[](fg:#8350C2 bg:#4a4a4a)[ $output ](bg:#8350C2 fg:#ffffff bold)[](fg:#8350C2)"
+shell = ["sh"]
