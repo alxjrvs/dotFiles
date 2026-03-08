@@ -1,5 +1,8 @@
 export EDITOR="nvim"
 
+# Machine-local secrets (not in git)
+[[ -f ~/.secrets ]] && source ~/.secrets
+
 # Autocorrection
 setopt CORRECT
 

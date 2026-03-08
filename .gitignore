@@ -23,6 +23,9 @@ yarn-error.log*
 !.claude/skills/
 !.claude/agents/
 
+# Secrets (never commit)
+.secrets
+
 # Machine-specific overrides
 dot-claude/settings.local.json
 **/.claude/settings.local.json
