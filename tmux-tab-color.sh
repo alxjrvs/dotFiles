@@ -1,12 +1,18 @@
 #!/bin/sh
-# tmux-tab-color.sh <window_index>
-# Outputs a tmux style block based on distance from the active window.
+# tmux-tab-color.sh <mode> <window_index>
+# mode: open  -> outputs #[bg=SHADE,fg=TEXT] for the tab body
+# mode: close -> outputs #[bg=default,fg=SHADE]► for the closing arrow
+MODE="${1:-open}"
+WIN="${2:-0}"
 ACTIVE=$(tmux display-message -p '#{window_index}' 2>/dev/null || echo 1)
-WIN=$1
 dist=$((WIN - ACTIVE))
 [ "$dist" -lt 0 ] && dist=$((-dist))
 case "$dist" in
-    1) printf '#[bg=#6b3faa,fg=#c0a8e8]' ;;
-    2) printf '#[bg=#5c3090,fg=#b090d8]' ;;
-    *) printf '#[bg=#4d2478,fg=#9070c0]' ;;
+    1) BG='#6b3faa'; FG='#c0a8e8' ;;
+    2) BG='#5c3090'; FG='#b090d8' ;;
+    *) BG='#4d2478'; FG='#9070c0' ;;
+esac
+case "$MODE" in
+    open)  printf '#[bg=%s,fg=%s]' "$BG" "$FG" ;;
+    close) printf '#[bg=default,fg=%s]' "$BG" ;;
 esac
