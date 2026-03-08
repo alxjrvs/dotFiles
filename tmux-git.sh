@@ -45,7 +45,7 @@ if git rev-parse --verify "@{u}" >/dev/null 2>&1; then
 fi
 
 # ── Output: [purple→dark] [dark: branch_icon branch] [optional status] ───
-printf '#[bg=default,fg=#8350C2]#[bg=default,fg=#ffffff,bold]  %s ' "$branch"
+printf '#[bg=#4a4a4a,fg=#8350C2]#[bg=#4a4a4a,fg=#ffffff,bold]  %s ' "$branch"
 
 combined="${all_status}${ahead_behind}"
 if [ -n "$combined" ]; then
