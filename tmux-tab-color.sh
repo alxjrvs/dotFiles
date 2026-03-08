@@ -1,10 +1,14 @@
 #!/bin/sh
 # tmux-tab-color.sh <mode> <window_index>
 # Modes:
-#   open         -> inactive tab body colors; for right-of-active prepends  from left neighbor
-#   close        -> #[bg=NEXT_SHADE,fg=SHADE]  left-of-active closing arrow; nothing for right-of-active
-#   active-open  -> #[bg=LEFT_SHADE,fg=#8350C2]  active opening arrow (overflows into left neighbor)
-#   active-close -> #[bg=RIGHT_SHADE,fg=#8350C2]  active closing arrow (overflows into right neighbor)
+#   open         -> left-of-active: <  prefix + colors; right-of-active: colors only
+#   close        -> right-of-active: > suffix; left-of-active: nothing
+#   active-open  -> < arrow overflowing into left neighbor
+#   active-close -> > arrow overflowing into right neighbor
+#
+# Design: <1 <2 <ACTIVE> 3> 4>
+#   Every left-of-active tab starts with <. Active overlaps right edge of left neighbor.
+#   Every right-of-active tab ends with >. Active overlaps left edge of right neighbor.
 
 MODE="${1:-open}"
 WIN="${2:-0}"
@@ -12,7 +16,8 @@ WIN="${2:-0}"
 # One call: get active index and sorted window index list
 _info=$(tmux display-message -p '#{window_index}|#{W:#{window_index} }' 2>/dev/null || echo "1|1 ")
 ACTIVE="${_info%%|*}"
-WIN_LIST=$(echo "${_info#*|}" | tr ' ' '\n' | grep -v '^$' | sort -n)
+WIN_LIST=$(echo "${_info#*|}" | tr ' ' '
+' | grep -v '^$' | sort -n)
 
 dist=$((WIN - ACTIVE))
 [ "$dist" -lt 0 ] && dist=$((-dist))
@@ -57,28 +62,30 @@ FG=$(text_for_dist "$dist")
 
 case "$MODE" in
   open)
-    if [ "$WIN" -gt "$ACTIVE" ]; then
-      # Right of active:  arrow overflowing from left neighbor's bg
+    if [ "$WIN" -lt "$ACTIVE" ]; then
+      # Left of active: < arrow with left neighbor as bg, then tab body colors
       NBG=$(neighbor_bg "$(left_neighbor "$WIN")")
       printf '#[bg=%s,fg=%s]#[bg=%s,fg=%s]' "$NBG" "$BG" "$BG" "$FG"
     else
+      # Right of active: just set colors (active > already handles left boundary)
       printf '#[bg=%s,fg=%s]' "$BG" "$FG"
     fi
     ;;
   close)
-    if [ "$WIN" -lt "$ACTIVE" ]; then
-      # Left of active:  arrow overflowing into right neighbor's bg
+    if [ "$WIN" -gt "$ACTIVE" ]; then
+      # Right of active: > arrow with right neighbor as bg
       NBG=$(neighbor_bg "$(right_neighbor "$WIN")")
       printf '#[bg=%s,fg=%s]' "$NBG" "$BG"
     fi
+    # Left of active: nothing (active < overlaps our right edge)
     ;;
   active-open)
-    # Active's left arrow overflows into the left neighbor
+    # Active left edge: < arrow with left neighbor as bg
     NBG=$(neighbor_bg "$(left_neighbor "$WIN")")
     printf '#[bg=%s,fg=#8350C2]' "$NBG"
     ;;
   active-close)
-    # Active's right arrow overflows into the right neighbor
+    # Active right edge: > arrow with right neighbor as bg
     NBG=$(neighbor_bg "$(right_neighbor "$WIN")")
     printf '#[bg=%s,fg=#8350C2]' "$NBG"
     ;;
