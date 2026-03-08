@@ -52,6 +52,8 @@ else
 fi
 
 if command -v starship &>/dev/null; then
+  # In tmux, the status bar already shows dir/git/time — use minimal prompt
+  [[ -n "$TMUX" ]] && export STARSHIP_CONFIG="$HOME/.config/starship-tmux.toml"
   # Starship prompt
   eval "$(starship init zsh)"
 

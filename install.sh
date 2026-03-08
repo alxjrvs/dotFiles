@@ -294,6 +294,12 @@ if [ "$OS" = "Darwin" ]; then
 if should_run symlinks starship; then
 mkdir -p "$HOME/.config"
 link "$DOTFILES_DIR/starship.toml"        "$HOME/.config/starship.toml"         "starship.toml"
+link "$DOTFILES_DIR/starship-tmux.toml"   "$HOME/.config/starship-tmux.toml"    "starship-tmux.toml"
+fi
+
+# tmux config
+if should_run symlinks tmux; then
+link "$DOTFILES_DIR/tmux.conf"            "$HOME/.tmux.conf"                    "tmux.conf"
 fi
 
 # Ghostty config
