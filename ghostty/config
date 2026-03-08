@@ -1,5 +1,6 @@
 # Font
 font-family = FiraCode Nerd Font
+font-thicken = true
 
 # Ligatures (disabled by default since v1.2.0)
 font-feature = +liga
@@ -9,13 +10,26 @@ font-feature = +dlig
 # Cursor
 cursor-style = block
 cursor-style-blink = true
+mouse-hide-while-typing = true
 
-# Window padding
+# Window
 window-padding-y = 0
 window-padding-balance = false
-
-# Disable native tabs (using tmux for session/tab management)
 macos-titlebar-style = hidden
+macos-titlebar-proxy-icon = hidden
+window-save-state = always
+background-opacity = 0.80
+confirm-close-surface = false
+quit-after-last-window-closed = true
 
-# Launch tmux on startup
+# Clipboard
+clipboard-trim-trailing-spaces = true
+clipboard-paste-protection = false
+copy-on-select = true
+
+# Shell (tmux manages everything)
+shell-integration = none
 command = /bin/zsh -l -c "/opt/homebrew/bin/tmux new-session -A -s main"
+
+# Keybindings
+keybind = ctrl+shift+w=close_surface
