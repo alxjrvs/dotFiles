@@ -24,18 +24,18 @@ dist=$((WIN - ACTIVE))
 
 shade_for_dist() {
   case "$1" in
-    0) printf '#8350C2' ;;
-    1) printf '#6b3faa' ;;
-    2) printf '#5c3090' ;;
-    *) printf '#4d2478' ;;
+    0) printf '#c8a84b' ;;
+    1) printf '#a88a30' ;;
+    2) printf '#8a7028' ;;
+    *) printf '#6e5820' ;;
   esac
 }
 text_for_dist() {
   case "$1" in
-    0) printf '#ffffff' ;;
-    1) printf '#c0a8e8' ;;
-    2) printf '#b090d8' ;;
-    *) printf '#9070c0' ;;
+    0) printf '#1c1008' ;;
+    1) printf '#f0d878' ;;
+    2) printf '#c8a84b' ;;
+    *) printf '#a88a30' ;;
   esac
 }
 
@@ -82,11 +82,11 @@ case "$MODE" in
   active-open)
     # Active left edge: < arrow with left neighbor as bg
     NBG=$(neighbor_bg "$(left_neighbor "$WIN")")
-    printf '#[bg=%s,fg=#8350C2]' "$NBG"
+    printf '#[bg=%s,fg=#c8a84b]' "$NBG"
     ;;
   active-close)
     # Active right edge: > arrow with right neighbor as bg
     NBG=$(neighbor_bg "$(right_neighbor "$WIN")")
-    printf '#[bg=%s,fg=#8350C2]' "$NBG"
+    printf '#[bg=%s,fg=#c8a84b]' "$NBG"
     ;;
 esac
