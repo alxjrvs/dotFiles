@@ -10,5 +10,12 @@ font-feature = +dlig
 cursor-style = block
 cursor-style-blink = true
 
+# Window padding
+window-padding-y = 0
+window-padding-balance = false
+
+# Disable native tabs (using tmux for session/tab management)
+macos-titlebar-style = hidden
+
 # Launch tmux on startup
 command = /bin/zsh -l -c "/opt/homebrew/bin/tmux new-session -A -s main"
