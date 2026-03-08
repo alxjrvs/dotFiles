@@ -32,7 +32,7 @@
 
 ## Dotfiles
 
-- Managed at `~/dotFiles` with symlinks via `install.sh`
+- Managed at `~/dotFiles` with symlinks via `sync.sh` (alias: `env-sync`)
 - Changes to shell config go in `.zshrc`
 - Changes to git config go in `.gitconfig`
 - Claude settings live in `.claude/` and are symlinked to `~/.claude/`

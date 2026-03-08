@@ -105,7 +105,8 @@
     "hookify@claude-plugins-official": true,
     "upgrading-expo@expo-plugins": true,
     "expo-app-design@expo-plugins": true,
-    "context7@claude-plugins-official": true
+    "context7@claude-plugins-official": true,
+    "claude-session-driver@superpowers-marketplace": true
   },
   "outputStyle": "Concise",
   "alwaysThinkingEnabled": true,

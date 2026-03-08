@@ -13,10 +13,23 @@
 MODE="${1:-open}"
 WIN="${2:-0}"
 
-# One call: get active index and sorted window index list
-_info=$(tmux display-message -p '#{window_index}|#{W:#{window_index} }' 2>/dev/null || echo "1|1 ")
+# Cache tmux display-message across concurrent invocations (all scripts in one
+# status refresh run within the same second). Uses session socket path as key.
+_CACHE="/tmp/tmux-tab-color-cache-$(echo "$TMUX" | tr ',/' '_')"
+_NOW=$(date +%s)
+_CACHED_TS=0
+[ -f "${_CACHE}.ts" ] && _CACHED_TS=$(cat "${_CACHE}.ts")
+
+if [ "$((_NOW - _CACHED_TS))" -lt 1 ] && [ -f "$_CACHE" ]; then
+  _info=$(cat "$_CACHE")
+else
+  _info=$(tmux display-message -p '#{window_index}|#{W:#{window_index} }' 2>/dev/null || echo "1|1 ")
+  printf '%s' "$_info" > "$_CACHE"
+  printf '%s' "$_NOW" > "${_CACHE}.ts"
+fi
+
 ACTIVE="${_info%%|*}"
-WIN_LIST=$(echo "${_info#*|}" | tr ' ' '
+WIN_LIST=$(printf '%s' "${_info#*|}" | tr ' ' '
 ' | grep -v '^$' | sort -n)
 
 dist=$((WIN - ACTIVE))

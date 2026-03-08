@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A dotfiles repository for macOS. All config files live here and are symlinked to their expected locations via `install.sh`.
+A dotfiles repository for macOS. All config files live here and are symlinked to their expected locations via `sync.sh`.
 
 ## Key Commands
 
 ```bash
-./install.sh          # Full idempotent setup (Homebrew, asdf, symlinks, plugins, macOS defaults)
+./sync.sh             # Full idempotent setup (Homebrew, asdf, symlinks, plugins, macOS defaults)
 brew bundle           # Install/update packages from Brewfile
 asdf install          # Install language versions from .tool-versions
 sheldon lock --update # Update zsh plugins
@@ -21,7 +21,7 @@ There are no build, test, or lint commands for this repo.
 
 ### Symlink Model
 
-`install.sh` uses a `link()` function that creates idempotent symlinks with interactive conflict resolution. Source files in this repo map to their destinations:
+`sync.sh` uses a `link()` function that creates idempotent symlinks with interactive conflict resolution. Source files in this repo map to their destinations:
 
 | Source | Destination |
 |--------|-------------|
@@ -59,6 +59,6 @@ Managed by **asdf** via `.tool-versions`. Default npm packages (TypeScript, Pret
 ## Important Gotchas
 
 - **Unicode/Nerd Font glyphs**: The Write/Edit tools strip unicode characters. Use Python to write files containing special codepoints (e.g., powerline glyphs U+E0B0, U+E0B2, U+E0A0 in `starship.toml`).
-- **install.sh is interactive**: The `link()` function prompts on conflicts. Don't expect unattended runs if symlink targets already exist as regular files.
+- **sync.sh is interactive**: The `link()` function prompts on conflicts. Don't expect unattended runs if symlink targets already exist as regular files.
 - **dot-claude vs .claude**: Source of truth is `dot-claude/` in this repo. The `.claude/` directory at repo root is the symlink target for `~/.claude/` — don't confuse it with project-local Claude config.
 - **Sheldon plugin order matters**: `zsh-syntax-highlighting` must be last in `sheldon/plugins.toml`.

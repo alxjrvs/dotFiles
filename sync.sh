@@ -40,6 +40,7 @@ for arg in "$@"; do
       echo "  ghostty   Ghostty config"
       echo "  git       Git config files"
       echo "  shell     Shell config (.zshrc, .zprofile)"
+      echo "  tmux      TPM + tmux plugins"
       echo "  health    Health checks"
       echo "  macos     macOS defaults"
       echo "  linux     Linux system setup"
@@ -394,7 +395,32 @@ fi # should_run fzf
 
 fi # Darwin
 
-# ── 10. GitHub CLI auth ───────────────────────────────────────────
+# ── 10. TPM (Tmux Plugin Manager) ───────────────────────────────────
+if should_run tmux; then
+echo ""
+echo "==> TPM (Tmux Plugin Manager)"
+TPM_DIR="$HOME/.tmux/plugins/tpm"
+if [ -d "$TPM_DIR" ]; then
+  warn "Updating TPM..."
+  git -C "$TPM_DIR" pull --ff-only --quiet
+  ok "TPM up to date"
+else
+  warn "Installing TPM..."
+  git clone https://github.com/tmux-plugins/tpm "$TPM_DIR"
+  ok "TPM installed"
+fi
+
+if tmux info &>/dev/null; then
+  warn "Installing/updating tmux plugins..."
+  "$TPM_DIR/bin/install_plugins" >/dev/null
+  "$TPM_DIR/bin/update_plugins" all >/dev/null
+  ok "tmux plugins installed"
+else
+  ok "TPM ready — open tmux and press prefix+I to install plugins"
+fi
+fi # should_run tmux
+
+# ── 11. GitHub CLI auth ───────────────────────────────────────────
 if should_run gh; then
 echo ""
 echo "==> GitHub CLI"
