@@ -1,7 +1,5 @@
 #!/bin/sh
 # tmux-tab-color.sh <mode> <window_index>
-# mode: open  -> outputs #[bg=SHADE,fg=TEXT] for the tab body
-# mode: close -> outputs #[bg=default,fg=SHADE]► for the closing arrow
 MODE="${1:-open}"
 WIN="${2:-0}"
 ACTIVE=$(tmux display-message -p '#{window_index}' 2>/dev/null || echo 1)
@@ -13,6 +11,12 @@ case "$dist" in
     *) BG='#4d2478'; FG='#9070c0' ;;
 esac
 case "$MODE" in
-    open)  printf '#[bg=%s,fg=%s]' "$BG" "$FG" ;;
-    close) printf '#[bg=default,fg=%s]' "$BG" ;;
+    open) printf '#[bg=%s,fg=%s]' "$BG" "$FG" ;;
+    close)
+        if [ "$WIN" -lt "$ACTIVE" ]; then
+            printf '#[bg=default,fg=%s]' "$BG"
+        else
+            printf '#[bg=default,fg=%s]' "$BG"
+        fi
+        ;;
 esac
