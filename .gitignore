@@ -18,10 +18,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Claude
-.claude/*
-!.claude/settings.json
-!.claude/skills/
-!.claude/agents/
+.claude/*.local.json
 
 # Secrets (never commit)
 .secrets
