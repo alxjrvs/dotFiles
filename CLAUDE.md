@@ -34,6 +34,7 @@ There are no build, test, or lint commands for this repo.
 | `nvim/` | `~/.config/nvim` (AstroNvim v5) |
 | `gh/config.yml` | `~/.config/gh/config.yml` |
 | `dot-claude/*` | `~/.claude/*` (CLAUDE.md, settings.json, skills/, agents/, hooks/, plugins/) |
+| `tmux-scripts/` | tmux helper scripts referenced by `tmux.conf` (not symlinked, used in-place) |
 
 ### Shell Stack
 

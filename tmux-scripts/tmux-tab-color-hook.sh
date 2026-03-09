@@ -1,4 +1,5 @@
 #!/bin/sh
+TERM_BG="#282c34"
 _info=$(tmux display-message -p '#{window_index}|#{W:#{window_index} }' 2>/dev/null || echo "1|1 ")
 ACTIVE="${_info%%|*}"
 WIN_LIST=$(printf '%s' "${_info#*|}" | tr ' ' '\n' | grep -v '^$' | sort -n)
@@ -45,20 +46,22 @@ right_neighbor() { printf '%s\n' "$WIN_LIST" | awk -v w="$1" '$1+0>w+0{print $1+
   for WIN in $WIN_LIST; do
     if [ "$WIN" -eq "$ACTIVE" ]; then
       NAME_BG=$(active_color "$WIN")
-      ID_BG="#4a4a4a"
-      printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=#f0f0f0,nobold"\n' "$WIN" "$NAME_BG"
+      ID_BG="default"
+      ID_ARROW="$TERM_BG"
+      printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=#f0f0f0,bold"\n' "$WIN" "$NAME_BG"
     else
       NAME_BG=$(active_color "$WIN")
       ID_BG="#2e2e2e"
+      ID_ARROW="#2e2e2e"
       printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=#cccccc,nobold"\n' "$WIN" "$NAME_BG"
     fi
-    printf 'set-window-option -t :%s @tab_arrow_on "bg=%s,fg=%s"\n' "$WIN" "$NAME_BG" "$ID_BG"
+    printf 'set-window-option -t :%s @tab_arrow_on "bg=%s,fg=%s"\n' "$WIN" "$NAME_BG" "$ID_ARROW"
     RN=$(right_neighbor "$WIN")
     if [ -z "$RN" ]; then
       printf 'set-window-option -t :%s @tab_arrow_off "bg=default,fg=%s"\n' "$WIN" "$NAME_BG"
     else
       if [ "$RN" -eq "$ACTIVE" ]; then
-        NEXT_ID_BG="#4a4a4a"
+        NEXT_ID_BG="default"
       else
         NEXT_ID_BG="#2e2e2e"
       fi
