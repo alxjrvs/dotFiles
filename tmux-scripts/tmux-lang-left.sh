@@ -8,7 +8,7 @@ dir="$1"
 [ -z "$dir" ] && exit 0
 cd "$dir" 2>/dev/null || exit 0
 
-PURPLE="#9060C8"
+PURPLE="#4a4a4a"
 
 # Detect language from marker files (most specific first)
 lang=""

@@ -61,19 +61,19 @@ if command -v starship &>/dev/null; then
   eval "$(starship init zsh)"
 
   # Transient prompt — collapse previous prompts to just the character
-  # Skip inside tmux: prompt is already minimal and no transient profile is defined
+  # Skip inside tmux: prompt is already minimal
   if [[ -z "$TMUX" ]]; then
     function transient-prompt-precmd {
-      TRAPINT() { transient-prompt-func; return $(( 128 + $1 )) }
-    }
-    function transient-prompt-func {
-      local STARSHIP_TRANSIENT
-      STARSHIP_TRANSIENT="$(starship prompt --profile transient)"
-      PROMPT="$STARSHIP_TRANSIENT" RPROMPT="" zle .reset-prompt
-    }
-    autoload -Uz add-zsh-hook add-zle-hook-widget
-    add-zsh-hook precmd transient-prompt-precmd
-    add-zle-hook-widget zle-line-finish transient-prompt-func
+    TRAPINT() { transient-prompt-func; return $(( 128 + $1 )) }
+  }
+  function transient-prompt-func {
+    local STARSHIP_TRANSIENT
+    STARSHIP_TRANSIENT="$(starship prompt --profile transient)"
+    PROMPT="$STARSHIP_TRANSIENT" RPROMPT="" zle .reset-prompt
+  }
+  autoload -Uz add-zsh-hook add-zle-hook-widget
+  add-zsh-hook precmd transient-prompt-precmd
+  add-zle-hook-widget zle-line-finish transient-prompt-func
   fi
 fi
 
