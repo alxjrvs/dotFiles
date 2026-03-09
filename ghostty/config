@@ -15,10 +15,9 @@ mouse-hide-while-typing = true
 # Window
 window-padding-y = 0
 window-padding-balance = false
-macos-titlebar-style = hidden
-macos-titlebar-proxy-icon = hidden
+macos-titlebar-style = native
 window-save-state = always
-background-opacity = 0.80
+background-opacity = 0.99
 confirm-close-surface = false
 quit-after-last-window-closed = true
 

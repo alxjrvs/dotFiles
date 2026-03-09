@@ -2,7 +2,7 @@
 # tmux-bat.sh — Battery stat with conditional color + charging indicator
 # >50%: #4a9070 (green), 20-50%: #8a6f2a (yellow), <20%: #c05050 (red)
 
-DARK="#4a4a4a"
+DARK="default"
 batt_info=$(pmset -g batt 2>/dev/null)
 val=$(echo "$batt_info" | grep -o '[0-9]*%' | head -1 | tr -d '%')
 [ -z "$val" ] && val=0
