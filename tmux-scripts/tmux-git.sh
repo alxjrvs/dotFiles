@@ -5,7 +5,8 @@
 
 dir="$1"
 PURPLE="#9060C8"
-DARK="#4a4a4a"
+LABEL_BG="default"
+TERM_BG="#282c34"
 
 cd "$dir" 2>/dev/null || { printf '#[bg=default,fg=%s]' "$PURPLE"; exit 0; }
 
@@ -75,22 +76,22 @@ if [ -n "$lang" ]; then
 
   # [purple->dark] LABEL [dark->color] version [color->dark]
   printf '#[bg=%s,fg=%s]#[bg=%s,fg=#cccccc,nobold] %s #[bg=%s,fg=%s]#[bg=%s,fg=#f0f0f0] %s #[bg=%s,fg=%s]' \
-    "$DARK" "$PURPLE" "$DARK" "$LABEL" "$LCOLOR" "$DARK" "$LCOLOR" "$ver" "$DARK" "$LCOLOR"
+    "$LABEL_BG" "$PURPLE" "$LABEL_BG" "$LABEL" "$LCOLOR" "$TERM_BG" "$LCOLOR" "$ver" "$LABEL_BG" "$LCOLOR"
 
   # If no git, close from dark
   if [ "$is_git" = "0" ]; then
-    printf '#[bg=default,fg=%s]' "$DARK"
+    printf '#[bg=default,fg=%s]' "$TERM_BG"
     exit 0
   fi
 else
   # No lang, has git: transition purple -> dark
-  printf '#[bg=%s,fg=%s]' "$DARK" "$PURPLE"
+  printf '#[bg=%s,fg=%s]' "$LABEL_BG" "$PURPLE"
 fi
 
 # ── Git branch + status (on dark bg) ────────────────────────────────────
 branch=$(git branch --show-current 2>/dev/null)
 [ -z "$branch" ] && branch=$(git rev-parse --short HEAD 2>/dev/null)
-[ -z "$branch" ] && { printf '#[bg=default,fg=%s]' "$DARK"; exit 0; }
+[ -z "$branch" ] && { printf '#[bg=default,fg=%s]' "$TERM_BG"; exit 0; }
 
 porcelain=$(git status --porcelain 2>/dev/null)
 conflicted=0; staged=0; modified=0; renamed=0; deleted=0; stashed=0; untracked=0
@@ -124,13 +125,13 @@ if git rev-parse --verify "@{u}" >/dev/null 2>&1; then
   fi
 fi
 
-printf '#[bg=%s,fg=#f0f0f0,nobold]  %s ' "$DARK" "$branch"
+printf '#[bg=%s,fg=#f0f0f0,nobold]  %s ' "$LABEL_BG" "$branch"
 
 combined="${all_status}${ahead_behind}"
 if [ -n "$combined" ]; then
-  printf '#[bg=#8a6f2a,fg=%s]#[bg=#8a6f2a,fg=#f0f0f0,bold] %s #[bg=default,fg=#8a6f2a]' "$DARK" "$combined"
+  printf '#[bg=#8a6f2a,fg=%s]#[bg=#8a6f2a,fg=#f0f0f0,nobold] %s #[bg=default,fg=#8a6f2a]' "$TERM_BG" "$combined"
 elif git rev-parse --verify "@{u}" >/dev/null 2>&1; then
-  printf '#[bg=#2e8b57,fg=%s]#[bg=#2e8b57,fg=#f0f0f0,bold]  ✓ #[bg=default,fg=#2e8b57]' "$DARK"
+  printf '#[bg=#2e8b57,fg=%s]#[bg=#2e8b57,fg=#f0f0f0,nobold]  ✓ #[bg=default,fg=#2e8b57]' "$TERM_BG"
 else
-  printf '#[bg=default,fg=%s]' "$DARK"
+  printf '#[bg=default,fg=%s]' "$TERM_BG"
 fi

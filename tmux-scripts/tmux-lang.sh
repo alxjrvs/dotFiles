@@ -71,5 +71,5 @@ fi
 
 # Output styled segment: arrow VALUE arrow LABEL
 # Ends with transition arrow color ready for next segment (UP = #5f87af)
-printf "#[bg=default,fg=%s]#[bg=%s,fg=#f0f0f0] %s #[bg=%s,fg=%s]#[bg=%s,fg=#cccccc,bold] %s #[nobold,bg=%s,fg=#5f87af]" \
+printf "#[bg=default,fg=%s]#[bg=%s,fg=#f0f0f0] %s #[bg=%s,fg=%s]#[bg=%s,fg=#cccccc,nobold] %s #[nobold,bg=%s,fg=#5f87af]" \
   "$COLOR" "$COLOR" "$ver" "$COLOR" "$DARK" "$DARK" "$LABEL" "$DARK"

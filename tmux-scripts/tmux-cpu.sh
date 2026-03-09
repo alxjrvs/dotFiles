@@ -2,7 +2,8 @@
 # tmux-cpu.sh — CPU stat with conditional color, first segment on right side
 # <50%: #b87050 (orange), 50-80%: #8a6f2a (yellow), >80%: #c05050 (red)
 
-DARK="default"
+LABEL_BG="default"
+TERM_BG="#282c34"
 PREV_BG="${1:-default}"
 [ "$PREV_BG" != "default" ] && PREV_BG="#$PREV_BG"
 val=$(ps -A -o %cpu 2>/dev/null | awk 'NR>1{s+=$1} END{printf "%.0f", s}')
@@ -16,5 +17,5 @@ else
   COLOR="#b87050"
 fi
 
-printf "#[bg=%s,fg=%s]#[bg=%s,fg=#f0f0f0] %s%% #[bg=%s,fg=%s]#[bg=%s,fg=#cccccc,bold] CPU " \
-  "$PREV_BG" "$COLOR" "$COLOR" "$val" "$COLOR" "$DARK" "$DARK"
+printf "#[bg=%s,fg=%s]#[bg=%s,fg=#f0f0f0] %s%% #[bg=%s,fg=%s]#[bg=%s,fg=#cccccc,nobold] CPU " \
+  "$PREV_BG" "$COLOR" "$COLOR" "$val" "$COLOR" "$TERM_BG" "$LABEL_BG"
