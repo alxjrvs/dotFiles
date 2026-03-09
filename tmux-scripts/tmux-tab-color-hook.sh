@@ -50,7 +50,7 @@ right_neighbor() { printf '%s\n' "$WIN_LIST" | awk -v w="$1" '$1+0>w+0{print $1+
       ID_ARROW="$TERM_BG"
       printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=#f0f0f0,bold"\n' "$WIN" "$NAME_BG"
     else
-      NAME_BG=$(active_color "$WIN")
+      NAME_BG="#4a4a4a"
       ID_BG="#2e2e2e"
       ID_ARROW="#2e2e2e"
       printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=#cccccc,nobold"\n' "$WIN" "$NAME_BG"
