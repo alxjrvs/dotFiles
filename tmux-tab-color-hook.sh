@@ -46,7 +46,7 @@ right_neighbor() { printf '%s\n' "$WIN_LIST" | awk -v w="$1" '$1+0>w+0{print $1+
     if [ "$WIN" -eq "$ACTIVE" ]; then
       NAME_BG=$(active_color "$WIN")
       ID_BG="#4a4a4a"
-      printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=#ffffff,bold"\n' "$WIN" "$NAME_BG"
+      printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=#f0f0f0,nobold"\n' "$WIN" "$NAME_BG"
     else
       NAME_BG=$(inactive_color "$WIN")
       ID_BG="#2e2e2e"

@@ -1,13 +1,14 @@
 #!/bin/sh
-# tmux-lang.sh <pane_current_path>
-# Detects dominant language in directory, outputs styled tmux segment.
-# Outputs nothing if no language detected.
+# tmux-lang-left.sh <pane_current_path>
+# Detects dominant language, outputs left-side styled segment.
+# Sits between dir (purple bg) and git branch.
+# Uses E0B0 (right-pointing) arrows for left-side powerline.
 
 dir="$1"
 [ -z "$dir" ] && exit 0
 cd "$dir" 2>/dev/null || exit 0
 
-DARK="#4a4a4a"
+PURPLE="#9060C8"
 
 # Detect language from marker files (most specific first)
 lang=""
@@ -26,7 +27,6 @@ lang=""
 
 [ -z "$lang" ] && exit 0
 
-# Map language to display info
 case "$lang" in
   node)    COLOR="#4a9070"; LABEL="NODE";  ASDF="nodejs" ;;
   deno)    COLOR="#4a8a8a"; LABEL="DENO";  ASDF="deno" ;;
@@ -69,7 +69,6 @@ fi
 
 [ -z "$ver" ] && ver="?"
 
-# Output styled segment: arrow VALUE arrow LABEL
-# Ends with transition arrow color ready for next segment (UP = #5f87af)
-printf "#[bg=default,fg=%s]#[bg=%s,fg=#f0f0f0] %s #[bg=%s,fg=%s]#[bg=%s,fg=#cccccc,bold] %s #[nobold,bg=%s,fg=#5f87af]" \
-  "$COLOR" "$COLOR" "$ver" "$COLOR" "$DARK" "$DARK" "$LABEL" "$DARK"
+# Left-side segment: [purple->color]arrow LABEL ver [color->purple]arrow
+printf "#[bg=%s,fg=%s]#[bg=%s,fg=#f0f0f0] %s %s #[bg=%s,fg=%s]" \
+  "$COLOR" "$PURPLE" "$COLOR" "$LABEL" "$ver" "$PURPLE" "$COLOR"
