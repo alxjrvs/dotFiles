@@ -4,7 +4,7 @@
 # Handles all transitions from purple dir background
 
 dir="$1"
-PURPLE="#9060C8"
+PURPLE="#4a4a4a"
 LABEL_BG="default"
 TERM_BG="#282c34"
 

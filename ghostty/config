@@ -6,6 +6,7 @@ font-thicken = true
 font-feature = +liga
 font-feature = +calt
 font-feature = +dlig
+adjust-cell-height = -1
 
 # Cursor
 cursor-style = block
@@ -13,6 +14,7 @@ cursor-style-blink = true
 mouse-hide-while-typing = true
 
 # Window
+window-padding-x = 0
 window-padding-y = 0
 window-padding-balance = false
 macos-titlebar-style = native
