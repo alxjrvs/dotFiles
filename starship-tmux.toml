@@ -1,39 +1,89 @@
 # Minimal starship config for use inside tmux
-# Character color reflects git status (most severe wins: red > yellow > green)
+# Shows only git status pips: blue(stash) red(dirty) yellow(unpushed) green(clean)
+# Leftmost pip has flat left side; command prompt hidden
 
-format = """${custom.char_dirty}\
-${custom.char_unpushed}\
-${custom.char_clean}\
-${custom.char_nogit}"""
+format = """${custom.flat_blue}${custom.flat_red}${custom.flat_yellow}${custom.flat_green}${custom.arr_blue_red}${custom.arr_blue_yellow}${custom.arr_blue_green}${custom.arr_red_yellow}${custom.arr_close_red}${custom.arr_close_yellow}${custom.arr_close_green}"""
 
 add_newline = false
 
-# Red: dirty working tree (uncommitted changes) — highest severity
-[custom.char_dirty]
+# ── Flat openers (first pip — flat left side) ──────────────────
+
+# Blue first: stash exists
+[custom.flat_blue]
 command = "true"
-when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -q ."""
-format = "[»](fg:#e06c75 bold) "
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git stash list 2>/dev/null | grep -q ."""
+format = "[ ](bg:#61afef)[](fg:#61afef bg:#61afef)"
 shell = ["sh"]
 
-# Yellow: clean but unpushed commits
-[custom.char_unpushed]
+# Red first: dirty, no stash
+[custom.flat_red]
 command = "true"
-when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1 && git log @{u}.. --oneline 2>/dev/null | grep -q ."""
-format = "[»](fg:#e5c07b bold) "
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -q . && ! git stash list 2>/dev/null | grep -q ."""
+format = "[ ](bg:#e06c75)[](fg:#e06c75 bg:#e06c75)"
 shell = ["sh"]
 
-# Green: clean and up-to-date
-[custom.char_clean]
+# Yellow first: unpushed, clean, no stash
+[custom.flat_yellow]
+command = "true"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1 && git log @{u}.. --oneline 2>/dev/null | grep -q . && ! git stash list 2>/dev/null | grep -q . && test -z "$(git status --porcelain 2>/dev/null)""""
+format = "[ ](bg:#e5c07b)[](fg:#e5c07b bg:#e5c07b)"
+shell = ["sh"]
+
+# Green first: clean, synced, no stash
+[custom.flat_green]
+command = "true"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && ! git log @{u}.. --oneline 2>/dev/null | grep -q . && ! git stash list 2>/dev/null | grep -q ."""
+format = "[ ](bg:#98c379)[](fg:#98c379 bg:#98c379)"
+shell = ["sh"]
+
+# ── Transition arrows ──────────────────────────────────────────
+
+# Blue → Red
+[custom.arr_blue_red]
+command = "true"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git stash list 2>/dev/null | grep -q . && git status --porcelain 2>/dev/null | grep -q ."""
+format = "[](bg:#e06c75 fg:#61afef)"
+shell = ["sh"]
+
+# Blue → Yellow (stash + clean + unpushed)
+[custom.arr_blue_yellow]
+command = "true"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git stash list 2>/dev/null | grep -q . && git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1 && git log @{u}.. --oneline 2>/dev/null | grep -q . && test -z "$(git status --porcelain 2>/dev/null)""""
+format = "[](bg:#e5c07b fg:#61afef)"
+shell = ["sh"]
+
+# Blue → Green (stash + clean + synced)
+[custom.arr_blue_green]
+command = "true"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git stash list 2>/dev/null | grep -q . && test -z "$(git status --porcelain 2>/dev/null)" && ! git log @{u}.. --oneline 2>/dev/null | grep -q ."""
+format = "[](bg:#98c379 fg:#61afef)"
+shell = ["sh"]
+
+# Red → Yellow (dirty + unpushed)
+[custom.arr_red_yellow]
+command = "true"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -q . && git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1 && git log @{u}.. --oneline 2>/dev/null | grep -q ."""
+format = "[](bg:#e5c07b fg:#e06c75)"
+shell = ["sh"]
+
+# ── Closing arrows (last pip → default) ──────────────────────
+
+[custom.arr_close_red]
+command = "true"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -q . && ! git log @{u}.. --oneline 2>/dev/null | grep -q ."""
+format = "[](fg:#e06c75)"
+shell = ["sh"]
+
+[custom.arr_close_yellow]
+command = "true"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1 && git log @{u}.. --oneline 2>/dev/null | grep -q ."""
+format = "[](fg:#e5c07b)"
+shell = ["sh"]
+
+[custom.arr_close_green]
 command = "true"
 when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && ! git log @{u}.. --oneline 2>/dev/null | grep -q ."""
-format = "[»](fg:#98c379 bold) "
-shell = ["sh"]
-
-# Default: not in a git repo
-[custom.char_nogit]
-command = "true"
-when = "! git rev-parse --is-inside-work-tree 2>/dev/null"
-format = "[»](fg:#fb543a bold) "
+format = "[](fg:#98c379)"
 shell = ["sh"]
 
 [character]

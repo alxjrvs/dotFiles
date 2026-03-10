@@ -91,6 +91,7 @@ zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 
 if [[ -n "$TMUX" ]]; then
   export STARSHIP_CONFIG="$HOME/.config/starship-tmux.toml"
+  chpwd() { tmux refresh-client -S; }
 fi
 
 if command -v starship &>/dev/null; then
