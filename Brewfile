@@ -1,16 +1,20 @@
 tap "supabase/tap"
-tap "wix/brew"
+# tap "wix/brew"          # iOS simulator tools
 brew "asdf"
-brew "bundletool"
-brew "cmake"
+# brew "bundletool"      # Android only
+# brew "cmake"           # C/C++ only
 brew "libsodium"
-brew "fastlane"
+# brew "fastlane"        # iOS CI only
 brew "flyctl"
 brew "fzf"
 brew "gh"
 brew "git-delta"
 brew "lazygit"
 brew "bat"
+brew "difftastic"
+brew "gitleaks"
+brew "age"
+brew "dust"
 brew "eza"
 brew "glow"
 brew "bun"
@@ -28,13 +32,13 @@ brew "redis", restart_service: true
 brew "direnv"
 brew "ripgrep"
 brew "tealdeer"
-brew "watchman"
+# brew "watchman"        # React Native only
 brew "zoxide"
 brew "sheldon"
 brew "shfmt"
 brew "starship"
 brew "supabase/tap/supabase"
-brew "wix/brew/applesimutils"
+# brew "wix/brew/applesimutils"  # iOS simulator
 brew "1password-cli"
 cask "1password"
 cask "claude"
@@ -49,4 +53,4 @@ cask "notunes"
 cask "rectangle"
 cask "slack"
 cask "tuple"
-cask "zulu@17"
+# cask "zulu@17"          # Java/Android only
