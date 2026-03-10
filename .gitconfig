@@ -58,6 +58,7 @@
 	dark = true
 [fetch]
 	prune = true
+	writeCommitGraph = true
 [merge]
 	conflictstyle = zdiff3
 [branch]
@@ -66,6 +67,6 @@
 	ui = auto
 [diff]
 	algorithm = histogram
-	colorMoved = default
+	colorMoved = dimmed-zebra
 [include]
 	path = ~/.gitconfig.local
