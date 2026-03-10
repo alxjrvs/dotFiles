@@ -133,6 +133,15 @@ brew cleanup --prune=all
 # ── 2. Brew Bundle ──────────────────────────────────────────────────
 echo ""
 echo "==> Brew Bundle"
+
+# Check for Xcode Command Line Tools (required by Homebrew)
+if ! xcode-select --version &>/dev/null 2>&1; then
+  warn "Installing Xcode Command Line Tools..."
+  xcode-select --install
+  fail "Xcode CLT installer opened — approve the dialog, then re-run sync.sh"
+  exit 1
+fi
+
 warn "Installing/upgrading Brewfile dependencies..."
 brew bundle --file="$DOTFILES_DIR/Brewfile"
 ok "Brewfile dependencies up to date"
@@ -363,7 +372,7 @@ if should_run sheldon; then
 echo ""
 echo "==> Sheldon plugins"
 warn "Updating Sheldon plugins..."
-sheldon lock --update
+timeout 30 sheldon lock --update || warn "Sheldon lock timed out or failed (may be offline) — skipping"
 ok "Sheldon plugins up to date"
 fi # should_run sheldon
 
@@ -398,7 +407,7 @@ echo "==> TPM (Tmux Plugin Manager)"
 TPM_DIR="$HOME/.tmux/plugins/tpm"
 if [ -d "$TPM_DIR" ]; then
   warn "Updating TPM..."
-  git -C "$TPM_DIR" pull --ff-only --quiet
+  git -C "$TPM_DIR" pull --ff-only --quiet || warn "Failed to update TPM (may be offline) — skipping"
   ok "TPM up to date"
 else
   warn "Installing TPM..."
