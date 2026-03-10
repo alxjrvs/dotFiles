@@ -4,7 +4,7 @@ Personal dotfiles managed with symlinks via `install.sh`.
 
 ## Structure
 
-- `install.sh` — idempotent installer: brew, asdf, symlinks, macOS defaults
+- `sync.sh` — idempotent installer: brew, mise, symlinks, macOS defaults
 - `dot-claude/` — user-level Claude Code config, symlinked to `~/.claude/`
   - `CLAUDE.md` — global Claude instructions (applies to all projects)
   - `settings.json` — Claude Code settings (plugins, hooks, permissions)
@@ -17,11 +17,11 @@ Personal dotfiles managed with symlinks via `install.sh`.
 - Shell aliases and config go in `.zshrc`
 - Git config goes in `.gitconfig`
 - New tools/packages go in `Brewfile`
-- Language versions go in `.tool-versions`
-- All symlinks use the `link()` helper in `install.sh` (idempotent, with conflict resolution)
+- Language versions go in `mise.toml`
+- All symlinks use the `link()` helper in `sync.sh` (idempotent, with conflict resolution)
 
 ## Adding a new dotfile
 
 1. Add the file to this repo
-2. Add a `link` line in the `Symlinks` section of `install.sh`
-3. Run `./install.sh` to verify
+2. Add a `link` line in the `Symlinks` section of `sync.sh`
+3. Run `./sync.sh` to verify
