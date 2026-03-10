@@ -9,9 +9,9 @@ A dotfiles repository for macOS. All config files live here and are symlinked to
 ## Key Commands
 
 ```bash
-./sync.sh             # Full idempotent setup (Homebrew, asdf, symlinks, plugins, macOS defaults)
+./sync.sh             # Full idempotent setup (Homebrew, mise, symlinks, plugins, macOS defaults)
 brew bundle           # Install/update packages from Brewfile
-asdf install          # Install language versions from .tool-versions
+mise install          # Install language versions from mise.toml
 sheldon lock --update # Update zsh plugins
 ```
 
@@ -27,7 +27,8 @@ There are no build, test, or lint commands for this repo.
 |--------|-------------|
 | `.zshrc`, `.zprofile` | `~/` |
 | `.gitconfig`, `.gitmessage`, `.editorconfig` | `~/` |
-| `.tool-versions`, `.asdfrc`, `.npmrc` | `~/` |
+| `mise.toml` | `~/.config/mise/config.toml` |
+| `.npmrc` | `~/` |
 | `starship.toml` | `~/.config/starship.toml` |
 | `sheldon/plugins.toml` | `~/.config/sheldon/plugins.toml` |
 | `ghostty/config` | `~/.config/ghostty/config` |
@@ -55,7 +56,7 @@ This directory is symlinked wholesale to `~/.claude/`. It contains:
 
 ### Language Versions
 
-Managed by **asdf** via `.tool-versions`. Default npm packages (TypeScript, Prettier, ESLint, Claude Code) auto-install with each Node version via `.default-npm-packages`.
+Managed by **mise** via `mise.toml`. Default npm packages (TypeScript, Prettier, ESLint, Claude Code) auto-install with each Node version via the `postinstall` hook in `mise.toml`.
 
 ## Important Gotchas
 
