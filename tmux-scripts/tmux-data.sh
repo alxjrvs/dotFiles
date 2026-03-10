@@ -5,7 +5,9 @@
 
 case "${1:-}" in
   cpu)
-    val=$(ps -A -o %cpu 2>/dev/null | awk 'NR>1{s+=$1} END{printf "%.0f", s}')
+    raw=$(ps -A -o %cpu 2>/dev/null | awk 'NR>1{s+=$1} END{printf "%.0f", s}')
+    cores=$(sysctl -n hw.logicalcpu 2>/dev/null || echo 1)
+    val=$(awk "BEGIN {v=int(${raw:-0}/${cores}); printf \"%d\", (v>100?100:v)}")
     printf '%s' "${val:-0}"
     ;;
   mem)
