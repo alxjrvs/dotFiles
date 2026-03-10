@@ -29,7 +29,7 @@ for arg in "$@"; do
       echo ""
       echo "Sections:"
       echo "  brew      Homebrew, Brew Bundle, Brew doctor"
-      echo "  asdf      asdf language versions"
+      echo "  mise      mise tool versions"
       echo "  sheldon   Sheldon plugin manager + config"
       echo "  starship  Starship prompt + config"
       echo "  symlinks  All symlinks"
@@ -228,42 +228,20 @@ fi # Linux
 
 if [ "$OS" = "Darwin" ]; then
 
-# ── 5. asdf languages (from .tool-versions) ─────────────────────────
-if should_run asdf; then
+# ── 5. mise tools (from mise.toml) ──────────────────────────────────
+if should_run mise; then
 echo ""
-echo "==> asdf languages"
-warn "Updating asdf plugins..."
-asdf plugin update --all &>/dev/null && ok "asdf plugins updated" || warn "asdf plugin update failed"
-
-while IFS=' ' read -r lang version; do
-  [ -z "$lang" ] && continue
-
-  if ! asdf plugin list 2>/dev/null | grep -q "^${lang}$"; then
-    warn "Adding asdf plugin: $lang"
-    asdf plugin add "$lang"
-  fi
-
-  if asdf list "$lang" 2>/dev/null | grep -qE "^[ *]+${version}$"; then
-    ok "$lang $version installed"
-  else
-    warn "Installing $lang $version..."
-    asdf install "$lang" "$version"
-  fi
-
-  current="$(asdf current "$lang" 2>/dev/null | awk '{print $2}')" || true
-  if [ "$current" = "$version" ]; then
-    ok "$lang global set to $version"
-  else
-    asdf set --home "$lang" "$version"
-    warn "$lang global set to $version"
-  fi
-done < "$DOTFILES_DIR/.tool-versions"
-fi # should_run asdf
+echo "==> mise tools"
+warn "Installing/updating tools from mise.toml..."
+mise trust ~/.config/mise/config.toml 2>/dev/null || true
+mise install
+ok "mise tools up to date"
+fi # should_run mise
 
 fi # Darwin
 
 # ── 6. Symlinks ─────────────────────────────────────────────────────
-if should_run symlinks git shell asdf sheldon starship ghostty nvim gh claude; then
+if should_run symlinks git shell mise sheldon starship ghostty nvim gh claude; then
 echo ""
 echo "==> Symlinks"
 fi
@@ -301,13 +279,12 @@ fi
 link "$DOTFILES_DIR/.secrets" "$HOME/.secrets" ".secrets"
 fi
 
-# asdf config (Darwin only)
+# mise config (Darwin only)
 if [ "$OS" = "Darwin" ]; then
-if should_run symlinks asdf; then
-link "$DOTFILES_DIR/.tool-versions"      "$HOME/.tool-versions"      ".tool-versions"
-link "$DOTFILES_DIR/.default-npm-packages" "$HOME/.default-npm-packages" ".default-npm-packages"
-link "$DOTFILES_DIR/.asdfrc"             "$HOME/.asdfrc"             ".asdfrc"
-link "$DOTFILES_DIR/.npmrc"              "$HOME/.npmrc"              ".npmrc"
+if should_run symlinks mise; then
+mkdir -p "$HOME/.config/mise"
+link "$DOTFILES_DIR/mise.toml"  "$HOME/.config/mise/config.toml"  "mise/config.toml"
+link "$DOTFILES_DIR/.npmrc"     "$HOME/.npmrc"                    ".npmrc"
 chmod 600 "$HOME/.npmrc" 2>/dev/null || true
 fi
 fi # Darwin
@@ -383,7 +360,7 @@ echo "==> Claude Code"
 if command -v claude &>/dev/null; then
   ok "Claude Code installed ($(claude --version 2>/dev/null))"
 else
-  warn "Claude Code not installed — will be auto-installed with Node via .default-npm-packages"
+  warn "Claude Code not installed — will be installed by mise postinstall hook"
 fi
 fi # should_run claude
 
