@@ -1,6 +1,6 @@
 tap "supabase/tap"
 # tap "wix/brew"          # iOS simulator tools
-brew "asdf"
+brew "mise"
 # brew "bundletool"      # Android only
 # brew "cmake"           # C/C++ only
 brew "libsodium"
