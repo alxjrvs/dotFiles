@@ -105,6 +105,18 @@ cmd_tab_colors() {
       6) printf '#221f1c' ;;
     esac
   }
+  inactive_label_color() {
+    # inactive_id + delta(+15,+12,+4) — half the active delta
+    # Gives L1 contrast 3.37:1 vs #f0f0f0, well above 3:1 for all levels
+    case "$(( (($1-1)%6)+1 ))" in
+      1) printf '#8f806c' ;;
+      2) printf '#7c6f5d' ;;
+      3) printf '#695e4e' ;;
+      4) printf '#574d3f' ;;
+      5) printf '#443c2f' ;;
+      6) printf '#312b20' ;;
+    esac
+  }
   right_neighbor() { printf '%s\n' "$WIN_LIST" | awk -v w="$1" '$1+0>w+0{print $1+0;exit}'; }
   {
     for WIN in $WIN_LIST; do
@@ -127,8 +139,11 @@ cmd_tab_colors() {
         printf 'set-window-option -t :%s @tab_name_color "%s"\n' "$WIN" "$NAME_BG"
       else
         NAME_BG=$(inactive_color "$WIN")
+        LABEL_BG=$(inactive_label_color "$WIN")
         printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=#cccccc,nobold"\n' "$WIN" "$NAME_BG"
         printf 'set-window-option -t :%s @tab_inactive_color "%s"\n' "$WIN" "$NAME_BG"
+        printf 'set-window-option -t :%s @tab_inactive_label_color "%s"\n' "$WIN" "$LABEL_BG"
+        printf 'set-window-option -t :%s @tab_inactive_label_style "bg=%s,fg=#f0f0f0,nobold"\n' "$WIN" "$LABEL_BG"
         printf 'set-window-option -t :%s @tab_arrow_on "bg=default,fg=%s"\n' "$WIN" "$NAME_BG"
         has_left=0
         for _w in $WIN_LIST; do [ "$_w" -lt "$WIN" ] && has_left=1; done
@@ -154,6 +169,18 @@ cmd_tab_colors() {
 
 }
 
+# Git status symbols used in pane borders:
+#   =  Merge conflicts
+#   +  Staged changes
+#   !  Modified tracked files
+#   »  Renamed files
+#   ✘  Deleted files
+#   $  Stashed changes
+#   ?  Untracked files
+#   ⇡N Commits ahead of upstream
+#   ⇣N Commits behind upstream
+#   ⇕  Both ahead and behind
+#   ✓  Tracking upstream, clean
 cmd_pane_git() {
   dir="$1"
   cd "$dir" 2>/dev/null || return 0
