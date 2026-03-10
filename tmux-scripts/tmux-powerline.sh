@@ -1,5 +1,7 @@
 #!/bin/sh
 # tmux-powerline.sh - Unified tmux powerline layout
+# Ensure Homebrew binaries (tmux, etc.) are available in run-shell context
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 # All formatting, glyphs, and colors centralized here.
 # Raw data from tmux-data.sh; styling applied by this script.
 # Usage: tmux-powerline.sh <command> [args...]

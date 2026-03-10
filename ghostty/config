@@ -35,7 +35,7 @@ scrollback-limit = 0
 
 # Shell (tmux manages everything)
 shell-integration = none
-command = /bin/zsh -l -c "/opt/homebrew/bin/tmux new-session -A -s main"
+command = ~/dotFiles/tmux-scripts/tmux-start.sh
 
 # Keybindings
 keybind = ctrl+shift+w=close_surface
