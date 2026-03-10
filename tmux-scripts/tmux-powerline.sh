@@ -32,8 +32,8 @@ cmd_status_right() {
   time_val=$(date '+%-l:%M %p')
   date_val=$(date '+%a %b %-d' | tr 'a-z' 'A-Z')
 
-  SL=""
-  BS=""
+  SL=""
+  BS=""
 
   o="#[bg=${TERM_BG},fg=${CPU_BG}]${SL}"
   o="${o}#[bg=${CPU_BG},fg=#f0f0f0] ${cpu_val}% "
