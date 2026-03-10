@@ -120,6 +120,13 @@ cmd_tab_colors() {
   right_neighbor() { printf '%s\n' "$WIN_LIST" | awk -v w="$1" '$1+0>w+0{print $1+0;exit}'; }
   {
     for WIN in $WIN_LIST; do
+      # Show name segment only for explicitly named windows (automatic-rename=off)
+      _auto=$(tmux display-message -t :"$WIN" -p '#{automatic-rename}' 2>/dev/null)
+      if [ "$_auto" = "0" ]; then
+        printf 'set-window-option -t :%s @tab_show_name "1"\n' "$WIN"
+      else
+        printf 'set-window-option -t :%s @tab_show_name ""\n' "$WIN"
+      fi
       if [ "$WIN" -eq "$ACTIVE" ]; then
         NAME_BG=$(active_color "$WIN")
         DK_BG=$(active_dark_color "$WIN")
