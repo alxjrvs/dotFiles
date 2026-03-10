@@ -42,25 +42,7 @@ zle -N zle-line-init
 # Homebrew completions
 fpath+=(/opt/homebrew/share/zsh/site-functions)
 
-# Transient prompt — must be registered BEFORE sheldon/FSH to avoid circular
-# reference (FSH wraps azhw:zle-line-finish; adding a hook after FSH loads
-# inserts FSH's own wrapper into the azhw dispatcher, causing recursion)
-autoload -Uz add-zsh-hook add-zle-hook-widget
-if command -v starship &>/dev/null; then
-  function transient-prompt-precmd {
-    TRAPINT() { transient-prompt-func; return $(( 128 + $1 )) }
-  }
-  function transient-prompt-func {
-    (( ${+_transient_running} )) && return
-    typeset -g _transient_running=1
-    trap "unset _transient_running" RETURN
-    local STARSHIP_TRANSIENT
-    STARSHIP_TRANSIENT="$(starship prompt --profile transient)"
-    PROMPT="$STARSHIP_TRANSIENT" RPROMPT="" zle .reset-prompt
-  }
-  add-zsh-hook precmd transient-prompt-precmd
-  add-zle-hook-widget zle-line-finish transient-prompt-func
-fi
+autoload -Uz add-zsh-hook
 
 # Sheldon plugins (adds zsh-completions to fpath)
 eval "$(sheldon source)"
