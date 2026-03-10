@@ -27,14 +27,14 @@ shell = ["sh"]
 [custom.git_dirty]
 command = "git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null"
 when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -n "$(git status --porcelain 2>/dev/null)" """
-format = "[](fg:#4a4a4a bg:#8a6f2a)[  $output ](bg:#8a6f2a fg:#f0f0f0)[](fg:#8a6f2a)"
+format = "[](fg:#4a4a4a bg:#b08800)[  $output ](bg:#b08800 fg:#f0f0f0)[](fg:#b08800)"
 shell = ["sh"]
 
 # Git is clean but has stash or out of sync with remote
 [custom.git_nosync]
 command = "git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null"
 when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && { test -n "$(git stash list 2>/dev/null)" || { git rev-parse --verify @{u} >/dev/null 2>&1 && ! { test "$(git rev-list --count @{u}..HEAD 2>/dev/null)" = "0" && test "$(git rev-list --count HEAD..@{u} 2>/dev/null)" = "0"; }; }; }"""
-format = "[](fg:#4a4a4a bg:#a06030)[  $output ](bg:#a06030 fg:#f0f0f0)[](fg:#a06030)"
+format = "[](fg:#4a4a4a bg:#b08800)[  $output ](bg:#b08800 fg:#f0f0f0)[](fg:#b08800)"
 shell = ["sh"]
 
 # Closer arrow for directory when not in a git repo

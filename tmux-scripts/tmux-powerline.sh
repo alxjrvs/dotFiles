@@ -283,7 +283,7 @@ cmd_tab_colors() {
         else
           printf 'set-window-option -t :%s @tab_has_left ""\n' "$WIN"
         fi
-        printf 'set-window-option -t :%s @tab_inner "bg=%s,fg=%s"\n' "$WIN" "$DK_BG" "$NAME_BG"
+        printf 'set-window-option -t :%s @tab_inner "bg=%s,fg=%s"\n' "$WIN" "$NAME_BG" "$DK_BG"
         printf 'set-window-option -t :%s @tab_dk_style "bg=%s,fg=#f0f0f0,nobold"\n' "$WIN" "$DK_BG"
         printf 'set-window-option -t :%s @tab_dk_color "%s"\n' "$WIN" "$DK_BG"
         printf 'set-window-option -t :%s @tab_name_color "%s"\n' "$WIN" "$NAME_BG"
