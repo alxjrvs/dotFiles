@@ -53,10 +53,10 @@ if command -v starship &>/dev/null; then
   function transient-prompt-func {
     (( ${+_transient_running} )) && return
     typeset -g _transient_running=1
+    trap "unset _transient_running" RETURN
     local STARSHIP_TRANSIENT
     STARSHIP_TRANSIENT="$(starship prompt --profile transient)"
     PROMPT="$STARSHIP_TRANSIENT" RPROMPT="" zle .reset-prompt
-    unset _transient_running
   }
   add-zsh-hook precmd transient-prompt-precmd
   add-zle-hook-widget zle-line-finish transient-prompt-func
@@ -97,7 +97,7 @@ FAST_HIGHLIGHT_STYLES[path]='fg=#e6edf3,underline'
 
 # Completions (must be after fpath extensions and sheldon)
 autoload -Uz compinit
-if [ "$(find ~/.zcompdump -mtime +1 2>/dev/null)" ]; then
+if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(Nm+1) ]]; then
   compinit
 else
   compinit -C
@@ -124,15 +124,45 @@ command -v zoxide &>/dev/null && eval "$(zoxide init zsh)"
 # Aliases
 alias c="clear"
 alias q="exit"
+
+# Git
 alias gs="git status"
 alias gp="git push"
 alias gpr='git pull --rebase'
 alias gco='git checkout'
+alias gd="git diff"
+alias gds="git diff --staged"
+alias gc="git commit"
+alias ga="git add"
+alias gaa="git add --all"
+alias gb="git branch"
+alias gl="git log --oneline -10"
+alias lg="lazygit"
+
+# Navigation
 alias ..="cd .."
+alias ...="cd ../.."
+alias dots="cd ~/dotFiles"
+
+# Enhanced tools (eza + bat)
+alias ls="eza"
+alias la="eza -la"
+alias ll="eza -lh"
+alias tree="eza -T"
+alias cat="bat --style=plain"
+
+# Editor
 alias v="nvim"
 alias vi="nvim"
 alias vim="nvim"
+
+# System
 alias env-sync="~/dotFiles/sync.sh"
+
+# Functions
+function mkcd()   { mkdir -p "$1" && cd "$1" }
+function cdroot() { cd "$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "Not in git repo"; return 1; } }
+function sz()     { du -sh "${@:-.}" | sort -hr }
 
 # asdf default packages
 command -v asdf &>/dev/null && export ASDF_NPM_DEFAULT_PACKAGES_FILE=~/.default-npm-packages
