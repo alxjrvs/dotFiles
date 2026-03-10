@@ -1,7 +1,7 @@
 # Gnar prompt — purple — requires a Nerd Font
 
 format = """
-(fg:#4a4a4a)$directory\
+[](fg:#4a4a4a)$directory\
 (${custom.git_clean}${custom.git_dirty}${custom.git_nosync})\
 ${custom.dir_closer}\
 $line_break\
@@ -54,7 +54,7 @@ fi
 [ -n "$s" ] && printf '%s %s' "$b" "$s" || printf '%s' "$b"
 """
 when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && { test -n "$(git stash list 2>/dev/null)" || { git rev-parse --verify @{u} >/dev/null 2>&1 && ! { test "$(git rev-list --count @{u}..HEAD 2>/dev/null)" = "0" && test "$(git rev-list --count HEAD..@{u} 2>/dev/null)" = "0"; }; }; }"""
-format = "[](fg:#4a4a4a bg:#b08800)[  $output ](bg:#b08800 fg:#f0f0f0)[](fg:#b08800)"
+format = "[](fg:#4a4a4a bg:#7a5c00)[  $output ](bg:#7a5c00 fg:#f0f0f0)[](fg:#7a5c00)"
 shell = ["sh"]
 
 # Closer arrow when not in a git repo
