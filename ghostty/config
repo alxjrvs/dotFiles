@@ -31,7 +31,7 @@ clipboard-paste-protection = false
 copy-on-select = true
 
 # Scrollback (tmux manages scrollback)
-scrollback-lines = 0
+scrollback-limit = 0
 
 # Shell (tmux manages everything)
 shell-integration = none
