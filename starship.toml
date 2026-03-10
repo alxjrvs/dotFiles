@@ -1,6 +1,7 @@
 # Gnar prompt — purple — requires a Nerd Font
 
 format = """
+
 $directory\
 (${custom.git_branch}${custom.arr_gray_blue}${custom.arr_gray_red}${custom.arr_gray_yellow}${custom.arr_gray_green}${custom.arr_blue_red}${custom.arr_blue_yellow}${custom.arr_blue_green}${custom.arr_red_yellow}${custom.arr_close_red}${custom.arr_close_yellow}${custom.arr_close_green})\
 $character"""
