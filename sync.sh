@@ -363,8 +363,7 @@ link "$DOTFILES_DIR/dot-claude/settings.json" "$HOME/.claude/settings.json" "cla
 link "$DOTFILES_DIR/dot-claude/skills"        "$HOME/.claude/skills"        "claude/skills"
 link "$DOTFILES_DIR/dot-claude/agents"        "$HOME/.claude/agents"        "claude/agents"
 link "$DOTFILES_DIR/dot-claude/hooks"         "$HOME/.claude/hooks"         "claude/hooks"
-mkdir -p "$HOME/.claude/plugins"
-link "$DOTFILES_DIR/dot-claude/plugins/known_marketplaces.json" "$HOME/.claude/plugins/known_marketplaces.json" "claude/plugins/known_marketplaces.json"
+
 fi
 
 # ── 7. Sheldon plugins ─────────────────────────────────────────────
