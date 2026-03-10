@@ -89,6 +89,10 @@ zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 
+if [[ -n "$TMUX" ]]; then
+  export STARSHIP_CONFIG="$HOME/.config/starship-tmux.toml"
+fi
+
 if command -v starship &>/dev/null; then
   eval "$(starship init zsh)"
 fi
