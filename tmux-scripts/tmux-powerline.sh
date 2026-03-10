@@ -240,12 +240,17 @@ cmd_pane_git() {
   fi
 }
 
-cmd_pane_colors() {
-  pane_id=$(tmux display-message -p '#{session_name}:#{window_index}.#{pane_index}' 2>/dev/null)
-  pane_path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
+cmd_pane_border() {
+  # Takes pane_current_path as $1; outputs a complete tmux format string.
+  # Called via #() in pane-border-format so it refreshes every status-interval.
+  pane_path="$1"
+  CWD_BG="#57436e"    # Match starship directory bg
+  BRANCH_BG="#494949" # Match starship git_branch bg
 
-  bg="#4a4a4a"
+  short_path=$(printf '%s' "$pane_path" | sed "s|$HOME|~|" | awk -F'/' '{n=NF; if(n>=2) print $(n-1)"/"$n; else print $n}')
+
   branch=""
+  chips=""
 
   if [ -n "$pane_path" ] && cd "$pane_path" 2>/dev/null && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     branch=$(git branch --show-current 2>/dev/null)
@@ -253,39 +258,63 @@ cmd_pane_colors() {
 
     if [ -n "$branch" ]; then
       porcelain=$(git status --porcelain 2>/dev/null)
-      dirty=""
-      echo "$porcelain" | grep -q '.' 2>/dev/null && dirty=1
-      git stash list 2>/dev/null | grep -q .       && dirty=1
 
-      ahead=0; behind=0
+      # Blue: stash entries exist
+      stashed=0
+      git stash list 2>/dev/null | grep -q . && stashed=1
+
+      # Red: uncommitted local changes (unstaged modified/deleted or untracked)
+      has_red=0
+      printf '%s\n' "$porcelain" | grep -qE '^.[MD]' && has_red=1
+      printf '%s\n' "$porcelain" | grep -q '^[?][?]'  && has_red=1
+
+      # Yellow: staged index changes OR unpushed commits
+      has_yellow=0
+      printf '%s\n' "$porcelain" | grep -qE '^[MADRCU]' && has_yellow=1
+      has_upstream=0; ahead=0; behind=0
       if git rev-parse --verify "@{u}" >/dev/null 2>&1; then
+        has_upstream=1
         ahead=$(git rev-list --count "@{u}..HEAD" 2>/dev/null || echo 0)
         behind=$(git rev-list --count "HEAD..@{u}" 2>/dev/null || echo 0)
+        [ "$ahead" -gt 0 ] && has_yellow=1
       fi
 
-      if [ -n "$dirty" ] || [ "$ahead" -gt 0 ] || [ "$behind" -gt 0 ]; then
-        bg="#8a6f2a"
-      elif git rev-parse --verify "@{u}" >/dev/null 2>&1; then
-        bg="#2e8b57"
+      # Green: fully synced — no stash, clean working tree, not ahead, not behind
+      has_green=0
+      if [ "$stashed" = "0" ] && [ "$has_red" = "0" ] && [ "$has_yellow" = "0" ] && \
+         [ "$has_upstream" = "1" ] && [ "$behind" = "0" ]; then
+        has_green=1
       fi
+
+      # Chips in order: blue > red > yellow > green
+      [ "$stashed" = "1" ]    && chips="${chips}#[bg=#5f87af] #[default]"
+      [ "$has_red" = "1" ]    && chips="${chips}#[bg=#c05050] #[default]"
+      [ "$has_yellow" = "1" ] && chips="${chips}#[bg=#8a6f2a] #[default]"
+      [ "$has_green" = "1" ]  && chips="${chips}#[bg=#2e8b57] #[default]"
     fi
   fi
 
-  # Build complete styled string — avoids nesting #{} inside #[style] in pane-border-format
-  short_path=$(echo "$pane_path" | sed "s|$HOME|~|" | awk -F'/' '{n=NF; if(n>=2) print $(n-1)"/"$n; else print $n}')
   if [ -n "$branch" ]; then
-    fmt="#[bg=#6d568a,fg=#f0f0f0] ${short_path} #[default] #[bg=${bg},fg=#f0f0f0] ${branch} #[default]"
+    printf '%s' "#[bg=${CWD_BG},fg=#f0f0f0] ${short_path} #[default] #[bg=${BRANCH_BG},fg=#f0f0f0] ${branch} #[default]${chips}"
   else
-    fmt="#[bg=#6d568a,fg=#f0f0f0] ${short_path} #[default]"
+    printf '%s' "#[bg=${CWD_BG},fg=#f0f0f0] ${short_path} #[default]"
   fi
+}
 
+cmd_pane_colors() {
+  # Legacy hook-based updater — kept for backward compat.
+  # The live path now runs via #() in pane-border-format.
+  pane_id=$(tmux display-message -p '#{session_name}:#{window_index}.#{pane_index}' 2>/dev/null)
+  pane_path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
+  fmt=$(cmd_pane_border "$pane_path")
   tmux set-option -pt "$pane_id" @pane_border_fmt "$fmt" 2>/dev/null || true
 }
 
 case "${1:-}" in
-  status-right) cmd_status_right ;;
-  dir)          shift; cmd_dir "$@" ;;
-  pane-git)     shift; cmd_pane_git "$@" ;;
-  pane-colors)  cmd_pane_colors ;;
-  tab-colors)   cmd_tab_colors ;;
+  status-right)  cmd_status_right ;;
+  dir)           shift; cmd_dir "$@" ;;
+  pane-git)      shift; cmd_pane_git "$@" ;;
+  pane-border)   shift; cmd_pane_border "$@" ;;
+  pane-colors)   cmd_pane_colors ;;
+  tab-colors)    cmd_tab_colors ;;
 esac

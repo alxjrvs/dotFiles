@@ -4,7 +4,7 @@ format = """
 $directory\
 (${custom.git_branch})\
 (${custom.pip_stash}${custom.pip_dirty}${custom.pip_unpushed}${custom.pip_clean})\
- """
+$character"""
 
 add_newline = true
 
@@ -46,7 +46,9 @@ shell = ["sh"]
 
 
 [character]
-disabled = true
+success_symbol = " "
+error_symbol = " "
 
 [cmd_duration]
 disabled = true
+
