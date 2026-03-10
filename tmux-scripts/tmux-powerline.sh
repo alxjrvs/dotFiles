@@ -35,17 +35,7 @@ cmd_status_right() {
   SL=""
   BS=""
 
-  # ── Claude stat segment ───────────────────────────────────────────────
-  CL_BG="#d07840"; CL_DK="#8c4e28"
-  _cl_active=0
-  for _cf in /tmp/claude-active-*; do [ -f "$_cf" ] && _cl_active=1 && break; done
-  if [ "$_cl_active" = "1" ]; then cl_val="ON"; else cl_val="OFF"; fi
-
-  o="#[bg=${TERM_BG},fg=${CL_BG}]${SL}"
-  o="${o}#[bg=${CL_BG},fg=#f0f0f0] ${cl_val} "
-  o="${o}#[bg=${CL_DK},fg=${CL_BG}]${BS}"
-  o="${o}#[bg=${CL_DK},fg=#f0f0f0,nobold] CLAUDE "
-  o="${o}#[bg=${CL_DK},fg=${CPU_BG}]${SL}"
+  o="#[bg=${TERM_BG},fg=${CPU_BG}]${SL}"
   o="${o}#[bg=${CPU_BG},fg=#f0f0f0] ${cpu_val}% "
   o="${o}#[bg=${CPU_DK},fg=${CPU_BG}]${BS}"
   o="${o}#[bg=${CPU_DK},fg=#f0f0f0,nobold] CPU "
@@ -295,10 +285,19 @@ cmd_tab_colors() {
         fi
         printf 'set-window-option -t :%s @tab_inner "bg=%s,fg=%s"\n' "$WIN" "$DK_BG" "$NAME_BG"
         printf 'set-window-option -t :%s @tab_dk_style "bg=%s,fg=#f0f0f0,nobold"\n' "$WIN" "$DK_BG"
+        printf 'set-window-option -t :%s @tab_dk_color "%s"\n' "$WIN" "$DK_BG"
+        printf 'set-window-option -t :%s @tab_name_color "%s"\n' "$WIN" "$NAME_BG"
       else
         NAME_BG="#4a4a4a"
         printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=#cccccc,nobold"\n' "$WIN" "$NAME_BG"
         printf 'set-window-option -t :%s @tab_arrow_on "bg=default,fg=%s"\n' "$WIN" "$NAME_BG"
+        has_left=0
+        for _w in $WIN_LIST; do [ "$_w" -lt "$WIN" ] && has_left=1; done
+        if [ "$has_left" = "1" ]; then
+          printf 'set-window-option -t :%s @tab_has_left "1"\n' "$WIN"
+        else
+          printf 'set-window-option -t :%s @tab_has_left ""\n' "$WIN"
+        fi
       fi
       RN=$(right_neighbor "$WIN")
       if [ -z "$RN" ]; then
