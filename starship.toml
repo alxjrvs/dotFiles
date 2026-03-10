@@ -3,7 +3,7 @@
 format = """
 $directory\
 (${custom.git_branch})\
-(${custom.pip_clean}${custom.pip_unstaged}${custom.pip_staged}${custom.pip_mixed})\
+(${custom.pip_stash}${custom.pip_dirty}${custom.pip_unpushed}${custom.pip_clean})\
  (${custom.char_clean}${custom.char_staged}${custom.char_unstaged}${custom.char_mixed}${custom.char_nogit})"""
 
 add_newline = true
@@ -20,40 +20,28 @@ when = "git rev-parse --is-inside-work-tree 2>/dev/null"
 format = "[](bg:#494949 fg:#282c34)[  $output ](bg:#494949 fg:#f0f0f0)[](fg:#494949)"
 shell = ["sh"]
 
+[custom.pip_stash]
+command = "true"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git stash list 2>/dev/null | grep -q ."""
+format = "[](bg:#5f87af fg:#282c34)[](fg:#5f87af)"
+shell = ["sh"]
+
+[custom.pip_dirty]
+command = "true"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -q ."""
+format = "[](bg:#c05050 fg:#282c34)[](fg:#c05050)"
+shell = ["sh"]
+
+[custom.pip_unpushed]
+command = "true"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git rev-parse @{u} 2>/dev/null && git log @{u}.. --oneline 2>/dev/null | grep -q ."""
+format = "[](bg:#8a6f2a fg:#282c34)[](fg:#8a6f2a)"
+shell = ["sh"]
+
 [custom.pip_clean]
 command = "true"
-when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" """
-format = "[](bg:#2e8b57 fg:#282c34)[ ✓ ](bg:#2e8b57 fg:#f0f0f0)[](fg:#2e8b57)"
-shell = ["sh"]
-
-[custom.pip_unstaged]
-command = """
-p=$(git status --porcelain 2>/dev/null)
-s=""
-printf '%s' "$p" | grep -qE '^.[MD]' && s="${s}!"
-printf '%s' "$p" | grep -q '^[?][?]' && s="${s}?"
-printf '%s' "$s"
-"""
-when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])' && ! git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]'"""
-format = "[](bg:#c05050 fg:#282c34)[ $output ](bg:#c05050 fg:#f0f0f0)[](fg:#c05050)"
-shell = ["sh"]
-
-[custom.pip_staged]
-command = "true"
-when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]' && ! git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])'"""
-format = "[](bg:#8a6f2a fg:#282c34)[ + ](bg:#8a6f2a fg:#f0f0f0)[](fg:#8a6f2a)"
-shell = ["sh"]
-
-[custom.pip_mixed]
-command = """
-p=$(git status --porcelain 2>/dev/null)
-s=""
-printf '%s' "$p" | grep -qE '^.[MD]' && s="${s}!"
-printf '%s' "$p" | grep -q '^[?][?]' && s="${s}?"
-printf '%s' "$s"
-"""
-when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])' && git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]'"""
-format = "[](bg:#c05050 fg:#282c34)[ $output ](bg:#c05050 fg:#f0f0f0)[](fg:#c05050 bg:#8a6f2a)[ + ](bg:#8a6f2a fg:#f0f0f0)[](fg:#8a6f2a)"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && ! git log @{u}.. --oneline 2>/dev/null | grep -q ."""
+format = "[](bg:#2e8b57 fg:#282c34)[](fg:#2e8b57)"
 shell = ["sh"]
 
 
