@@ -6,9 +6,6 @@ export LANG=en_US.UTF-8
 # Machine-local secrets (not in git)
 [[ -f ~/.secrets ]] && source ~/.secrets
 
-# Inject npm token from secrets (never store in .npmrc)
-[[ -n "$NPM_TOKEN" ]] && npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN" 2>/dev/null
-
 # Autocorrection
 setopt CORRECT
 
@@ -91,7 +88,7 @@ zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 
 if [[ -n "$TMUX" ]]; then
   export STARSHIP_CONFIG="$HOME/.config/starship-tmux.toml"
-  chpwd() { tmux refresh-client -S; }
+  chpwd() { tmux refresh-client; }
 fi
 
 if command -v starship &>/dev/null; then
@@ -151,8 +148,11 @@ function mkcd()   { mkdir -p "$1" && cd "$1" }
 function cdroot() { cd "$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "Not in git repo"; return 1; } }
 function sz()     { du -sh "${@:-.}" | sort -hr }
 
-# asdf default packages
-command -v asdf &>/dev/null && export ASDF_NPM_DEFAULT_PACKAGES_FILE=~/.default-npm-packages
+# mise (tool version manager)
+command -v mise &>/dev/null && eval "$(mise activate zsh)"
+
+# Inject npm token from secrets (never store in .npmrc)
+[[ -n "$NPM_TOKEN" ]] && npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN" 2>/dev/null
 
 # Colored man pages (CMYK)
 export LESS_TERMCAP_mb=$'\e[1;35m'
