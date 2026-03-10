@@ -4,7 +4,6 @@
 export XDG_CONFIG_HOME="$HOME/.config"
 
 # PATH (login shell only — prevents duplication in subshells)
-eval "$(mise activate zsh --shims)"
 export PATH="$HOME/.local/bin:$PATH"
 
 # Android SDK (macOS path)

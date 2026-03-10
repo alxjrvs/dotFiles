@@ -17,7 +17,6 @@ setopt SHARE_HISTORY HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE
 setopt HIST_VERIFY
 setopt EXTENDED_HISTORY
 setopt HIST_REDUCE_BLANKS
-setopt HIST_SAVE_NO_DUPS
 
 # Vi keybindings
 bindkey -v
@@ -97,7 +96,7 @@ fi
 
 # fzf shell integration (modern)
 if command -v fzf &>/dev/null; then
-  eval "$(fzf --zsh)"
+  eval "$(fzf --zsh)" 2>/dev/null
 fi
 export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40%'
 export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
@@ -151,9 +150,6 @@ function sz()     { du -sh "${@:-.}" | sort -hr }
 # mise (tool version manager)
 command -v mise &>/dev/null && eval "$(mise activate zsh)"
 
-# Inject npm token from secrets (never store in .npmrc)
-[[ -n "$NPM_TOKEN" ]] && npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN" 2>/dev/null
-
 # Colored man pages (CMYK)
 export LESS_TERMCAP_mb=$'\e[1;35m'
 export LESS_TERMCAP_md=$'\e[1;36m'
@@ -165,6 +161,3 @@ export LESS_TERMCAP_us=$'\e[1;35m'
 
 # bun completions
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
-
-[[ "$TERM_PROGRAM" == "iTerm.app" ]] && test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
-

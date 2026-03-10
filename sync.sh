@@ -413,7 +413,7 @@ else
 fi
 fi # should_run gh
 
-# ── 11. Health checks ─────────────────────────────────────────
+# ── 12. Health checks ─────────────────────────────────────────
 if should_run health; then
 echo ""
 echo "==> Health checks"

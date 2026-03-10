@@ -8,27 +8,16 @@
   sw = switch
   st = status -sb
   undo = reset HEAD~1 --mixed
-  sync = !git fetch --prune && git rebase origin/main
+  sync = "!f() { git fetch --prune && git rebase origin/$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's|origin/||'); }; f"
 
-[color]
-  # Use colors in Git commands that are capable of colored output when outputting to the terminal
-  ui = auto
 [color "branch"]
   current = yellow reverse
   local = yellow
   remote = green
-[color "diff"]
-  meta = yellow bold
-  frag = magenta bold
-  old = red bold
-  new = green bold
 [color "status"]
   added = yellow
   changed = green
   untracked = cyan
-
-# Use `origin` as the default remote on the `main` branch in all cases
-[branch "main"]
 
 [user]
 	name = alxjrvs
@@ -39,16 +28,21 @@
 	editor = nvim
 	excludesfile = ~/.gitignore
 	pager = delta
+	fsmonitor = true
+	untrackedCache = true
 [init]
 	defaultBranch = main
 [commit]
 	template = ~/.gitmessage
+	verbose = true
 [push]
 	autoSetupRemote = true
+	followTags = true
 [pull]
 	rebase = true
 [rerere]
 	enabled = true
+	autoupdate = true
 [interactive]
 	diffFilter = delta --color-only
 [delta]
@@ -58,6 +52,7 @@
 	dark = true
 [fetch]
 	prune = true
+	pruneTags = true
 	writeCommitGraph = true
 [merge]
 	conflictstyle = zdiff3
@@ -68,5 +63,14 @@
 [diff]
 	algorithm = histogram
 	colorMoved = dimmed-zebra
+	mnemonicPrefix = true
+[rebase]
+	autoSquash = true
+	autoStash = true
+	updateRefs = true
+[tag]
+	sort = version:refname
+[help]
+	autocorrect = prompt
 [include]
 	path = ~/.gitconfig.local

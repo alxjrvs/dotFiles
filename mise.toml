@@ -1,4 +1,4 @@
 [tools]
-node = { version = "lts", postinstall = "npm install -g typescript prettier eslint @anthropic-ai/claude-code" }
-python = "latest"
-deno = "latest"
+node = { version = "25.8.0", postinstall = "npm install -g typescript prettier eslint @anthropic-ai/claude-code" }
+python = "3"
+deno = "2"

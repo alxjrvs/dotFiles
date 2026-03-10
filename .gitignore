@@ -24,6 +24,10 @@ yarn-error.log*
 .secrets
 .npmrc
 
+# Transient/generated
+.playwright-mcp/
+Brewfile.lock.json
+
 # Machine-specific overrides
 dot-claude/settings.local.json
 **/.claude/settings.local.json

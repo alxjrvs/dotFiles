@@ -11,9 +11,10 @@ cmd_status_right() {
   TERM_BG="#282c34"
   DATA="$HOME/dotFiles/tmux-scripts/tmux-data.sh"
 
-  cpu_val=$("$DATA" cpu)
-  mem_val=$("$DATA" mem)
-  bat_raw=$("$DATA" bat)
+  _all=$("$DATA" all)
+  cpu_val="${_all%%|*}"; _rest="${_all#*|}"
+  mem_val="${_rest%%|*}"
+  bat_raw="${_rest#*|}"
 
   case "$bat_raw" in
     ⚡*) bat_charging="⚡"; bat_val="${bat_raw#⚡}" ;;

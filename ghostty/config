@@ -20,7 +20,6 @@ window-padding-y = 0
 window-padding-balance = false
 macos-titlebar-style = native
 window-save-state = always
-background-opacity = 1.0
 confirm-close-surface = false
 quit-after-last-window-closed = true
 macos-option-as-alt = left
