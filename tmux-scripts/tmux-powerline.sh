@@ -32,25 +32,28 @@ cmd_status_right() {
   time_val=$(date '+%-l:%M %p')
   date_val=$(date '+%a %b %-d' | tr 'a-z' 'A-Z')
 
-  SL=""
-  BS=""
+  SL=""
+  BS=""
 
   o="#[bg=${TERM_BG},fg=${CPU_BG}]${SL}"
   o="${o}#[bg=${CPU_BG},fg=#f0f0f0] ${cpu_val}% "
   o="${o}#[bg=${CPU_DK},fg=${CPU_BG}]${BS}"
   o="${o}#[bg=${CPU_DK},fg=#f0f0f0,nobold] CPU "
 
-  o="${o}#[bg=${CPU_DK},fg=${MEM_BG}]${SL}"
+  o="${o}#[bg=${TERM_BG},fg=${CPU_DK}]${BS}"
+  o="${o}#[bg=${TERM_BG},fg=${MEM_BG}]${SL}"
   o="${o}#[bg=${MEM_BG},fg=#f0f0f0] ${mem_val} "
   o="${o}#[bg=${MEM_DK},fg=${MEM_BG}]${BS}"
   o="${o}#[bg=${MEM_DK},fg=#f0f0f0,nobold] MEM "
 
-  o="${o}#[bg=${MEM_DK},fg=${BAT_BG}]${SL}"
+  o="${o}#[bg=${TERM_BG},fg=${MEM_DK}]${BS}"
+  o="${o}#[bg=${TERM_BG},fg=${BAT_BG}]${SL}"
   o="${o}#[bg=${BAT_BG},fg=#f0f0f0] ${bat_charging}${bat_val}% "
   o="${o}#[bg=${BAT_DK},fg=${BAT_BG}]${BS}"
   o="${o}#[bg=${BAT_DK},fg=#f0f0f0,nobold] BAT "
 
-  o="${o}#[bg=${BAT_DK},fg=${TIME_BG}]${SL}"
+  o="${o}#[bg=${TERM_BG},fg=${BAT_DK}]${BS}"
+  o="${o}#[bg=${TERM_BG},fg=${TIME_BG}]${SL}"
   o="${o}#[bg=${TIME_BG},fg=#ffffff] ${time_val} "
   o="${o}#[bg=${TIME_DK},fg=${TIME_BG}]${BS}"
   o="${o}#[bg=${TIME_DK},fg=#ffffff,nobold] ${date_val} "
