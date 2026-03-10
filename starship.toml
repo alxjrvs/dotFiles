@@ -1,7 +1,7 @@
 # Gnar prompt — purple — requires a Nerd Font
 
 format = """
-[](fg:#4a4a4a)$directory\
+(fg:#4a4a4a)$directory\
 (${custom.git_clean}${custom.git_dirty}${custom.git_nosync})\
 ${custom.dir_closer}\
 $line_break\
@@ -16,28 +16,48 @@ truncation_length = 2
 truncate_to_repo = false
 truncation_symbol = ""
 
-# Git is clean and in sync (or no remote)
+# Local is clean and equal to remote
 [custom.git_clean]
 command = "git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null"
 when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && test -z "$(git stash list 2>/dev/null)" && { ! git rev-parse --verify @{u} >/dev/null 2>&1 || { test "$(git rev-list --count @{u}..HEAD 2>/dev/null)" = "0" && test "$(git rev-list --count HEAD..@{u} 2>/dev/null)" = "0"; }; }"""
-format = "[](fg:#4a4a4a bg:#2e8b57)[  $output ](bg:#2e8b57 fg:#f0f0f0)[](fg:#2e8b57)"
+format = "[](fg:#4a4a4a bg:#2e8b57)[ ✓ $output ](bg:#2e8b57 fg:#f0f0f0)[](fg:#2e8b57)"
 shell = ["sh"]
 
-# Git has uncommitted changes
+# Uncommitted changes in working tree
 [custom.git_dirty]
-command = "git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null"
-when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -n "$(git status --porcelain 2>/dev/null)" """
-format = "[](fg:#4a4a4a bg:#b08800)[  $output ](bg:#b08800 fg:#f0f0f0)[](fg:#b08800)"
+command = """
+b=$(git branch --show-current 2>/dev/null)
+[ -z "$b" ] && b=$(git rev-parse --short HEAD 2>/dev/null)
+p=$(git status --porcelain 2>/dev/null)
+s=""
+printf '%s' "$p" | grep -q '^[MADRCU]' 2>/dev/null && s="${s}+"
+printf '%s' "$p" | grep -q '^.[MD]' 2>/dev/null && s="${s}!"
+printf '%s' "$p" | grep -q '^??' 2>/dev/null && s="${s}?"
+[ -n "$s" ] && printf '%s %s' "$b" "$s" || printf '%s' "$b"
+"""
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -n "$(git status --porcelain 2>/dev/null)"  """
+format = "[](fg:#4a4a4a bg:#c03030)[  $output ](bg:#c03030 fg:#f0f0f0)[](fg:#c03030)"
 shell = ["sh"]
 
-# Git is clean but has stash or out of sync with remote
+# Committed but not pushed, or has stash
 [custom.git_nosync]
-command = "git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null"
+command = """
+b=$(git branch --show-current 2>/dev/null)
+[ -z "$b" ] && b=$(git rev-parse --short HEAD 2>/dev/null)
+s=""
+if git rev-parse --verify @{u} >/dev/null 2>&1; then
+  a=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)
+  d=$(git rev-list --count HEAD..@{u} 2>/dev/null || echo 0)
+  [ "$a" -gt 0 ] && s="${s}⇡${a}"
+  [ "$d" -gt 0 ] && s="${s}⇣${d}"
+fi
+[ -n "$s" ] && printf '%s %s' "$b" "$s" || printf '%s' "$b"
+"""
 when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && { test -n "$(git stash list 2>/dev/null)" || { git rev-parse --verify @{u} >/dev/null 2>&1 && ! { test "$(git rev-list --count @{u}..HEAD 2>/dev/null)" = "0" && test "$(git rev-list --count HEAD..@{u} 2>/dev/null)" = "0"; }; }; }"""
 format = "[](fg:#4a4a4a bg:#b08800)[  $output ](bg:#b08800 fg:#f0f0f0)[](fg:#b08800)"
 shell = ["sh"]
 
-# Closer arrow for directory when not in a git repo
+# Closer arrow when not in a git repo
 [custom.dir_closer]
 when = "! git rev-parse --is-inside-work-tree 2>/dev/null"
 format = "[](fg:#4a4a4a)"
