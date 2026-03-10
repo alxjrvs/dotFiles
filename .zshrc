@@ -6,6 +6,9 @@ export LANG=en_US.UTF-8
 # Machine-local secrets (not in git)
 [[ -f ~/.secrets ]] && source ~/.secrets
 
+# Inject npm token from secrets (never store in .npmrc)
+[[ -n "$NPM_TOKEN" ]] && npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN" 2>/dev/null
+
 # Autocorrection
 setopt CORRECT
 
@@ -38,6 +41,26 @@ zle -N zle-line-init
 
 # Homebrew completions
 fpath+=(/opt/homebrew/share/zsh/site-functions)
+
+# Transient prompt — must be registered BEFORE sheldon/FSH to avoid circular
+# reference (FSH wraps azhw:zle-line-finish; adding a hook after FSH loads
+# inserts FSH's own wrapper into the azhw dispatcher, causing recursion)
+autoload -Uz add-zsh-hook add-zle-hook-widget
+if command -v starship &>/dev/null; then
+  function transient-prompt-precmd {
+    TRAPINT() { transient-prompt-func; return $(( 128 + $1 )) }
+  }
+  function transient-prompt-func {
+    (( ${+_transient_running} )) && return
+    typeset -g _transient_running=1
+    local STARSHIP_TRANSIENT
+    STARSHIP_TRANSIENT="$(starship prompt --profile transient)"
+    PROMPT="$STARSHIP_TRANSIENT" RPROMPT="" zle .reset-prompt
+    unset _transient_running
+  }
+  add-zsh-hook precmd transient-prompt-precmd
+  add-zle-hook-widget zle-line-finish transient-prompt-func
+fi
 
 # Sheldon plugins (adds zsh-completions to fpath)
 eval "$(sheldon source)"
@@ -86,19 +109,6 @@ zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 
 if command -v starship &>/dev/null; then
   eval "$(starship init zsh)"
-
-  # Transient prompt — collapse previous prompts to just the character
-  function transient-prompt-precmd {
-    TRAPINT() { transient-prompt-func; return $(( 128 + $1 )) }
-  }
-  function transient-prompt-func {
-    local STARSHIP_TRANSIENT
-    STARSHIP_TRANSIENT="$(starship prompt --profile transient)"
-    PROMPT="$STARSHIP_TRANSIENT" RPROMPT="" zle .reset-prompt
-  }
-  autoload -Uz add-zsh-hook add-zle-hook-widget
-  add-zsh-hook precmd transient-prompt-precmd
-  add-zle-hook-widget zle-line-finish transient-prompt-func
 fi
 
 # fzf shell integration (modern)
