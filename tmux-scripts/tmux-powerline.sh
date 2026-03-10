@@ -27,7 +27,7 @@ cmd_status_right() {
   elif [ "$bat_val" -gt 20 ]; then BAT_BG="#8a6f2a"; BAT_DK="#5a481b"
   else BAT_BG="#c05050"; BAT_DK="#7d3434"
   fi
-  TIME_BG="#A884D4"; TIME_DK="#6d568a"
+  TIME_BG="#8a6ab8"; TIME_DK="#57436e"
 
   time_val=$(date '+%-l:%M %p')
   date_val=$(date '+%a %b %-d' | tr 'a-z' 'A-Z')
