@@ -4,15 +4,12 @@ format = """
 $directory\
 (${custom.git_branch})\
 (${custom.pip_clean}${custom.pip_unstaged}${custom.pip_staged}${custom.pip_mixed})\
-${custom.dir_closer}\
-$line_break\
-$line_break\
-$character"""
+ (${custom.char_error}${custom.char_clean}${custom.char_staged}${custom.char_unstaged}${custom.char_mixed}${custom.char_nogit})"""
 
 add_newline = true
 
 [directory]
-format = "[ $path ](bg:#57436e fg:#f0f0f0)"
+format = "[ $path ](bg:#57436e fg:#f0f0f0)[](fg:#57436e)"
 truncation_length = 2
 truncate_to_repo = false
 truncation_symbol = ""
@@ -20,13 +17,13 @@ truncation_symbol = ""
 [custom.git_branch]
 command = "git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null"
 when = "git rev-parse --is-inside-work-tree 2>/dev/null"
-format = "[](fg:#57436e bg:#494949)[  $output ](bg:#494949 fg:#f0f0f0)"
+format = "[](bg:#494949)[  $output ](bg:#494949 fg:#f0f0f0)[](fg:#494949)"
 shell = ["sh"]
 
 [custom.pip_clean]
 command = "true"
 when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" """
-format = "[](fg:#494949 bg:#2e8b57)[ ✓ ](bg:#2e8b57 fg:#f0f0f0)[](fg:#2e8b57)"
+format = "[](bg:#2e8b57)[ ✓ ](bg:#2e8b57 fg:#f0f0f0)[](fg:#2e8b57)"
 shell = ["sh"]
 
 [custom.pip_unstaged]
@@ -38,13 +35,13 @@ printf '%s' "$p" | grep -q '^[?][?]' && s="${s}?"
 printf '%s' "$s"
 """
 when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])' && ! git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]'"""
-format = "[](fg:#494949 bg:#c05050)[ $output ](bg:#c05050 fg:#f0f0f0)[](fg:#c05050)"
+format = "[](bg:#c05050)[ $output ](bg:#c05050 fg:#f0f0f0)[](fg:#c05050)"
 shell = ["sh"]
 
 [custom.pip_staged]
 command = "true"
 when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]' && ! git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])'"""
-format = "[](fg:#494949 bg:#8a6f2a)[ + ](bg:#8a6f2a fg:#f0f0f0)[](fg:#8a6f2a)"
+format = "[](bg:#8a6f2a)[ + ](bg:#8a6f2a fg:#f0f0f0)[](fg:#8a6f2a)"
 shell = ["sh"]
 
 [custom.pip_mixed]
@@ -56,21 +53,52 @@ printf '%s' "$p" | grep -q '^[?][?]' && s="${s}?"
 printf '%s' "$s"
 """
 when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])' && git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]'"""
-format = "[](fg:#494949 bg:#c05050)[ $output ](bg:#c05050 fg:#f0f0f0)[](fg:#c05050 bg:#8a6f2a)[ + ](bg:#8a6f2a fg:#f0f0f0)[](fg:#8a6f2a)"
+format = "[](bg:#c05050)[ $output ](bg:#c05050 fg:#f0f0f0)[](fg:#c05050 bg:#8a6f2a)[ + ](bg:#8a6f2a fg:#f0f0f0)[](fg:#8a6f2a)"
 shell = ["sh"]
 
-[custom.dir_closer]
-when = "! git rev-parse --is-inside-work-tree 2>/dev/null"
-format = "[](fg:#57436e)"
-shell = ["sh"]
 
 [character]
-success_symbol = "[❯](fg:#fb543a)"
-error_symbol = "[❯](fg:#cc3333)"
+disabled = true
 
 # Transient prompt — collapse previous prompts to just the character
 [profiles]
-transient = "$character"
+transient = "(${custom.char_error}${custom.char_clean}${custom.char_staged}${custom.char_unstaged}${custom.char_mixed}${custom.char_nogit})"
 
 [cmd_duration]
 disabled = true
+
+[custom.char_error]
+command = 'printf "\342\235\257"'
+when = 'test "$STARSHIP_CMD_STATUS" != "0"'
+format = "[$output](fg:#cc3333) "
+shell = ["sh"]
+
+[custom.char_nogit]
+command = 'printf "\342\235\257"'
+when = 'test "$STARSHIP_CMD_STATUS" = "0" && ! git rev-parse --is-inside-work-tree 2>/dev/null'
+format = "[$output](fg:#fb543a) "
+shell = ["sh"]
+
+[custom.char_clean]
+command = 'printf "\342\235\257"'
+when = 'test "$STARSHIP_CMD_STATUS" = "0" && git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)"'
+format = "[$output](fg:#2e8b57) "
+shell = ["sh"]
+
+[custom.char_staged]
+command = 'printf "\342\235\257"'
+when = """test "$STARSHIP_CMD_STATUS" = "0" && git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]' && ! git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])'"""
+format = "[$output](fg:#8a6f2a) "
+shell = ["sh"]
+
+[custom.char_unstaged]
+command = 'printf "\342\235\257"'
+when = """test "$STARSHIP_CMD_STATUS" = "0" && git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])' && ! git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]'"""
+format = "[$output](fg:#c05050) "
+shell = ["sh"]
+
+[custom.char_mixed]
+command = 'printf "\342\235\257"'
+when = """test "$STARSHIP_CMD_STATUS" = "0" && git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])' && git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]'"""
+format = "[$output](fg:#8a6f2a) "
+shell = ["sh"]
