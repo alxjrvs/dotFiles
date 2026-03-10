@@ -20,13 +20,13 @@ truncation_symbol = ""
 [custom.git_branch]
 command = "git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null"
 when = "git rev-parse --is-inside-work-tree 2>/dev/null"
-format = "[](fg:#57436e bg:#686868)[  $output ](bg:#686868 fg:#f0f0f0)"
+format = "[](fg:#57436e bg:#494949)[  $output ](bg:#494949 fg:#f0f0f0)"
 shell = ["sh"]
 
 [custom.pip_clean]
 command = "true"
 when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" """
-format = "[](fg:#686868 bg:#2e8b57)[ ✓ ](bg:#2e8b57 fg:#f0f0f0)[](fg:#2e8b57)"
+format = "[](fg:#494949 bg:#2e8b57)[ ✓ ](bg:#2e8b57 fg:#f0f0f0)[](fg:#2e8b57)"
 shell = ["sh"]
 
 [custom.pip_unstaged]
@@ -38,13 +38,13 @@ printf '%s' "$p" | grep -q '^[?][?]' && s="${s}?"
 printf '%s' "$s"
 """
 when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])' && ! git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]'"""
-format = "[](fg:#686868 bg:#c05050)[ $output ](bg:#c05050 fg:#f0f0f0)[](fg:#c05050)"
+format = "[](fg:#494949 bg:#c05050)[ $output ](bg:#c05050 fg:#f0f0f0)[](fg:#c05050)"
 shell = ["sh"]
 
 [custom.pip_staged]
 command = "true"
 when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]' && ! git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])'"""
-format = "[](fg:#686868 bg:#8a6f2a)[ + ](bg:#8a6f2a fg:#f0f0f0)[](fg:#8a6f2a)"
+format = "[](fg:#494949 bg:#8a6f2a)[ + ](bg:#8a6f2a fg:#f0f0f0)[](fg:#8a6f2a)"
 shell = ["sh"]
 
 [custom.pip_mixed]
@@ -56,7 +56,7 @@ printf '%s' "$p" | grep -q '^[?][?]' && s="${s}?"
 printf '%s' "$s"
 """
 when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])' && git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]'"""
-format = "[](fg:#686868 bg:#c05050)[ $output ](bg:#c05050 fg:#f0f0f0)[](fg:#c05050 bg:#8a6f2a)[ + ](bg:#8a6f2a fg:#f0f0f0)[](fg:#8a6f2a)"
+format = "[](fg:#494949 bg:#c05050)[ $output ](bg:#c05050 fg:#f0f0f0)[](fg:#c05050 bg:#8a6f2a)[ + ](bg:#8a6f2a fg:#f0f0f0)[](fg:#8a6f2a)"
 shell = ["sh"]
 
 [custom.dir_closer]

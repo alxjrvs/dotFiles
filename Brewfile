@@ -39,7 +39,7 @@ brew "shfmt"
 brew "starship"
 brew "supabase/tap/supabase"
 # brew "wix/brew/applesimutils"  # iOS simulator
-brew "1password-cli"
+cask "1password-cli"
 cask "1password"
 cask "claude"
 cask "devutils"
