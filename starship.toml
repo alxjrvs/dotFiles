@@ -2,7 +2,7 @@
 
 format = """
 [](fg:#4a4a4a)$directory\
-(${custom.git_clean}${custom.git_dirty}${custom.git_nosync})\
+(${custom.git_clean}${custom.git_unstaged}${custom.git_staged})\
 ${custom.dir_closer}\
 $line_break\
 $line_break\
@@ -16,45 +16,45 @@ truncation_length = 2
 truncate_to_repo = false
 truncation_symbol = ""
 
-# Local is clean and equal to remote
+# Local working tree clean — nothing staged or modified
 [custom.git_clean]
 command = "git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null"
-when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && test -z "$(git stash list 2>/dev/null)" && { ! git rev-parse --verify @{u} >/dev/null 2>&1 || { test "$(git rev-list --count @{u}..HEAD 2>/dev/null)" = "0" && test "$(git rev-list --count HEAD..@{u} 2>/dev/null)" = "0"; }; }"""
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" """
 format = "[](fg:#4a4a4a bg:#2e8b57)[ ✓ $output ](bg:#2e8b57 fg:#f0f0f0)[](fg:#2e8b57)"
 shell = ["sh"]
 
-# Uncommitted changes in working tree
-[custom.git_dirty]
+# Unstaged modifications or untracked files (red)
+[custom.git_unstaged]
 command = """
 b=$(git branch --show-current 2>/dev/null)
 [ -z "$b" ] && b=$(git rev-parse --short HEAD 2>/dev/null)
 p=$(git status --porcelain 2>/dev/null)
 s=""
-printf '%s' "$p" | grep -q '^[MADRCU]' 2>/dev/null && s="${s}+"
-printf '%s' "$p" | grep -q '^.[MD]' 2>/dev/null && s="${s}!"
-printf '%s' "$p" | grep -q '^??' 2>/dev/null && s="${s}?"
+printf '%s' "$p" | grep -qE '^.[MD]' && s="${s}!"
+printf '%s' "$p" | grep -q '^[?][?]' && s="${s}?"
 [ -n "$s" ] && printf '%s %s' "$b" "$s" || printf '%s' "$b"
 """
-when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -n "$(git status --porcelain 2>/dev/null)"  """
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])'"""
 format = "[](fg:#4a4a4a bg:#c03030)[  $output ](bg:#c03030 fg:#f0f0f0)[](fg:#c03030)"
 shell = ["sh"]
 
-# Committed but not pushed, or has stash
-[custom.git_nosync]
+# Staged changes in git index — ready to commit (yellow)
+[custom.git_staged]
 command = """
-b=$(git branch --show-current 2>/dev/null)
-[ -z "$b" ] && b=$(git rev-parse --short HEAD 2>/dev/null)
-s=""
-if git rev-parse --verify @{u} >/dev/null 2>&1; then
-  a=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)
-  d=$(git rev-list --count HEAD..@{u} 2>/dev/null || echo 0)
-  [ "$a" -gt 0 ] && s="${s}⇡${a}"
-  [ "$d" -gt 0 ] && s="${s}⇣${d}"
+p=$(git status --porcelain 2>/dev/null)
+has_unstaged=0
+printf '%s' "$p" | grep -qE '^.[MD]' && has_unstaged=1
+printf '%s' "$p" | grep -q '^[?][?]' && has_unstaged=1
+if [ "$has_unstaged" = "0" ]; then
+    b=$(git branch --show-current 2>/dev/null)
+    [ -z "$b" ] && b=$(git rev-parse --short HEAD 2>/dev/null)
+    printf '%s +' "$b"
+else
+    printf '+'
 fi
-[ -n "$s" ] && printf '%s %s' "$b" "$s" || printf '%s' "$b"
 """
-when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" && { test -n "$(git stash list 2>/dev/null)" || { git rev-parse --verify @{u} >/dev/null 2>&1 && ! { test "$(git rev-list --count @{u}..HEAD 2>/dev/null)" = "0" && test "$(git rev-list --count HEAD..@{u} 2>/dev/null)" = "0"; }; }; }"""
-format = "[](fg:#4a4a4a bg:#7a5c00)[  $output ](bg:#7a5c00 fg:#f0f0f0)[](fg:#7a5c00)"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]'"""
+format = "[](fg:#4a4a4a bg:#7a5c00)[ $output ](bg:#7a5c00 fg:#f0f0f0)[](fg:#7a5c00)"
 shell = ["sh"]
 
 # Closer arrow when not in a git repo
