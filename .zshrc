@@ -55,15 +55,10 @@ else
 fi
 
 if command -v starship &>/dev/null; then
-  # In tmux, the status bar already shows dir/git/time — use minimal prompt
-  [[ -n "$TMUX" ]] && export STARSHIP_CONFIG="$HOME/.config/starship-tmux.toml"
-  # Starship prompt
   eval "$(starship init zsh)"
 
   # Transient prompt — collapse previous prompts to just the character
-  # Skip inside tmux: prompt is already minimal
-  if [[ -z "$TMUX" ]]; then
-    function transient-prompt-precmd {
+  function transient-prompt-precmd {
     TRAPINT() { transient-prompt-func; return $(( 128 + $1 )) }
   }
   function transient-prompt-func {
@@ -74,7 +69,6 @@ if command -v starship &>/dev/null; then
   autoload -Uz add-zsh-hook add-zle-hook-widget
   add-zsh-hook precmd transient-prompt-precmd
   add-zle-hook-widget zle-line-finish transient-prompt-func
-  fi
 fi
 
 # fzf

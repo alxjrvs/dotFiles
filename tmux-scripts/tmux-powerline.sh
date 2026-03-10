@@ -35,11 +35,17 @@ cmd_status_right() {
   SL=""
   BS=""
 
-  # Read trailing bg from hook-set option (instant update on window switch)
-  _rt_bg=$(tmux show -gqv @right_tabs_bg 2>/dev/null)
-  _rt_bg="${_rt_bg:-$TERM_BG}"
+  # ── Claude stat segment ───────────────────────────────────────────────
+  CL_BG="#d07840"; CL_DK="#8c4e28"
+  _cl_active=0
+  for _cf in /tmp/claude-active-*; do [ -f "$_cf" ] && _cl_active=1 && break; done
+  if [ "$_cl_active" = "1" ]; then cl_val="ON"; else cl_val="OFF"; fi
 
-  o="#[bg=${_rt_bg},fg=${CPU_BG}]${SL}"
+  o="#[bg=${TERM_BG},fg=${CL_BG}]${SL}"
+  o="${o}#[bg=${CL_BG},fg=#f0f0f0] ${cl_val} "
+  o="${o}#[bg=${CL_DK},fg=${CL_BG}]${BS}"
+  o="${o}#[bg=${CL_DK},fg=#f0f0f0,nobold] CLAUDE "
+  o="${o}#[bg=${CL_DK},fg=${CPU_BG}]${SL}"
   o="${o}#[bg=${CPU_BG},fg=#f0f0f0] ${cpu_val}% "
   o="${o}#[bg=${CPU_DK},fg=${CPU_BG}]${BS}"
   o="${o}#[bg=${CPU_DK},fg=#f0f0f0,nobold] CPU "
@@ -78,6 +84,7 @@ cmd_git() {
   PURPLE="#4a4a4a"
   LABEL_BG="default"
   TERM_BG="#282c34"
+  from_bg="$LABEL_BG"
 
   cd "$dir" 2>/dev/null || { printf '#[bg=#2e2e2e,fg=%s]' "$PURPLE"; return 0; }
 
@@ -109,18 +116,18 @@ cmd_git() {
   # ── Lang segment ─────────────────────────────────────────────────────────
   if [ -n "$lang" ]; then
     case "$lang" in
-      node)    LCOLOR="#4a9070"; LABEL="NODE";  ASDF="nodejs" ;;
-      deno)    LCOLOR="#4a8a8a"; LABEL="DENO";  ASDF="deno" ;;
-      python)  LCOLOR="#5f7faf"; LABEL="PY";    ASDF="python" ;;
-      rust)    LCOLOR="#b06040"; LABEL="RUST";  ASDF="rust" ;;
-      go)      LCOLOR="#5a9aaa"; LABEL="GO";    ASDF="golang" ;;
-      ruby)    LCOLOR="#b05050"; LABEL="RUBY";  ASDF="ruby" ;;
-      elixir)  LCOLOR="#7b60a0"; LABEL="EX";    ASDF="elixir" ;;
-      swift)   LCOLOR="#c06048"; LABEL="SWIFT"; ASDF="" ;;
-      java)    LCOLOR="#a06050"; LABEL="JAVA";  ASDF="java" ;;
-      kotlin)  LCOLOR="#7f52b0"; LABEL="KT";    ASDF="kotlin" ;;
-      php)     LCOLOR="#7070a8"; LABEL="PHP";   ASDF="php" ;;
-      zig)     LCOLOR="#c09040"; LABEL="ZIG";   ASDF="zig" ;;
+      node)    LCOLOR="#4a9070"; LCOLOR_DARK="#305e49"; LABEL="NODE";  ASDF="nodejs" ;;
+      deno)    LCOLOR="#4a8a8a"; LCOLOR_DARK="#305a5a"; LABEL="DENO";  ASDF="deno" ;;
+      python)  LCOLOR="#5f7faf"; LCOLOR_DARK="#3e5372"; LABEL="PY";    ASDF="python" ;;
+      rust)    LCOLOR="#b06040"; LCOLOR_DARK="#723e2a"; LABEL="RUST";  ASDF="rust" ;;
+      go)      LCOLOR="#5a9aaa"; LCOLOR_DARK="#3b646f"; LABEL="GO";    ASDF="golang" ;;
+      ruby)    LCOLOR="#b05050"; LCOLOR_DARK="#723434"; LABEL="RUBY";  ASDF="ruby" ;;
+      elixir)  LCOLOR="#7b60a0"; LCOLOR_DARK="#503e68"; LABEL="EX";    ASDF="elixir" ;;
+      swift)   LCOLOR="#c06048"; LCOLOR_DARK="#7d3e2f"; LABEL="SWIFT"; ASDF="" ;;
+      java)    LCOLOR="#a06050"; LCOLOR_DARK="#683e34"; LABEL="JAVA";  ASDF="java" ;;
+      kotlin)  LCOLOR="#7f52b0"; LCOLOR_DARK="#533572"; LABEL="KT";    ASDF="kotlin" ;;
+      php)     LCOLOR="#7070a8"; LCOLOR_DARK="#49496d"; LABEL="PHP";   ASDF="php" ;;
+      zig)     LCOLOR="#c09040"; LCOLOR_DARK="#7d5e2a"; LABEL="ZIG";   ASDF="zig" ;;
     esac
 
     ver=""
@@ -145,9 +152,9 @@ cmd_git() {
     fi
     [ -z "$ver" ] && ver="?"
 
-    # [purple->dark] LABEL [dark->color] version [color->dark]
-    printf '#[bg=%s,fg=%s]#[bg=%s,fg=#cccccc,nobold] %s #[bg=%s,fg=%s]#[bg=%s,fg=#f0f0f0] %s #[bg=%s,fg=%s]' \
-      "$LABEL_BG" "$PURPLE" "$LABEL_BG" "$LABEL" "$LCOLOR" "$TERM_BG" "$LCOLOR" "$ver" "$LABEL_BG" "$LCOLOR"
+    # [grey->LCOLOR_DARK] LABEL [LCOLOR_DARK->LCOLOR] version [LCOLOR->dark]
+    printf '#[bg=%s,fg=%s]#[bg=%s,fg=#f0f0f0,nobold] %s #[bg=%s,fg=%s]#[bg=%s,fg=#f0f0f0] %s #[bg=%s,fg=%s]' \
+      "$LCOLOR_DARK" "$PURPLE" "$LCOLOR_DARK" "$LABEL" "$LCOLOR" "$LCOLOR_DARK" "$LCOLOR" "$ver" "$LABEL_BG" "$LCOLOR"
 
     # If no git, close from dark
     if [ "$is_git" = "0" ]; then
@@ -155,8 +162,8 @@ cmd_git() {
       return 0
     fi
   else
-    # No lang, has git: transition purple -> dark
-    printf '#[bg=%s,fg=%s]' "$LABEL_BG" "$PURPLE"
+    # No lang: git opens directly from cwd (grey)
+    from_bg="$PURPLE"
   fi
 
   # ── Git branch + status (on dark bg) ────────────────────────────────────
@@ -180,7 +187,7 @@ cmd_git() {
   [ "$modified"   = "1" ] && all_status="${all_status}!"
   [ "$renamed"    = "1" ] && all_status="${all_status}»"
   [ "$deleted"    = "1" ] && all_status="${all_status}✘"
-  [ "$stashed"    = "1" ] && all_status="${all_status}$$"
+  [ "$stashed"    = "1" ] && all_status="${all_status}\$"
   [ "$untracked"  = "1" ] && all_status="${all_status}?"
 
   ahead_behind=""
@@ -199,11 +206,11 @@ cmd_git() {
 
   combined="${all_status}${ahead_behind}"
   if [ -n "$combined" ]; then
-    printf '#[bg=#8a6f2a,fg=%s]#[bg=#8a6f2a,fg=#f0f0f0,nobold]  %s %s #[bg=#2e2e2e,fg=#8a6f2a]' "$TERM_BG" "$branch" "$combined"
+    printf '#[bg=#8a6f2a,fg=%s]#[bg=#8a6f2a,fg=#f0f0f0,nobold]  %s %s #[bg=#2e2e2e,fg=#8a6f2a]' "$from_bg" "$branch" "$combined"
   elif git rev-parse --verify "@{u}" >/dev/null 2>&1; then
-    printf '#[bg=#2e8b57,fg=%s]#[bg=#2e8b57,fg=#f0f0f0,nobold]  %s ✓ #[bg=#2e2e2e,fg=#2e8b57]' "$TERM_BG" "$branch"
+    printf '#[bg=#2e8b57,fg=%s]#[bg=#2e8b57,fg=#f0f0f0,nobold]  %s ✓ #[bg=#2e2e2e,fg=#2e8b57]' "$from_bg" "$branch"
   else
-    printf '#[bg=%s,fg=#f0f0f0,nobold]  %s #[bg=#2e2e2e,fg=%s]' "$LABEL_BG" "$branch" "$TERM_BG"
+    printf '#[bg=%s,fg=#f0f0f0,nobold]  %s #[bg=#2e2e2e,fg=%s]' "$from_bg" "$branch" "$TERM_BG"
   fi
 
 }
@@ -273,11 +280,6 @@ cmd_tab_colors() {
   right_neighbor() { printf '%s\n' "$WIN_LIST" | awk -v w="$1" '$1+0>w+0{print $1+0;exit}'; }
   {
     for WIN in $WIN_LIST; do
-      if [ "$WIN" -gt "$ACTIVE" ]; then
-        printf 'set-window-option -t :%s @tab_hidden "1"\n' "$WIN"
-      else
-        printf 'set-window-option -t :%s @tab_hidden ""\n' "$WIN"
-      fi
       if [ "$WIN" -eq "$ACTIVE" ]; then
         NAME_BG=$(active_color "$WIN")
         DK_BG=$(active_dark_color "$WIN")
@@ -287,55 +289,122 @@ cmd_tab_colors() {
         for _w in $WIN_LIST; do [ "$_w" -lt "$WIN" ] && HAS_LEFT=1; done
         if [ "$HAS_LEFT" = "1" ]; then
           printf 'set-window-option -t :%s @tab_arrow_on "bg=%s,fg=%s"\n' "$WIN" "$DK_BG" "$DK_BG"
+          printf 'set-window-option -t :%s @tab_has_left "1"\n' "$WIN"
         else
-          printf 'set-window-option -t :%s @tab_arrow_on "bg=%s,fg=%s"\n' "$WIN" "$DK_BG" "$TERM_BG"
+          printf 'set-window-option -t :%s @tab_has_left ""\n' "$WIN"
         fi
         printf 'set-window-option -t :%s @tab_inner "bg=%s,fg=%s"\n' "$WIN" "$DK_BG" "$NAME_BG"
         printf 'set-window-option -t :%s @tab_dk_style "bg=%s,fg=#f0f0f0,nobold"\n' "$WIN" "$DK_BG"
-        printf 'set-window-option -t :%s @tab_arrow_off "bg=#4a4a4a,fg=%s"\n' "$WIN" "$NAME_BG"
       else
         NAME_BG="#4a4a4a"
         printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=#cccccc,nobold"\n' "$WIN" "$NAME_BG"
-        printf 'set-window-option -t :%s @tab_arrow_on "bg=%s,fg=%s"\n' "$WIN" "$NAME_BG" "#2e2e2e"
+        printf 'set-window-option -t :%s @tab_arrow_on "bg=default,fg=%s"\n' "$WIN" "$NAME_BG"
       fi
       RN=$(right_neighbor "$WIN")
-      if [ "$WIN" -eq "$ACTIVE" ]; then
-        : # arrow_off already set above
-      elif [ -z "$RN" ]; then
+      if [ -z "$RN" ]; then
         printf 'set-window-option -t :%s @tab_arrow_off "bg=default,fg=%s"\n' "$WIN" "$NAME_BG"
       else
         if [ "$RN" -eq "$ACTIVE" ]; then
           NEXT_BG=$(active_dark_color "$RN")
         else
-          NEXT_BG="#2e2e2e"
+          NEXT_BG="default"
         fi
         printf 'set-window-option -t :%s @tab_arrow_off "bg=%s,fg=%s"\n' "$WIN" "$NEXT_BG" "$NAME_BG"
       fi
     done
-    # ── Right-of-active tab segments for status-right ──────────────────────
-    _SL=""
-    _BS=""
-    _TAB_N="#4a4a4a"
-    _TAB_I="#2e2e2e"
-    _rt=""
-    _rt_bg="$TERM_BG"
-    _wnames=$(tmux list-windows -F '#{window_index} #{window_name}' 2>/dev/null)
-    for _rw in $WIN_LIST; do
-      if [ "$_rw" -gt "$ACTIVE" ]; then
-        _wn=$(echo "$_wnames" | awk -v w="$_rw" '$1 == w { $1=""; sub(/^ /,""); print }')
-        _rt="${_rt}#[bg=${_rt_bg},fg=${_TAB_N}]${_SL}#[bg=${_TAB_N},fg=#cccccc] ${_wn} #[bg=${_TAB_I},fg=${_TAB_N}]${_BS}#[bg=${_TAB_I},fg=#cccccc,nobold] ${_rw} "
-        _rt_bg="$_TAB_I"
-      fi
-    done
-    printf 'set -g @right_tabs "%s"\n' "$_rt"
-    printf 'set -g @right_tabs_bg "%s"\n' "$_rt_bg"
   } | tmux source-file -
 
+}
+
+cmd_pane_git() {
+  dir="$1"
+  cd "$dir" 2>/dev/null || return 0
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+
+  branch=$(git branch --show-current 2>/dev/null)
+  [ -z "$branch" ] && branch=$(git rev-parse --short HEAD 2>/dev/null)
+  [ -z "$branch" ] && return 0
+
+  porcelain=$(git status --porcelain 2>/dev/null)
+  all_status=""
+  echo "$porcelain" | grep -q '^[UAD][UAD]' 2>/dev/null && all_status="${all_status}="
+  echo "$porcelain" | grep -q '^[^? ]'      2>/dev/null && all_status="${all_status}+"
+  echo "$porcelain" | grep -q '^.[M]'        2>/dev/null && all_status="${all_status}!"
+  echo "$porcelain" | grep -q '^R'           2>/dev/null && all_status="${all_status}»"
+  echo "$porcelain" | grep -q '^.[D]'        2>/dev/null && all_status="${all_status}✘"
+  git stash list 2>/dev/null | grep -q .                 && all_status="${all_status}\$"
+  echo "$porcelain" | grep -q '^??'          2>/dev/null && all_status="${all_status}?"
+
+  ahead_behind=""
+  if git rev-parse --verify "@{u}" >/dev/null 2>&1; then
+    ahead=$(git rev-list --count "@{u}..HEAD" 2>/dev/null || echo 0)
+    behind=$(git rev-list --count "HEAD..@{u}" 2>/dev/null || echo 0)
+    if [ "$ahead" -gt 0 ] && [ "$behind" -gt 0 ]; then
+      ahead_behind="⇕"
+    elif [ "$ahead" -gt 0 ]; then
+      ahead_behind="⇡${ahead}"
+    elif [ "$behind" -gt 0 ]; then
+      ahead_behind="⇣${behind}"
+    fi
+  fi
+
+  combined="${all_status}${ahead_behind}"
+  if [ -n "$combined" ]; then
+    printf '  %s %s' "$branch" "$combined"
+  elif git rev-parse --verify "@{u}" >/dev/null 2>&1; then
+    printf '  %s ✓' "$branch"
+  else
+    printf '  %s' "$branch"
+  fi
+}
+
+cmd_pane_colors() {
+  pane_id=$(tmux display-message -p '#{session_name}:#{window_index}.#{pane_index}' 2>/dev/null)
+  pane_path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
+
+  bg="#4a4a4a"
+  branch=""
+
+  if [ -n "$pane_path" ] && cd "$pane_path" 2>/dev/null && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    branch=$(git branch --show-current 2>/dev/null)
+    [ -z "$branch" ] && branch=$(git rev-parse --short HEAD 2>/dev/null)
+
+    if [ -n "$branch" ]; then
+      porcelain=$(git status --porcelain 2>/dev/null)
+      dirty=""
+      echo "$porcelain" | grep -q '.' 2>/dev/null && dirty=1
+      git stash list 2>/dev/null | grep -q .       && dirty=1
+
+      ahead=0; behind=0
+      if git rev-parse --verify "@{u}" >/dev/null 2>&1; then
+        ahead=$(git rev-list --count "@{u}..HEAD" 2>/dev/null || echo 0)
+        behind=$(git rev-list --count "HEAD..@{u}" 2>/dev/null || echo 0)
+      fi
+
+      if [ -n "$dirty" ] || [ "$ahead" -gt 0 ] || [ "$behind" -gt 0 ]; then
+        bg="#8a6f2a"
+      elif git rev-parse --verify "@{u}" >/dev/null 2>&1; then
+        bg="#2e8b57"
+      fi
+    fi
+  fi
+
+  # Build complete styled string — avoids nesting #{} inside #[style] in pane-border-format
+  short_path=$(echo "$pane_path" | sed "s|$HOME|~|" | awk -F'/' '{n=NF; if(n>=2) print $(n-1)"/"$n; else print $n}')
+  if [ -n "$branch" ]; then
+    fmt="#[bg=#6d568a,fg=#f0f0f0] ${short_path} #[default] #[bg=${bg},fg=#f0f0f0] ${branch} #[default]"
+  else
+    fmt="#[bg=#6d568a,fg=#f0f0f0] ${short_path} #[default]"
+  fi
+
+  tmux set-option -pt "$pane_id" @pane_border_fmt "$fmt" 2>/dev/null || true
 }
 
 case "${1:-}" in
   status-right) cmd_status_right ;;
   dir)          shift; cmd_dir "$@" ;;
   git)          shift; cmd_git "$@" ;;
+  pane-git)     shift; cmd_pane_git "$@" ;;
+  pane-colors)  cmd_pane_colors ;;
   tab-colors)   cmd_tab_colors ;;
 esac

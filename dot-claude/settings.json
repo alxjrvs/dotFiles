@@ -66,6 +66,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"${TMUX_PANE:-}\" ] && touch \"/tmp/claude-active-${TMUX_PANE}\" || true",
+            "timeout": 3
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -76,6 +86,17 @@
             "type": "command",
             "command": "FILE=$(echo \"$TOOL_INPUT\" | jq -r '.file_path // empty') && [[ \"$FILE\" == *.sh ]] && command -v shfmt &>/dev/null && shfmt -w -i 2 \"$FILE\" || true",
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rm -f \"/tmp/claude-active-${TMUX_PANE:-}\"",
+            "timeout": 5
           }
         ]
       }
