@@ -1,6 +1,7 @@
 # Font
 font-family = FiraCode Nerd Font
 font-thicken = true
+font-size = 14
 
 # Ligatures (disabled by default since v1.2.0)
 font-feature = +liga
@@ -19,14 +20,18 @@ window-padding-y = 0
 window-padding-balance = false
 macos-titlebar-style = native
 window-save-state = always
-background-opacity = 0.99
+background-opacity = 1.0
 confirm-close-surface = false
 quit-after-last-window-closed = true
+macos-option-as-alt = left
 
 # Clipboard
 clipboard-trim-trailing-spaces = true
 clipboard-paste-protection = false
 copy-on-select = true
+
+# Scrollback (tmux manages scrollback)
+scrollback-lines = 0
 
 # Shell (tmux manages everything)
 shell-integration = none

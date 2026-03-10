@@ -1,8 +1,9 @@
 # Gnar prompt — purple — requires a Nerd Font
 
 format = """
-[](fg:#4a4a4a)$directory\
-(${custom.git_clean}${custom.git_unstaged}${custom.git_staged})\
+$directory\
+(${custom.git_branch})\
+(${custom.pip_clean}${custom.pip_unstaged}${custom.pip_staged}${custom.pip_mixed})\
 ${custom.dir_closer}\
 $line_break\
 $line_break\
@@ -11,56 +12,56 @@ $character"""
 add_newline = true
 
 [directory]
-format = "[ $path ](bg:#4a4a4a fg:#f0f0f0)"
+format = "[ $path ](bg:#57436e fg:#f0f0f0)"
 truncation_length = 2
 truncate_to_repo = false
 truncation_symbol = ""
 
-# Local working tree clean — nothing staged or modified
-[custom.git_clean]
+[custom.git_branch]
 command = "git branch --show-current 2>/dev/null || git rev-parse --short HEAD 2>/dev/null"
-when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" """
-format = "[](fg:#4a4a4a bg:#2e8b57)[ ✓ $output ](bg:#2e8b57 fg:#f0f0f0)[](fg:#2e8b57)"
+when = "git rev-parse --is-inside-work-tree 2>/dev/null"
+format = "[](fg:#57436e bg:#686868)[  $output ](bg:#686868 fg:#f0f0f0)"
 shell = ["sh"]
 
-# Unstaged modifications or untracked files (red)
-[custom.git_unstaged]
+[custom.pip_clean]
+command = "true"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && test -z "$(git status --porcelain 2>/dev/null)" """
+format = "[](fg:#686868 bg:#2e8b57)[ ✓ ](bg:#2e8b57 fg:#f0f0f0)[](fg:#2e8b57)"
+shell = ["sh"]
+
+[custom.pip_unstaged]
 command = """
-b=$(git branch --show-current 2>/dev/null)
-[ -z "$b" ] && b=$(git rev-parse --short HEAD 2>/dev/null)
 p=$(git status --porcelain 2>/dev/null)
 s=""
 printf '%s' "$p" | grep -qE '^.[MD]' && s="${s}!"
 printf '%s' "$p" | grep -q '^[?][?]' && s="${s}?"
-[ -n "$s" ] && printf '%s %s' "$b" "$s" || printf '%s' "$b"
+printf '%s' "$s"
 """
-when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])'"""
-format = "[](fg:#4a4a4a bg:#c03030)[  $output ](bg:#c03030 fg:#f0f0f0)[](fg:#c03030)"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])' && ! git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]'"""
+format = "[](fg:#686868 bg:#c05050)[ $output ](bg:#c05050 fg:#f0f0f0)[](fg:#c05050)"
 shell = ["sh"]
 
-# Staged changes in git index — ready to commit (yellow)
-[custom.git_staged]
+[custom.pip_staged]
+command = "true"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]' && ! git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])'"""
+format = "[](fg:#686868 bg:#8a6f2a)[ + ](bg:#8a6f2a fg:#f0f0f0)[](fg:#8a6f2a)"
+shell = ["sh"]
+
+[custom.pip_mixed]
 command = """
 p=$(git status --porcelain 2>/dev/null)
-has_unstaged=0
-printf '%s' "$p" | grep -qE '^.[MD]' && has_unstaged=1
-printf '%s' "$p" | grep -q '^[?][?]' && has_unstaged=1
-if [ "$has_unstaged" = "0" ]; then
-    b=$(git branch --show-current 2>/dev/null)
-    [ -z "$b" ] && b=$(git rev-parse --short HEAD 2>/dev/null)
-    printf '%s +' "$b"
-else
-    printf '+'
-fi
+s=""
+printf '%s' "$p" | grep -qE '^.[MD]' && s="${s}!"
+printf '%s' "$p" | grep -q '^[?][?]' && s="${s}?"
+printf '%s' "$s"
 """
-when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]'"""
-format = "[](fg:#4a4a4a bg:#7a5c00)[ $output ](bg:#7a5c00 fg:#f0f0f0)[](fg:#7a5c00)"
+when = """git rev-parse --is-inside-work-tree 2>/dev/null && git status --porcelain 2>/dev/null | grep -qE '^(.[MD]|[?][?])' && git status --porcelain 2>/dev/null | grep -qE '^[MADRCU]'"""
+format = "[](fg:#686868 bg:#c05050)[ $output ](bg:#c05050 fg:#f0f0f0)[](fg:#c05050 bg:#8a6f2a)[ + ](bg:#8a6f2a fg:#f0f0f0)[](fg:#8a6f2a)"
 shell = ["sh"]
 
-# Closer arrow when not in a git repo
 [custom.dir_closer]
 when = "! git rev-parse --is-inside-work-tree 2>/dev/null"
-format = "[](fg:#4a4a4a)"
+format = "[](fg:#57436e)"
 shell = ["sh"]
 
 [character]

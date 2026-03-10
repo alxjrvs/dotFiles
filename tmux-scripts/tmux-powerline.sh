@@ -3,7 +3,7 @@
 # All formatting, glyphs, and colors centralized here.
 # Raw data from tmux-data.sh; styling applied by this script.
 # Usage: tmux-powerline.sh <command> [args...]
-# Commands: status-right, dir <path>, git <path>, tab-colors
+# Commands: status-right, dir <path>, pane-git <path>, pane-colors, tab-colors
 
 cmd_status_right() {
   TERM_BG="#282c34"
@@ -29,8 +29,9 @@ cmd_status_right() {
   fi
   TIME_BG="#8a6ab8"; TIME_DK="#57436e"
 
-  time_val=$(date '+%-l:%M %p')
-  date_val=$(date '+%a %b %-d' | tr 'a-z' 'A-Z')
+  _dt=$(date '+%-l:%M %p|%a %b %-d')
+  time_val="${_dt%%|*}"
+  date_val=$(echo "${_dt#*|}" | tr 'a-z' 'A-Z')
 
   SL=""
   BS=""
@@ -68,145 +69,6 @@ cmd_dir() {
 
 }
 
-cmd_git() {
-  # tmux-git.sh <pane_current_path>
-  # Outputs optional lang segment + git branch + status
-  # Handles all transitions from purple dir background
-
-  dir="$1"
-  PURPLE="#4a4a4a"
-  LABEL_BG="default"
-  TERM_BG="#282c34"
-  from_bg="$LABEL_BG"
-
-  cd "$dir" 2>/dev/null || { printf '#[bg=#2e2e2e,fg=%s]' "$PURPLE"; return 0; }
-
-  # ── Language detection ───────────────────────────────────────────────────
-  lang=""
-  [ -f "build.zig" ]        && lang="zig"
-  [ -z "$lang" ] && [ -f "Cargo.toml" ]       && lang="rust"
-  [ -z "$lang" ] && [ -f "go.mod" ]           && lang="go"
-  [ -z "$lang" ] && [ -f "mix.exs" ]          && lang="elixir"
-  [ -z "$lang" ] && [ -f "build.gradle.kts" ] && lang="kotlin"
-  [ -z "$lang" ] && [ -f "Package.swift" ]    && lang="swift"
-  [ -z "$lang" ] && [ -f "composer.json" ]    && lang="php"
-  [ -z "$lang" ] && { [ -f "Gemfile" ] || [ -f ".ruby-version" ]; } && lang="ruby"
-  [ -z "$lang" ] && { [ -f "deno.json" ] || [ -f "deno.jsonc" ]; } && lang="deno"
-  [ -z "$lang" ] && { [ -f "package.json" ] || [ -f ".nvmrc" ] || [ -f ".node-version" ]; } && lang="node"
-  [ -z "$lang" ] && { [ -f "pom.xml" ] || [ -f "build.gradle" ]; } && lang="java"
-  [ -z "$lang" ] && { [ -f "pyproject.toml" ] || [ -f "setup.py" ] || [ -f "requirements.txt" ] || [ -f ".python-version" ]; } && lang="python"
-
-  # ── Check git early ──────────────────────────────────────────────────────
-  is_git=0
-  git rev-parse --is-inside-work-tree >/dev/null 2>&1 && is_git=1
-
-  # ── No lang, no git: just close from purple ──────────────────────────────
-  if [ -z "$lang" ] && [ "$is_git" = "0" ]; then
-    printf '#[bg=#2e2e2e,fg=%s]' "$PURPLE"
-    return 0
-  fi
-
-  # ── Lang segment ─────────────────────────────────────────────────────────
-  if [ -n "$lang" ]; then
-    case "$lang" in
-      node)    LCOLOR="#4a9070"; LCOLOR_DARK="#305e49"; LABEL="NODE";  ASDF="nodejs" ;;
-      deno)    LCOLOR="#4a8a8a"; LCOLOR_DARK="#305a5a"; LABEL="DENO";  ASDF="deno" ;;
-      python)  LCOLOR="#5f7faf"; LCOLOR_DARK="#3e5372"; LABEL="PY";    ASDF="python" ;;
-      rust)    LCOLOR="#b06040"; LCOLOR_DARK="#723e2a"; LABEL="RUST";  ASDF="rust" ;;
-      go)      LCOLOR="#5a9aaa"; LCOLOR_DARK="#3b646f"; LABEL="GO";    ASDF="golang" ;;
-      ruby)    LCOLOR="#b05050"; LCOLOR_DARK="#723434"; LABEL="RUBY";  ASDF="ruby" ;;
-      elixir)  LCOLOR="#7b60a0"; LCOLOR_DARK="#503e68"; LABEL="EX";    ASDF="elixir" ;;
-      swift)   LCOLOR="#c06048"; LCOLOR_DARK="#7d3e2f"; LABEL="SWIFT"; ASDF="" ;;
-      java)    LCOLOR="#a06050"; LCOLOR_DARK="#683e34"; LABEL="JAVA";  ASDF="java" ;;
-      kotlin)  LCOLOR="#7f52b0"; LCOLOR_DARK="#533572"; LABEL="KT";    ASDF="kotlin" ;;
-      php)     LCOLOR="#7070a8"; LCOLOR_DARK="#49496d"; LABEL="PHP";   ASDF="php" ;;
-      zig)     LCOLOR="#c09040"; LCOLOR_DARK="#7d5e2a"; LABEL="ZIG";   ASDF="zig" ;;
-    esac
-
-    ver=""
-    if [ -n "$ASDF" ]; then
-      ver=$(asdf current "$ASDF" 2>/dev/null | awk 'NR>1{print $2}')
-    fi
-    if [ -z "$ver" ] || [ "$ver" = "______" ]; then
-      case "$lang" in
-        node)    ver=$(node --version 2>/dev/null | sed 's/^v//') ;;
-        deno)    ver=$(deno --version 2>/dev/null | head -1 | awk '{print $2}') ;;
-        python)  ver=$(python3 --version 2>/dev/null | awk '{print $2}') ;;
-        rust)    ver=$(rustc --version 2>/dev/null | awk '{print $2}') ;;
-        go)      ver=$(go version 2>/dev/null | awk '{print $3}' | sed 's/^go//') ;;
-        ruby)    ver=$(ruby --version 2>/dev/null | awk '{print $2}') ;;
-        elixir)  ver=$(elixir --version 2>/dev/null | tail -1 | awk '{print $2}') ;;
-        swift)   ver=$(swift --version 2>/dev/null | head -1 | awk '{print $4}') ;;
-        java)    ver=$(java -version 2>&1 | head -1 | sed 's/.*"\(.*\)".*/\1/') ;;
-        kotlin)  ver=$(kotlin -version 2>&1 | awk '{print $3}') ;;
-        php)     ver=$(php --version 2>/dev/null | head -1 | awk '{print $2}') ;;
-        zig)     ver=$(zig version 2>/dev/null) ;;
-      esac
-    fi
-    [ -z "$ver" ] && ver="?"
-
-    # [grey->LCOLOR_DARK] LABEL [LCOLOR_DARK->LCOLOR] version [LCOLOR->dark]
-    printf '#[bg=%s,fg=%s]#[bg=%s,fg=#f0f0f0,nobold] %s #[bg=%s,fg=%s]#[bg=%s,fg=#f0f0f0] %s #[bg=%s,fg=%s]' \
-      "$LCOLOR_DARK" "$PURPLE" "$LCOLOR_DARK" "$LABEL" "$LCOLOR" "$LCOLOR_DARK" "$LCOLOR" "$ver" "$LABEL_BG" "$LCOLOR"
-
-    # If no git, close from dark
-    if [ "$is_git" = "0" ]; then
-      printf '#[bg=#2e2e2e,fg=%s]' "$TERM_BG"
-      return 0
-    fi
-  else
-    # No lang: git opens directly from cwd (grey)
-    from_bg="$PURPLE"
-  fi
-
-  # ── Git branch + status (on dark bg) ────────────────────────────────────
-  branch=$(git branch --show-current 2>/dev/null)
-  [ -z "$branch" ] && branch=$(git rev-parse --short HEAD 2>/dev/null)
-  [ -z "$branch" ] && { printf '#[bg=#2e2e2e,fg=%s]' "$TERM_BG"; return 0; }
-
-  porcelain=$(git status --porcelain 2>/dev/null)
-  conflicted=0; staged=0; modified=0; renamed=0; deleted=0; stashed=0; untracked=0
-  echo "$porcelain" | grep -q '^[UAD][UAD]' 2>/dev/null && conflicted=1
-  echo "$porcelain" | grep -q '^[^? ]'      2>/dev/null && staged=1
-  echo "$porcelain" | grep -q '^.[M]'        2>/dev/null && modified=1
-  echo "$porcelain" | grep -q '^R'           2>/dev/null && renamed=1
-  echo "$porcelain" | grep -q '^.[D]'        2>/dev/null && deleted=1
-  git stash list 2>/dev/null | grep -q .                 && stashed=1
-  echo "$porcelain" | grep -q '^??'          2>/dev/null && untracked=1
-
-  all_status=""
-  [ "$conflicted" = "1" ] && all_status="${all_status}="
-  [ "$staged"     = "1" ] && all_status="${all_status}+"
-  [ "$modified"   = "1" ] && all_status="${all_status}!"
-  [ "$renamed"    = "1" ] && all_status="${all_status}»"
-  [ "$deleted"    = "1" ] && all_status="${all_status}✘"
-  [ "$stashed"    = "1" ] && all_status="${all_status}\$"
-  [ "$untracked"  = "1" ] && all_status="${all_status}?"
-
-  ahead_behind=""
-  if git rev-parse --verify "@{u}" >/dev/null 2>&1; then
-    ahead=$(git rev-list --count "@{u}..HEAD" 2>/dev/null || echo 0)
-    behind=$(git rev-list --count "HEAD..@{u}" 2>/dev/null || echo 0)
-    if [ "$ahead" -gt 0 ] && [ "$behind" -gt 0 ]; then
-      ahead_behind="⇕"
-    elif [ "$ahead" -gt 0 ]; then
-      ahead_behind="⇡${ahead}"
-    elif [ "$behind" -gt 0 ]; then
-      ahead_behind="⇣${behind}"
-    fi
-  fi
-
-
-  combined="${all_status}${ahead_behind}"
-  if [ -n "$combined" ]; then
-    printf '#[bg=#8a6f2a,fg=%s]#[bg=#8a6f2a,fg=#f0f0f0,nobold]  %s %s #[bg=#2e2e2e,fg=#8a6f2a]' "$from_bg" "$branch" "$combined"
-  elif git rev-parse --verify "@{u}" >/dev/null 2>&1; then
-    printf '#[bg=#2e8b57,fg=%s]#[bg=#2e8b57,fg=#f0f0f0,nobold]  %s ✓ #[bg=#2e2e2e,fg=#2e8b57]' "$from_bg" "$branch"
-  else
-    printf '#[bg=%s,fg=#f0f0f0,nobold]  %s #[bg=#2e2e2e,fg=%s]' "$from_bg" "$branch" "$TERM_BG"
-  fi
-
-}
 
 cmd_tab_colors() {
   TERM_BG="#282c34"
@@ -214,60 +76,33 @@ cmd_tab_colors() {
   ACTIVE="${_info%%|*}"
   WIN_LIST=$(printf '%s\n' "${_info#*|}" | tr ' ' '\n' | grep -v '^$' | sort -n)
   active_color() {
-    case "$(( (($1-1)%15)+1 ))" in
-      1) printf '#4a9070' ;;
-      2) printf '#b06078' ;;
-      3) printf '#b87050' ;;
-      4) printf '#5f87af' ;;
-      5) printf '#8b713c' ;;
-      6) printf '#6e7934' ;;
-      7) printf '#508137' ;;
-      8) printf '#398439' ;;
-      9) printf '#378181' ;;
-      10) printf '#656dbd' ;;
-      11) printf '#7e69bf' ;;
-      12) printf '#945eba' ;;
-      13) printf '#b65485' ;;
-      14) printf '#b75767' ;;
-      15) printf '#797934' ;;
+    case "$(( (($1-1)%6)+1 ))" in
+      1) printf '#a86828' ;;
+      2) printf '#8f5922' ;;
+      3) printf '#764a1c' ;;
+      4) printf '#5c3c16' ;;
+      5) printf '#432d10' ;;
+      6) printf '#2a1e0a' ;;
     esac
   }
   active_dark_color() {
-    case "$(( (($1-1)%15)+1 ))" in
-      1) printf '#305d48' ;;
-      2) printf '#723e4e' ;;
-      3) printf '#774834' ;;
-      4) printf '#3d5771' ;;
-      5) printf '#5a4927' ;;
-      6) printf '#474e21' ;;
-      7) printf '#345323' ;;
-      8) printf '#255525' ;;
-      9) printf '#235353' ;;
-      10) printf '#41467a' ;;
-      11) printf '#51447c' ;;
-      12) printf '#603d78' ;;
-      13) printf '#763656' ;;
-      14) printf '#763842' ;;
-      15) printf '#4e4e21' ;;
+    case "$(( (($1-1)%6)+1 ))" in
+      1) printf '#8a5020' ;;
+      2) printf '#71411a' ;;
+      3) printf '#583214' ;;
+      4) printf '#3e240e' ;;
+      5) printf '#251508' ;;
+      6) printf '#0c0602' ;;
     esac
   }
   inactive_color() {
-    case "$(( (($1-1)%15)+1 ))" in
-      1) printf '#365a4c' ;;
-      2) printf '#6e4050' ;;
-      3) printf '#604838' ;;
-      4) printf '#3e5770' ;;
-      5) printf '#70603e' ;;
-      6) printf '#68703e' ;;
-      7) printf '#4f703e' ;;
-      8) printf '#3e703e' ;;
-      9) printf '#3e7070' ;;
-      10) printf '#3e4370' ;;
-      11) printf '#4b3e70' ;;
-      12) printf '#5c3e70' ;;
-      13) printf '#703e57' ;;
-      14) printf '#703e47' ;;
-      15) printf '#70703e' ;;
+    case "$(( (($1-1)%6)+1 ))" in
+      1) printf '#807468' ;;
+      2) printf '#6d6359' ;;
+      3) printf '#5a524a' ;;
+      4) printf '#48413b' ;;
+      5) printf '#35302b' ;;
+      6) printf '#221f1c' ;;
     esac
   }
   right_neighbor() { printf '%s\n' "$WIN_LIST" | awk -v w="$1" '$1+0>w+0{print $1+0;exit}'; }
@@ -291,8 +126,9 @@ cmd_tab_colors() {
         printf 'set-window-option -t :%s @tab_dk_color "%s"\n' "$WIN" "$DK_BG"
         printf 'set-window-option -t :%s @tab_name_color "%s"\n' "$WIN" "$NAME_BG"
       else
-        NAME_BG="#4a4a4a"
+        NAME_BG=$(inactive_color "$WIN")
         printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=#cccccc,nobold"\n' "$WIN" "$NAME_BG"
+        printf 'set-window-option -t :%s @tab_inactive_color "%s"\n' "$WIN" "$NAME_BG"
         printf 'set-window-option -t :%s @tab_arrow_on "bg=default,fg=%s"\n' "$WIN" "$NAME_BG"
         has_left=0
         for _w in $WIN_LIST; do [ "$_w" -lt "$WIN" ] && has_left=1; done
@@ -328,14 +164,31 @@ cmd_pane_git() {
   [ -z "$branch" ] && return 0
 
   porcelain=$(git status --porcelain 2>/dev/null)
+  flags=$(echo "$porcelain" | awk '
+    /^[UAD][UAD]/ { conflict=1 }
+    /^[^? ]/ { staged=1 }
+    /^.[M]/ { modified=1 }
+    /^R/ { renamed=1 }
+    /^.[D]/ { deleted=1 }
+    /^\?\?/ { untracked=1 }
+    END { print conflict+0, staged+0, modified+0, renamed+0, deleted+0, untracked+0 }
+  ')
+  _stashed=0
+  git stash list 2>/dev/null | grep -q . && _stashed=1
+  _c=$(echo $flags | cut -d" " -f1)
+  _s=$(echo $flags | cut -d" " -f2)
+  _m=$(echo $flags | cut -d" " -f3)
+  _r=$(echo $flags | cut -d" " -f4)
+  _d=$(echo $flags | cut -d" " -f5)
+  _u=$(echo $flags | cut -d" " -f6)
   all_status=""
-  echo "$porcelain" | grep -q '^[UAD][UAD]' 2>/dev/null && all_status="${all_status}="
-  echo "$porcelain" | grep -q '^[^? ]'      2>/dev/null && all_status="${all_status}+"
-  echo "$porcelain" | grep -q '^.[M]'        2>/dev/null && all_status="${all_status}!"
-  echo "$porcelain" | grep -q '^R'           2>/dev/null && all_status="${all_status}»"
-  echo "$porcelain" | grep -q '^.[D]'        2>/dev/null && all_status="${all_status}✘"
-  git stash list 2>/dev/null | grep -q .                 && all_status="${all_status}\$"
-  echo "$porcelain" | grep -q '^??'          2>/dev/null && all_status="${all_status}?"
+  [ "$_c" = "1" ] && all_status="${all_status}="
+  [ "$_s" = "1" ] && all_status="${all_status}+"
+  [ "$_m" = "1" ] && all_status="${all_status}!"
+  [ "$_r" = "1" ] && all_status="${all_status}»"
+  [ "$_d" = "1" ] && all_status="${all_status}✘"
+  [ "$_stashed" = "1" ] && all_status="${all_status}\$"
+  [ "$_u" = "1" ] && all_status="${all_status}?"
 
   ahead_behind=""
   if git rev-parse --verify "@{u}" >/dev/null 2>&1; then
@@ -405,7 +258,6 @@ cmd_pane_colors() {
 case "${1:-}" in
   status-right) cmd_status_right ;;
   dir)          shift; cmd_dir "$@" ;;
-  git)          shift; cmd_git "$@" ;;
   pane-git)     shift; cmd_pane_git "$@" ;;
   pane-colors)  cmd_pane_colors ;;
   tab-colors)   cmd_tab_colors ;;

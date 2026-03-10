@@ -299,6 +299,7 @@ link "$DOTFILES_DIR/.tool-versions"      "$HOME/.tool-versions"      ".tool-vers
 link "$DOTFILES_DIR/.default-npm-packages" "$HOME/.default-npm-packages" ".default-npm-packages"
 link "$DOTFILES_DIR/.asdfrc"             "$HOME/.asdfrc"             ".asdfrc"
 link "$DOTFILES_DIR/.npmrc"              "$HOME/.npmrc"              ".npmrc"
+chmod 600 "$HOME/.npmrc" 2>/dev/null || true
 fi
 fi # Darwin
 
@@ -373,12 +374,7 @@ echo "==> Claude Code"
 if command -v claude &>/dev/null; then
   ok "Claude Code installed ($(claude --version 2>/dev/null))"
 else
-  if command -v npm &>/dev/null; then
-    warn "Installing Claude Code..."
-    npm install -g @anthropic-ai/claude-code
-  else
-    warn "Claude Code not found and npm not available — install manually"
-  fi
+  warn "Claude Code not installed — will be auto-installed with Node via .default-npm-packages"
 fi
 fi # should_run claude
 
@@ -477,7 +473,15 @@ defaults write com.apple.finder AppleShowAllFiles -bool true
 defaults write NSGlobalDomain AppleShowAllExtensions -bool true
 # Tap to click on trackpad
 defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
-ok "macOS defaults applied"
+# Dock settings
+defaults write com.apple.dock autohide -bool true
+defaults write com.apple.dock autohide-delay -float 0
+defaults write com.apple.dock autohide-time-modifier -float 0.3
+defaults write com.apple.dock tilesize -int 48
+# Apply Dock and Finder changes
+killall Dock 2>/dev/null || true
+killall Finder 2>/dev/null || true
+ok "macOS defaults applied (Dock and Finder restarted)"
 fi # should_run macos
 
 # ── 13. Brew doctor ────────────────────────────────────────────────

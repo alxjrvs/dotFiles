@@ -5,6 +5,10 @@
   remotes = remote -v
   # Pretty log output
   hist = log --graph --pretty=format:'%Cred%h%Creset %s%C(yellow)%d%Creset %Cgreen(%cr)%Creset [%an]' --abbrev-commit --date=relative
+  sw = switch
+  st = status -sb
+  undo = reset HEAD~1 --mixed
+  sync = !git fetch --prune && git rebase origin/main
 
 [color]
   # Use colors in Git commands that are capable of colored output when outputting to the terminal
@@ -34,6 +38,7 @@
 [core]
 	editor = nvim
 	excludesfile = ~/.gitignore
+	pager = delta
 [init]
 	defaultBranch = main
 [commit]
@@ -44,7 +49,23 @@
 	rebase = true
 [rerere]
 	enabled = true
+[interactive]
+	diffFilter = delta --color-only
+[delta]
+	navigate = true
+	side-by-side = true
+	line-numbers = true
+	dark = true
+[fetch]
+	prune = true
+[merge]
+	conflictstyle = zdiff3
+[branch]
+	sort = -committerdate
+[column]
+	ui = auto
 [diff]
 	algorithm = histogram
+	colorMoved = default
 [include]
 	path = ~/.gitconfig.local
