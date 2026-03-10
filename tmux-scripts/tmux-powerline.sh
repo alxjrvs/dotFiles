@@ -35,7 +35,11 @@ cmd_status_right() {
   SL=""
   BS=""
 
-  o="#[bg=${TERM_BG},fg=${CPU_BG}]${SL}"
+  # Read trailing bg from hook-set option (instant update on window switch)
+  _rt_bg=$(tmux show -gqv @right_tabs_bg 2>/dev/null)
+  _rt_bg="${_rt_bg:-$TERM_BG}"
+
+  o="#[bg=${_rt_bg},fg=${CPU_BG}]${SL}"
   o="${o}#[bg=${CPU_BG},fg=#f0f0f0] ${cpu_val}% "
   o="${o}#[bg=${CPU_DK},fg=${CPU_BG}]${BS}"
   o="${o}#[bg=${CPU_DK},fg=#f0f0f0,nobold] CPU "
@@ -192,15 +196,14 @@ cmd_git() {
     fi
   fi
 
-  printf '#[bg=%s,fg=#f0f0f0,nobold]  %s ' "$LABEL_BG" "$branch"
 
   combined="${all_status}${ahead_behind}"
   if [ -n "$combined" ]; then
-    printf '#[bg=#8a6f2a,fg=%s]#[bg=#8a6f2a,fg=#f0f0f0,nobold] %s #[bg=#2e2e2e,fg=#8a6f2a]' "$TERM_BG" "$combined"
+    printf '#[bg=#8a6f2a,fg=%s]#[bg=#8a6f2a,fg=#f0f0f0,nobold]  %s %s #[bg=#2e2e2e,fg=#8a6f2a]' "$TERM_BG" "$branch" "$combined"
   elif git rev-parse --verify "@{u}" >/dev/null 2>&1; then
-    printf '#[bg=#2e8b57,fg=%s]#[bg=#2e8b57,fg=#f0f0f0,nobold]  ✓ #[bg=#2e2e2e,fg=#2e8b57]' "$TERM_BG"
+    printf '#[bg=#2e8b57,fg=%s]#[bg=#2e8b57,fg=#f0f0f0,nobold]  %s ✓ #[bg=#2e2e2e,fg=#2e8b57]' "$TERM_BG" "$branch"
   else
-    printf '#[bg=#2e2e2e,fg=%s]' "$TERM_BG"
+    printf '#[bg=%s,fg=#f0f0f0,nobold]  %s #[bg=#2e2e2e,fg=%s]' "$LABEL_BG" "$branch" "$TERM_BG"
   fi
 
 }
@@ -270,6 +273,11 @@ cmd_tab_colors() {
   right_neighbor() { printf '%s\n' "$WIN_LIST" | awk -v w="$1" '$1+0>w+0{print $1+0;exit}'; }
   {
     for WIN in $WIN_LIST; do
+      if [ "$WIN" -gt "$ACTIVE" ]; then
+        printf 'set-window-option -t :%s @tab_hidden "1"\n' "$WIN"
+      else
+        printf 'set-window-option -t :%s @tab_hidden ""\n' "$WIN"
+      fi
       if [ "$WIN" -eq "$ACTIVE" ]; then
         NAME_BG=$(active_color "$WIN")
         DK_BG=$(active_dark_color "$WIN")
@@ -304,6 +312,23 @@ cmd_tab_colors() {
         printf 'set-window-option -t :%s @tab_arrow_off "bg=%s,fg=%s"\n' "$WIN" "$NEXT_BG" "$NAME_BG"
       fi
     done
+    # ── Right-of-active tab segments for status-right ──────────────────────
+    _SL=""
+    _BS=""
+    _TAB_N="#4a4a4a"
+    _TAB_I="#2e2e2e"
+    _rt=""
+    _rt_bg="$TERM_BG"
+    _wnames=$(tmux list-windows -F '#{window_index} #{window_name}' 2>/dev/null)
+    for _rw in $WIN_LIST; do
+      if [ "$_rw" -gt "$ACTIVE" ]; then
+        _wn=$(echo "$_wnames" | awk -v w="$_rw" '$1 == w { $1=""; sub(/^ /,""); print }')
+        _rt="${_rt}#[bg=${_rt_bg},fg=${_TAB_N}]${_SL}#[bg=${_TAB_N},fg=#cccccc] ${_wn} #[bg=${_TAB_I},fg=${_TAB_N}]${_BS}#[bg=${_TAB_I},fg=#cccccc,nobold] ${_rw} "
+        _rt_bg="$_TAB_I"
+      fi
+    done
+    printf 'set -g @right_tabs "%s"\n' "$_rt"
+    printf 'set -g @right_tabs_bg "%s"\n' "$_rt_bg"
   } | tmux source-file -
 
 }
