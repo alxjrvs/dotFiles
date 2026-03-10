@@ -244,7 +244,7 @@ cmd_pane_border() {
   # Takes pane_current_path as $1; outputs a complete tmux format string.
   # Called via #() in pane-border-format so it refreshes every status-interval.
   pane_path="$1"
-  CWD_BG="#57436e"    # Match starship directory bg
+  CWD_BG="#a86828"    # Match starship directory bg (active tab orange)
   BRANCH_BG="#494949" # Match starship git_branch bg
 
   short_path=$(printf '%s' "$pane_path" | sed "s|$HOME|~|" | awk -F'/' '{n=NF; if(n>=2) print $(n-1)"/"$n; else print $n}')
@@ -287,10 +287,10 @@ cmd_pane_border() {
       fi
 
       # Chips in order: blue > red > yellow > green
-      [ "$stashed" = "1" ]    && chips="${chips}#[bg=#5f87af] #[default]"
-      [ "$has_red" = "1" ]    && chips="${chips}#[bg=#c05050] #[default]"
-      [ "$has_yellow" = "1" ] && chips="${chips}#[bg=#8a6f2a] #[default]"
-      [ "$has_green" = "1" ]  && chips="${chips}#[bg=#2e8b57] #[default]"
+      [ "$stashed" = "1" ]    && chips="${chips}#[bg=#61afef] #[default]"
+      [ "$has_red" = "1" ]    && chips="${chips}#[bg=#e06c75] #[default]"
+      [ "$has_yellow" = "1" ] && chips="${chips}#[bg=#e5c07b] #[default]"
+      [ "$has_green" = "1" ]  && chips="${chips}#[bg=#98c379] #[default]"
     fi
   fi
 
