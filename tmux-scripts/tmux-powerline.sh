@@ -18,38 +18,51 @@ cmd_status_right() {
     *)      bat_charging="";      bat_val="$bat_raw" ;;
   esac
 
-  if [ "$cpu_val" -gt 80 ]; then CPU_BG="#c05050"; CPU_DK="#7d3434"
-  elif [ "$cpu_val" -gt 50 ]; then CPU_BG="#8a6f2a"; CPU_DK="#5a481b"
-  else CPU_BG="#b87050"; CPU_DK="#784934"
+  # Purple gradient (6 stages, rightmost=brightest):
+  #   Stage  Act Value  Act Label  Inact Value  Inact Label
+  #     #1   #6f558c    #57436e    #78737d       #7c7585
+  #     #2   #634c7c    #4b3a5e    #6c6770       #706977
+  #     #3   #56426d    #3e304f    #5f5b63       #635d6a
+  #     #4   #4a395d    #32273f    #534f56       #57525d
+  #     #5   #3e2f4e    #261d30    #464349       #4a464f
+  #     #6   #31263e    #1a1420    #3a373c       #3e3a42
+  # Mapping: TIME=#1  BAT=#2  MEM=#3  CPU=#4
+  if [ "$cpu_val" -gt 80 ]; then CPU_BG="#6a2c2c"; CPU_DK="#481e1e"
+  elif [ "$cpu_val" -gt 50 ]; then CPU_BG="#745d22"; CPU_DK="#4f3f17"
+  else CPU_BG="#69402d"; CPU_DK="#472b1f"
   fi
-  MEM_BG="#5f87af"; MEM_DK="#3e5770"
-  if [ "$bat_val" -gt 50 ]; then BAT_BG="#4a9070"; BAT_DK="#305e49"
-  elif [ "$bat_val" -gt 20 ]; then BAT_BG="#8a6f2a"; BAT_DK="#5a481b"
-  else BAT_BG="#c05050"; BAT_DK="#7d3434"
+  MEM_BG="#3a5875"; MEM_DK="#2d4052"
+  if [ "$bat_val" -gt 50 ]; then BAT_BG="#438567"; BAT_DK="#33654e"
+  elif [ "$bat_val" -gt 20 ]; then BAT_BG="#9a7c2e"; BAT_DK="#755e23"
+  else BAT_BG="#8d3b3b"; BAT_DK="#6b2d2d"
   fi
-  TIME_BG="#8a6ab8"; TIME_DK="#57436e"
+  TIME_BG="#6f558c"; TIME_DK="#57436e"
 
   _dt=$(date '+%-l:%M %p|%a %b %-d')
   time_val="${_dt%%|*}"
   date_val=$(echo "${_dt#*|}" | tr 'a-z' 'A-Z')
 
+  cpu_display=$(printf '%4s' "${cpu_val}%")
+  mem_display=$(printf '%4s' "${mem_val}")
+  bat_display=$(printf '%4s' "${bat_charging}${bat_val}%")
+
   SL=""
   BS=""
 
   o="#[bg=${CPU_BG},fg=${TERM_BG}]${SL}"
-  o="${o}#[bg=${CPU_BG},fg=#f0f0f0] ${cpu_val}% "
+  o="${o}#[bg=${CPU_BG},fg=#f0f0f0] ${cpu_display} "
   o="${o}#[bg=${CPU_BG},fg=${CPU_DK}]${BS}"
   o="${o}#[bg=${CPU_DK},fg=#f0f0f0,nobold] CPU "
 
   o="${o}#[bg=${CPU_DK},fg=${TERM_BG}]${BS}"
   o="${o}#[bg=${MEM_BG},fg=${TERM_BG}]${SL}"
-  o="${o}#[bg=${MEM_BG},fg=#f0f0f0] ${mem_val} "
+  o="${o}#[bg=${MEM_BG},fg=#f0f0f0] ${mem_display} "
   o="${o}#[bg=${MEM_BG},fg=${MEM_DK}]${BS}"
   o="${o}#[bg=${MEM_DK},fg=#f0f0f0,nobold] MEM "
 
   o="${o}#[bg=${MEM_DK},fg=${TERM_BG}]${BS}"
   o="${o}#[bg=${BAT_BG},fg=${TERM_BG}]${SL}"
-  o="${o}#[bg=${BAT_BG},fg=#f0f0f0] ${bat_charging}${bat_val}% "
+  o="${o}#[bg=${BAT_BG},fg=#f0f0f0] ${bat_display} "
   o="${o}#[bg=${BAT_BG},fg=${BAT_DK}]${BS}"
   o="${o}#[bg=${BAT_DK},fg=#f0f0f0,nobold] BAT "
 
@@ -77,31 +90,31 @@ cmd_tab_colors() {
   WIN_LIST=$(printf '%s\n' "${_info#*|}" | tr ' ' '\n' | grep -v '^$' | sort -n)
   active_color() {
     case "$(( (($1-1)%6)+1 ))" in
-      1) printf '#a86828' ;;
-      2) printf '#8f5922' ;;
-      3) printf '#764a1c' ;;
-      4) printf '#5c3c16' ;;
-      5) printf '#432d10' ;;
+      1) printf '#8f5922' ;;
+      2) printf '#7b4d1d' ;;
+      3) printf '#674118' ;;
+      4) printf '#523614' ;;
+      5) printf '#3e2a0f' ;;
       6) printf '#2a1e0a' ;;
     esac
   }
   active_dark_color() {
     case "$(( (($1-1)%6)+1 ))" in
-      1) printf '#8a5020' ;;
-      2) printf '#71411a' ;;
-      3) printf '#583214' ;;
-      4) printf '#3e240e' ;;
-      5) printf '#251508' ;;
+      1) printf '#71411a' ;;
+      2) printf '#5d3515' ;;
+      3) printf '#492910' ;;
+      4) printf '#341e0c' ;;
+      5) printf '#201207' ;;
       6) printf '#0c0602' ;;
     esac
   }
   inactive_color() {
     case "$(( (($1-1)%6)+1 ))" in
-      1) printf '#807468' ;;
-      2) printf '#6d6359' ;;
-      3) printf '#5a524a' ;;
-      4) printf '#48413b' ;;
-      5) printf '#35302b' ;;
+      1) printf '#6d6359' ;;
+      2) printf '#5e554d' ;;
+      3) printf '#4f4841' ;;
+      4) printf '#403a34' ;;
+      5) printf '#312d28' ;;
       6) printf '#221f1c' ;;
     esac
   }
@@ -109,11 +122,11 @@ cmd_tab_colors() {
     # inactive_id + delta(+15,+12,+4) — half the active delta
     # Gives L1 contrast 3.37:1 vs #f0f0f0, well above 3:1 for all levels
     case "$(( (($1-1)%6)+1 ))" in
-      1) printf '#8f806c' ;;
-      2) printf '#7c6f5d' ;;
-      3) printf '#695e4e' ;;
-      4) printf '#574d3f' ;;
-      5) printf '#443c2f' ;;
+      1) printf '#7c6f5d' ;;
+      2) printf '#6d6151' ;;
+      3) printf '#5e5445' ;;
+      4) printf '#4f4638' ;;
+      5) printf '#40392c' ;;
       6) printf '#312b20' ;;
     esac
   }
