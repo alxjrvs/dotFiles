@@ -151,8 +151,8 @@ cmd_tab_colors() {
         printf 'set-window-option -t :%s @tab_show_name ""\n' "$WIN"
       fi
       if [ "$WIN" -eq "$ACTIVE" ]; then
-        NAME_BG=$(active_name_color "$WIN")
-        DK_BG=$(active_dark_color "$WIN")
+        NAME_BG=$(active_dark_color "$WIN")
+        DK_BG=$(active_name_color "$WIN")
         # Active tab: trapezoid /name\index/ using E0BA and E0B8
         printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=%s,nobold"\n' "$WIN" "$NAME_BG" "$NOVA_FG"
         HAS_LEFT=0
