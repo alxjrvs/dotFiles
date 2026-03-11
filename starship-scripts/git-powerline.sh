@@ -2,6 +2,10 @@
 # git-powerline.sh - Outputs complete git powerline segment for starship
 # Replaces 12 custom modules with a single subprocess.
 # Uses ANSI 24-bit color escape codes for styling.
+# Colors: Nova palette (theme.sh)
+
+# shellcheck source=../theme.sh
+. "$HOME/dotFiles/theme.sh"
 
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 
@@ -17,14 +21,14 @@ if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
   git log @{u}.. --oneline 2>/dev/null | grep -q . && has_unpushed=1
 fi
 
-# Colors
-GRAY_R=73;  GRAY_G=73;  GRAY_B=73     # #494949
-BLUE_R=97;  BLUE_G=175; BLUE_B=239    # #61afef
-RED_R=224;  RED_G=108;  RED_B=117     # #e06c75
-YEL_R=229;  YEL_G=192;  YEL_B=123    # #e5c07b
-GRN_R=152;  GRN_G=195;  GRN_B=121    # #98c379
-BG_R=40;    BG_G=44;    BG_B=52       # #282c34 (terminal bg)
-WH_R=240;   WH_G=240;   WH_B=240     # #f0f0f0
+# Colors — Nova palette aliases
+GRAY_R=$NOVA_BRANCH_R;    GRAY_G=$NOVA_BRANCH_G;    GRAY_B=$NOVA_BRANCH_B
+BLUE_R=$NOVA_GIT_BLUE_R;  BLUE_G=$NOVA_GIT_BLUE_G;  BLUE_B=$NOVA_GIT_BLUE_B
+RED_R=$NOVA_GIT_RED_R;    RED_G=$NOVA_GIT_RED_G;    RED_B=$NOVA_GIT_RED_B
+YEL_R=$NOVA_GIT_YELLOW_R; YEL_G=$NOVA_GIT_YELLOW_G; YEL_B=$NOVA_GIT_YELLOW_B
+GRN_R=$NOVA_GIT_GREEN_R;  GRN_G=$NOVA_GIT_GREEN_G;  GRN_B=$NOVA_GIT_GREEN_B
+BG_R=$NOVA_BG_R;          BG_G=$NOVA_BG_G;          BG_B=$NOVA_BG_B
+WH_R=$NOVA_FG_R;          WH_G=$NOVA_FG_G;          WH_B=$NOVA_FG_B
 
 # ANSI helpers
 fg() { printf '\033[38;2;%d;%d;%dm' "$1" "$2" "$3"; }

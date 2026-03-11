@@ -1,5 +1,6 @@
 #!/bin/sh
 # tmux-powerline.sh - Unified tmux powerline layout
+# Colors: Nova palette (theme.sh)
 # Ensure Homebrew binaries (tmux, etc.) are available in run-shell context
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 # All formatting, glyphs, and colors centralized here.
@@ -7,8 +8,11 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 # Usage: tmux-powerline.sh <command> [args...]
 # Commands: status-right, dir <path>, pane-git <path>, pane-colors, tab-colors
 
+# shellcheck source=../theme.sh
+. "$HOME/dotFiles/theme.sh"
+
 cmd_status_right() {
-  TERM_BG="#282c34"
+  TERM_BG=$NOVA_BG
   DATA="$HOME/dotFiles/tmux-scripts/tmux-data.sh"
 
   _all=$("$DATA" all)
@@ -21,25 +25,17 @@ cmd_status_right() {
     *)      bat_charging="";      bat_val="$bat_raw" ;;
   esac
 
-  # Purple gradient (6 stages, rightmost=brightest):
-  #   Stage  Act Value  Act Label  Inact Value  Inact Label
-  #     #1   #6f558c    #57436e    #78737d       #7c7585
-  #     #2   #634c7c    #4b3a5e    #6c6770       #706977
-  #     #3   #56426d    #3e304f    #5f5b63       #635d6a
-  #     #4   #4a395d    #32273f    #534f56       #57525d
-  #     #5   #3e2f4e    #261d30    #464349       #4a464f
-  #     #6   #31263e    #1a1420    #3a373c       #3e3a42
-  # Mapping: TIME=#1  BAT=#2  MEM=#3  CPU=#4
-  if [ "$cpu_val" -gt 80 ]; then CPU_BG="#6a2c2c"; CPU_DK="#481e1e"
-  elif [ "$cpu_val" -gt 50 ]; then CPU_BG="#745d22"; CPU_DK="#4f3f17"
-  else CPU_BG="#69402d"; CPU_DK="#472b1f"
+  # Nova palette — see theme.sh for all values
+  if [ "$cpu_val" -gt 80 ]; then CPU_BG=$NOVA_CPU_HIGH; CPU_DK=$NOVA_CPU_HIGH_DK
+  elif [ "$cpu_val" -gt 50 ]; then CPU_BG=$NOVA_CPU_WARN; CPU_DK=$NOVA_CPU_WARN_DK
+  else CPU_BG=$NOVA_CPU_NORM; CPU_DK=$NOVA_CPU_NORM_DK
   fi
-  MEM_BG="#3a5875"; MEM_DK="#2d4052"
-  if [ "$bat_val" -gt 50 ]; then BAT_BG="#438567"; BAT_DK="#33654e"
-  elif [ "$bat_val" -gt 20 ]; then BAT_BG="#9a7c2e"; BAT_DK="#755e23"
-  else BAT_BG="#8d3b3b"; BAT_DK="#6b2d2d"
+  MEM_BG=$NOVA_MEM; MEM_DK=$NOVA_MEM_DK
+  if [ "$bat_val" -gt 50 ]; then BAT_BG=$NOVA_BAT_GOOD; BAT_DK=$NOVA_BAT_GOOD_DK
+  elif [ "$bat_val" -gt 20 ]; then BAT_BG=$NOVA_BAT_WARN; BAT_DK=$NOVA_BAT_WARN_DK
+  else BAT_BG=$NOVA_BAT_LOW; BAT_DK=$NOVA_BAT_LOW_DK
   fi
-  TIME_BG="#6f558c"; TIME_DK="#57436e"
+  TIME_BG=$NOVA_TIME; TIME_DK=$NOVA_TIME_DK
 
   _dt=$(date '+%-l:%M %p|%a %b %-d')
   time_val="${_dt%%|*}"
@@ -87,50 +83,61 @@ cmd_dir() {
 
 
 cmd_tab_colors() {
-  TERM_BG="#282c34"
+  TERM_BG=$NOVA_BG
   _info=$(tmux display-message -p '#{window_index}|#{W:#{window_index} }' 2>/dev/null || echo "1|1 ")
   ACTIVE="${_info%%|*}"
   WIN_LIST=$(printf '%s\n' "${_info#*|}" | tr ' ' '\n' | grep -v '^$' | sort -n)
+  # Nova active tabs: amber gradient (1=brightest). fg=#f0f0f0 bold.
   active_color() {
     case "$(( (($1-1)%6)+1 ))" in
-      1) printf '#8f5922' ;;
-      2) printf '#7b4d1d' ;;
-      3) printf '#674118' ;;
-      4) printf '#523614' ;;
-      5) printf '#3e2a0f' ;;
-      6) printf '#2a1e0a' ;;
+      1) printf '%s' "$NOVA_TAB_A1" ;;
+      2) printf '%s' "$NOVA_TAB_A2" ;;
+      3) printf '%s' "$NOVA_TAB_A3" ;;
+      4) printf '%s' "$NOVA_TAB_A4" ;;
+      5) printf '%s' "$NOVA_TAB_A5" ;;
+      6) printf '%s' "$NOVA_TAB_A6" ;;
     esac
   }
   active_dark_color() {
     case "$(( (($1-1)%6)+1 ))" in
-      1) printf '#71411a' ;;
-      2) printf '#5d3515' ;;
-      3) printf '#492910' ;;
-      4) printf '#341e0c' ;;
-      5) printf '#201207' ;;
-      6) printf '#0c0602' ;;
+      1) printf '%s' "$NOVA_TAB_A1_DK" ;;
+      2) printf '%s' "$NOVA_TAB_A2_DK" ;;
+      3) printf '%s' "$NOVA_TAB_A3_DK" ;;
+      4) printf '%s' "$NOVA_TAB_A4_DK" ;;
+      5) printf '%s' "$NOVA_TAB_A5_DK" ;;
+      6) printf '%s' "$NOVA_TAB_A6_DK" ;;
     esac
   }
+  # Active tab name section: purple gradient starting from NOVA_TIME
+  active_name_color() {
+    case "$(( (($1-1)%6)+1 ))" in
+      1) printf '%s' "$NOVA_TAB_N1" ;;
+      2) printf '%s' "$NOVA_TAB_N2" ;;
+      3) printf '%s' "$NOVA_TAB_N3" ;;
+      4) printf '%s' "$NOVA_TAB_N4" ;;
+      5) printf '%s' "$NOVA_TAB_N5" ;;
+      6) printf '%s' "$NOVA_TAB_N6" ;;
+    esac
+  }
+  # Nova inactive tabs: slate/indigo gradient (1=most visible). fg=$NOVA_FG_DIM.
   inactive_color() {
     case "$(( (($1-1)%6)+1 ))" in
-      1) printf '#6d6359' ;;
-      2) printf '#5e554d' ;;
-      3) printf '#4f4841' ;;
-      4) printf '#403a34' ;;
-      5) printf '#312d28' ;;
-      6) printf '#221f1c' ;;
+      1) printf '%s' "$NOVA_TAB_I1" ;;
+      2) printf '%s' "$NOVA_TAB_I2" ;;
+      3) printf '%s' "$NOVA_TAB_I3" ;;
+      4) printf '%s' "$NOVA_TAB_I4" ;;
+      5) printf '%s' "$NOVA_TAB_I5" ;;
+      6) printf '%s' "$NOVA_TAB_I6" ;;
     esac
   }
   inactive_label_color() {
-    # inactive_id + delta(+15,+12,+4) — half the active delta
-    # Gives L1 contrast 3.37:1 vs #f0f0f0, well above 3:1 for all levels
     case "$(( (($1-1)%6)+1 ))" in
-      1) printf '#7c6f5d' ;;
-      2) printf '#6d6151' ;;
-      3) printf '#5e5445' ;;
-      4) printf '#4f4638' ;;
-      5) printf '#40392c' ;;
-      6) printf '#312b20' ;;
+      1) printf '%s' "$NOVA_TAB_I1_LBL" ;;
+      2) printf '%s' "$NOVA_TAB_I2_LBL" ;;
+      3) printf '%s' "$NOVA_TAB_I3_LBL" ;;
+      4) printf '%s' "$NOVA_TAB_I4_LBL" ;;
+      5) printf '%s' "$NOVA_TAB_I5_LBL" ;;
+      6) printf '%s' "$NOVA_TAB_I6_LBL" ;;
     esac
   }
   right_neighbor() { printf '%s\n' "$WIN_LIST" | awk -v w="$1" '$1+0>w+0{print $1+0;exit}'; }
@@ -144,10 +151,10 @@ cmd_tab_colors() {
         printf 'set-window-option -t :%s @tab_show_name ""\n' "$WIN"
       fi
       if [ "$WIN" -eq "$ACTIVE" ]; then
-        NAME_BG=$(active_color "$WIN")
+        NAME_BG=$(active_name_color "$WIN")
         DK_BG=$(active_dark_color "$WIN")
         # Active tab: trapezoid /name\index/ using E0BA and E0B8
-        printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=#f0f0f0,bold"\n' "$WIN" "$NAME_BG"
+        printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=%s,nobold"\n' "$WIN" "$NAME_BG" "$NOVA_FG"
         HAS_LEFT=0
         for _w in $WIN_LIST; do [ "$_w" -lt "$WIN" ] && HAS_LEFT=1; done
         if [ "$HAS_LEFT" = "1" ]; then
@@ -157,16 +164,16 @@ cmd_tab_colors() {
           printf 'set-window-option -t :%s @tab_has_left ""\n' "$WIN"
         fi
         printf 'set-window-option -t :%s @tab_inner "bg=%s,fg=%s"\n' "$WIN" "$NAME_BG" "$DK_BG"
-        printf 'set-window-option -t :%s @tab_dk_style "bg=%s,fg=#f0f0f0,nobold"\n' "$WIN" "$DK_BG"
+        printf 'set-window-option -t :%s @tab_dk_style "bg=%s,fg=%s,nobold"\n' "$WIN" "$DK_BG" "$NOVA_FG"
         printf 'set-window-option -t :%s @tab_dk_color "%s"\n' "$WIN" "$DK_BG"
         printf 'set-window-option -t :%s @tab_name_color "%s"\n' "$WIN" "$NAME_BG"
       else
-        NAME_BG=$(inactive_color "$WIN")
-        LABEL_BG=$(inactive_label_color "$WIN")
-        printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=#cccccc,nobold"\n' "$WIN" "$NAME_BG"
+        NAME_BG=$(active_dark_color "$WIN")
+        LABEL_BG=$(active_dark_color "$WIN")
+        printf 'set-window-option -t :%s @tab_name_style "bg=%s,fg=%s,nobold"\n' "$WIN" "$NAME_BG" "$NOVA_FG"
         printf 'set-window-option -t :%s @tab_inactive_color "%s"\n' "$WIN" "$NAME_BG"
         printf 'set-window-option -t :%s @tab_inactive_label_color "%s"\n' "$WIN" "$LABEL_BG"
-        printf 'set-window-option -t :%s @tab_inactive_label_style "bg=%s,fg=#f0f0f0,nobold"\n' "$WIN" "$LABEL_BG"
+        printf 'set-window-option -t :%s @tab_inactive_label_style "bg=%s,fg=%s,nobold"\n' "$WIN" "$LABEL_BG" "$NOVA_FG"
         printf 'set-window-option -t :%s @tab_arrow_on "bg=default,fg=%s"\n' "$WIN" "$NAME_BG"
         has_left=0
         for _w in $WIN_LIST; do [ "$_w" -lt "$WIN" ] && has_left=1; done
@@ -267,8 +274,8 @@ cmd_pane_border() {
   # Takes pane_current_path as $1; outputs a complete tmux format string.
   # Called via #() in pane-border-format so it refreshes every status-interval.
   pane_path="$1"
-  CWD_BG="#a86828"    # Match starship directory bg (active tab orange)
-  BRANCH_BG="#494949" # Match starship git_branch bg
+  CWD_BG=$NOVA_DIR      # Match starship directory bg
+  BRANCH_BG=$NOVA_BRANCH # Match starship git branch bg
 
   short_path=$(printf '%s' "$pane_path" | sed "s|$HOME|~|" | awk -F'/' '{n=NF; if(n>=2) print $(n-1)"/"$n; else print $n}')
 
@@ -310,17 +317,17 @@ cmd_pane_border() {
       fi
 
       # Chips in order: blue > red > yellow > green
-      [ "$stashed" = "1" ]    && chips="${chips}#[bg=#61afef] #[default]"
-      [ "$has_red" = "1" ]    && chips="${chips}#[bg=#e06c75] #[default]"
-      [ "$has_yellow" = "1" ] && chips="${chips}#[bg=#e5c07b] #[default]"
-      [ "$has_green" = "1" ]  && chips="${chips}#[bg=#98c379] #[default]"
+      [ "$stashed" = "1" ]    && chips="${chips}#[bg=${NOVA_GIT_BLUE}] #[default]"
+      [ "$has_red" = "1" ]    && chips="${chips}#[bg=${NOVA_GIT_RED}] #[default]"
+      [ "$has_yellow" = "1" ] && chips="${chips}#[bg=${NOVA_GIT_YELLOW}] #[default]"
+      [ "$has_green" = "1" ]  && chips="${chips}#[bg=${NOVA_GIT_GREEN}] #[default]"
     fi
   fi
 
   if [ -n "$branch" ]; then
-    printf '%s' "#[bg=${CWD_BG},fg=#f0f0f0] ${short_path} #[default] #[bg=${BRANCH_BG},fg=#f0f0f0] ${branch} #[default]${chips}"
+    printf '%s' "#[bg=${CWD_BG},fg=${NOVA_FG}] ${short_path} #[default] #[bg=${BRANCH_BG},fg=${NOVA_FG}] ${branch} #[default]${chips}"
   else
-    printf '%s' "#[bg=${CWD_BG},fg=#f0f0f0] ${short_path} #[default]"
+    printf '%s' "#[bg=${CWD_BG},fg=${NOVA_FG}] ${short_path} #[default]"
   fi
 }
 
