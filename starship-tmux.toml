@@ -7,7 +7,7 @@ add_newline = false
 [custom.prompt]
 command = "~/dotFiles/starship-scripts/git-prompt-color.sh"
 when = "true"
-format = "[❯]($output) "
+format = "$output "
 shell = ["sh"]
 
 [character]

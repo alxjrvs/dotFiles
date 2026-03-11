@@ -1,25 +1,28 @@
 #!/bin/sh
-# git-prompt-color.sh - Outputs color code for git status severity
-# Used by starship-tmux.toml to color the prompt character.
-# Output: hex color code (red > yellow > green > white)
+# git-prompt-color.sh - Outputs a colored ❯ based on git status severity
+# Used by starship-tmux.toml custom.prompt module.
+# Colors: red (dirty) > yellow (unpushed) > green (clean) > white (no repo)
+
+fg() { printf '\033[38;2;%d;%d;%dm' "$1" "$2" "$3"; }
+rst() { printf '\033[0m'; }
 
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  echo "white"
+  printf '%s❯%s' "$(fg 240 240 240)" "$(rst)"
   exit 0
 fi
 
-# Dirty working tree → red (most severe)
 if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
-  echo "#e06c75"
+  # Dirty → red
+  printf '%s❯%s' "$(fg 224 108 117)" "$(rst)"
   exit 0
 fi
 
-# Unpushed commits → yellow
 if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1 &&
    git log @{u}.. --oneline 2>/dev/null | grep -q .; then
-  echo "#e5c07b"
+  # Unpushed → yellow
+  printf '%s❯%s' "$(fg 229 192 123)" "$(rst)"
   exit 0
 fi
 
 # Clean → green
-echo "#98c379"
+printf '%s❯%s' "$(fg 152 195 121)" "$(rst)"
