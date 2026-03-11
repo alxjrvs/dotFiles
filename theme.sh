@@ -55,14 +55,15 @@ NOVA_CPU_WARN_DK="#886410"
 NOVA_CPU_HIGH="#cc3a3a"    # Crimson            W 4.4:1  B 2.8:1
 NOVA_CPU_HIGH_DK="#a02a2a"
 
-# ── Tabs: active name — purple gradient (1 = NOVA_TIME, descending) ─────────
-# Used for the active tab label/path section only. Steps ~R-14 G-10 B-18.
-NOVA_TAB_N1="#8855cc"
-NOVA_TAB_N2="#7a4bba"
-NOVA_TAB_N3="#6c41a8"
-NOVA_TAB_N4="#5e3796"
-NOVA_TAB_N5="#502d84"
-NOVA_TAB_N6="#422372"
+# ── Tabs: active ID — warm gold gradient (1 = brightest, 6 = darkest) ────────
+# Used for the active tab ID section. Yellow-gold: clearly distinct from the
+# orange-brown amber name section. W≈3.5:1 at tab 1.
+NOVA_TAB_N1="#aa8416"
+NOVA_TAB_N2="#946e10"
+NOVA_TAB_N3="#7e5a0c"
+NOVA_TAB_N4="#684608"
+NOVA_TAB_N5="#523204"
+NOVA_TAB_N6="#3c1e00"
 
 # ── Tabs: active — amber gradient (1 = brightest, 6 = darkest) ───────────────
 # All active tabs use fg=#f0f0f0. Tab 1 W≈3.2:1, dims gracefully.

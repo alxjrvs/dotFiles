@@ -108,7 +108,7 @@ cmd_tab_colors() {
       6) printf '%s' "$NOVA_TAB_A6_DK" ;;
     esac
   }
-  # Active tab name section: purple gradient starting from NOVA_TIME
+  # Active tab ID section: rust/vermillion gradient
   active_name_color() {
     case "$(( (($1-1)%6)+1 ))" in
       1) printf '%s' "$NOVA_TAB_N1" ;;
