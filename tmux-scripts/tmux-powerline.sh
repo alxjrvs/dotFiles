@@ -12,7 +12,7 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 . "$HOME/dotFiles/theme.sh"
 
 cmd_status_right() {
-  TERM_BG=$NOVA_BG
+  TERM_BG=$NOVA_STATUS_BG
   DATA="$HOME/dotFiles/tmux-scripts/tmux-data.sh"
 
   _all=$("$DATA" all)
@@ -83,7 +83,7 @@ cmd_dir() {
 
 
 cmd_tab_colors() {
-  TERM_BG=$NOVA_BG
+  TERM_BG=$NOVA_STATUS_BG
   _info=$(tmux display-message -p '#{window_index}|#{W:#{window_index} }' 2>/dev/null || echo "1|1 ")
   ACTIVE="${_info%%|*}"
   WIN_LIST=$(printf '%s\n' "${_info#*|}" | tr ' ' '\n' | grep -v '^$' | sort -n)
@@ -167,6 +167,8 @@ cmd_tab_colors() {
         printf 'set-window-option -t :%s @tab_dk_style "bg=%s,fg=%s,nobold"\n' "$WIN" "$DK_BG" "$NOVA_FG"
         printf 'set-window-option -t :%s @tab_dk_color "%s"\n' "$WIN" "$DK_BG"
         printf 'set-window-option -t :%s @tab_name_color "%s"\n' "$WIN" "$NAME_BG"
+        printf 'set-window-option -t :%s @tab_claude_needs_input ""\n' "$WIN"
+        printf 'set-window-option -t :%s @tab_claude_blink ""\n' "$WIN"
       else
         NAME_BG=$(active_dark_color "$WIN")
         LABEL_BG=$(active_dark_color "$WIN")
@@ -340,11 +342,36 @@ cmd_pane_colors() {
   tmux set-option -pt "$pane_id" @pane_border_fmt "$fmt" 2>/dev/null || true
 }
 
+cmd_tab_blink_start() {
+  WIN="$1"
+  PID_FILE="/tmp/claude-blink-${WIN}"
+  # Kill any existing blink manager for this window
+  if [ -f "$PID_FILE" ]; then
+    kill "$(cat "$PID_FILE")" 2>/dev/null
+    rm -f "$PID_FILE"
+  fi
+  (
+    while [ "$(tmux display-message -t :"$WIN" -p '#{@tab_claude_needs_input}' 2>/dev/null)" = "1" ]; do
+      tmux set-window-option -t :"$WIN" @tab_claude_blink '1' 2>/dev/null
+      tmux refresh-client -S 2>/dev/null
+      sleep 0.6
+      tmux set-window-option -t :"$WIN" @tab_claude_blink '' 2>/dev/null
+      tmux refresh-client -S 2>/dev/null
+      sleep 0.6
+    done
+    tmux set-window-option -t :"$WIN" @tab_claude_blink '' 2>/dev/null
+    tmux refresh-client -S 2>/dev/null
+    rm -f "$PID_FILE"
+  ) &
+  printf '%s\n' "$!" >"$PID_FILE"
+}
+
 case "${1:-}" in
-  status-right)  cmd_status_right ;;
-  dir)           shift; cmd_dir "$@" ;;
-  pane-git)      shift; cmd_pane_git "$@" ;;
-  pane-border)   shift; cmd_pane_border "$@" ;;
-  pane-colors)   cmd_pane_colors ;;
-  tab-colors)    cmd_tab_colors ;;
+  status-right)     cmd_status_right ;;
+  dir)              shift; cmd_dir "$@" ;;
+  pane-git)         shift; cmd_pane_git "$@" ;;
+  pane-border)      shift; cmd_pane_border "$@" ;;
+  pane-colors)      cmd_pane_colors ;;
+  tab-colors)       cmd_tab_colors ;;
+  tab-blink-start)  shift; cmd_tab_blink_start "$@" ;;
 esac

@@ -8,6 +8,7 @@
 
 # ── Core ─────────────────────────────────────────────────────────────────────
 NOVA_BG="#282c34"         # Terminal background (OneDark)
+NOVA_STATUS_BG="#686e84"  # Status bar background (matches pane border branch color)
 NOVA_FG="#f0f0f0"         # Primary text
 NOVA_FG_DIM="#abb2bf"     # Dimmed / inactive text
 
@@ -58,12 +59,12 @@ NOVA_CPU_HIGH_DK="#a02a2a"
 # ── Tabs: active ID — warm gold gradient (1 = brightest, 6 = darkest) ────────
 # Used for the active tab ID section. Yellow-gold: clearly distinct from the
 # orange-brown amber name section. W≈3.5:1 at tab 1.
-NOVA_TAB_N1="#aa8416"
-NOVA_TAB_N2="#946e10"
-NOVA_TAB_N3="#7e5a0c"
-NOVA_TAB_N4="#684608"
-NOVA_TAB_N5="#523204"
-NOVA_TAB_N6="#3c1e00"
+NOVA_TAB_N1="#d4a820"
+NOVA_TAB_N2="#b88c18"
+NOVA_TAB_N3="#9c7212"
+NOVA_TAB_N4="#80580c"
+NOVA_TAB_N5="#643e06"
+NOVA_TAB_N6="#482400"
 
 # ── Tabs: active — amber gradient (1 = brightest, 6 = darkest) ───────────────
 # All active tabs use fg=#f0f0f0. Tab 1 W≈3.2:1, dims gracefully.
@@ -88,3 +89,6 @@ NOVA_TAB_I6="#262440"  ; NOVA_TAB_I6_LBL="#3c3854"
 NOVA_PANE_BORDER="#5a5a6a"   # Inactive border (brighter than old #4a4a4a)
 NOVA_PANE_ACTIVE="#aa88ee"   # Active border lavender (was #A884D4)
 NOVA_PANE_PATH="#8866cc"     # Inactive border path text (was #6344a0)
+
+# ── Claude Code alert ────────────────────────────────────────────────────────
+NOVA_CLAUDE_ALERT="#D97757"  # Claude brand orange — tab ID blink when needs input
