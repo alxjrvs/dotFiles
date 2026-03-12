@@ -367,11 +367,11 @@ cmd_tab_blink_start() {
 }
 
 case "${1:-}" in
-  status-right)     cmd_status_right ;;
-  dir)              shift; cmd_dir "$@" ;;
-  pane-git)         shift; cmd_pane_git "$@" ;;
-  pane-border)      shift; cmd_pane_border "$@" ;;
-  pane-colors)      cmd_pane_colors ;;
-  tab-colors)       cmd_tab_colors ;;
+  status-right)             cmd_status_right ;;
+  dir)                      shift; cmd_dir "$@" ;;
+  pane-git)                 shift; cmd_pane_git "$@" ;;
+  pane-border)              shift; cmd_pane_border "$@" ;;
+  pane-colors)              cmd_pane_colors ;;
+  tab-colors)               cmd_tab_colors ;;
   tab-blink-start)  shift; cmd_tab_blink_start "$@" ;;
 esac
