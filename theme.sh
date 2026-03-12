@@ -36,14 +36,10 @@ NOVA_BRANCH_R=50; NOVA_BRANCH_G=75; NOVA_BRANCH_B=100
 NOVA_TIME="#19324B"        # Darkest navy — far right edge
 NOVA_TIME_DK="#0f2036"     # Even darker for label half
 
-# ── Status-right: Memory ─────────────────────────────────────────────────────
-NOVA_MEM="#324B64"         # Lake_superior dark blue
-NOVA_MEM_DK="#1e3450"
-
 # ── Status-right: Battery ────────────────────────────────────────────────────
 NOVA_BAT_GOOD="#2e8a5c"    # Cool green (functional)
-NOVA_BAT_NORM="#263e58"    # BAT positional blue (value in good state)
-NOVA_BAT_NORM_DK="#1a2e44" # BAT positional dark blue (label, always)
+NOVA_BAT_NORM="#324B64"    # BAT positional blue (value in good state)
+NOVA_BAT_NORM_DK="#1e3450" # BAT positional dark blue (label, always)
 NOVA_BAT_WARN="#b07820"    # Amber warning (functional)
 NOVA_BAT_LOW="#c04040"     # Red alert (functional)
 

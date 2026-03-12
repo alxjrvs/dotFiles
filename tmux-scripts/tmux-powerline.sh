@@ -17,7 +17,6 @@ cmd_status_right() {
 
   _all=$("$DATA" all)
   cpu_val="${_all%%|*}"; _rest="${_all#*|}"
-  mem_val="${_rest%%|*}"
   bat_raw="${_rest#*|}"
 
   case "$bat_raw" in
@@ -31,7 +30,6 @@ cmd_status_right() {
   elif [ "$cpu_val" -gt 50 ]; then CPU_VAL=$NOVA_CPU_WARN
   else CPU_VAL=$NOVA_CPU_NORM
   fi
-  MEM_BG=$NOVA_MEM; MEM_DK=$NOVA_MEM_DK
   BAT_LBL=$NOVA_BAT_NORM_DK
   if [ "$bat_val" -gt 50 ]; then BAT_VAL=$NOVA_BAT_NORM
   elif [ "$bat_val" -gt 20 ]; then BAT_VAL=$NOVA_BAT_WARN
@@ -44,7 +42,6 @@ cmd_status_right() {
   date_val=$(echo "${_dt#*|}" | tr 'a-z' 'A-Z')
 
   cpu_display=$(printf '%4s' "${cpu_val}%")
-  mem_display=$(printf '%4s' "${mem_val}")
   bat_display=$(printf '%4s' "${bat_charging}${bat_val}%")
 
   SL=""
@@ -56,12 +53,6 @@ cmd_status_right() {
   o="${o}#[bg=${CPU_LBL},fg=#f0f0f0,nobold] CPU "
 
   o="${o}#[bg=${CPU_LBL},fg=${TERM_BG}]${BS}"
-  o="${o}#[bg=${MEM_BG},fg=${TERM_BG}]${SL}"
-  o="${o}#[bg=${MEM_BG},fg=#f0f0f0] ${mem_display} "
-  o="${o}#[bg=${MEM_BG},fg=${MEM_DK}]${BS}"
-  o="${o}#[bg=${MEM_DK},fg=#f0f0f0,nobold] MEM "
-
-  o="${o}#[bg=${MEM_DK},fg=${TERM_BG}]${BS}"
   o="${o}#[bg=${BAT_VAL},fg=${TERM_BG}]${SL}"
   o="${o}#[bg=${BAT_VAL},fg=#f0f0f0] ${bat_display} "
   o="${o}#[bg=${BAT_VAL},fg=${BAT_LBL}]${BS}"
