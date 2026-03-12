@@ -8,7 +8,7 @@
 
 # ── Core ─────────────────────────────────────────────────────────────────────
 NOVA_BG="#282c34"         # Terminal background (OneDark)
-NOVA_STATUS_BG="#686e84"  # Status bar background (matches pane border branch color)
+NOVA_STATUS_BG="#404454"  # Status bar background (darker, closer to terminal bg)
 NOVA_FG="#f0f0f0"         # Primary text
 NOVA_FG_DIM="#abb2bf"     # Dimmed / inactive text
 
