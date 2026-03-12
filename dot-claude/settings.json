@@ -74,53 +74,6 @@
         ]
       }
     ],
-    "PermissionRequest": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"${TMUX_PANE:-}\" ] && touch \"/tmp/claude-active-${TMUX_PANE}\" && WIN=$(tmux display-message -t \"${TMUX_PANE}\" -p '#{window_index}' 2>/dev/null) && [ -n \"$WIN\" ] && tmux set-window-option -t :\"$WIN\" @tab_claude_needs_input '1' && ~/dotFiles/tmux-scripts/tmux-powerline.sh tab-blink-start \"$WIN\" || true",
-            "timeout": 3
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"${TMUX_PANE:-}\" ] && WIN=$(tmux display-message -t \"${TMUX_PANE}\" -p '#{window_index}' 2>/dev/null) && [ -n \"$WIN\" ] && tmux set-window-option -t :\"$WIN\" @tab_claude_needs_input '' && tmux set-window-option -t :\"$WIN\" @tab_claude_blink '' && tmux refresh-client -S || true",
-            "timeout": 3
-          }
-        ]
-      }
-    ],
-    "PostToolUseFailure": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"${TMUX_PANE:-}\" ] && WIN=$(tmux display-message -t \"${TMUX_PANE}\" -p '#{window_index}' 2>/dev/null) && [ -n \"$WIN\" ] && tmux set-window-option -t :\"$WIN\" @tab_claude_needs_input '' && tmux set-window-option -t :\"$WIN\" @tab_claude_blink '' && tmux refresh-client -S || true",
-            "timeout": 3
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "elicitation_dialog",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"${TMUX_PANE:-}\" ] && WIN=$(tmux display-message -t \"${TMUX_PANE}\" -p '#{window_index}' 2>/dev/null) && [ -n \"$WIN\" ] && tmux set-window-option -t :\"$WIN\" @tab_claude_needs_input '1' && ~/dotFiles/tmux-scripts/tmux-powerline.sh tab-blink-start \"$WIN\" || true",
-            "timeout": 3
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
@@ -129,27 +82,6 @@
             "type": "command",
             "command": "FILE=$(echo \"$TOOL_INPUT\" | jq -r '.file_path // empty') && [[ \"$FILE\" == *.sh ]] && command -v shfmt &>/dev/null && shfmt -w -i 2 \"$FILE\" || true",
             "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -n \"${TMUX_PANE:-}\" ] && WIN=$(tmux display-message -t \"${TMUX_PANE}\" -p '#{window_index}' 2>/dev/null) && [ -n \"$WIN\" ] && tmux set-window-option -t :\"$WIN\" @tab_claude_needs_input '' && tmux set-window-option -t :\"$WIN\" @tab_claude_blink '' && tmux refresh-client -S || true",
-            "timeout": 3
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "rm -f \"/tmp/claude-active-${TMUX_PANE:-}\" && [ -n \"${TMUX_PANE:-}\" ] && WIN=$(tmux display-message -t \"${TMUX_PANE}\" -p '#{window_index}' 2>/dev/null) && [ -n \"$WIN\" ] && tmux set-window-option -t :\"$WIN\" @tab_claude_needs_input '1' && tmux refresh-client -S && ~/dotFiles/tmux-scripts/tmux-powerline.sh tab-blink-start \"$WIN\" || true",
-            "timeout": 5
           }
         ]
       }
