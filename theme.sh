@@ -74,9 +74,9 @@ NOVA_TAB_A5_DK="#9e6430"
 NOVA_TAB_A6_DK="#b47838"
 
 # ── Pane borders ─────────────────────────────────────────────────────────────
-NOVA_PANE_BORDER="#5a5a6a"   # Inactive border (brighter than old #4a4a4a)
-NOVA_PANE_ACTIVE="#aa88ee"   # Active border lavender (was #A884D4)
-NOVA_PANE_PATH="#8866cc"     # Inactive border path text (was #6344a0)
+NOVA_PANE_BORDER="#324B64"   # Inactive border — lake_superior dark blue
+NOVA_PANE_ACTIVE="#C87D4B"   # Active border — lake_superior terracotta
+NOVA_PANE_PATH="#4B647D"     # Inactive path text — lake_superior medium blue
 
 # ── Claude Code alert ────────────────────────────────────────────────────────
 NOVA_CLAUDE_ALERT="#D97757"  # Claude brand orange — tab ID blink when needs input
