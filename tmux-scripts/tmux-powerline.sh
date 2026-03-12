@@ -362,7 +362,7 @@ cmd_tab_blink_start() {
     tmux set-window-option -t :"$WIN" @tab_claude_blink '' 2>/dev/null
     tmux refresh-client -S 2>/dev/null
     rm -f "$PID_FILE"
-  ) &
+  ) >/dev/null 2>&1 </dev/null &
   printf '%s\n' "$!" >"$PID_FILE"
 }
 

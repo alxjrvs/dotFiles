@@ -80,7 +80,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -n \"${TMUX_PANE:-}\" ] && touch \"/tmp/claude-active-${TMUX_PANE}\" && tmux set-window-option -t \"${TMUX_PANE}\" @tab_claude_needs_input '1' && WIN=$(tmux display-message -t \"${TMUX_PANE}\" -p '#{window_index}') && ~/dotFiles/tmux-scripts/tmux-powerline.sh tab-blink-start \"$WIN\" || true",
+            "command": "[ -n \"${TMUX_PANE:-}\" ] && touch \"/tmp/claude-active-${TMUX_PANE}\" && WIN=$(tmux display-message -t \"${TMUX_PANE}\" -p '#{window_index}' 2>/dev/null) && [ -n \"$WIN\" ] && tmux set-window-option -t :\"$WIN\" @tab_claude_needs_input '1' && ~/dotFiles/tmux-scripts/tmux-powerline.sh tab-blink-start \"$WIN\" || true",
             "timeout": 3
           }
         ]
@@ -91,7 +91,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -n \"${TMUX_PANE:-}\" ] && tmux set-window-option -t \"${TMUX_PANE}\" @tab_claude_needs_input '' && tmux set-window-option -t \"${TMUX_PANE}\" @tab_claude_blink '' && tmux refresh-client -S || true",
+            "command": "[ -n \"${TMUX_PANE:-}\" ] && WIN=$(tmux display-message -t \"${TMUX_PANE}\" -p '#{window_index}' 2>/dev/null) && [ -n \"$WIN\" ] && tmux set-window-option -t :\"$WIN\" @tab_claude_needs_input '' && tmux set-window-option -t :\"$WIN\" @tab_claude_blink '' && tmux refresh-client -S || true",
             "timeout": 3
           }
         ]
@@ -103,7 +103,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -n \"${TMUX_PANE:-}\" ] && tmux set-window-option -t \"${TMUX_PANE}\" @tab_claude_needs_input '' && tmux set-window-option -t \"${TMUX_PANE}\" @tab_claude_blink '' && tmux refresh-client -S || true",
+            "command": "[ -n \"${TMUX_PANE:-}\" ] && WIN=$(tmux display-message -t \"${TMUX_PANE}\" -p '#{window_index}' 2>/dev/null) && [ -n \"$WIN\" ] && tmux set-window-option -t :\"$WIN\" @tab_claude_needs_input '' && tmux set-window-option -t :\"$WIN\" @tab_claude_blink '' && tmux refresh-client -S || true",
             "timeout": 3
           }
         ]
@@ -115,7 +115,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -n \"${TMUX_PANE:-}\" ] && tmux set-window-option -t \"${TMUX_PANE}\" @tab_claude_needs_input '1' && WIN=$(tmux display-message -t \"${TMUX_PANE}\" -p '#{window_index}') && ~/dotFiles/tmux-scripts/tmux-powerline.sh tab-blink-start \"$WIN\" || true",
+            "command": "[ -n \"${TMUX_PANE:-}\" ] && WIN=$(tmux display-message -t \"${TMUX_PANE}\" -p '#{window_index}' 2>/dev/null) && [ -n \"$WIN\" ] && tmux set-window-option -t :\"$WIN\" @tab_claude_needs_input '1' && ~/dotFiles/tmux-scripts/tmux-powerline.sh tab-blink-start \"$WIN\" || true",
             "timeout": 3
           }
         ]
@@ -137,7 +137,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -n \"${TMUX_PANE:-}\" ] && tmux set-window-option -t \"${TMUX_PANE}\" @tab_claude_needs_input '' && tmux set-window-option -t \"${TMUX_PANE}\" @tab_claude_blink '' && tmux refresh-client -S || true",
+            "command": "[ -n \"${TMUX_PANE:-}\" ] && WIN=$(tmux display-message -t \"${TMUX_PANE}\" -p '#{window_index}' 2>/dev/null) && [ -n \"$WIN\" ] && tmux set-window-option -t :\"$WIN\" @tab_claude_needs_input '' && tmux set-window-option -t :\"$WIN\" @tab_claude_blink '' && tmux refresh-client -S || true",
             "timeout": 3
           }
         ]
@@ -148,7 +148,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "rm -f \"/tmp/claude-active-${TMUX_PANE:-}\" && [ -n \"${TMUX_PANE:-}\" ] && tmux set-window-option -t \"${TMUX_PANE}\" @tab_claude_needs_input '1' && tmux refresh-client -S && WIN=$(tmux display-message -t \"${TMUX_PANE}\" -p '#{window_index}') && ~/dotFiles/tmux-scripts/tmux-powerline.sh tab-blink-start \"$WIN\" || true",
+            "command": "rm -f \"/tmp/claude-active-${TMUX_PANE:-}\" && [ -n \"${TMUX_PANE:-}\" ] && WIN=$(tmux display-message -t \"${TMUX_PANE}\" -p '#{window_index}' 2>/dev/null) && [ -n \"$WIN\" ] && tmux set-window-option -t :\"$WIN\" @tab_claude_needs_input '1' && tmux refresh-client -S && ~/dotFiles/tmux-scripts/tmux-powerline.sh tab-blink-start \"$WIN\" || true",
             "timeout": 5
           }
         ]
