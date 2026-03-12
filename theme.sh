@@ -33,28 +33,28 @@ NOVA_BRANCH="#324B64"      # Git branch cool dark blue (lake_superior anchor)
 NOVA_BRANCH_R=50; NOVA_BRANCH_G=75; NOVA_BRANCH_B=100
 
 # ── Status-right: Time ───────────────────────────────────────────────────────
-NOVA_TIME="#8855cc"        # Violet             W 4.4:1  B 2.8:1
-NOVA_TIME_DK="#6640aa"     # Violet dark
+NOVA_TIME="#19324B"        # Darkest navy — far right edge
+NOVA_TIME_DK="#0f2036"     # Even darker for label half
 
 # ── Status-right: Memory ─────────────────────────────────────────────────────
-NOVA_MEM="#2d74cc"         # Ocean blue         W 4.1:1  B 3.0:1
-NOVA_MEM_DK="#225baa"      # Blue dark
+NOVA_MEM="#324B64"         # Lake_superior dark blue
+NOVA_MEM_DK="#1e3450"
 
 # ── Status-right: Battery ────────────────────────────────────────────────────
-NOVA_BAT_GOOD="#349966"    # Emerald            W 3.1:1  B 3.9:1
-NOVA_BAT_GOOD_DK="#277a52"
-NOVA_BAT_WARN="#aa7c1e"    # Gold               W 3.4:1  B 3.9:1
-NOVA_BAT_WARN_DK="#886018"
-NOVA_BAT_LOW="#cc4444"     # Crimson            W 4.1:1  B 3.0:1
-NOVA_BAT_LOW_DK="#a03333"
+NOVA_BAT_GOOD="#2e8a5c"    # Cool green (functional)
+NOVA_BAT_GOOD_DK="#226b46"
+NOVA_BAT_WARN="#b07820"    # Amber warning (functional)
+NOVA_BAT_WARN_DK="#8a5c18"
+NOVA_BAT_LOW="#c04040"     # Red alert (functional)
+NOVA_BAT_LOW_DK="#9e3030"
 
 # ── Status-right: CPU ────────────────────────────────────────────────────────
-NOVA_CPU_NORM="#9a5c38"    # Terracotta         W 4.7:1  B 2.6:1
-NOVA_CPU_NORM_DK="#7a4428"
-NOVA_CPU_WARN="#aa8022"    # Saffron            W 3.2:1  B 3.9:1
-NOVA_CPU_WARN_DK="#886410"
-NOVA_CPU_HIGH="#cc3a3a"    # Crimson            W 4.4:1  B 2.8:1
-NOVA_CPU_HIGH_DK="#a02a2a"
+NOVA_CPU_NORM="#4B647D"    # Lake_superior medium blue — brightest (near center)
+NOVA_CPU_NORM_DK="#324B64"
+NOVA_CPU_WARN="#b07820"    # Amber (functional)
+NOVA_CPU_WARN_DK="#8a5c18"
+NOVA_CPU_HIGH="#c04040"    # Red (functional)
+NOVA_CPU_HIGH_DK="#9e3030"
 
 # ── Tabs: active ID — warm gold gradient (1 = brightest, 6 = darkest) ────────
 # Used for the active tab ID section. Yellow-gold: clearly distinct from the
