@@ -38,5 +38,13 @@
     },
     "installLocation": "/Users/jarvis/.claude/plugins/marketplaces/gnar",
     "lastUpdated": "2026-03-11T13:05:08.753Z"
+  },
+  "jrvs-skills": {
+    "source": {
+      "source": "git",
+      "url": "https://github.com/alxjrvs/skills-lib.git"
+    },
+    "installLocation": "/Users/jarvis/.claude/plugins/marketplaces/jrvs-skills",
+    "lastUpdated": "2026-03-12T14:09:05.162Z"
   }
 }

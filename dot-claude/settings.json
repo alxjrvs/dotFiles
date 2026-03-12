@@ -54,12 +54,6 @@
     ],
     "defaultMode": "default"
   },
-  "mcpServers": {
-    "knip": {
-      "command": "npx",
-      "args": ["-y", "@knip/mcp"]
-    }
-  },
   "enableAllProjectMcpServers": true,
   "hooks": {
     "PreToolUse": [
@@ -112,9 +106,19 @@
     "upgrading-expo@expo-plugins": true,
     "expo-app-design@expo-plugins": true,
     "context7@claude-plugins-official": true,
-    "claude-session-driver@superpowers-marketplace": true
+    "claude-session-driver@superpowers-marketplace": true,
+    "tmux@jrvs-skills": true
   },
   "outputStyle": "Concise",
   "alwaysThinkingEnabled": true,
-  "autoUpdatesChannel": "stable"
+  "autoUpdatesChannel": "stable",
+  "mcpServers": {
+    "knip": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@knip/mcp"
+      ]
+    }
+  }
 }
