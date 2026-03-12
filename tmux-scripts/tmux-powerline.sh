@@ -87,17 +87,6 @@ cmd_tab_colors() {
   _info=$(tmux display-message -p '#{window_index}|#{W:#{window_index} }' 2>/dev/null || echo "1|1 ")
   ACTIVE="${_info%%|*}"
   WIN_LIST=$(printf '%s\n' "${_info#*|}" | tr ' ' '\n' | grep -v '^$' | sort -n)
-  # Nova active tabs: amber gradient (1=brightest). fg=#f0f0f0 bold.
-  active_color() {
-    case "$(( (($1-1)%6)+1 ))" in
-      1) printf '%s' "$NOVA_TAB_A1" ;;
-      2) printf '%s' "$NOVA_TAB_A2" ;;
-      3) printf '%s' "$NOVA_TAB_A3" ;;
-      4) printf '%s' "$NOVA_TAB_A4" ;;
-      5) printf '%s' "$NOVA_TAB_A5" ;;
-      6) printf '%s' "$NOVA_TAB_A6" ;;
-    esac
-  }
   active_dark_color() {
     case "$(( (($1-1)%6)+1 ))" in
       1) printf '%s' "$NOVA_TAB_A1_DK" ;;
@@ -117,27 +106,6 @@ cmd_tab_colors() {
       4) printf '%s' "$NOVA_TAB_N4" ;;
       5) printf '%s' "$NOVA_TAB_N5" ;;
       6) printf '%s' "$NOVA_TAB_N6" ;;
-    esac
-  }
-  # Nova inactive tabs: slate/indigo gradient (1=most visible). fg=$NOVA_FG_DIM.
-  inactive_color() {
-    case "$(( (($1-1)%6)+1 ))" in
-      1) printf '%s' "$NOVA_TAB_I1" ;;
-      2) printf '%s' "$NOVA_TAB_I2" ;;
-      3) printf '%s' "$NOVA_TAB_I3" ;;
-      4) printf '%s' "$NOVA_TAB_I4" ;;
-      5) printf '%s' "$NOVA_TAB_I5" ;;
-      6) printf '%s' "$NOVA_TAB_I6" ;;
-    esac
-  }
-  inactive_label_color() {
-    case "$(( (($1-1)%6)+1 ))" in
-      1) printf '%s' "$NOVA_TAB_I1_LBL" ;;
-      2) printf '%s' "$NOVA_TAB_I2_LBL" ;;
-      3) printf '%s' "$NOVA_TAB_I3_LBL" ;;
-      4) printf '%s' "$NOVA_TAB_I4_LBL" ;;
-      5) printf '%s' "$NOVA_TAB_I5_LBL" ;;
-      6) printf '%s' "$NOVA_TAB_I6_LBL" ;;
     esac
   }
   right_neighbor() { printf '%s\n' "$WIN_LIST" | awk -v w="$1" '$1+0>w+0{print $1+0;exit}'; }
