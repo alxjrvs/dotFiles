@@ -26,14 +26,16 @@ cmd_status_right() {
   esac
 
   # Nova palette — see theme.sh for all values
-  if [ "$cpu_val" -gt 80 ]; then CPU_BG=$NOVA_CPU_HIGH; CPU_DK=$NOVA_CPU_HIGH_DK
-  elif [ "$cpu_val" -gt 50 ]; then CPU_BG=$NOVA_CPU_WARN; CPU_DK=$NOVA_CPU_WARN_DK
-  else CPU_BG=$NOVA_CPU_NORM; CPU_DK=$NOVA_CPU_NORM_DK
+  CPU_LBL=$NOVA_CPU_NORM_DK
+  if [ "$cpu_val" -gt 80 ]; then CPU_VAL=$NOVA_CPU_HIGH
+  elif [ "$cpu_val" -gt 50 ]; then CPU_VAL=$NOVA_CPU_WARN
+  else CPU_VAL=$NOVA_CPU_NORM
   fi
   MEM_BG=$NOVA_MEM; MEM_DK=$NOVA_MEM_DK
-  if [ "$bat_val" -gt 50 ]; then BAT_BG=$NOVA_BAT_GOOD; BAT_DK=$NOVA_BAT_GOOD_DK
-  elif [ "$bat_val" -gt 20 ]; then BAT_BG=$NOVA_BAT_WARN; BAT_DK=$NOVA_BAT_WARN_DK
-  else BAT_BG=$NOVA_BAT_LOW; BAT_DK=$NOVA_BAT_LOW_DK
+  BAT_LBL=$NOVA_BAT_NORM_DK
+  if [ "$bat_val" -gt 50 ]; then BAT_VAL=$NOVA_BAT_NORM
+  elif [ "$bat_val" -gt 20 ]; then BAT_VAL=$NOVA_BAT_WARN
+  else BAT_VAL=$NOVA_BAT_LOW
   fi
   TIME_BG=$NOVA_TIME; TIME_DK=$NOVA_TIME_DK
 
@@ -48,24 +50,24 @@ cmd_status_right() {
   SL=""
   BS=""
 
-  o="#[bg=${CPU_BG},fg=${TERM_BG}]${SL}"
-  o="${o}#[bg=${CPU_BG},fg=#f0f0f0] ${cpu_display} "
-  o="${o}#[bg=${CPU_BG},fg=${CPU_DK}]${BS}"
-  o="${o}#[bg=${CPU_DK},fg=#f0f0f0,nobold] CPU "
+  o="#[bg=${CPU_VAL},fg=${TERM_BG}]${SL}"
+  o="${o}#[bg=${CPU_VAL},fg=#f0f0f0] ${cpu_display} "
+  o="${o}#[bg=${CPU_VAL},fg=${CPU_LBL}]${BS}"
+  o="${o}#[bg=${CPU_LBL},fg=#f0f0f0,nobold] CPU "
 
-  o="${o}#[bg=${CPU_DK},fg=${TERM_BG}]${BS}"
+  o="${o}#[bg=${CPU_LBL},fg=${TERM_BG}]${BS}"
   o="${o}#[bg=${MEM_BG},fg=${TERM_BG}]${SL}"
   o="${o}#[bg=${MEM_BG},fg=#f0f0f0] ${mem_display} "
   o="${o}#[bg=${MEM_BG},fg=${MEM_DK}]${BS}"
   o="${o}#[bg=${MEM_DK},fg=#f0f0f0,nobold] MEM "
 
   o="${o}#[bg=${MEM_DK},fg=${TERM_BG}]${BS}"
-  o="${o}#[bg=${BAT_BG},fg=${TERM_BG}]${SL}"
-  o="${o}#[bg=${BAT_BG},fg=#f0f0f0] ${bat_display} "
-  o="${o}#[bg=${BAT_BG},fg=${BAT_DK}]${BS}"
-  o="${o}#[bg=${BAT_DK},fg=#f0f0f0,nobold] BAT "
+  o="${o}#[bg=${BAT_VAL},fg=${TERM_BG}]${SL}"
+  o="${o}#[bg=${BAT_VAL},fg=#f0f0f0] ${bat_display} "
+  o="${o}#[bg=${BAT_VAL},fg=${BAT_LBL}]${BS}"
+  o="${o}#[bg=${BAT_LBL},fg=#f0f0f0,nobold] BAT "
 
-  o="${o}#[bg=${BAT_DK},fg=${TERM_BG}]${BS}"
+  o="${o}#[bg=${BAT_LBL},fg=${TERM_BG}]${BS}"
   o="${o}#[bg=${TIME_BG},fg=${TERM_BG}]${SL}"
   o="${o}#[bg=${TIME_BG},fg=#ffffff] ${time_val} "
   o="${o}#[bg=${TIME_BG},fg=${TIME_DK}]${BS}"

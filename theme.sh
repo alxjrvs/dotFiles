@@ -42,19 +42,16 @@ NOVA_MEM_DK="#1e3450"
 
 # ── Status-right: Battery ────────────────────────────────────────────────────
 NOVA_BAT_GOOD="#2e8a5c"    # Cool green (functional)
-NOVA_BAT_GOOD_DK="#226b46"
+NOVA_BAT_NORM="#263e58"    # BAT positional blue (value in good state)
+NOVA_BAT_NORM_DK="#1a2e44" # BAT positional dark blue (label, always)
 NOVA_BAT_WARN="#b07820"    # Amber warning (functional)
-NOVA_BAT_WARN_DK="#8a5c18"
 NOVA_BAT_LOW="#c04040"     # Red alert (functional)
-NOVA_BAT_LOW_DK="#9e3030"
 
 # ── Status-right: CPU ────────────────────────────────────────────────────────
 NOVA_CPU_NORM="#4B647D"    # Lake_superior medium blue — brightest (near center)
 NOVA_CPU_NORM_DK="#324B64"
 NOVA_CPU_WARN="#b07820"    # Amber (functional)
-NOVA_CPU_WARN_DK="#8a5c18"
 NOVA_CPU_HIGH="#c04040"    # Red (functional)
-NOVA_CPU_HIGH_DK="#9e3030"
 
 # ── Tabs: active ID — fixed blue background (all active tabs use same ID color) ──
 NOVA_TAB_ACTIVE_ID="#4B647D"   # Lake superior medium blue
