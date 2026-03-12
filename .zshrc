@@ -128,10 +128,11 @@ alias ...="cd ../.."
 alias dots="cd ~/dotFiles"
 
 # Enhanced tools (eza + bat)
-alias ls="eza"
-alias la="eza -la"
-alias ll="eza -lh"
-alias tree="eza -T"
+alias ls="eza --icons --group-directories-first"
+alias la="eza --icons --group-directories-first -la --git"
+alias ll="eza --icons --group-directories-first -lh --git"
+alias lt="eza --icons --group-directories-first -T --level=2"
+alias tree="eza --icons --group-directories-first -T"
 alias cat="bat --style=plain"
 
 # Editor
