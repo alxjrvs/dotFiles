@@ -56,34 +56,22 @@ NOVA_CPU_WARN_DK="#8a5c18"
 NOVA_CPU_HIGH="#c04040"    # Red (functional)
 NOVA_CPU_HIGH_DK="#9e3030"
 
-# ── Tabs: active ID — warm gold gradient (1 = brightest, 6 = darkest) ────────
-# Used for the active tab ID section. Yellow-gold: clearly distinct from the
-# orange-brown amber name section. W≈3.5:1 at tab 1.
-NOVA_TAB_N1="#d4a820"
-NOVA_TAB_N2="#b88c18"
-NOVA_TAB_N3="#9c7212"
-NOVA_TAB_N4="#80580c"
-NOVA_TAB_N5="#643e06"
-NOVA_TAB_N6="#482400"
+# ── Tabs: active ID — warm gold gradient (1=darkest/left, 6=brightest/center) ──
+NOVA_TAB_N1="#5e3812"
+NOVA_TAB_N2="#784c1c"
+NOVA_TAB_N3="#8e6224"
+NOVA_TAB_N4="#a47a2c"
+NOVA_TAB_N5="#ba9038"
+NOVA_TAB_N6="#c8a048"
 
-# ── Tabs: active — amber gradient (1 = brightest, 6 = darkest) ───────────────
-# All active tabs use fg=#f0f0f0. Tab 1 W≈3.2:1, dims gracefully.
-NOVA_TAB_A1="#c07018"  ; NOVA_TAB_A1_DK="#9a5818"
-NOVA_TAB_A2="#aa6014"  ; NOVA_TAB_A2_DK="#844810"
-NOVA_TAB_A3="#945010"  ; NOVA_TAB_A3_DK="#6e380c"
-NOVA_TAB_A4="#7e400c"  ; NOVA_TAB_A4_DK="#582808"
-NOVA_TAB_A5="#683008"  ; NOVA_TAB_A5_DK="#421804"
-NOVA_TAB_A6="#522004"  ; NOVA_TAB_A6_DK="#2c1202"
-
-# ── Tabs: inactive — slate/indigo gradient (1 = most visible) ────────────────
-# Outer bg uses fg=#abb2bf (dim), inner label uses fg=#f0f0f0.
-# Purple-slate hue contrasts with amber active tabs.
-NOVA_TAB_I1="#62607a"  ; NOVA_TAB_I1_LBL="#78748c"
-NOVA_TAB_I2="#565470"  ; NOVA_TAB_I2_LBL="#6c6884"
-NOVA_TAB_I3="#4a4864"  ; NOVA_TAB_I3_LBL="#605c78"
-NOVA_TAB_I4="#3e3c58"  ; NOVA_TAB_I4_LBL="#54506c"
-NOVA_TAB_I5="#32304c"  ; NOVA_TAB_I5_LBL="#484460"
-NOVA_TAB_I6="#262440"  ; NOVA_TAB_I6_LBL="#3c3854"
+# ── Tabs: inactive bg + active name section (1=darkest/left, 6=brightest/center) ──
+# A*_DK are the actual colors used; non-DK variants and NOVA_TAB_I* removed (unused).
+NOVA_TAB_A1_DK="#3e2210"
+NOVA_TAB_A2_DK="#56301a"
+NOVA_TAB_A3_DK="#6e4020"
+NOVA_TAB_A4_DK="#865228"
+NOVA_TAB_A5_DK="#9e6430"
+NOVA_TAB_A6_DK="#b47838"
 
 # ── Pane borders ─────────────────────────────────────────────────────────────
 NOVA_PANE_BORDER="#5a5a6a"   # Inactive border (brighter than old #4a4a4a)
