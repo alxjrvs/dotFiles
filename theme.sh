@@ -56,13 +56,8 @@ NOVA_CPU_WARN_DK="#8a5c18"
 NOVA_CPU_HIGH="#c04040"    # Red (functional)
 NOVA_CPU_HIGH_DK="#9e3030"
 
-# ── Tabs: active ID — warm gold gradient (1=darkest/left, 6=brightest/center) ──
-NOVA_TAB_N1="#5e3812"
-NOVA_TAB_N2="#784c1c"
-NOVA_TAB_N3="#8e6224"
-NOVA_TAB_N4="#a47a2c"
-NOVA_TAB_N5="#ba9038"
-NOVA_TAB_N6="#c8a048"
+# ── Tabs: active ID — fixed blue background (all active tabs use same ID color) ──
+NOVA_TAB_ACTIVE_ID="#4B647D"   # Lake superior medium blue
 
 # ── Tabs: inactive bg + active name section (1=darkest/left, 6=brightest/center) ──
 # A*_DK are the actual colors used; non-DK variants and NOVA_TAB_I* removed (unused).

@@ -97,17 +97,8 @@ cmd_tab_colors() {
       6) printf '%s' "$NOVA_TAB_A6_DK" ;;
     esac
   }
-  # Active tab ID section: rust/vermillion gradient
-  active_name_color() {
-    case "$(( (($1-1)%6)+1 ))" in
-      1) printf '%s' "$NOVA_TAB_N1" ;;
-      2) printf '%s' "$NOVA_TAB_N2" ;;
-      3) printf '%s' "$NOVA_TAB_N3" ;;
-      4) printf '%s' "$NOVA_TAB_N4" ;;
-      5) printf '%s' "$NOVA_TAB_N5" ;;
-      6) printf '%s' "$NOVA_TAB_N6" ;;
-    esac
-  }
+  # Active tab ID section: fixed blue (all active tabs use same ID color)
+  active_name_color() { printf '%s' "$NOVA_TAB_ACTIVE_ID"; }
   right_neighbor() { printf '%s\n' "$WIN_LIST" | awk -v w="$1" '$1+0>w+0{print $1+0;exit}'; }
   {
     for WIN in $WIN_LIST; do
