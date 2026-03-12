@@ -8,7 +8,7 @@
 
 # ── Core ─────────────────────────────────────────────────────────────────────
 NOVA_BG="#282c34"         # Terminal background (OneDark)
-NOVA_STATUS_BG="#404454"  # Status bar background (darker, closer to terminal bg)
+NOVA_STATUS_BG="#282c34"  # Terminal bg — used for powerline arrow blending only
 NOVA_FG="#f0f0f0"         # Primary text
 NOVA_FG_DIM="#abb2bf"     # Dimmed / inactive text
 
@@ -28,9 +28,9 @@ NOVA_GIT_YELLOW_R=229; NOVA_GIT_YELLOW_G=192; NOVA_GIT_YELLOW_B=123
 NOVA_GIT_GREEN_R=152;  NOVA_GIT_GREEN_G=195;  NOVA_GIT_GREEN_B=121
 
 # ── Prompt / pane segments ───────────────────────────────────────────────────
-NOVA_DIR="#c07820"         # Directory amber    W 3.0:1  B 4.1:1  R192 G120 B32
-NOVA_BRANCH="#686e84"      # Git branch slate   W 4.1:1  B 3.0:1  R104 G110 B132
-NOVA_BRANCH_R=104; NOVA_BRANCH_G=110; NOVA_BRANCH_B=132
+NOVA_DIR="#7D4B19"         # Directory warm dark brown (lake_superior anchor)
+NOVA_BRANCH="#324B64"      # Git branch cool dark blue (lake_superior anchor)
+NOVA_BRANCH_R=50; NOVA_BRANCH_G=75; NOVA_BRANCH_B=100
 
 # ── Status-right: Time ───────────────────────────────────────────────────────
 NOVA_TIME="#8855cc"        # Violet             W 4.4:1  B 2.8:1
