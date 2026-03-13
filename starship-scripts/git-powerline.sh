@@ -11,7 +11,7 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 
 branch=$(git branch --show-current 2>/dev/null)
 [ -z "$branch" ] && branch=$(git rev-parse --short HEAD 2>/dev/null)
-[ -z "$branch" ] && exit 0
+[ -z "$branch" ] && branch="[untracked]"
 
 porcelain=$(git status --porcelain 2>/dev/null)
 has_dirty=0; [ -n "$porcelain" ] && has_dirty=1
@@ -55,6 +55,13 @@ o=""
 o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg 76 86 106)${A}"
 # Branch text on gray
 o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg $BG_R $BG_G $BG_B) ${branch} "
+
+# No pips for untracked (no branch) — just close the segment
+if [ "$branch" = "[untracked]" ]; then
+  o="${o}$(rst)$(fg $GRAY_R $GRAY_G $GRAY_B)${A}${TAIL}"
+  printf '%s' "$o"
+  exit 0
+fi
 
 if [ "$has_stash" = "1" ]; then
   # Arrow: gray -> blue

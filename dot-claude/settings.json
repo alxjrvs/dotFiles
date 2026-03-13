@@ -47,7 +47,6 @@
     "upgrading-expo@expo-plugins": true,
     "expo-app-design@expo-plugins": true,
     "claude-session-driver@superpowers-marketplace": true,
-    "tmux@jrvs-skills": true,
     "expo-deployment@expo-plugins": true,
     "example-skills@anthropic-agent-skills": true
   },
@@ -59,10 +58,7 @@
   "mcpServers": {
     "knip": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@knip/mcp"
-      ]
+      "args": ["-y", "@knip/mcp"]
     }
   }
 }
