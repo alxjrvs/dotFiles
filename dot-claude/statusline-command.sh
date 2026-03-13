@@ -53,10 +53,12 @@ BAR_FG="236;239;244"       # #ECEFF4
 MODEL_BG="229;233;240"     # #E5E9F0 Nord5
 DIR_BG="76;86;106"         # #4C566A Nord3
 DIR_FG="236;239;244"       # #ECEFF4 Nord6
-COST_BG="163;190;140"      # #A3BE8C Nord14 green
+WARN_BG="235;203;139"      # #EBCB8B git yellow
+CRIT_BG="191;97;106"       # #BF616A git red
+COST_BG="229;233;240"      # #E5E9F0 Nord5 (matches git branch)
 COST_FG="46;52;64"         # #2E3440 Nord0
-TIME_BG="129;161;193"      # #81A1C1 Nord9 blue
-TIME_FG="46;52;64"         # #2E3440 Nord0
+TIME_BG="76;86;106"        # #4C566A Nord3 (matches CWD)
+TIME_FG="236;239;244"      # #ECEFF4 Nord6
 
 # == Line 1: Dir + Git ========================================================
 line1=""
@@ -80,18 +82,26 @@ if [ -n "$used_pct" ]; then
   used_int=${used_pct%%.*}
   filled=$(( used_int * 8 / 100 ))
   [ "$filled" -gt 8 ] && filled=8
+  # Pick active pip color based on usage
+  if [ "$used_int" -gt 75 ]; then
+    PIP_BG="${CRIT_BG}"; PIP_FG="${BAR_FG}"
+  elif [ "$used_int" -gt 50 ]; then
+    PIP_BG="${WARN_BG}"; PIP_FG="${DARK_FG}"
+  else
+    PIP_BG="${DIR_BG}"; PIP_FG="${BAR_FG}"
+  fi
   bar=''
   i=0
   while [ "$i" -lt "$filled" ]; do
     if [ "$i" -eq $(( filled - 1 )) ]; then
-      bar="${bar}\e[48;2;${DARK_FG}m\e[38;2;${BAR_BG}m${A}"
+      bar="${bar}\e[48;2;${DARK_FG}m\e[38;2;${PIP_BG}m${A}"
     else
-      bar="${bar}\e[48;2;${BAR_BG}m\e[38;2;${DARK_FG}m${T}"
+      bar="${bar}\e[48;2;${PIP_BG}m\e[38;2;${PIP_FG}m${T}"
     fi
     i=$(( i + 1 ))
   done
   while [ "$i" -lt 8 ]; do
-    bar="${bar}\e[48;2;${DARK_FG}m\e[38;2;${BAR_FG}m${T}"
+    bar="${bar}\e[48;2;${DARK_FG}m\e[38;2;${DARK_FG}m${T}"
     i=$(( i + 1 ))
   done
   val_text="$bar"
@@ -100,37 +110,32 @@ else
   val_text=''
   i=0
   while [ "$i" -lt 8 ]; do
-    val_text="${val_text}\e[48;2;${DARK_FG}m\e[38;2;${BAR_FG}m${T}"
+    val_text="${val_text}\e[48;2;${DARK_FG}m\e[38;2;${DARK_FG}m${T}"
     i=$(( i + 1 ))
   done
 fi
 
 # Arrow: CONTEXT label -> bar area
 if [ "$filled" -gt 0 ]; then
-  left_glyph="\e[48;2;${BAR_BG}m\e[38;2;${LIGHT_BG}m${A}"
+  left_glyph="\e[48;2;${PIP_BG}m\e[38;2;${LIGHT_BG}m${A}"
 else
   left_glyph="\e[48;2;${DARK_FG}m\e[38;2;${LIGHT_BG}m${A}"
 fi
 
-# Arrow: bar area -> next segment (MODEL if present, else closing)
-if [ -n "$model" ]; then
-  if [ "$filled" -ge 8 ]; then
-    bar_exit="\e[48;2;${MODEL_BG}m\e[38;2;${BAR_BG}m${A}"
-  else
-    bar_exit="\e[48;2;${MODEL_BG}m\e[38;2;${DARK_FG}m${A}"
-  fi
-else
-  if [ "$filled" -ge 8 ]; then
-    bar_exit="\e[0m\e[38;2;${BAR_BG}m${A}\e[0m"
-  else
-    bar_exit="\e[0m\e[38;2;${DARK_FG}m${A}\e[0m"
-  fi
-fi
+# Arrow: bar area -> terminal (closing)
+bar_exit="\e[0m\e[38;2;${DARK_FG}m${A}\e[0m"
 
 # -- Build line 2 --------------------------------------------------------------
 line2=""
 
-# Cost segment (opening pill)
+# Model segment (opening pill, if present)
+if [ -n "$model" ]; then
+  line2="${line2}\e[48;2;${DIR_BG}m\e[38;2;${DIR_FG}m\e[22m ${model} "
+  # Model -> Cost transition
+  line2="${line2}\e[48;2;${COST_BG}m\e[38;2;${DIR_BG}m${A}"
+fi
+
+# Cost segment
 line2="${line2}\e[48;2;${COST_BG}m\e[38;2;${COST_FG}m\e[22m ${cost_fmt} "
 
 # Cost -> Time transition
@@ -145,14 +150,7 @@ line2="${line2}\e[48;2;${LIGHT_BG}m\e[38;2;${TIME_BG}m${A}"
 # Context label
 line2="${line2}\e[48;2;${LIGHT_BG}m\e[38;2;${DARK_FG}m\e[22m CONTEXT "
 
-# Bar area + exit arrow
+# Bar area + closing arrow
 line2="${line2}${left_glyph}${val_text}${bar_exit}"
 
-# Model segment (if present)
-if [ -n "$model" ]; then
-  line2="${line2}\e[48;2;${MODEL_BG}m\e[38;2;${DARK_FG}m\e[22m ${model} "
-  # Model closing arrow
-  printf "%b\e[0m\e[38;2;${MODEL_BG}m${A}\e[0m" "$line2"
-else
-  printf "%b" "$line2"
-fi
+printf "%b" "$line2"

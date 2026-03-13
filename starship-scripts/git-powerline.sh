@@ -54,7 +54,7 @@ o=""
 # Opening arrow: dir bg (#4C566A Nord3) -> branch bg Nord5 (seamless from starship directory)
 o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg 76 86 106)${A}"
 # Branch text on gray
-o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg $BG_R $BG_G $BG_B)  ${branch} "
+o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg $BG_R $BG_G $BG_B) ${branch} "
 
 if [ "$has_stash" = "1" ]; then
   # Arrow: gray -> blue
