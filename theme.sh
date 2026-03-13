@@ -28,7 +28,7 @@ NOVA_GIT_YELLOW_R=235; NOVA_GIT_YELLOW_G=203; NOVA_GIT_YELLOW_B=139
 NOVA_GIT_GREEN_R=163;  NOVA_GIT_GREEN_G=190;  NOVA_GIT_GREEN_B=140
 
 # ── Prompt / pane segments ───────────────────────────────────────────────────
-NOVA_DIR="#3B4252"         # Directory — Nord 1 (dark, matches statusline CONTEXT)
+NOVA_DIR="#4C566A"         # Directory — Nord 3 (Polar Night, visible against bg)
 NOVA_BRANCH="#E5E9F0"      # Git branch — Nord 5 (Snow Storm mid, matches statusline MODEL)
 NOVA_BRANCH_R=229; NOVA_BRANCH_G=233; NOVA_BRANCH_B=240
 

@@ -44,14 +44,14 @@ if [ -n "$used_pct" ]; then
   i=0
   while [ "$i" -lt "$filled" ]; do
     if [ "$i" -eq $(( filled - 1 )) ]; then
-      bar="${bar}\e[48;2;${BAR_BG}m\e[38;2;${BAR_FG}m${A}"
+      bar="${bar}\e[48;2;${DARK_FG}m\e[38;2;${BAR_BG}m${A}"
     else
-      bar="${bar}\e[48;2;${BAR_FG}m\e[38;2;${BAR_BG}m${T}"
+      bar="${bar}\e[48;2;${BAR_BG}m\e[38;2;${DARK_FG}m${T}"
     fi
     i=$(( i + 1 ))
   done
   while [ "$i" -lt 8 ]; do
-    bar="${bar}\e[48;2;${BAR_BG}m\e[38;2;${BAR_FG}m${T}"
+    bar="${bar}\e[48;2;${DARK_FG}m\e[38;2;${BAR_FG}m${T}"
     i=$(( i + 1 ))
   done
   val_text="$bar"
@@ -60,19 +60,19 @@ else
   val_text='        '
 fi
 
-# Left glyph: E0B1 (thin) when pips active, E0B0 (solid) when empty
+# Left glyph: E0B0, fg=white, bg depends on fill state
 if [ "$filled" -gt 0 ]; then
-  left_glyph="\e[48;2;${LIGHT_BG}m\e[38;2;${DARK_FG}m${T}\e[48;2;${BAR_BG}m\e[38;2;${BAR_FG}m"
-else
   left_glyph="\e[48;2;${BAR_BG}m\e[38;2;${LIGHT_BG}m${A}"
+else
+  left_glyph="\e[48;2;${DARK_FG}m\e[38;2;${LIGHT_BG}m${A}"
 fi
 
-# Right glyph: E0B1 at 100%, E0B0 otherwise
+# Right glyph: E0B0, fg=white, bg=#808A9C at 100% else dark text
 if [ -n "$model" ]; then
   if [ "$filled" -ge 8 ]; then
-    context_exit="\e[48;2;${LIGHT_BG}m\e[38;2;${DARK_FG}m${T}"
+    context_exit="\e[48;2;${LIGHT_BG}m\e[38;2;${BAR_BG}m${A}"
   else
-    context_exit="\e[48;2;${MODEL_BG}m\e[38;2;${BAR_BG}m${A}"
+    context_exit="\e[48;2;${LIGHT_BG}m\e[38;2;${DARK_FG}m${A}"
   fi
   model_seg=$(printf     "\e[48;2;${MODEL_BG}m\e[38;2;${DARK_FG}m\e[22m %s \e[49m\e[38;2;${MODEL_BG}m${A}\e[0m"     "$model")
 else

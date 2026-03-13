@@ -37,7 +37,7 @@ rst() { printf '\033[0m'; }
 
 # Powerline glyph
 A=""
-case "$1" in --no-prompt) TAIL="$(rst)" ;; *) TAIL=" ❯$(rst) " ;; esac
+TAIL="$(rst)"
 
 # Determine the status color
 if [ "$has_dirty" = "1" ]; then
@@ -51,8 +51,8 @@ fi
 # Build output
 o=""
 
-# Opening arrow: dir bg (#3B4252 Nord1) -> branch bg Nord6 (seamless from starship directory)
-o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg 59 66 82)${A}"
+# Opening arrow: dir bg (#4C566A Nord3) -> branch bg Nord5 (seamless from starship directory)
+o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg 76 86 106)${A}"
 # Branch text on gray
 o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg $BG_R $BG_G $BG_B)  ${branch} "
 
