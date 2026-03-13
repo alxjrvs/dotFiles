@@ -3,7 +3,7 @@
 
 format = """
 
-$directory(${custom.git_segment})$character"""
+$directory(${custom.git_segment})(${custom.prompt_char})"""
 
 add_newline = true
 command_timeout = 1000
@@ -20,9 +20,10 @@ when = "git rev-parse --is-inside-work-tree 2>/dev/null"
 format = "$output"
 shell = ["sh"]
 
-[character]
-success_symbol = " "
-error_symbol = " "
+[custom.prompt_char]
+when = "! git rev-parse --is-inside-work-tree 2>/dev/null"
+format = "[ ❯](fg:#A3BE8C) "
+shell = ["sh"]
 
 [cmd_duration]
 disabled = true

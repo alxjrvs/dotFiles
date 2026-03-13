@@ -37,6 +37,7 @@ rst() { printf '\033[0m'; }
 
 # Powerline glyph
 A=""
+case "$1" in --no-prompt) TAIL="$(rst)" ;; *) TAIL=" ❯$(rst) " ;; esac
 
 # Determine the status color
 if [ "$has_dirty" = "1" ]; then
@@ -66,7 +67,7 @@ elif [ "$has_dirty" = "1" ] && [ "$has_unpushed" = "1" ]; then
   # Arrow: red -> yellow
   o="${o}$(bg $YEL_R $YEL_G $YEL_B)$(fg $RED_R $RED_G $RED_B)${A}"
   # Closing arrow: yellow -> terminal
-  o="${o}$(rst)$(fg $YEL_R $YEL_G $YEL_B)${A}$(rst)"
+  o="${o}$(rst)$(fg $YEL_R $YEL_G $YEL_B)${A}${TAIL}"
   printf '%s' "$o"
   exit 0
 else
@@ -78,21 +79,21 @@ if [ "$has_stash" = "1" ] && [ "$has_dirty" = "1" ] && [ "$has_unpushed" = "1" ]
   # stash+dirty+unpushed: blue -> red -> yellow -> close
   # (blue->red already rendered, now red->yellow)
   o="${o}$(bg $YEL_R $YEL_G $YEL_B)$(fg $RED_R $RED_G $RED_B)${A}"
-  o="${o}$(rst)$(fg $YEL_R $YEL_G $YEL_B)${A}$(rst)"
+  o="${o}$(rst)$(fg $YEL_R $YEL_G $YEL_B)${A}${TAIL}"
   printf '%s' "$o"
   exit 0
 elif [ "$has_stash" = "1" ] && [ "$has_dirty" = "1" ] && [ "$has_unpushed" = "0" ]; then
   # stash+dirty: blue -> red -> close
-  o="${o}$(rst)$(fg $RED_R $RED_G $RED_B)${A}$(rst)"
+  o="${o}$(rst)$(fg $RED_R $RED_G $RED_B)${A}${TAIL}"
   printf '%s' "$o"
   exit 0
 elif [ "$has_stash" = "1" ] && [ "$has_dirty" = "0" ] && [ "$has_unpushed" = "1" ]; then
   # stash+unpushed: blue -> yellow -> close
-  o="${o}$(rst)$(fg $YEL_R $YEL_G $YEL_B)${A}$(rst)"
+  o="${o}$(rst)$(fg $YEL_R $YEL_G $YEL_B)${A}${TAIL}"
   printf '%s' "$o"
   exit 0
 fi
 
 # Simple cases: closing arrow from status color
-o="${o}$(rst)$(fg $S_R $S_G $S_B)${A}$(rst)"
+o="${o}$(rst)$(fg $S_R $S_G $S_B)${A}${TAIL}"
 printf '%s' "$o"
