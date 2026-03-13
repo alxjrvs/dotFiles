@@ -20,7 +20,7 @@ else
 fi
 
 # Entry E0B0: terminal -> Nord1; dir segment: Nord1 bg, Nord6 fg
-dir_seg=$(printf "\e[49m\e[38;2;59;66;82m\e[48;2;59;66;82m\e[38;2;236;239;244m\e[22m %s " "$dir_display")
+dir_seg=$(printf "\e[48;2;59;66;82m\e[38;2;236;239;244m\e[22m %s " "$dir_display")
 # Git segment handles its own Nord1->Nord6 transition + status arrows + exit
 git_seg=$(~/dotFiles/starship-scripts/git-powerline.sh 2>/dev/null)
 
@@ -59,4 +59,4 @@ context_seg=$(printf \
   "$val_text")
 
 # Top row (starship-style) then bottom row (context/model)
-printf "%b%s\n%b%b" "$dir_seg" "$git_seg" "$context_seg" "$model_seg"
+printf "%b%s\n\n%b%b" "$dir_seg" "$git_seg" "$context_seg" "$model_seg"
