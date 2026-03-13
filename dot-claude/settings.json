@@ -44,19 +44,14 @@
     "skill-creator@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true,
     "playwright@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
-    "ralph-loop@claude-plugins-official": true,
-    "typescript-lsp@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
     "figma@claude-plugins-official": true,
-    "supabase@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
-    "vercel@claude-plugins-official": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
     "elements-of-style@superpowers-marketplace": true,
     "superpowers@superpowers-marketplace": true,
@@ -81,6 +76,5 @@
         "@knip/mcp"
       ]
     }
-  },
-  "model": "opus"
+  }
 }

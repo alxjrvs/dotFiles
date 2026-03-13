@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-# Claude Code status line — two rows:
-#   top:    starship-style directory + git
-#   bottom: context bar + model
+# Claude Code status line — single row:
+#   [context bar][model][dir][git]
 
 input=$(cat)
 
 model=$(echo "$input" | jq -r '.model.display_name // empty')
 used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 
-# -- Top row: directory + git ------------------------------------------------
+# -- Directory ---------------------------------------------------------------
 cwd=$(pwd)
 home_rel="${cwd/#$HOME/~}"
 IFS='/' read -ra _parts <<< "$home_rel"
@@ -19,23 +18,21 @@ else
   dir_display="${_parts[$(( _n - 2 ))]}/${_parts[$(( _n - 1 ))]}"
 fi
 
-# Entry E0B0: terminal -> Nord1; dir segment: Nord1 bg, Nord6 fg
-dir_seg=$(printf "\e[48;2;59;66;82m\e[38;2;236;239;244m\e[22m %s " "$dir_display")
-# Git segment handles its own Nord1->Nord6 transition + status arrows + exit
 git_seg=$(~/dotFiles/starship-scripts/git-powerline.sh --no-prompt 2>/dev/null)
 
-# -- Bottom row: context bar + model -----------------------------------------
-# Powerline glyphs
+# -- Colors ------------------------------------------------------------------
 A=''  # solid arrow
 T=''  # thin separator
 
-# Colors
-LIGHT_BG="236;239;244"     # #ECEFF4
-DARK_FG="46;52;64"         # #2E3440
+LIGHT_BG="236;239;244"     # #ECEFF4 Nord6
+DARK_FG="46;52;64"         # #2E3440 Nord0
 BAR_BG="128;138;156"       # #808A9C
 BAR_FG="236;239;244"       # #ECEFF4
-MODEL_BG="229;233;240"     # #E5E9F0
+MODEL_BG="229;233;240"     # #E5E9F0 Nord5
+DIR_BG="76;86;106"         # #4C566A Nord3
+DIR_FG="236;239;244"       # #ECEFF4 Nord6
 
+# -- Context bar --------------------------------------------------------------
 if [ -n "$used_pct" ]; then
   used_int=${used_pct%.*}
   filled=$(( used_int * 8 / 100 ))
@@ -57,32 +54,56 @@ if [ -n "$used_pct" ]; then
   val_text="$bar"
 else
   filled=0
-  val_text='        '
+  val_text=''
+  i=0
+  while [ "$i" -lt 8 ]; do
+    val_text="${val_text}\e[48;2;${DARK_FG}m\e[38;2;${BAR_FG}m${T}"
+    i=$(( i + 1 ))
+  done
 fi
 
-# Left glyph: E0B0, fg=white, bg depends on fill state
+# Arrow: CONTEXT label -> bar area
 if [ "$filled" -gt 0 ]; then
   left_glyph="\e[48;2;${BAR_BG}m\e[38;2;${LIGHT_BG}m${A}"
 else
   left_glyph="\e[48;2;${DARK_FG}m\e[38;2;${LIGHT_BG}m${A}"
 fi
 
-# Right glyph: E0B0, fg=white, bg=#808A9C at 100% else dark text
+# Arrow: bar area -> next segment (MODEL if present, else DIR)
 if [ -n "$model" ]; then
-  if [ "$filled" -ge 8 ]; then
-    context_exit="\e[48;2;${LIGHT_BG}m\e[38;2;${BAR_BG}m${A}"
-  else
-    context_exit="\e[48;2;${LIGHT_BG}m\e[38;2;${DARK_FG}m${A}"
-  fi
-  model_seg=$(printf     "\e[48;2;${MODEL_BG}m\e[38;2;${DARK_FG}m\e[22m %s \e[49m\e[38;2;${MODEL_BG}m${A}\e[0m"     "$model")
+  next_bg="${MODEL_BG}"
 else
-  context_exit="\e[0m"
-  model_seg=''
+  next_bg="${DIR_BG}"
 fi
 
-context_seg=$(printf   "\e[48;2;${LIGHT_BG}m\e[38;2;${DARK_FG}m\e[22m CONTEXT ${left_glyph}%s${context_exit}"   "$val_text")
+if [ "$filled" -ge 8 ]; then
+  bar_exit="\e[48;2;${next_bg}m\e[38;2;${BAR_BG}m${A}"
+else
+  bar_exit="\e[48;2;${next_bg}m\e[38;2;${DARK_FG}m${A}"
+fi
 
-# Top row (starship-style) then bottom row (context/model)
-printf "%b%s
+# -- Build single row --------------------------------------------------------
+o=""
 
-%b%b" "$dir_seg" "$git_seg" "$context_seg" "$model_seg"
+# Context label
+o="${o}\e[48;2;${LIGHT_BG}m\e[38;2;${DARK_FG}m\e[22m CONTEXT "
+
+# Bar area + exit arrow
+o="${o}${left_glyph}${val_text}${bar_exit}"
+
+# Model segment (if present)
+if [ -n "$model" ]; then
+  o="${o}\e[48;2;${MODEL_BG}m\e[38;2;${DARK_FG}m\e[22m ${model} "
+  # Model -> DIR transition
+  o="${o}\e[48;2;${DIR_BG}m\e[38;2;${MODEL_BG}m${A}"
+fi
+
+# Dir segment
+o="${o}\e[48;2;${DIR_BG}m\e[38;2;${DIR_FG}m\e[22m ${dir_display} "
+
+# Git or dir closing arrow
+if [ -n "$git_seg" ]; then
+  printf "%b%s" "$o" "$git_seg"
+else
+  printf "%b\e[0m\e[38;2;${DIR_BG}m${A}\e[0m" "$o"
+fi

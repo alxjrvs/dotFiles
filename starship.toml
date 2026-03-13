@@ -17,6 +17,7 @@ command = "~/dotFiles/starship-scripts/git-powerline.sh"
 when = "git rev-parse --is-inside-work-tree 2>/dev/null"
 format = "$output"
 shell = ["sh"]
+ignore_timeout = true
 
 [character]
 success_symbol = "[❯](fg:#ECEFF4)"
