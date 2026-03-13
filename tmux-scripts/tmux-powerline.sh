@@ -49,19 +49,19 @@ cmd_status_right() {
 
   o="#[bg=${CPU_VAL},fg=${TERM_BG}]${SL}"
   o="${o}#[bg=${CPU_VAL},fg=#f0f0f0] ${cpu_display} "
-  o="${o}#[bg=${CPU_VAL},fg=${CPU_LBL}]${BS}"
+  o="${o}#[bg=${CPU_LBL},fg=${CPU_VAL}]${SL}"
   o="${o}#[bg=${CPU_LBL},fg=#f0f0f0,nobold] CPU "
 
   o="${o}#[bg=${CPU_LBL},fg=${TERM_BG}]${BS}"
   o="${o}#[bg=${BAT_VAL},fg=${TERM_BG}]${SL}"
   o="${o}#[bg=${BAT_VAL},fg=#f0f0f0] ${bat_display} "
-  o="${o}#[bg=${BAT_VAL},fg=${BAT_LBL}]${BS}"
+  o="${o}#[bg=${BAT_LBL},fg=${BAT_VAL}]${SL}"
   o="${o}#[bg=${BAT_LBL},fg=#f0f0f0,nobold] BAT "
 
   o="${o}#[bg=${BAT_LBL},fg=${TERM_BG}]${BS}"
   o="${o}#[bg=${TIME_BG},fg=${TERM_BG}]${SL}"
   o="${o}#[bg=${TIME_BG},fg=#ffffff] ${time_val} "
-  o="${o}#[bg=${TIME_BG},fg=${TIME_DK}]${BS}"
+  o="${o}#[bg=${TIME_DK},fg=${TIME_BG}]${SL}"
   o="${o}#[bg=${TIME_DK},fg=#ffffff,nobold] ${date_val} "
 
   printf '%s' "$o"

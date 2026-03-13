@@ -1,5 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "teammateMode": "tmux",
   "env": {
     "EDITOR": "nvim",
     "NODE_ENV": "development",
@@ -47,11 +48,7 @@
       "WebFetch(domain:cdn.prod.website-files.com)",
       "mcp__plugin_playwright_playwright__browser_navigate"
     ],
-    "deny": [
-      "Read(./.env)",
-      "Read(./.env.*)",
-      "Read(./secrets/**)"
-    ],
+    "deny": ["Read(./.env)", "Read(./.env.*)", "Read(./secrets/**)"],
     "defaultMode": "default"
   },
   "enableAllProjectMcpServers": true,
@@ -82,6 +79,7 @@
     ]
   },
   "enabledPlugins": {
+    "github@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true,
@@ -109,16 +107,17 @@
     "claude-session-driver@superpowers-marketplace": true,
     "tmux@jrvs-skills": true
   },
+  "statusLine": {
+    "type": "command",
+    "command": "bash /Users/jarvis/.claude/statusline-command.sh"
+  },
   "outputStyle": "Concise",
   "alwaysThinkingEnabled": true,
   "autoUpdatesChannel": "stable",
   "mcpServers": {
     "knip": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@knip/mcp"
-      ]
+      "args": ["-y", "@knip/mcp"]
     }
   }
 }
