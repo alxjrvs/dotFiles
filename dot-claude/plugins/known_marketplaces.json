@@ -1,12 +1,4 @@
 {
-  "claude-plugins-official": {
-    "source": {
-      "source": "github",
-      "repo": "anthropics/claude-plugins-official"
-    },
-    "installLocation": "/Users/jarvis/.claude/plugins/marketplaces/claude-plugins-official",
-    "lastUpdated": "2026-03-11T03:30:03.659Z"
-  },
   "anthropic-agent-skills": {
     "source": {
       "source": "github",
@@ -30,14 +22,6 @@
     },
     "installLocation": "/Users/jarvis/.claude/plugins/marketplaces/expo-plugins",
     "lastUpdated": "2026-03-09T13:15:52.395Z"
-  },
-  "gnar": {
-    "source": {
-      "source": "github",
-      "repo": "TheGnarCo/gnarly-marketplace"
-    },
-    "installLocation": "/Users/jarvis/.claude/plugins/marketplaces/gnar",
-    "lastUpdated": "2026-03-11T13:05:08.753Z"
   },
   "jrvs-skills": {
     "source": {

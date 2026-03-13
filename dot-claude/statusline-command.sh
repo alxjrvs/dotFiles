@@ -1,15 +1,37 @@
 #!/usr/bin/env bash
-# Claude Code status line — single row:
-#   [context bar][model][dir][git]
+# Claude Code status line — two rows:
+#   Line 1: [dir][git]
+#   Line 2: [cost][time][context bar][model]
 
 input=$(cat)
 
-model=$(echo "$input" | jq -r '.model.display_name // empty')
+model=$(echo "$input" | jq -r '.model.display_name // empty' | sed 's/ [0-9][0-9.]*//g')
 used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
+cost_usd=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
+duration_ms=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
 
-# -- Directory ---------------------------------------------------------------
-cwd=$(pwd)
-home_rel="${cwd/#$HOME/~}"
+# -- Formatting ----------------------------------------------------------------
+cost_fmt=$(printf '$%.2f' "$cost_usd")
+
+duration_sec=$(( ${duration_ms%%.*} / 1000 ))
+dur_min=$(( duration_sec / 60 ))
+dur_sec=$(( duration_sec % 60 ))
+if [ "$dur_min" -gt 0 ]; then
+  dur_fmt="${dur_min}m ${dur_sec}s"
+else
+  dur_fmt="${dur_sec}s"
+fi
+
+# -- Directory -----------------------------------------------------------------
+cwd=$(echo "$input" | jq -r '.workspace.current_dir // empty')
+[ -z "$cwd" ] && cwd=$(pwd)
+_home="${HOME:-$(eval echo ~)}"
+_home="${_home%/}"
+[ -z "$_home" ] && _home="/Users/$(id -un)"
+case "$cwd" in
+  "$_home"*) home_rel="~${cwd#"$_home"}" ;;
+  *) home_rel="$cwd" ;;
+esac
 IFS='/' read -ra _parts <<< "$home_rel"
 _n=${#_parts[@]}
 if [ "$_n" -le 2 ]; then
@@ -20,7 +42,7 @@ fi
 
 git_seg=$(~/dotFiles/starship-scripts/git-powerline.sh --no-prompt 2>/dev/null)
 
-# -- Colors ------------------------------------------------------------------
+# -- Colors --------------------------------------------------------------------
 A=''  # solid arrow
 T=''  # thin separator
 
@@ -31,10 +53,31 @@ BAR_FG="236;239;244"       # #ECEFF4
 MODEL_BG="229;233;240"     # #E5E9F0 Nord5
 DIR_BG="76;86;106"         # #4C566A Nord3
 DIR_FG="236;239;244"       # #ECEFF4 Nord6
+COST_BG="163;190;140"      # #A3BE8C Nord14 green
+COST_FG="46;52;64"         # #2E3440 Nord0
+TIME_BG="129;161;193"      # #81A1C1 Nord9 blue
+TIME_FG="46;52;64"         # #2E3440 Nord0
 
-# -- Context bar --------------------------------------------------------------
+# == Line 1: Dir + Git ========================================================
+line1=""
+
+# Dir segment (opening pill)
+line1="${line1}\e[48;2;${DIR_BG}m\e[38;2;${DIR_FG}m\e[22m ${dir_display} "
+
+# Git or dir closing arrow
+if [ -n "$git_seg" ]; then
+  printf "%b%s
+" "$line1" "$git_seg"
+else
+  printf "%b\e[0m\e[38;2;${DIR_BG}m${A}\e[0m
+" "$line1"
+fi
+
+# == Line 2: Cost + Time + Context + Model =====================================
+
+# -- Context bar ---------------------------------------------------------------
 if [ -n "$used_pct" ]; then
-  used_int=${used_pct%.*}
+  used_int=${used_pct%%.*}
   filled=$(( used_int * 8 / 100 ))
   [ "$filled" -gt 8 ] && filled=8
   bar=''
@@ -69,41 +112,47 @@ else
   left_glyph="\e[48;2;${DARK_FG}m\e[38;2;${LIGHT_BG}m${A}"
 fi
 
-# Arrow: bar area -> next segment (MODEL if present, else DIR)
+# Arrow: bar area -> next segment (MODEL if present, else closing)
 if [ -n "$model" ]; then
-  next_bg="${MODEL_BG}"
+  if [ "$filled" -ge 8 ]; then
+    bar_exit="\e[48;2;${MODEL_BG}m\e[38;2;${BAR_BG}m${A}"
+  else
+    bar_exit="\e[48;2;${MODEL_BG}m\e[38;2;${DARK_FG}m${A}"
+  fi
 else
-  next_bg="${DIR_BG}"
+  if [ "$filled" -ge 8 ]; then
+    bar_exit="\e[0m\e[38;2;${BAR_BG}m${A}\e[0m"
+  else
+    bar_exit="\e[0m\e[38;2;${DARK_FG}m${A}\e[0m"
+  fi
 fi
 
-if [ "$filled" -ge 8 ]; then
-  bar_exit="\e[48;2;${next_bg}m\e[38;2;${BAR_BG}m${A}"
-else
-  bar_exit="\e[48;2;${next_bg}m\e[38;2;${DARK_FG}m${A}"
-fi
+# -- Build line 2 --------------------------------------------------------------
+line2=""
 
-# -- Build single row --------------------------------------------------------
-o=""
+# Cost segment (opening pill)
+line2="${line2}\e[48;2;${COST_BG}m\e[38;2;${COST_FG}m\e[22m ${cost_fmt} "
+
+# Cost -> Time transition
+line2="${line2}\e[48;2;${TIME_BG}m\e[38;2;${COST_BG}m${A}"
+
+# Time segment
+line2="${line2}\e[48;2;${TIME_BG}m\e[38;2;${TIME_FG}m\e[22m ${dur_fmt} "
+
+# Time -> CONTEXT label transition
+line2="${line2}\e[48;2;${LIGHT_BG}m\e[38;2;${TIME_BG}m${A}"
 
 # Context label
-o="${o}\e[48;2;${LIGHT_BG}m\e[38;2;${DARK_FG}m\e[22m CONTEXT "
+line2="${line2}\e[48;2;${LIGHT_BG}m\e[38;2;${DARK_FG}m\e[22m CONTEXT "
 
 # Bar area + exit arrow
-o="${o}${left_glyph}${val_text}${bar_exit}"
+line2="${line2}${left_glyph}${val_text}${bar_exit}"
 
 # Model segment (if present)
 if [ -n "$model" ]; then
-  o="${o}\e[48;2;${MODEL_BG}m\e[38;2;${DARK_FG}m\e[22m ${model} "
-  # Model -> DIR transition
-  o="${o}\e[48;2;${DIR_BG}m\e[38;2;${MODEL_BG}m${A}"
-fi
-
-# Dir segment
-o="${o}\e[48;2;${DIR_BG}m\e[38;2;${DIR_FG}m\e[22m ${dir_display} "
-
-# Git or dir closing arrow
-if [ -n "$git_seg" ]; then
-  printf "%b%s" "$o" "$git_seg"
+  line2="${line2}\e[48;2;${MODEL_BG}m\e[38;2;${DARK_FG}m\e[22m ${model} "
+  # Model closing arrow
+  printf "%b\e[0m\e[38;2;${MODEL_BG}m${A}\e[0m" "$line2"
 else
-  printf "%b\e[0m\e[38;2;${DIR_BG}m${A}\e[0m" "$o"
+  printf "%b" "$line2"
 fi
