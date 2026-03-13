@@ -35,7 +35,6 @@ There are no build, test, or lint commands for this repo.
 | `nvim/` | `~/.config/nvim` (AstroNvim v5) |
 | `gh/config.yml` | `~/.config/gh/config.yml` |
 | `dot-claude/*` | `~/.claude/*` (CLAUDE.md, settings.json, skills/, agents/, hooks/, plugins/) |
-| `tmux-scripts/` | tmux helper scripts referenced by `tmux.conf` (not symlinked, used in-place) |
 
 ### Shell Stack
 
@@ -57,6 +56,10 @@ This directory is symlinked wholesale to `~/.claude/`. It contains:
 ### Language Versions
 
 Managed by **mise** via `mise.toml`. Default npm packages (TypeScript, Prettier, ESLint, Claude Code) auto-install with each Node version via the `postinstall` hook in `mise.toml`.
+
+### Archived: tmux (`tmux/`)
+
+tmux is no longer in active use. The `tmux/` directory contains `tmux.conf`, `starship-tmux.toml`, and `tmux-scripts/` for archival purposes only. Nothing in this directory is symlinked or run by `sync.sh`.
 
 ## Important Gotchas
 

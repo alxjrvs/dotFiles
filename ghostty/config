@@ -1,3 +1,6 @@
+# Theme
+theme = Nord
+
 # Font
 font-family = FiraCode Nerd Font
 font-thicken = true
@@ -29,7 +32,7 @@ clipboard-trim-trailing-spaces = true
 clipboard-paste-protection = false
 copy-on-select = true
 
-# Scrollback (tmux manages scrollback)
+# Scrollback
 scrollback-limit = 0
 
 shell-integration = detect

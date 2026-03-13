@@ -85,11 +85,6 @@ zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 
-if [[ -n "$TMUX" ]]; then
-  export STARSHIP_CONFIG="$HOME/.config/starship-tmux.toml"
-  chpwd() { tmux refresh-client; }
-fi
-
 if command -v starship &>/dev/null; then
   eval "$(starship init zsh)"
 fi
@@ -147,6 +142,7 @@ alias env-sync="~/dotFiles/sync.sh"
 function mkcd()   { mkdir -p "$1" && cd "$1" }
 function cdroot() { cd "$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "Not in git repo"; return 1; } }
 function sz()     { du -sh "${@:-.}" | sort -hr }
+function claude() { (( LINES > 0 )) && printf '\n%.0s' {1..$LINES}; command claude "$@" }
 
 # mise (tool version manager)
 command -v mise &>/dev/null && eval "$(mise activate zsh)"
@@ -162,3 +158,6 @@ export LESS_TERMCAP_us=$'\e[1;35m'
 
 # bun completions
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
+
+# Push prompt to bottom of terminal on new shell
+(( LINES > 0 )) && printf '\n%.0s' {1..$LINES}
