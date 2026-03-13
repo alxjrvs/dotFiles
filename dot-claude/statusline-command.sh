@@ -78,52 +78,53 @@ fi
 # == Line 2: Cost + Time + Context + Model =====================================
 
 # -- Context bar ---------------------------------------------------------------
+# Gradient: DIR_BG -> yellow (~50%) -> red (~80%) -> white hot (100%)
+GRAD_0="76;86;106"
+GRAD_1="129;125;117"
+GRAD_2="182;164;128"
+GRAD_3="235;203;139"
+GRAD_4="220;167;128"
+GRAD_5="205;132;117"
+GRAD_6="191;97;106"
+GRAD_7="236;239;244"
+grad=("$GRAD_0" "$GRAD_1" "$GRAD_2" "$GRAD_3" "$GRAD_4" "$GRAD_5" "$GRAD_6" "$GRAD_7")
+
 if [ -n "$used_pct" ]; then
   used_int=${used_pct%%.*}
   filled=$(( used_int * 8 / 100 ))
   [ "$filled" -gt 8 ] && filled=8
-  # Pick active pip color based on usage
-  if [ "$used_int" -gt 75 ]; then
-    PIP_BG="${CRIT_BG}"; PIP_FG="${BAR_FG}"
-  elif [ "$used_int" -gt 50 ]; then
-    PIP_BG="${WARN_BG}"; PIP_FG="${DARK_FG}"
-  else
-    PIP_BG="${DIR_BG}"; PIP_FG="${BAR_FG}"
-  fi
-  bar=''
-  i=0
-  while [ "$i" -lt "$filled" ]; do
-    if [ "$i" -eq $(( filled - 1 )) ]; then
-      bar="${bar}\e[48;2;${DARK_FG}m\e[38;2;${PIP_BG}m${A}"
-    else
-      bar="${bar}\e[48;2;${PIP_BG}m\e[38;2;${PIP_FG}m${T}"
-    fi
-    i=$(( i + 1 ))
-  done
-  while [ "$i" -lt 8 ]; do
-    bar="${bar}\e[48;2;${DARK_FG}m\e[38;2;${DARK_FG}m${T}"
-    i=$(( i + 1 ))
-  done
-  val_text="$bar"
 else
   filled=0
-  val_text=''
-  i=0
-  while [ "$i" -lt 8 ]; do
-    val_text="${val_text}\e[48;2;${DARK_FG}m\e[38;2;${DARK_FG}m${T}"
-    i=$(( i + 1 ))
-  done
 fi
+
+bar=''
+i=0
+while [ "$i" -lt "$filled" ]; do
+  if [ "$i" -eq $(( filled - 1 )) ]; then
+    # Last filled pip: bg = terminal bg
+    bar="${bar}\e[38;2;${grad[$i]}m\e[48;2;${DARK_FG}m"
+  else
+    # Filled pip: fg = this color, bg = next color
+    bar="${bar}\e[38;2;${grad[$i]}m\e[48;2;${grad[$(( i + 1 ))]}m"
+  fi
+  i=$(( i + 1 ))
+done
+# Unfilled pips: invisible
+while [ "$i" -lt 8 ]; do
+  bar="${bar}\e[38;2;${DARK_FG}m\e[48;2;${DARK_FG}m"
+  i=$(( i + 1 ))
+done
+val_text="$bar"
 
 # Arrow: CONTEXT label -> bar area
 if [ "$filled" -gt 0 ]; then
-  left_glyph="\e[48;2;${PIP_BG}m\e[38;2;${LIGHT_BG}m${A}"
+  left_glyph="\e[48;2;${grad[0]}m\e[38;2;${LIGHT_BG}m"
 else
-  left_glyph="\e[48;2;${DARK_FG}m\e[38;2;${LIGHT_BG}m${A}"
+  left_glyph="\e[48;2;${DARK_FG}m\e[38;2;${LIGHT_BG}m"
 fi
 
 # Arrow: bar area -> terminal (closing)
-bar_exit="\e[0m\e[38;2;${DARK_FG}m${A}\e[0m"
+bar_exit="\e[0m\e[38;2;${DARK_FG}m\e[0m"
 
 # -- Build line 2 --------------------------------------------------------------
 line2=""
