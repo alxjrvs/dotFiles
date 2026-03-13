@@ -37,7 +37,8 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash /Users/jarvis/.claude/statusline-command.sh"
+    "command": "bash /Users/jarvis/.claude/statusline-command.sh",
+    "padding": 0
   },
   "enabledPlugins": {
     "elements-of-style@superpowers-marketplace": true,
