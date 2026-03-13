@@ -32,9 +32,7 @@ copy-on-select = true
 # Scrollback (tmux manages scrollback)
 scrollback-limit = 0
 
-# Shell (tmux manages everything)
-shell-integration = none
-command = ~/dotFiles/tmux-scripts/tmux-start.sh
+shell-integration = detect
 
 # Keybindings
 keybind = ctrl+shift+w=close_surface

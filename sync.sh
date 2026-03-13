@@ -142,8 +142,8 @@ if ! xcode-select --version &>/dev/null 2>&1; then
   exit 1
 fi
 
-warn "Installing/upgrading Brewfile dependencies..."
-brew bundle --file="$DOTFILES_DIR/Brewfile"
+warn "Installing Brewfile dependencies (skipping upgrades)..."
+brew bundle --file="$DOTFILES_DIR/Brewfile" --no-upgrade
 ok "Brewfile dependencies up to date"
 
 # Docker Desktop provides its own docker CLI — remove the formula if both exist

@@ -39,6 +39,8 @@ brew "shfmt"
 brew "starship"
 brew "supabase/tap/supabase"
 # brew "wix/brew/applesimutils"  # iOS simulator
+tap "manaflow-ai/cmux"
+cask "cmux"
 cask "1password-cli"
 cask "1password"
 cask "claude"
