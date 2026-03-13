@@ -29,8 +29,8 @@ NOVA_GIT_GREEN_R=163;  NOVA_GIT_GREEN_G=190;  NOVA_GIT_GREEN_B=140
 
 # ── Prompt / pane segments ───────────────────────────────────────────────────
 NOVA_DIR="#3B4252"         # Directory — Nord 1 (dark, matches statusline CONTEXT)
-NOVA_BRANCH="#ECEFF4"      # Git branch — Nord 6 (light, matches statusline MODEL)
-NOVA_BRANCH_R=236; NOVA_BRANCH_G=239; NOVA_BRANCH_B=244
+NOVA_BRANCH="#E5E9F0"      # Git branch — Nord 5 (Snow Storm mid, matches statusline MODEL)
+NOVA_BRANCH_R=229; NOVA_BRANCH_G=233; NOVA_BRANCH_B=240
 
 # ── Status-right: Time ───────────────────────────────────────────────────────
 NOVA_TIME="#3B4252"        # Nord 1 (Polar Night) — far right edge

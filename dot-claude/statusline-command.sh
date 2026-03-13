@@ -45,9 +45,9 @@ else
 fi
 
 if [ -n "$model" ]; then
-  context_exit="\e[48;2;236;239;244m\e[38;2;59;66;82m"
+  context_exit="\e[48;2;229;233;240m\e[38;2;59;66;82m"
   model_seg=$(printf \
-    "\e[48;2;236;239;244m\e[38;2;46;52;64m\e[22m %s \e[49m\e[38;2;236;239;244m\e[0m" \
+    "\e[48;2;229;233;240m\e[38;2;46;52;64m\e[22m %s \e[49m\e[38;2;229;233;240m\e[0m" \
     "$model")
 else
   context_exit="\e[0m"
@@ -55,7 +55,7 @@ else
 fi
 
 context_seg=$(printf \
-  "\e[48;2;59;66;82m\e[38;2;236;239;244m\e[22m CONTEXT  %s  ${context_exit}" \
+  "\e[48;2;236;239;244m\e[38;2;46;52;64m\e[22m CONTEXT \e[48;2;59;66;82m\e[38;2;236;239;244m %s  ${context_exit}" \
   "$val_text")
 
 # Top row (starship-style) then bottom row (context/model)
