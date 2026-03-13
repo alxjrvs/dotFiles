@@ -87,6 +87,24 @@ zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 
 if command -v starship &>/dev/null; then
   eval "$(starship init zsh)"
+
+  # Transient prompt: collapse executed prompts to minimal ❯
+  # Must be after starship init to capture the promptsubst PROMPT string.
+  # Override accept-line (not zle-line-finish) so PROMPT is minimal
+  # BEFORE ZLE does its final committed draw of the accepted line.
+  _transient_prompt_save="$PROMPT"
+
+  _transient_restore_prompt() {
+    PROMPT="$_transient_prompt_save"
+  }
+  precmd_functions+=(_transient_restore_prompt)
+
+  _transient_accept_line() {
+    PROMPT='%F{green}'$'\u276f''%f '
+    zle reset-prompt
+    zle .accept-line
+  }
+  zle -N accept-line _transient_accept_line
 fi
 
 # fzf shell integration (modern)

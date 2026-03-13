@@ -33,7 +33,7 @@ clipboard-paste-protection = false
 copy-on-select = true
 
 # Scrollback
-scrollback-limit = 0
+scrollback-limit = 10000
 
 shell-integration = detect
 
