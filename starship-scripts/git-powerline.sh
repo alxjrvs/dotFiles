@@ -50,10 +50,10 @@ fi
 # Build output
 o=""
 
-# Opening arrow: terminal bg -> gray
-o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg $BG_R $BG_G $BG_B)${A}"
+# Opening arrow: dir bg (#3B4252 Nord1) -> branch bg Nord6 (seamless from starship directory)
+o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg 59 66 82)${A}"
 # Branch text on gray
-o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg $WH_R $WH_G $WH_B)  ${branch} "
+o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg $BG_R $BG_G $BG_B)  ${branch} "
 
 if [ "$has_stash" = "1" ]; then
   # Arrow: gray -> blue

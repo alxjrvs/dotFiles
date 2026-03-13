@@ -13,24 +13,24 @@ NOVA_FG="#ECEFF4"         # Primary text (Nord 6 — Snow Storm)
 NOVA_FG_DIM="#D8DEE9"     # Dimmed / inactive text (Nord 4)
 
 # ── Git status ───────────────────────────────────────────────────────────────
-# OneDark — kept as-is; these are tuned for terminal readability
-NOVA_GIT_BLUE="#61afef"    # Stash          W 4.7:1  B 5.7:1  R97  G175 B239
-NOVA_GIT_RED="#e06c75"     # Dirty          W 4.2:1  B 3.8:1  R224 G108 B117
-NOVA_GIT_YELLOW="#e5c07b"  # Unpushed       W 2.5:1  B 5.8:1  R229 G192 B123
-NOVA_GIT_GREEN="#98c379"   # Clean          W 2.8:1  B 4.6:1  R152 G195 B121
+# Nord Aurora + Frost
+NOVA_GIT_BLUE="#D08770"    # Stash    Nord 12 — Aurora orange R208 G135 B112
+NOVA_GIT_RED="#BF616A"     # Dirty    Nord 11 — Aurora red   R191 G97  B106
+NOVA_GIT_YELLOW="#EBCB8B"  # Unpushed Nord 13 — Aurora amber R235 G203 B139
+NOVA_GIT_GREEN="#A3BE8C"   # Clean    Nord 14 — Aurora green R163 G190 B140
 
 # RGB components for ANSI 24-bit escape codes (git-powerline.sh)
 NOVA_BG_R=46;  NOVA_BG_G=52;   NOVA_BG_B=64
 NOVA_FG_R=236; NOVA_FG_G=239;  NOVA_FG_B=244
-NOVA_GIT_BLUE_R=97;    NOVA_GIT_BLUE_G=175;  NOVA_GIT_BLUE_B=239
-NOVA_GIT_RED_R=224;    NOVA_GIT_RED_G=108;   NOVA_GIT_RED_B=117
-NOVA_GIT_YELLOW_R=229; NOVA_GIT_YELLOW_G=192; NOVA_GIT_YELLOW_B=123
-NOVA_GIT_GREEN_R=152;  NOVA_GIT_GREEN_G=195;  NOVA_GIT_GREEN_B=121
+NOVA_GIT_BLUE_R=208;   NOVA_GIT_BLUE_G=135;  NOVA_GIT_BLUE_B=112
+NOVA_GIT_RED_R=191;    NOVA_GIT_RED_G=97;    NOVA_GIT_RED_B=106
+NOVA_GIT_YELLOW_R=235; NOVA_GIT_YELLOW_G=203; NOVA_GIT_YELLOW_B=139
+NOVA_GIT_GREEN_R=163;  NOVA_GIT_GREEN_G=190;  NOVA_GIT_GREEN_B=140
 
 # ── Prompt / pane segments ───────────────────────────────────────────────────
-NOVA_DIR="#5E81AC"         # Directory — Nord 10 (Frost blue)
-NOVA_BRANCH="#4C566A"      # Git branch — Nord 3 (Polar Night light)
-NOVA_BRANCH_R=76; NOVA_BRANCH_G=86; NOVA_BRANCH_B=106
+NOVA_DIR="#3B4252"         # Directory — Nord 1 (dark, matches statusline CONTEXT)
+NOVA_BRANCH="#ECEFF4"      # Git branch — Nord 6 (light, matches statusline MODEL)
+NOVA_BRANCH_R=236; NOVA_BRANCH_G=239; NOVA_BRANCH_B=244
 
 # ── Status-right: Time ───────────────────────────────────────────────────────
 NOVA_TIME="#3B4252"        # Nord 1 (Polar Night) — far right edge

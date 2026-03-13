@@ -1,13 +1,12 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "teammateMode": "tmux",
   "env": {
     "EDITOR": "nvim",
     "NODE_ENV": "development",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
-    "defaultMode": "bypassPermissions"
+    "defaultMode": "acceptEdits"
   },
   "enableAllProjectMcpServers": true,
   "hooks": {
@@ -35,6 +34,10 @@
         ]
       }
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash /Users/jarvis/.claude/statusline-command.sh"
   },
   "enabledPlugins": {
     "github@claude-plugins-official": true,
@@ -65,17 +68,19 @@
     "claude-session-driver@superpowers-marketplace": true,
     "tmux@jrvs-skills": true
   },
-  "statusLine": {
-    "type": "command",
-    "command": "bash /Users/jarvis/.claude/statusline-command.sh"
-  },
   "outputStyle": "Concise",
   "alwaysThinkingEnabled": true,
   "autoUpdatesChannel": "stable",
+  "skipDangerousModePermissionPrompt": true,
+  "teammateMode": "tmux",
   "mcpServers": {
     "knip": {
       "command": "npx",
-      "args": ["-y", "@knip/mcp"]
+      "args": [
+        "-y",
+        "@knip/mcp"
+      ]
     }
-  }
+  },
+  "model": "opus"
 }
