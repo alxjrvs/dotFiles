@@ -6,7 +6,7 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
-    "defaultMode": "acceptEdits"
+    "defaultMode": "bypassPermissions"
   },
   "enableAllProjectMcpServers": true,
   "hooks": {
