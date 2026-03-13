@@ -7,18 +7,22 @@
 # shellcheck source=../theme.sh
 . "$HOME/dotFiles/theme.sh"
 
-git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  # Not a git repo — show bare branch segment, no status pips
+  branch="-"
+  no_git=1
+else
+  branch=$(git branch --show-current 2>/dev/null)
+  [ -z "$branch" ] && branch=$(git rev-parse --short HEAD 2>/dev/null)
+  [ -z "$branch" ] && exit 0
 
-branch=$(git branch --show-current 2>/dev/null)
-[ -z "$branch" ] && branch=$(git rev-parse --short HEAD 2>/dev/null)
-[ -z "$branch" ] && branch="[untracked]"
-
-porcelain=$(git status --porcelain 2>/dev/null)
-has_dirty=0; [ -n "$porcelain" ] && has_dirty=1
-has_stash=0; git stash list 2>/dev/null | grep -q . && has_stash=1
-has_unpushed=0
-if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
-  git log @{u}.. --oneline 2>/dev/null | grep -q . && has_unpushed=1
+  porcelain=$(git status --porcelain 2>/dev/null)
+  has_dirty=0; [ -n "$porcelain" ] && has_dirty=1
+  has_stash=0; git stash list 2>/dev/null | grep -q . && has_stash=1
+  has_unpushed=0
+  if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
+    git log @{u}.. --oneline 2>/dev/null | grep -q . && has_unpushed=1
+  fi
 fi
 
 # Colors — Nova palette aliases
@@ -56,8 +60,8 @@ o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg 76 86 106)${A}"
 # Branch text on gray
 o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg $BG_R $BG_G $BG_B) ${branch} "
 
-# No pips for untracked (no branch) — just close the segment
-if [ "$branch" = "[untracked]" ]; then
+# No git repo — close the gray pill and exit (no status pips)
+if [ "${no_git:-0}" = "1" ]; then
   o="${o}$(rst)$(fg $GRAY_R $GRAY_G $GRAY_B)${A}${TAIL}"
   printf '%s' "$o"
   exit 0

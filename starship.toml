@@ -1,7 +1,7 @@
 # Nord prompt — requires a Nerd Font
 # Colors: Nord palette — Dir=Nord10 #5E81AC, Branch=Nord3 #4C566A, BG=Nord0 #2E3440
 
-format = """$directory(${custom.git_segment})$character"""
+format = """$directory${custom.git_segment}$character"""
 
 add_newline = true
 command_timeout = 1000
@@ -14,7 +14,7 @@ truncation_symbol = ""
 
 [custom.git_segment]
 command = "~/dotFiles/starship-scripts/git-powerline.sh"
-when = "git rev-parse --is-inside-work-tree 2>/dev/null"
+when = "true"
 format = "$output"
 shell = ["sh"]
 ignore_timeout = true
