@@ -6,6 +6,42 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
+    "allow": [
+      "Bash(xxd:*)",
+      "Bash(head:*)",
+      "Bash(chezmoi update:*)",
+      "Bash(bash:*)",
+      "Bash(git add:*)",
+      "Bash(zsh:*)",
+      "Bash(git push:*)",
+      "Bash(asdf set:*)",
+      "Bash(asdf list:*)",
+      "Bash(./install.sh:*)",
+      "Bash(printf:*)",
+      "Bash(brew doctor:*)",
+      "Bash(brew list:*)",
+      "Bash(brew deps:*)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "WebFetch(domain:simonwillison.net)",
+      "Bash(python3:*)",
+      "Skill(commit-commands:commit-push-pr)",
+      "Bash(tmux source-file:*)",
+      "Bash(tmux set:*)",
+      "Bash(tmux list-hooks:*)",
+      "Bash(hexdump:*)",
+      "Bash(git:*)",
+      "WebFetch(domain:mise.jdx.dev)",
+      "Bash(tmux set-hook:*)",
+      "Bash(tmux list-keys:*)",
+      "Bash(starship prompt:*)",
+      "Bash(starship config:*)",
+      "Bash(starship print-config:*)",
+      "Skill(commit-commands:commit)",
+      "Bash(which mise:*)",
+      "Bash(echo:*)",
+      "Bash(tmux set-window-option:*)",
+      "Bash(.:*)"
+    ],
     "defaultMode": "bypassPermissions"
   },
   "enableAllProjectMcpServers": true,
@@ -48,17 +84,21 @@
     "expo-app-design@expo-plugins": true,
     "claude-session-driver@superpowers-marketplace": true,
     "expo-deployment@expo-plugins": true,
-    "example-skills@anthropic-agent-skills": true
+    "example-skills@anthropic-agent-skills": true,
+    "document-skills@anthropic-agent-skills": true
   },
   "outputStyle": "Concise",
   "alwaysThinkingEnabled": true,
-  "autoUpdatesChannel": "stable",
+  "autoUpdatesChannel": "latest",
   "skipDangerousModePermissionPrompt": true,
   "teammateMode": "tmux",
   "mcpServers": {
     "knip": {
       "command": "npx",
-      "args": ["-y", "@knip/mcp"]
+      "args": [
+        "-y",
+        "@knip/mcp"
+      ]
     }
   }
 }

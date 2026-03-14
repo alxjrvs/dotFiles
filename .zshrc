@@ -160,10 +160,13 @@ alias env-sync="~/dotFiles/sync.sh"
 function mkcd()   { mkdir -p "$1" && cd "$1" }
 function cdroot() { cd "$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "Not in git repo"; return 1; } }
 function sz()     { du -sh "${@:-.}" | sort -hr }
-function claude() { (( LINES > 0 )) && printf '\n%.0s' {1..$LINES}; command claude "$@" }
+
 
 # mise (tool version manager)
 command -v mise &>/dev/null && eval "$(mise activate zsh)"
+
+# Ensure ~/.local/bin takes priority (cmux injects its own bin into PATH)
+export PATH="$HOME/.local/bin:$PATH"
 
 # Colored man pages (CMYK)
 export LESS_TERMCAP_mb=$'\e[1;35m'
