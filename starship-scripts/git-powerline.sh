@@ -102,9 +102,9 @@ has_pips=0
   render_pip $NOVA_GIT_CONFLICT_R $NOVA_GIT_CONFLICT_G $NOVA_GIT_CONFLICT_B "!${conflict_count}"
 }
 
-[ "$staged_count" -gt 0 ] && {
+[ "$untracked_count" -gt 0 ] && {
   has_pips=1
-  render_pip $NOVA_GIT_STAGED_R $NOVA_GIT_STAGED_G $NOVA_GIT_STAGED_B "+${staged_count}"
+  render_pip $NOVA_GIT_UNTRACKED_R $NOVA_GIT_UNTRACKED_G $NOVA_GIT_UNTRACKED_B "?${untracked_count}"
 }
 
 [ "$unstaged_count" -gt 0 ] && {
@@ -112,9 +112,9 @@ has_pips=0
   render_pip $NOVA_GIT_UNSTAGED_R $NOVA_GIT_UNSTAGED_G $NOVA_GIT_UNSTAGED_B "~${unstaged_count}"
 }
 
-[ "$untracked_count" -gt 0 ] && {
+[ "$staged_count" -gt 0 ] && {
   has_pips=1
-  render_pip $NOVA_GIT_UNTRACKED_R $NOVA_GIT_UNTRACKED_G $NOVA_GIT_UNTRACKED_B "?${untracked_count}"
+  render_pip $NOVA_GIT_STAGED_R $NOVA_GIT_STAGED_G $NOVA_GIT_STAGED_B "+${staged_count}"
 }
 
 [ "$ahead" -gt 0 ] && {
