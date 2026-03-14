@@ -21,7 +21,6 @@
       "Bash(brew doctor:*)",
       "Bash(brew list:*)",
       "Bash(brew deps:*)",
-      "mcp__plugin_playwright_playwright__browser_navigate",
       "WebFetch(domain:simonwillison.net)",
       "Bash(python3:*)",
       "Skill(commit-commands:commit-push-pr)",
@@ -77,15 +76,45 @@
     "padding": 0
   },
   "enabledPlugins": {
-    "elements-of-style@superpowers-marketplace": true,
-    "superpowers@superpowers-marketplace": true,
-    "double-shot-latte@superpowers-marketplace": true,
-    "upgrading-expo@expo-plugins": true,
-    "expo-app-design@expo-plugins": true,
-    "claude-session-driver@superpowers-marketplace": true,
-    "expo-deployment@expo-plugins": true,
-    "example-skills@anthropic-agent-skills": true,
-    "document-skills@anthropic-agent-skills": true
+    "expo@expo-plugins": true,
+    "frontend-design@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "ralph-loop@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "figma@claude-plugins-official": true,
+    "pr-review-toolkit@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "supabase@claude-plugins-official": true,
+    "agent-sdk-dev@claude-plugins-official": true,
+    "explanatory-output-style@claude-plugins-official": true,
+    "plugin-dev@claude-plugins-official": true,
+    "hookify@claude-plugins-official": true,
+    "vercel@claude-plugins-official": true,
+    "playground@claude-plugins-official": true,
+    "learning-output-style@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "expo-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "expo/skills"
+      }
+    },
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    }
   },
   "outputStyle": "Concise",
   "alwaysThinkingEnabled": true,

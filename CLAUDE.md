@@ -34,7 +34,7 @@ There are no build, test, or lint commands for this repo.
 | `ghostty/config` | `~/.config/ghostty/config` |
 | `nvim/` | `~/.config/nvim` (AstroNvim v5) |
 | `gh/config.yml` | `~/.config/gh/config.yml` |
-| `dot-claude/*` | `~/.claude/*` (CLAUDE.md, settings.json, skills/, agents/, hooks/, plugins/) |
+| `dot-claude/*` | `~/.claude/*` (CLAUDE.md, settings.json, agents/, hooks/) |
 
 ### Shell Stack
 
@@ -48,10 +48,9 @@ There are no build, test, or lint commands for this repo.
 
 This directory is symlinked wholesale to `~/.claude/`. It contains:
 - `CLAUDE.md` — user-level global instructions (identity, preferences, coding style)
-- `settings.json` — permissions, hooks, plugins, environment variables
-- `skills/` — professional skill files (postgres, react, shadcn, etc.)
+- `settings.json` — permissions, hooks, environment variables
 - `agents/` — custom subagent definitions
-- `hooks/` — event hooks (plugin update checks, shell formatting, lock file protection)
+- `hooks/` — event hooks (shell formatting, lock file protection)
 
 ### Language Versions
 
