@@ -1,14 +1,14 @@
 #!/bin/sh
-# git-powerline.sh - Outputs complete git powerline segment for starship
-# Replaces 12 custom modules with a single subprocess.
-# Uses ANSI 24-bit color escape codes for styling.
+# git-powerline.sh — Git powerline segment for starship
+# Renders: [branch pill][status pips...] with seamless powerline transitions.
+# Pip order: stash  conflict  staged  unstaged  untracked  ahead  behind
+# If none active: single clean pip with ✓
 # Colors: Nova palette (theme.sh)
 
 # shellcheck source=../theme.sh
 . "$HOME/dotFiles/theme.sh"
 
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  # Not a git repo — show bare branch segment, no status pips
   branch="-"
   no_git=1
 else
@@ -17,22 +17,45 @@ else
   [ -z "$branch" ] && exit 0
 
   porcelain=$(git status --porcelain 2>/dev/null)
-  has_dirty=0; [ -n "$porcelain" ] && has_dirty=1
-  has_stash=0; git stash list 2>/dev/null | grep -q . && has_stash=1
-  has_unpushed=0
+
+  # Stash count
+  stash_count=0
+  stash_out=$(git stash list 2>/dev/null)
+  [ -n "$stash_out" ] && stash_count=$(printf '%s\n' "$stash_out" | wc -l | tr -d ' ')
+
+  # Parse porcelain in a single pass
+  conflict_count=0; staged_count=0; unstaged_count=0; untracked_count=0
+  if [ -n "$porcelain" ]; then
+    while IFS= read -r _line; do
+      _x=$(printf '%.1s' "$_line")
+      _y=$(printf '%.1s' "${_line#?}")
+      case "${_x}${_y}" in
+        UU|AA|DD|AU|UA|DU|UD) conflict_count=$((conflict_count + 1)) ;;
+        '??') untracked_count=$((untracked_count + 1)) ;;
+        *)
+          case "$_x" in [MADRC]) staged_count=$((staged_count + 1)) ;; esac
+          case "$_y" in [MD]) unstaged_count=$((unstaged_count + 1)) ;; esac
+          ;;
+      esac
+    done <<PORCELAIN
+$porcelain
+PORCELAIN
+  fi
+
+  # Ahead / behind
+  ahead=0; behind=0
   if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
-    git log @{u}.. --oneline 2>/dev/null | grep -q . && has_unpushed=1
+    _counts=$(git rev-list --left-right --count HEAD...@{u} 2>/dev/null)
+    ahead=$(printf '%s' "$_counts" | cut -f1)
+    behind=$(printf '%s' "$_counts" | cut -f2)
+    [ -z "$ahead" ] && ahead=0
+    [ -z "$behind" ] && behind=0
   fi
 fi
 
-# Colors — Nova palette aliases
-GRAY_R=$NOVA_BRANCH_R;    GRAY_G=$NOVA_BRANCH_G;    GRAY_B=$NOVA_BRANCH_B
-BLUE_R=$NOVA_GIT_BLUE_R;  BLUE_G=$NOVA_GIT_BLUE_G;  BLUE_B=$NOVA_GIT_BLUE_B
-RED_R=$NOVA_GIT_RED_R;    RED_G=$NOVA_GIT_RED_G;    RED_B=$NOVA_GIT_RED_B
-YEL_R=$NOVA_GIT_YELLOW_R; YEL_G=$NOVA_GIT_YELLOW_G; YEL_B=$NOVA_GIT_YELLOW_B
-GRN_R=$NOVA_GIT_GREEN_R;  GRN_G=$NOVA_GIT_GREEN_G;  GRN_B=$NOVA_GIT_GREEN_B
-BG_R=$NOVA_BG_R;          BG_G=$NOVA_BG_G;          BG_B=$NOVA_BG_B
-WH_R=$NOVA_FG_R;          WH_G=$NOVA_FG_G;          WH_B=$NOVA_FG_B
+# ── Colors (RGB triplets) ──────────────────────────────────────────────────
+BG_R=$NOVA_BG_R;     BG_G=$NOVA_BG_G;     BG_B=$NOVA_BG_B
+BR_R=$NOVA_BRANCH_R; BR_G=$NOVA_BRANCH_G; BR_B=$NOVA_BRANCH_B
 
 # ANSI helpers
 fg() { printf '\033[38;2;%d;%d;%dm' "$1" "$2" "$3"; }
@@ -41,70 +64,72 @@ rst() { printf '\033[0m'; }
 
 # Powerline glyph
 A=""
-TAIL="$(rst)"
 
-# Determine the status color
-if [ "$has_dirty" = "1" ]; then
-  S_R=$RED_R; S_G=$RED_G; S_B=$RED_B
-elif [ "$has_unpushed" = "1" ]; then
-  S_R=$YEL_R; S_G=$YEL_G; S_B=$YEL_B
-else
-  S_R=$GRN_R; S_G=$GRN_G; S_B=$GRN_B
-fi
-
-# Build output
+# ── Branch pill ────────────────────────────────────────────────────────────
 o=""
+# Opening arrow: dir bg (Nord3 #4C566A) -> branch bg (seamless from starship directory)
+o="${o}$(bg $BR_R $BR_G $BR_B)$(fg 76 86 106)${A}"
+# Branch text
+o="${o}$(bg $BR_R $BR_G $BR_B)$(fg $BG_R $BG_G $BG_B) ${branch} "
 
-# Opening arrow: dir bg (#4C566A Nord3) -> branch bg Nord5 (seamless from starship directory)
-o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg 76 86 106)${A}"
-# Branch text on gray
-o="${o}$(bg $GRAY_R $GRAY_G $GRAY_B)$(fg $BG_R $BG_G $BG_B) ${branch} "
-
-# No git repo — close the gray pill and exit (no status pips)
+# No git repo — close branch pill
 if [ "${no_git:-0}" = "1" ]; then
-  o="${o}$(rst)$(fg $GRAY_R $GRAY_G $GRAY_B)${A}${TAIL}"
+  o="${o}$(rst)$(fg $BR_R $BR_G $BR_B)${A}$(rst)"
   printf '%s' "$o"
   exit 0
 fi
 
-if [ "$has_stash" = "1" ]; then
-  # Arrow: gray -> blue
-  o="${o}$(bg $BLUE_R $BLUE_G $BLUE_B)$(fg $GRAY_R $GRAY_G $GRAY_B)${A}"
-  # Arrow: blue -> status color
-  o="${o}$(bg $S_R $S_G $S_B)$(fg $BLUE_R $BLUE_G $BLUE_B)${A}"
-elif [ "$has_dirty" = "1" ] && [ "$has_unpushed" = "1" ]; then
-  # Arrow: gray -> red
-  o="${o}$(bg $RED_R $RED_G $RED_B)$(fg $GRAY_R $GRAY_G $GRAY_B)${A}"
-  # Arrow: red -> yellow
-  o="${o}$(bg $YEL_R $YEL_G $YEL_B)$(fg $RED_R $RED_G $RED_B)${A}"
-  # Closing arrow: yellow -> terminal
-  o="${o}$(rst)$(fg $YEL_R $YEL_G $YEL_B)${A}${TAIL}"
-  printf '%s' "$o"
-  exit 0
-else
-  # Arrow: gray -> status color
-  o="${o}$(bg $S_R $S_G $S_B)$(fg $GRAY_R $GRAY_G $GRAY_B)${A}"
-fi
+# ── Render pips ────────────────────────────────────────────────────────────
+# Track previous segment color for seamless powerline transitions.
+prev_r=$BR_R; prev_g=$BR_G; prev_b=$BR_B
 
-if [ "$has_stash" = "1" ] && [ "$has_dirty" = "1" ] && [ "$has_unpushed" = "1" ]; then
-  # stash+dirty+unpushed: blue -> red -> yellow -> close
-  # (blue->red already rendered, now red->yellow)
-  o="${o}$(bg $YEL_R $YEL_G $YEL_B)$(fg $RED_R $RED_G $RED_B)${A}"
-  o="${o}$(rst)$(fg $YEL_R $YEL_G $YEL_B)${A}${TAIL}"
-  printf '%s' "$o"
-  exit 0
-elif [ "$has_stash" = "1" ] && [ "$has_dirty" = "1" ] && [ "$has_unpushed" = "0" ]; then
-  # stash+dirty: blue -> red -> close
-  o="${o}$(rst)$(fg $RED_R $RED_G $RED_B)${A}${TAIL}"
-  printf '%s' "$o"
-  exit 0
-elif [ "$has_stash" = "1" ] && [ "$has_dirty" = "0" ] && [ "$has_unpushed" = "1" ]; then
-  # stash+unpushed: blue -> yellow -> close
-  o="${o}$(rst)$(fg $YEL_R $YEL_G $YEL_B)${A}${TAIL}"
-  printf '%s' "$o"
-  exit 0
-fi
+render_pip() {
+  # Usage: render_pip R G B "text"
+  o="${o}$(bg "$1" "$2" "$3")$(fg $prev_r $prev_g $prev_b)${A}"
+  o="${o}$(fg $BG_R $BG_G $BG_B) ${4} "
+  prev_r=$1; prev_g=$2; prev_b=$3
+}
 
-# Simple cases: closing arrow from status color
-o="${o}$(rst)$(fg $S_R $S_G $S_B)${A}${TAIL}"
+has_pips=0
+
+[ "$stash_count" -gt 0 ] && {
+  has_pips=1
+  render_pip $NOVA_GIT_STASH_R $NOVA_GIT_STASH_G $NOVA_GIT_STASH_B "\$${stash_count}"
+}
+
+[ "$conflict_count" -gt 0 ] && {
+  has_pips=1
+  render_pip $NOVA_GIT_CONFLICT_R $NOVA_GIT_CONFLICT_G $NOVA_GIT_CONFLICT_B "!${conflict_count}"
+}
+
+[ "$staged_count" -gt 0 ] && {
+  has_pips=1
+  render_pip $NOVA_GIT_STAGED_R $NOVA_GIT_STAGED_G $NOVA_GIT_STAGED_B "+${staged_count}"
+}
+
+[ "$unstaged_count" -gt 0 ] && {
+  has_pips=1
+  render_pip $NOVA_GIT_UNSTAGED_R $NOVA_GIT_UNSTAGED_G $NOVA_GIT_UNSTAGED_B "~${unstaged_count}"
+}
+
+[ "$untracked_count" -gt 0 ] && {
+  has_pips=1
+  render_pip $NOVA_GIT_UNTRACKED_R $NOVA_GIT_UNTRACKED_G $NOVA_GIT_UNTRACKED_B "?${untracked_count}"
+}
+
+[ "$ahead" -gt 0 ] && {
+  has_pips=1
+  render_pip $NOVA_GIT_AHEAD_R $NOVA_GIT_AHEAD_G $NOVA_GIT_AHEAD_B "↑${ahead}"
+}
+
+[ "$behind" -gt 0 ] && {
+  has_pips=1
+  render_pip $NOVA_GIT_BEHIND_R $NOVA_GIT_BEHIND_G $NOVA_GIT_BEHIND_B "↓${behind}"
+}
+
+# Clean: no active pips
+[ "$has_pips" -eq 0 ] && render_pip $NOVA_GIT_CLEAN_R $NOVA_GIT_CLEAN_G $NOVA_GIT_CLEAN_B "✓"
+
+# Closing arrow
+o="${o}$(rst)$(fg $prev_r $prev_g $prev_b)${A}$(rst)"
 printf '%s' "$o"

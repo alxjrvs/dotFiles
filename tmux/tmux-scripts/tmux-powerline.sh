@@ -270,11 +270,11 @@ cmd_pane_border() {
         has_green=1
       fi
 
-      # Chips in order: blue > red > yellow > green
-      [ "$stashed" = "1" ]    && chips="${chips}#[bg=${NOVA_GIT_BLUE}] #[default]"
-      [ "$has_red" = "1" ]    && chips="${chips}#[bg=${NOVA_GIT_RED}] #[default]"
-      [ "$has_yellow" = "1" ] && chips="${chips}#[bg=${NOVA_GIT_YELLOW}] #[default]"
-      [ "$has_green" = "1" ]  && chips="${chips}#[bg=${NOVA_GIT_GREEN}] #[default]"
+      # Chips in order: stash > conflict > unstaged > clean
+      [ "$stashed" = "1" ]    && chips="${chips}#[bg=${NOVA_GIT_STASH}] #[default]"
+      [ "$has_red" = "1" ]    && chips="${chips}#[bg=${NOVA_GIT_CONFLICT}] #[default]"
+      [ "$has_yellow" = "1" ] && chips="${chips}#[bg=${NOVA_GIT_UNSTAGED}] #[default]"
+      [ "$has_green" = "1" ]  && chips="${chips}#[bg=${NOVA_GIT_CLEAN}] #[default]"
     fi
   fi
 

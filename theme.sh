@@ -13,19 +13,27 @@ NOVA_FG="#ECEFF4"         # Primary text (Nord 6 — Snow Storm)
 NOVA_FG_DIM="#D8DEE9"     # Dimmed / inactive text (Nord 4)
 
 # ── Git status ───────────────────────────────────────────────────────────────
-# Nord Aurora + Frost
-NOVA_GIT_BLUE="#D08770"    # Stash    Nord 12 — Aurora orange R208 G135 B112
-NOVA_GIT_RED="#BF616A"     # Dirty    Nord 11 — Aurora red   R191 G97  B106
-NOVA_GIT_YELLOW="#EBCB8B"  # Unpushed Nord 13 — Aurora amber R235 G203 B139
-NOVA_GIT_GREEN="#A3BE8C"   # Clean    Nord 14 — Aurora green R163 G190 B140
+# Pip order: stash → conflict → staged → unstaged → untracked → ahead → behind (or clean)
+NOVA_GIT_STASH="#B48EAD"     # Stash     Nord 15 — Aurora purple  R180 G142 B173
+NOVA_GIT_CONFLICT="#BF616A"  # Conflict  Nord 11 — Aurora red     R191 G97  B106
+NOVA_GIT_STAGED="#A3BE8C"    # Staged    Nord 14 — Aurora green   R163 G190 B140
+NOVA_GIT_UNSTAGED="#EBCB8B"  # Unstaged  Nord 13 — Aurora amber   R235 G203 B139
+NOVA_GIT_UNTRACKED="#81A1C1" # Untracked Nord 9  — Frost blue     R129 G161 B193
+NOVA_GIT_AHEAD="#D08770"     # Ahead     Nord 12 — Aurora orange  R208 G135 B112
+NOVA_GIT_BEHIND="#5E81AC"    # Behind    Nord 10 — Frost dark     R94  G129 B172
+NOVA_GIT_CLEAN="#A3BE8C"     # Clean     Nord 14 — Aurora green   R163 G190 B140
 
 # RGB components for ANSI 24-bit escape codes (git-powerline.sh)
 NOVA_BG_R=46;  NOVA_BG_G=52;   NOVA_BG_B=64
 NOVA_FG_R=236; NOVA_FG_G=239;  NOVA_FG_B=244
-NOVA_GIT_BLUE_R=208;   NOVA_GIT_BLUE_G=135;  NOVA_GIT_BLUE_B=112
-NOVA_GIT_RED_R=191;    NOVA_GIT_RED_G=97;    NOVA_GIT_RED_B=106
-NOVA_GIT_YELLOW_R=235; NOVA_GIT_YELLOW_G=203; NOVA_GIT_YELLOW_B=139
-NOVA_GIT_GREEN_R=163;  NOVA_GIT_GREEN_G=190;  NOVA_GIT_GREEN_B=140
+NOVA_GIT_STASH_R=180;     NOVA_GIT_STASH_G=142;     NOVA_GIT_STASH_B=173
+NOVA_GIT_CONFLICT_R=191;  NOVA_GIT_CONFLICT_G=97;   NOVA_GIT_CONFLICT_B=106
+NOVA_GIT_STAGED_R=163;    NOVA_GIT_STAGED_G=190;    NOVA_GIT_STAGED_B=140
+NOVA_GIT_UNSTAGED_R=235;  NOVA_GIT_UNSTAGED_G=203;  NOVA_GIT_UNSTAGED_B=139
+NOVA_GIT_UNTRACKED_R=129; NOVA_GIT_UNTRACKED_G=161; NOVA_GIT_UNTRACKED_B=193
+NOVA_GIT_AHEAD_R=208;     NOVA_GIT_AHEAD_G=135;     NOVA_GIT_AHEAD_B=112
+NOVA_GIT_BEHIND_R=94;     NOVA_GIT_BEHIND_G=129;    NOVA_GIT_BEHIND_B=172
+NOVA_GIT_CLEAN_R=163;     NOVA_GIT_CLEAN_G=190;     NOVA_GIT_CLEAN_B=140
 
 # ── Prompt / pane segments ───────────────────────────────────────────────────
 NOVA_DIR="#4C566A"         # Directory — Nord 3 (Polar Night, visible against bg)

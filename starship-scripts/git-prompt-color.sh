@@ -1,7 +1,7 @@
 #!/bin/sh
 # git-prompt-color.sh - Outputs a colored ❯ ❯ based on git status severity
 # Used by starship-tmux.toml custom.prompt module.
-# Colors: Nova palette (theme.sh) — red (dirty) > yellow (unpushed) > green (clean) > white (no repo)
+# Colors: Nova palette (theme.sh) — conflict (dirty) > unstaged (unpushed) > clean > white (no repo)
 
 # shellcheck source=../theme.sh
 . "$HOME/dotFiles/theme.sh"
@@ -16,16 +16,16 @@ fi
 
 if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
   # Dirty → red
-  printf '%s❯ ❯%s' "$(fg $NOVA_GIT_RED_R $NOVA_GIT_RED_G $NOVA_GIT_RED_B)" "$(rst)"
+  printf '%s❯ ❯%s' "$(fg $NOVA_GIT_CONFLICT_R $NOVA_GIT_CONFLICT_G $NOVA_GIT_CONFLICT_B)" "$(rst)"
   exit 0
 fi
 
 if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1 &&
    git log @{u}.. --oneline 2>/dev/null | grep -q .; then
   # Unpushed → yellow
-  printf '%s❯ ❯%s' "$(fg $NOVA_GIT_YELLOW_R $NOVA_GIT_YELLOW_G $NOVA_GIT_YELLOW_B)" "$(rst)"
+  printf '%s❯ ❯%s' "$(fg $NOVA_GIT_UNSTAGED_R $NOVA_GIT_UNSTAGED_G $NOVA_GIT_UNSTAGED_B)" "$(rst)"
   exit 0
 fi
 
 # Clean → green
-printf '%s❯ ❯%s' "$(fg $NOVA_GIT_GREEN_R $NOVA_GIT_GREEN_G $NOVA_GIT_GREEN_B)" "$(rst)"
+printf '%s❯ ❯%s' "$(fg $NOVA_GIT_CLEAN_R $NOVA_GIT_CLEAN_G $NOVA_GIT_CLEAN_B)" "$(rst)"
