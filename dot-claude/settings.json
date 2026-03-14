@@ -120,7 +120,7 @@
   "alwaysThinkingEnabled": true,
   "autoUpdatesChannel": "latest",
   "skipDangerousModePermissionPrompt": true,
-  "teammateMode": "tmux",
+  "teammateMode": "in-process",
   "mcpServers": {
     "knip": {
       "command": "npx",
