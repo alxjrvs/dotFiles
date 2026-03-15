@@ -67,10 +67,10 @@ A=""
 
 # ── Branch pill ────────────────────────────────────────────────────────────
 o=""
-# Opening arrow: dir bg (Nord3 #4C566A) -> branch bg (seamless from starship directory)
-o="${o}$(bg $BR_R $BR_G $BR_B)$(fg 76 86 106)${A}"
-# Branch text
-o="${o}$(bg $BR_R $BR_G $BR_B)$(fg $BG_R $BG_G $BG_B) ${branch} "
+# Opening arrow: dir bg (Nord1 #3B4252) -> branch bg (seamless from directory)
+o="${o}$(bg $BR_R $BR_G $BR_B)$(fg 59 66 82)${A}"
+# Branch text (light on dark)
+o="${o}$(bg $BR_R $BR_G $BR_B)$(fg $NOVA_FG_R $NOVA_FG_G $NOVA_FG_B) ${branch} "
 
 # No git repo — close branch pill
 if [ "${no_git:-0}" = "1" ]; then

@@ -7,6 +7,7 @@ input=$(cat)
 
 model=$(echo "$input" | jq -r '.model.display_name // empty' | sed 's/ [0-9][0-9.]*//g')
 used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
+
 cost_usd=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
 duration_ms=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
 
@@ -14,9 +15,12 @@ duration_ms=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
 cost_fmt=$(printf '$%.2f' "$cost_usd")
 
 duration_sec=$(( ${duration_ms%%.*} / 1000 ))
-dur_min=$(( duration_sec / 60 ))
+dur_hr=$(( duration_sec / 3600 ))
+dur_min=$(( (duration_sec % 3600) / 60 ))
 dur_sec=$(( duration_sec % 60 ))
-if [ "$dur_min" -gt 0 ]; then
+if [ "$dur_hr" -gt 0 ]; then
+  dur_fmt="${dur_hr}h ${dur_min}m"
+elif [ "$dur_min" -gt 0 ]; then
   dur_fmt="${dur_min}m ${dur_sec}s"
 else
   dur_fmt="${dur_sec}s"
@@ -46,19 +50,25 @@ git_seg=$(~/dotFiles/starship-scripts/git-powerline.sh --no-prompt 2>/dev/null)
 A=''  # solid arrow
 T=''  # thin separator
 
-LIGHT_BG="236;239;244"     # #ECEFF4 Nord6
+# Gradient stops (dark left -> slightly lighter right, all Polar Night)
+# Line 1: DIR=Nord1, BRANCH=Nord3 (handled by git-powerline.sh)
+# Line 2: MODEL=Nord0, COST=Nord1, TIME=Nord2, CONTEXT=Nord3
 DARK_FG="46;52;64"         # #2E3440 Nord0
-BAR_BG="128;138;156"       # #808A9C
-BAR_FG="236;239;244"       # #ECEFF4
-MODEL_BG="229;233;240"     # #E5E9F0 Nord5
-DIR_BG="76;86;106"         # #4C566A Nord3
-DIR_FG="236;239;244"       # #ECEFF4 Nord6
-WARN_BG="235;203;139"      # #EBCB8B git yellow
-CRIT_BG="191;97;106"       # #BF616A git red
-COST_BG="229;233;240"      # #E5E9F0 Nord5 (matches git branch)
-COST_FG="46;52;64"         # #2E3440 Nord0
-TIME_BG="76;86;106"        # #4C566A Nord3 (matches CWD)
-TIME_FG="236;239;244"      # #ECEFF4 Nord6
+TXT="236;239;244"          # #ECEFF4 Nord6 (all text)
+
+DIR_BG="59;66;82"          # #3B4252 Nord1
+DIR_FG="${TXT}"
+
+MODEL_BG="46;52;64"        # #2E3440 Nord0
+MODEL_FG="${TXT}"
+
+COST_BG="59;66;82"         # #3B4252 Nord1
+COST_FG="${TXT}"
+
+TIME_BG="67;76;94"         # #434C5E Nord2
+TIME_FG="${TXT}"
+
+LIGHT_BG="76;86;106"       # #4C566A Nord3 (CONTEXT label)
 
 # == Line 1: Dir + Git ========================================================
 line1=""
@@ -93,6 +103,8 @@ if [ -n "$used_pct" ]; then
   used_int=${used_pct%%.*}
   filled=$(( used_int * 8 / 100 ))
   [ "$filled" -gt 8 ] && filled=8
+  # At least 1 pip when there's any usage
+  [ "$used_int" -gt 0 ] && [ "$filled" -eq 0 ] && filled=1
 else
   filled=0
 fi
@@ -131,9 +143,9 @@ line2=""
 
 # Model segment (opening pill, if present)
 if [ -n "$model" ]; then
-  line2="${line2}\e[48;2;${DIR_BG}m\e[38;2;${DIR_FG}m\e[22m ${model} "
+  line2="${line2}\e[48;2;${MODEL_BG}m\e[38;2;${MODEL_FG}m\e[22m ${model} "
   # Model -> Cost transition
-  line2="${line2}\e[48;2;${COST_BG}m\e[38;2;${DIR_BG}m${A}"
+  line2="${line2}\e[48;2;${COST_BG}m\e[38;2;${MODEL_BG}m${A}"
 fi
 
 # Cost segment
@@ -149,7 +161,7 @@ line2="${line2}\e[48;2;${TIME_BG}m\e[38;2;${TIME_FG}m\e[22m ${dur_fmt} "
 line2="${line2}\e[48;2;${LIGHT_BG}m\e[38;2;${TIME_BG}m${A}"
 
 # Context label
-line2="${line2}\e[48;2;${LIGHT_BG}m\e[38;2;${DARK_FG}m\e[22m CONTEXT "
+line2="${line2}\e[48;2;${LIGHT_BG}m\e[38;2;${TXT}m\e[22m CONTEXT "
 
 # Bar area + closing arrow
 line2="${line2}${left_glyph}${val_text}${bar_exit}"

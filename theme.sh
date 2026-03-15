@@ -36,9 +36,9 @@ NOVA_GIT_BEHIND_R=94;     NOVA_GIT_BEHIND_G=129;    NOVA_GIT_BEHIND_B=172
 NOVA_GIT_CLEAN_R=163;     NOVA_GIT_CLEAN_G=190;     NOVA_GIT_CLEAN_B=140
 
 # ── Prompt / pane segments ───────────────────────────────────────────────────
-NOVA_DIR="#4C566A"         # Directory — Nord 3 (Polar Night, visible against bg)
-NOVA_BRANCH="#E5E9F0"      # Git branch — Nord 5 (Snow Storm mid, matches statusline MODEL)
-NOVA_BRANCH_R=229; NOVA_BRANCH_G=233; NOVA_BRANCH_B=240
+NOVA_DIR="#3B4252"         # Directory — Nord 1 (gradient: dark, left)
+NOVA_BRANCH="#4C566A"      # Git branch — Nord 3 (gradient: lighter, right)
+NOVA_BRANCH_R=76; NOVA_BRANCH_G=86; NOVA_BRANCH_B=106
 
 # ── Status-right: Time ───────────────────────────────────────────────────────
 NOVA_TIME="#3B4252"        # Nord 1 (Polar Night) — far right edge
