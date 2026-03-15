@@ -126,7 +126,7 @@ while [ "$i" -lt "$filled" ]; do
     # Last filled pip: bg = terminal bg
     bar="${bar}\e[38;2;${grad[$i]}m\e[48;2;${DARK_FG}m"
     # Percentage floats right of last colored pip (light text on terminal bg)
-    bar="${bar}\e[38;2;${TXT}m ${used_int}%"
+    bar="${bar}\e[38;2;${TXT}m${used_int}%"
   else
     # Filled pip: fg = this color, bg = next color
     bar="${bar}\e[38;2;${grad[$i]}m\e[48;2;${grad[$(( i + 1 ))]}m"
