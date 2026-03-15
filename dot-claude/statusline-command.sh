@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Claude Code status line â two rows:
-#   Line 1: [dir][git]
+# Claude Code status line - two rows:
+#   Line 1: [repo link][dir][git branch][worktree?][git pips]
 #   Line 2: [cost][time][context bar][model]
 
 input=$(cat)
@@ -10,6 +10,9 @@ used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 
 cost_usd=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
 duration_ms=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
+
+worktree_name=$(echo "$input" | jq -r '.worktree.name // empty')
+project_dir=$(echo "$input" | jq -r '.workspace.project_dir // empty')
 
 # -- Formatting ----------------------------------------------------------------
 cost_fmt=$(printf '$%.2f' "$cost_usd")
@@ -28,6 +31,7 @@ fi
 
 # -- Directory -----------------------------------------------------------------
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // empty')
+[ -n "$worktree_name" ] && [ -n "$project_dir" ] && cwd="$project_dir"
 [ -z "$cwd" ] && cwd=$(pwd)
 _home="${HOME:-$(eval echo ~)}"
 _home="${_home%/}"
@@ -44,6 +48,18 @@ else
   dir_display="${_parts[$(( _n - 2 ))]}/${_parts[$(( _n - 1 ))]}"
 fi
 
+# -- Repo link ----------------------------------------------------------------
+repo_url=""
+repo_name=""
+if git rev-parse --git-dir > /dev/null 2>&1; then
+  _remote=$(git remote get-url origin 2>/dev/null)
+  if [ -n "$_remote" ]; then
+    repo_url=$(echo "$_remote" | sed 's|git@github.com:|https://github.com/|' | sed 's|\.git$||')
+    repo_name=$(basename "$repo_url")
+  fi
+fi
+
+export STATUSLINE_WORKTREE="$worktree_name"
 git_seg=$(~/dotFiles/starship-scripts/git-powerline.sh --no-prompt 2>/dev/null)
 
 # -- Colors --------------------------------------------------------------------
@@ -55,6 +71,9 @@ T=''  # thin separator
 # Line 2: MODEL=Nord0, COST=Nord1, TIME=Nord2, CONTEXT=Nord3
 DARK_FG="46;52;64"         # #2E3440 Nord0
 TXT="236;239;244"          # #ECEFF4 Nord6 (all text)
+
+REPO_BG="${DARK_FG}"           # #2E3440 Nord0 (floats on terminal bg)
+REPO_FG="${TXT}"
 
 DIR_BG="59;66;82"          # #3B4252 Nord1
 DIR_FG="${TXT}"
@@ -70,10 +89,17 @@ TIME_FG="${TXT}"
 
 LIGHT_BG="76;86;106"       # #4C566A Nord3 (CONTEXT label)
 
-# == Line 1: Dir + Git ========================================================
+# == Line 1: Repo + Dir + Git =================================================
 line1=""
 
-# Dir segment (opening pill)
+# Repo link segment (clickable name on terminal bg)
+if [ -n "$repo_name" ]; then
+  line1="${line1}\e[48;2;${REPO_BG}m\e[38;2;${REPO_FG}m\e[22m \e]8;;${repo_url}\a${repo_name}\e]8;;\a "
+  # Repo -> Dir transition
+  line1="${line1}\e[48;2;${DIR_BG}m\e[38;2;${REPO_BG}m${A}"
+fi
+
+# Dir segment
 line1="${line1}\e[48;2;${DIR_BG}m\e[38;2;${DIR_FG}m\e[22m ${dir_display} "
 
 # Git or dir closing arrow

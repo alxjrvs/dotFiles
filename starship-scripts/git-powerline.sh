@@ -79,9 +79,20 @@ if [ "${no_git:-0}" = "1" ]; then
   exit 0
 fi
 
+# ── Worktree indicator (only when STATUSLINE_WORKTREE is set) ─────────────
+if [ -n "$STATUSLINE_WORKTREE" ]; then
+  WT_R=$NOVA_WORKTREE_R; WT_G=$NOVA_WORKTREE_G; WT_B=$NOVA_WORKTREE_B
+  o="${o}$(bg $WT_R $WT_G $WT_B)$(fg $BR_R $BR_G $BR_B)${A}"
+  o="${o}$(fg $NOVA_FG_R $NOVA_FG_G $NOVA_FG_B) $STATUSLINE_WORKTREE "
+fi
+
 # ── Render pips ────────────────────────────────────────────────────────────
 # Track previous segment color for seamless powerline transitions.
-prev_r=$BR_R; prev_g=$BR_G; prev_b=$BR_B
+if [ -n "$STATUSLINE_WORKTREE" ]; then
+  prev_r=$NOVA_WORKTREE_R; prev_g=$NOVA_WORKTREE_G; prev_b=$NOVA_WORKTREE_B
+else
+  prev_r=$BR_R; prev_g=$BR_G; prev_b=$BR_B
+fi
 
 render_pip() {
   # Usage: render_pip R G B "text"

@@ -39,6 +39,8 @@ NOVA_GIT_CLEAN_R=163;     NOVA_GIT_CLEAN_G=190;     NOVA_GIT_CLEAN_B=140
 NOVA_DIR="#3B4252"         # Directory — Nord 1 (gradient: dark, left)
 NOVA_BRANCH="#4C566A"      # Git branch — Nord 3 (gradient: lighter, right)
 NOVA_BRANCH_R=76; NOVA_BRANCH_G=86; NOVA_BRANCH_B=106
+NOVA_WORKTREE="#5E81AC"    # Worktree indicator — Nord 10 (Frost dark blue)
+NOVA_WORKTREE_R=94; NOVA_WORKTREE_G=129; NOVA_WORKTREE_B=172
 
 # ── Status-right: Time ───────────────────────────────────────────────────────
 NOVA_TIME="#3B4252"        # Nord 1 (Polar Night) — far right edge
