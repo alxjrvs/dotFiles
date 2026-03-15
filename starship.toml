@@ -1,5 +1,5 @@
 # Nord prompt — requires a Nerd Font
-# Colors: Nord palette — Dir=Nord10 #5E81AC, Branch=Nord3 #4C566A, BG=Nord0 #2E3440
+# Colors: Polar Night gradient — Dir=Nord1 #3B4252, Branch=Nord3 #4C566A, BG=Nord0 #2E3440
 
 format = """$directory${custom.git_segment}$character"""
 
@@ -7,7 +7,7 @@ add_newline = true
 command_timeout = 1000
 
 [directory]
-format = "[ $path ](bg:#4C566A fg:#ECEFF4)"
+format = "[ $path ](bg:#3B4252 fg:#ECEFF4)"
 truncation_length = 2
 truncate_to_repo = false
 truncation_symbol = ""
