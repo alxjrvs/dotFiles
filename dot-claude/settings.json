@@ -121,7 +121,8 @@
     "vercel@claude-plugins-official": true,
     "playground@claude-plugins-official": true,
     "learning-output-style@claude-plugins-official": true,
-    "typescript-lsp@claude-plugins-official": true
+    "typescript-lsp@claude-plugins-official": true,
+    "dev-team@jrvs-skills": true
   },
   "extraKnownMarketplaces": {
     "expo-plugins": {
@@ -134,6 +135,12 @@
       "source": {
         "source": "github",
         "repo": "anthropics/claude-plugins-official"
+      }
+    },
+    "jrvs-skills": {
+      "source": {
+        "source": "github",
+        "repo": "alxjrvs/skills-lib"
       }
     }
   },
