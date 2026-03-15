@@ -9,6 +9,8 @@ return {
         "prettier",
         "eslint_d",
         "tree-sitter-cli",
+        "pyright",
+        "bash-language-server",
       },
     },
   },

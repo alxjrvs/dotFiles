@@ -6,6 +6,7 @@ brew "mise"
 brew "libsodium"
 # brew "fastlane"        # iOS CI only
 brew "flyctl"
+brew "atuin"
 brew "fzf"
 brew "gh"
 brew "git-delta"

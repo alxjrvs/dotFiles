@@ -69,6 +69,21 @@ should_run() {
 
 # ── Cancel on failure or Ctrl-C ──────────────────────────────────
 set -eo pipefail
+
+# ── Prevent concurrent runs ────────────────────────────────────
+LOCK_FILE="/tmp/dotfiles-sync.lock"
+if [ -f "$LOCK_FILE" ]; then
+  lock_pid=$(cat "$LOCK_FILE" 2>/dev/null)
+  if kill -0 "$lock_pid" 2>/dev/null; then
+    fail "Another sync is running (pid $lock_pid)"
+    exit 1
+  else
+    warn "Removing stale lock file"
+    rm -f "$LOCK_FILE"
+  fi
+fi
+echo $$ > "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT
 trap 'echo ""; fail "Cancelled — stopping install."; exit 1' INT TERM
 
 # ── link() — idempotent symlink with interactive conflict resolution ─
@@ -251,6 +266,8 @@ link "$DOTFILES_DIR/.gitconfig"          "$HOME/.gitconfig"          ".gitconfig
 link "$DOTFILES_DIR/.gitmessage"         "$HOME/.gitmessage"         ".gitmessage"
 link "$DOTFILES_DIR/.gitignore"          "$HOME/.gitignore"          ".gitignore"
 link "$DOTFILES_DIR/.editorconfig"       "$HOME/.editorconfig"       ".editorconfig"
+link "$DOTFILES_DIR/.ripgreprc"          "$HOME/.ripgreprc"          ".ripgreprc"
+link "$DOTFILES_DIR/.fdignore"           "$HOME/.fdignore"           ".fdignore"
 fi
 
 # Shell config
@@ -283,8 +300,6 @@ if [ "$OS" = "Darwin" ]; then
 if should_run symlinks mise; then
 mkdir -p "$HOME/.config/mise"
 link "$DOTFILES_DIR/mise.toml"  "$HOME/.config/mise/config.toml"  "mise/config.toml"
-link "$DOTFILES_DIR/.npmrc"     "$HOME/.npmrc"                    ".npmrc"
-chmod 600 "$HOME/.npmrc" 2>/dev/null || true
 fi
 fi # Darwin
 
@@ -305,6 +320,12 @@ fi
 if should_run symlinks ghostty; then
 mkdir -p "$HOME/.config/ghostty"
 link "$DOTFILES_DIR/ghostty/config"       "$HOME/.config/ghostty/config"        "ghostty/config"
+fi
+
+# Bat config
+if should_run symlinks bat; then
+mkdir -p "$HOME/.config/bat"
+link "$DOTFILES_DIR/bat/config"           "$HOME/.config/bat/config"            "bat/config"
 fi
 fi # Darwin
 

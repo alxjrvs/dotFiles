@@ -14,6 +14,14 @@ apply = ["fpath"]
 [plugins.zsh-history-substring-search]
 github = "zsh-users/zsh-history-substring-search"
 
+# fzf-powered tab completion
+[plugins.fzf-tab]
+github = "Aloxaf/fzf-tab"
+
+# Auto-close brackets, quotes, etc.
+[plugins.zsh-autopair]
+github = "hlissner/zsh-autopair"
+
 # Fast syntax highlighting (must be last)
 [plugins.fast-syntax-highlighting]
 github = "zdharma-continuum/fast-syntax-highlighting"

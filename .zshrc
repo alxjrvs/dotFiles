@@ -2,6 +2,8 @@ export EDITOR="nvim"
 export VISUAL="$EDITOR"
 export MANPAGER="nvim +Man!"
 export LANG=en_US.UTF-8
+export LESS='-RFX'
+export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 
 # Machine-local secrets (not in git)
 [[ -f ~/.secrets ]] && source ~/.secrets
@@ -42,6 +44,9 @@ autoload -Uz add-zsh-hook
 
 # Sheldon plugins (adds zsh-completions to fpath)
 eval "$(sheldon source)"
+
+# Atuin shell history
+command -v atuin &>/dev/null && eval "$(atuin init zsh)"
 
 # History substring search keybindings
 bindkey '^[[A' history-substring-search-up
@@ -111,8 +116,10 @@ fi
 if command -v fzf &>/dev/null; then
   eval "$(fzf --zsh)" 2>/dev/null
 fi
-export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40%'
+export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40% --color=bg+:#3b4252,bg:#2e3440,spinner:#81a1c1,hl:#a3be8c,fg:#d8dee9,header:#a3be8c,info:#ebcb8b,pointer:#81a1c1,marker:#81a1c1,prompt:#81a1c1'
 export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+export FZF_CTRL_T_OPTS="--preview 'bat --color=always {}' --preview-window right:50%"
+export FZF_ALT_C_OPTS="--preview 'eza --icons -T {} | head -20'"
 
 # zoxide
 command -v zoxide &>/dev/null && eval "$(zoxide init zsh)"
@@ -165,8 +172,8 @@ function sz()     { du -sh "${@:-.}" | sort -hr }
 # mise (tool version manager)
 command -v mise &>/dev/null && eval "$(mise activate zsh)"
 
-# Ensure ~/.local/bin takes priority (cmux injects its own bin into PATH)
-export PATH="$HOME/.local/bin:$PATH"
+# direnv (per-directory environment)
+command -v direnv &>/dev/null && eval "$(direnv hook zsh)"
 
 # Colored man pages (CMYK)
 export LESS_TERMCAP_mb=$'\e[1;35m'

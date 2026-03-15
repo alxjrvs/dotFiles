@@ -22,6 +22,7 @@
 [user]
 	name = alxjrvs
 	email = alxjrvs@gmail.com
+	signingkey = ~/.ssh/id_ed25519.pub
 [credential]
 	helper = osxkeychain
 [core]
@@ -30,11 +31,13 @@
 	pager = delta
 	fsmonitor = true
 	untrackedCache = true
+
 [init]
 	defaultBranch = main
 [commit]
 	template = ~/.gitmessage
 	verbose = true
+	gpgSign = true
 [push]
 	autoSetupRemote = true
 	followTags = true
@@ -50,6 +53,7 @@
 	side-by-side = true
 	line-numbers = true
 	dark = true
+	hyperlinks = true
 [fetch]
 	prune = true
 	pruneTags = true
@@ -70,6 +74,11 @@
 	updateRefs = true
 [tag]
 	sort = version:refname
+	gpgSign = true
+[gpg]
+	format = ssh
+[gpg "ssh"]
+	allowedSignersFile = ~/.ssh/allowed_signers
 [help]
 	autocorrect = prompt
 [include]

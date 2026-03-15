@@ -8,5 +8,9 @@ aliases:
     co: pr checkout
     pv: pr view --web
     pc: pr create --fill
+    is: issue search --state=open
+    il: issue list
+    pl: pr list
+    rc: repo clone
 http_unix_socket:
 browser:

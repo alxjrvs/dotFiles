@@ -27,8 +27,9 @@ There are no build, test, or lint commands for this repo.
 |--------|-------------|
 | `.zshrc`, `.zprofile` | `~/` |
 | `.gitconfig`, `.gitmessage`, `.editorconfig` | `~/` |
+| `.ripgreprc`, `.fdignore` | `~/` |
+| `bat/config` | `~/.config/bat/config` |
 | `mise.toml` | `~/.config/mise/config.toml` |
-| `.npmrc` | `~/` |
 | `starship.toml` | `~/.config/starship.toml` |
 | `sheldon/plugins.toml` | `~/.config/sheldon/plugins.toml` |
 | `ghostty/config` | `~/.config/ghostty/config` |
@@ -51,6 +52,14 @@ This directory is symlinked wholesale to `~/.claude/`. It contains:
 - `settings.json` — permissions, hooks, environment variables
 - `agents/` — custom subagent definitions
 - `hooks/` — event hooks (shell formatting, lock file protection)
+
+#### Custom Agents
+
+| Agent | When to use |
+|-------|-------------|
+| **Senior Software Engineer** | Feature implementation, bug fixes, and design decisions requiring careful trade-off analysis |
+| **Code Efficiency Auditor** | Post-feature audits, refactoring phases, or cleaning up accumulated tech debt |
+| **Dependency Upgrader** | Researching, evaluating, and executing upgrades of dependencies, runtimes, or frameworks |
 
 ### Language Versions
 
