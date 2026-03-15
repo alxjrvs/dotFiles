@@ -15,6 +15,8 @@
 - Use conventional commit style (feat:, fix:, chore:, etc.)
 - Prefer editing existing files over creating new ones
 - No emojis in code or commit messages unless asked
+- Make only the changes requested. Do not add autonomous fixes, refactors, or improvements the user didn't ask for
+- When a term is ambiguous, ask for clarification rather than assuming a meaning
 
 ## Coding Style
 

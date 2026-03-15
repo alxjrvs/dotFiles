@@ -162,6 +162,7 @@ alias vim="nvim"
 
 # System
 alias env-sync="~/dotFiles/sync.sh"
+claude-fix() { claude -p "Fix the following issue without committing: $*"; }
 
 # Functions
 function mkcd()   { mkdir -p "$1" && cd "$1" }

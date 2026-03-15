@@ -60,6 +60,7 @@ This directory is symlinked wholesale to `~/.claude/`. It contains:
 | **Senior Software Engineer** | Feature implementation, bug fixes, and design decisions requiring careful trade-off analysis |
 | **Code Efficiency Auditor** | Post-feature audits, refactoring phases, or cleaning up accumulated tech debt |
 | **Dependency Upgrader** | Researching, evaluating, and executing upgrades of dependencies, runtimes, or frameworks |
+| **UI Refine** | Iterative CSS/styling/layout changes requiring precise control over spacing, colors, and positioning |
 
 ### Language Versions
 

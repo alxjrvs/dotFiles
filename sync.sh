@@ -139,7 +139,7 @@ brew update
 
 warn "Upgrading formulae and casks..."
 brew upgrade
-brew upgrade --cask --greedy
+brew upgrade --cask
 
 warn "Removing outdated versions..."
 brew cleanup --prune=all
