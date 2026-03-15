@@ -94,7 +94,7 @@ line1=""
 
 # Repo link segment (clickable name on terminal bg)
 if [ -n "$repo_name" ]; then
-  line1="${line1}\e[48;2;${REPO_BG}m\e[38;2;${REPO_FG}m\e[22m \e]8;;${repo_url}\a${repo_name}\e]8;;\a "
+  line1="${line1}\e[48;2;${REPO_BG}m\e[38;2;${REPO_FG}m\e[22m  \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
   # Repo -> Dir transition
   line1="${line1}\e[48;2;${DIR_BG}m\e[38;2;${REPO_BG}m${A}"
 fi
