@@ -67,13 +67,13 @@ A=''  # solid arrow
 T=''  # thin separator
 
 # Alternating Polar Night / Snow Storm, offset between rows
-# Line 1: REPO=PN1, DIR=SS1, BRANCH=PN2 (handled by git-powerline.sh)
-# Line 2: MODEL=SS1, COST=PN1, TIME=SS2, CONTEXT=PN2
+# Line 1: REPO=PN2, DIR=SS1, BRANCH=PN1 (handled by git-powerline.sh)
+# Line 2: MODEL=SS1, COST=PN2, TIME=SS2, CONTEXT=PN1
 DARK_FG="46;52;64"         # #2E3440 Nord0
 TXT="236;239;244"          # #ECEFF4 Nord6 (light text on dark bg)
 TXT_DARK="46;52;64"        # #2E3440 Nord0 (dark text on light bg)
 
-REPO_BG="59;66;82"            # #3B4252 Nord1 (Polar Night 1)
+REPO_BG="67;76;94"            # #434C5E Nord2 (Polar Night 2)
 REPO_FG="${TXT}"
 
 DIR_BG="216;222;233"       # #D8DEE9 Nord4 (Snow Storm 1)
@@ -82,13 +82,13 @@ DIR_FG="${TXT_DARK}"
 MODEL_BG="216;222;233"     # #D8DEE9 Nord4 (Snow Storm 1)
 MODEL_FG="${TXT_DARK}"
 
-COST_BG="59;66;82"         # #3B4252 Nord1 (Polar Night 1)
+COST_BG="67;76;94"         # #434C5E Nord2 (Polar Night 2)
 COST_FG="${TXT}"
 
 TIME_BG="229;233;240"      # #E5E9F0 Nord5 (Snow Storm 2)
 TIME_FG="${TXT_DARK}"
 
-LIGHT_BG="67;76;94"        # #434C5E Nord2 (Polar Night 2, CONTEXT label)
+LIGHT_BG="59;66;82"        # #3B4252 Nord1 (Polar Night 1, CONTEXT label)
 
 # == Line 1: Repo + Dir + Git =================================================
 line1=""

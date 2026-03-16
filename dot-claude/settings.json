@@ -122,7 +122,6 @@
     "playground@claude-plugins-official": false,
     "learning-output-style@claude-plugins-official": false,
     "typescript-lsp@claude-plugins-official": true,
-    "dev-team@jrvs-skills": true,
     "scram@jrvs-skills": true
   },
   "extraKnownMarketplaces": {
