@@ -36,9 +36,9 @@ NOVA_GIT_BEHIND_R=94;     NOVA_GIT_BEHIND_G=129;    NOVA_GIT_BEHIND_B=172
 NOVA_GIT_CLEAN_R=163;     NOVA_GIT_CLEAN_G=190;     NOVA_GIT_CLEAN_B=140
 
 # ── Prompt / pane segments ───────────────────────────────────────────────────
-NOVA_DIR="#4C566A"         # Directory — Nord 3 (gradient: dark, left)
-NOVA_BRANCH="#4C566A"      # Git branch — Nord 3 (gradient: lighter, right)
-NOVA_BRANCH_R=76; NOVA_BRANCH_G=86; NOVA_BRANCH_B=106
+NOVA_DIR="#D8DEE9"         # Directory — Nord 4 (Snow Storm 1)
+NOVA_BRANCH="#434C5E"      # Git branch — Nord 2 (Polar Night 2)
+NOVA_BRANCH_R=67; NOVA_BRANCH_G=76; NOVA_BRANCH_B=94
 NOVA_WORKTREE="#5E81AC"    # Worktree indicator — Nord 10 (Frost dark blue)
 NOVA_WORKTREE_R=94; NOVA_WORKTREE_G=129; NOVA_WORKTREE_B=172
 

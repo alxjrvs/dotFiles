@@ -66,28 +66,29 @@ git_seg=$(~/dotFiles/starship-scripts/git-powerline.sh --no-prompt 2>/dev/null)
 A=''  # solid arrow
 T=''  # thin separator
 
-# Gradient stops (dark left -> slightly lighter right, all Polar Night)
-# Line 1: DIR=Nord1, BRANCH=Nord3 (handled by git-powerline.sh)
-# Line 2: MODEL=Nord0, COST=Nord1, TIME=Nord2, CONTEXT=Nord3
+# Alternating Polar Night / Snow Storm, offset between rows
+# Line 1: REPO=PN1, DIR=SS1, BRANCH=PN2 (handled by git-powerline.sh)
+# Line 2: MODEL=SS1, COST=PN1, TIME=SS2, CONTEXT=PN2
 DARK_FG="46;52;64"         # #2E3440 Nord0
-TXT="236;239;244"          # #ECEFF4 Nord6 (all text)
+TXT="236;239;244"          # #ECEFF4 Nord6 (light text on dark bg)
+TXT_DARK="46;52;64"        # #2E3440 Nord0 (dark text on light bg)
 
-REPO_BG="67;76;94"            # #434C5E Nord2 (visible against terminal bg)
+REPO_BG="59;66;82"            # #3B4252 Nord1 (Polar Night 1)
 REPO_FG="${TXT}"
 
-DIR_BG="76;86;106"         # #4C566A Nord3
-DIR_FG="${TXT}"
+DIR_BG="216;222;233"       # #D8DEE9 Nord4 (Snow Storm 1)
+DIR_FG="${TXT_DARK}"
 
-MODEL_BG="67;76;94"        # #434C5E Nord2 (visible against terminal bg)
-MODEL_FG="${TXT}"
+MODEL_BG="216;222;233"     # #D8DEE9 Nord4 (Snow Storm 1)
+MODEL_FG="${TXT_DARK}"
 
-COST_BG="76;86;106"        # #4C566A Nord3
+COST_BG="59;66;82"         # #3B4252 Nord1 (Polar Night 1)
 COST_FG="${TXT}"
 
-TIME_BG="96;106;126"       # #606A7E (one step past Nord3)
-TIME_FG="${TXT}"
+TIME_BG="229;233;240"      # #E5E9F0 Nord5 (Snow Storm 2)
+TIME_FG="${TXT_DARK}"
 
-LIGHT_BG="116;126;146"     # #747E92 (CONTEXT label, two steps past Nord3)
+LIGHT_BG="67;76;94"        # #434C5E Nord2 (Polar Night 2, CONTEXT label)
 
 # == Line 1: Repo + Dir + Git =================================================
 line1=""
@@ -117,15 +118,15 @@ fi
 # == Line 2: Cost + Time + Context + Model =====================================
 
 # -- Context bar (20 pips, 5% each) --------------------------------------------
-# Gradient: Nord3 blue-grey -> amber (~45%) -> red (~85%) -> white hot (100%)
-GRAD_0="96;106;126"
-GRAD_1="108;113;123"
-GRAD_2="120;120;119"
-GRAD_3="135;129;118"
-GRAD_4="154;143;122"
-GRAD_5="174;158;126"
-GRAD_6="193;172;130"
-GRAD_7="213;187;134"
+# Gradient: Nord2 blue-grey -> amber (~45%) -> red (~85%) -> white hot (100%)
+GRAD_0="67;76;94"
+GRAD_1="88;92;100"
+GRAD_2="108;107;105"
+GRAD_3="129;123;111"
+GRAD_4="149;138;116"
+GRAD_5="170;154;122"
+GRAD_6="190;170;127"
+GRAD_7="211;185;133"
 GRAD_8="232;201;138"
 GRAD_9="230;192;136"
 GRAD_10="225;178;131"
