@@ -1,16 +1,18 @@
 # Nord prompt — requires a Nerd Font
-# Colors: Polar Night gradient — Dir=Nord1 #3B4252, Branch=Nord3 #4C566A, BG=Nord0 #2E3440
+# Powerline: REPO(PN2) -> DIR(SS1) -> BRANCH(PN1) -> git pips
+# Matches Claude statusline line 1 layout
 
-format = """$directory${custom.git_segment}$character"""
+format = """${custom.prompt_head}${custom.git_segment}$character"""
 
 add_newline = true
 command_timeout = 1000
 
-[directory]
-format = "[ $path ](bg:#3B4252 fg:#ECEFF4)"
-truncation_length = 2
-truncate_to_repo = false
-truncation_symbol = ""
+[custom.prompt_head]
+command = "~/dotFiles/starship-scripts/prompt-repo-dir.sh"
+when = "true"
+format = "$output"
+shell = ["sh"]
+ignore_timeout = true
 
 [custom.git_segment]
 command = "~/dotFiles/starship-scripts/git-powerline.sh"
