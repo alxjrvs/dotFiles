@@ -67,8 +67,8 @@ A=""
 
 # ── Branch pill ────────────────────────────────────────────────────────────
 o=""
-# Opening arrow: dir bg (Nord1 #3B4252) -> branch bg (seamless from directory)
-o="${o}$(bg $BR_R $BR_G $BR_B)$(fg 59 66 82)${A}"
+# Opening arrow: dir bg (Nord3 #4C566A) -> branch bg (seamless from directory)
+o="${o}$(bg $BR_R $BR_G $BR_B)$(fg 76 86 106)${A}"
 # Branch text (light on dark)
 o="${o}$(bg $BR_R $BR_G $BR_B)$(fg $NOVA_FG_R $NOVA_FG_G $NOVA_FG_B) ${branch} "
 

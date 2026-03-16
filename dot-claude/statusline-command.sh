@@ -72,31 +72,36 @@ T=''  # thin separator
 DARK_FG="46;52;64"         # #2E3440 Nord0
 TXT="236;239;244"          # #ECEFF4 Nord6 (all text)
 
-REPO_BG="${DARK_FG}"           # #2E3440 Nord0 (floats on terminal bg)
+REPO_BG="67;76;94"            # #434C5E Nord2 (visible against terminal bg)
 REPO_FG="${TXT}"
 
-DIR_BG="59;66;82"          # #3B4252 Nord1
+DIR_BG="76;86;106"         # #4C566A Nord3
 DIR_FG="${TXT}"
 
-MODEL_BG="46;52;64"        # #2E3440 Nord0
+MODEL_BG="67;76;94"        # #434C5E Nord2 (visible against terminal bg)
 MODEL_FG="${TXT}"
 
-COST_BG="59;66;82"         # #3B4252 Nord1
+COST_BG="76;86;106"        # #4C566A Nord3
 COST_FG="${TXT}"
 
-TIME_BG="67;76;94"         # #434C5E Nord2
+TIME_BG="96;106;126"       # #606A7E (one step past Nord3)
 TIME_FG="${TXT}"
 
-LIGHT_BG="76;86;106"       # #4C566A Nord3 (CONTEXT label)
+LIGHT_BG="116;126;146"     # #747E92 (CONTEXT label, two steps past Nord3)
 
 # == Line 1: Repo + Dir + Git =================================================
 line1=""
 
 # Repo link segment (clickable name on terminal bg)
 if [ -n "$repo_name" ]; then
-  line1="${line1}\e[48;2;${REPO_BG}m\e[38;2;${REPO_FG}m\e[22m  \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
+  line1="${line1}\e[48;2;${DARK_FG}m\e[38;2;${REPO_BG}m\e[48;2;${REPO_BG}m\e[38;2;${REPO_FG}m\e[22m  \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
   # Repo -> Dir transition
   line1="${line1}\e[48;2;${DIR_BG}m\e[38;2;${REPO_BG}m${A}"
+fi
+
+# No repo — glyph opens DIR segment directly
+if [ -z "$repo_name" ]; then
+  line1="${line1}\e[48;2;${DARK_FG}m\e[38;2;${DIR_BG}m"
 fi
 
 # Dir segment
@@ -181,9 +186,14 @@ line2=""
 
 # Model segment (opening pill, if present)
 if [ -n "$model" ]; then
-  line2="${line2}\e[48;2;${MODEL_BG}m\e[38;2;${MODEL_FG}m\e[22m ${model} "
+  line2="${line2}\e[48;2;${DARK_FG}m\e[38;2;${MODEL_BG}m\e[48;2;${MODEL_BG}m\e[38;2;${MODEL_FG}m\e[22m ${model} "
   # Model -> Cost transition
   line2="${line2}\e[48;2;${COST_BG}m\e[38;2;${MODEL_BG}m${A}"
+fi
+
+# No model — glyph opens COST segment directly
+if [ -z "$model" ]; then
+  line2="${line2}\e[48;2;${DARK_FG}m\e[38;2;${COST_BG}m"
 fi
 
 # Cost segment
