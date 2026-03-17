@@ -97,17 +97,12 @@ fi
 o=""
 
 if [ -n "$repo_name" ]; then
-  if [ "${pr_status:-none}" != "none" ]; then
-    # PR exists: GH icon on PR-status-colored bg, then arrow into PN2 for repo name
-    o="${o}$(bg $TERM_R $TERM_G $TERM_B)$(fg $pr_bg_r $pr_bg_g $pr_bg_b)${D}"
-    o="${o}$(bg $pr_bg_r $pr_bg_g $pr_bg_b)$(fg $pr_fg_r $pr_fg_g $pr_fg_b) ${GH} "
-    o="${o}$(bg $PN2_R $PN2_G $PN2_B)$(fg $pr_bg_r $pr_bg_g $pr_bg_b)${A}"
-    o="${o}$(fg $FG_L_R $FG_L_G $FG_L_B)${_ul_on}$(_osc8 "$repo_url")${repo_name}$(_osc8 "")${_ul_off} "
-  else
-    # No PR: single segment, GH icon + repo name on PN2 (original style)
-    o="${o}$(bg $TERM_R $TERM_G $TERM_B)$(fg $PN2_R $PN2_G $PN2_B)${D}"
-    o="${o}$(bg $PN2_R $PN2_G $PN2_B)$(fg $FG_L_R $FG_L_G $FG_L_B) ${GH} ${_ul_on}$(_osc8 "$repo_url")${repo_name}$(_osc8 "")${_ul_off} "
-  fi
+  # GH icon segment (bg colored by PR status, defaults to PN2 when no PR)
+  o="${o}$(bg $TERM_R $TERM_G $TERM_B)$(fg $pr_bg_r $pr_bg_g $pr_bg_b)${D}"
+  o="${o}$(bg $pr_bg_r $pr_bg_g $pr_bg_b)$(fg $pr_fg_r $pr_fg_g $pr_fg_b) ${GH} "
+  # Transition: GH icon bg -> PN2 for repo name
+  o="${o}$(bg $PN2_R $PN2_G $PN2_B)$(fg $pr_bg_r $pr_bg_g $pr_bg_b)${A}"
+  o="${o}$(fg $FG_L_R $FG_L_G $FG_L_B)${_ul_on}$(_osc8 "$repo_url")${repo_name}$(_osc8 "")${_ul_off} "
 else
   # Dir only: diagonal edge from term bg into PN2
   o="${o}$(bg $TERM_R $TERM_G $TERM_B)$(fg $PN2_R $PN2_G $PN2_B)${D}"

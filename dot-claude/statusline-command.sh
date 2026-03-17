@@ -60,6 +60,41 @@ if git rev-parse --git-dir > /dev/null 2>&1; then
 fi
 
 export STATUSLINE_WORKTREE="$worktree_name"
+
+# -- PR check status (cached 60s) ---------------------------------------------
+PR_BG="67;76;94"
+PR_FG="236;239;244"
+if [ -n "$repo_name" ] && command -v gh >/dev/null 2>&1; then
+  _branch=$(git branch --show-current 2>/dev/null)
+  if [ -n "$_branch" ]; then
+    _cache_dir="/tmp/git-pr-status"
+    _repo_id=$(git rev-parse --show-toplevel 2>/dev/null | tr '/' '_')
+    _cache_file="${_cache_dir}/${_repo_id}_${_branch}"
+    _now=$(date +%s)
+    _ttl=60
+    pr_status="none"
+
+    if [ -f "$_cache_file" ]; then
+      _cached_time=$(head -1 "$_cache_file")
+      _age=$(( _now - ${_cached_time:-0} ))
+      if [ "$_age" -lt "$_ttl" ]; then
+        pr_status=$(tail -1 "$_cache_file")
+      fi
+    fi
+
+    if [ "$pr_status" = "none" ]; then
+      mkdir -p "$_cache_dir"
+      pr_status=$(gh pr checks --json state --jq 'if length == 0 then "none" elif all(.state == "SUCCESS") then "pass" elif any(.state == "FAILURE" or .state == "CANCELLED") then "fail" else "pending" end' 2>/dev/null || echo "none")
+      printf "%s\n%s" "$_now" "$pr_status" > "$_cache_file"
+    fi
+
+    case "$pr_status" in
+      pass)    PR_BG="163;190;140"; PR_FG="46;52;64" ;;
+      pending) PR_BG="235;203;139"; PR_FG="46;52;64" ;;
+      fail)    PR_BG="191;97;106";  PR_FG="236;239;244" ;;
+    esac
+  fi
+fi
 # -- PR check status (cached 60s) ---------------------------------------------
 PR_BG="67;76;94"
 PR_FG="236;239;244"
@@ -141,7 +176,7 @@ if [ -n "$repo_name" ]; then
     line1="${line1}\e[48;2;${DARK_FG}m\e[38;2;${PR_BG}m\e[48;2;${PR_BG}m\e[38;2;${PR_FG}m\e[22m  \e[48;2;${REPO_BG}m\e[38;2;${PR_BG}m\e[38;2;${REPO_FG}m\e[22m \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
   else
     # No PR: single segment, GH icon + repo name on REPO_BG (original style)
-    line1="${line1}\e[48;2;${DARK_FG}m\e[38;2;${REPO_BG}m\e[48;2;${REPO_BG}m\e[38;2;${REPO_FG}m\e[22m  \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
+    line1="${line1}\e[48;2;${DARK_FG}m\e[38;2;${PR_BG}m\e[48;2;${PR_BG}m\e[38;2;${PR_FG}m\e[22m  \e[48;2;${REPO_BG}m\e[38;2;${PR_BG}m\e[38;2;${REPO_FG}m \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
   fi
 else
   # Dir segment (dark bg, light text)
