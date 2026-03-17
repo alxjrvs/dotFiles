@@ -23,8 +23,8 @@ shell = ["sh"]
 ignore_timeout = true
 
 [character]
-success_symbol = "[╰─](fg:#4C566A) [❯](fg:#ECEFF4)"
-error_symbol = "[╰─](fg:#4C566A) [❯](fg:#BF616A)"
+success_symbol = "[╰─](fg:#ECEFF4) [❯](fg:#ECEFF4)"
+error_symbol = "[╰─](fg:#ECEFF4) [❯](fg:#BF616A)"
 
 [cmd_duration]
 disabled = true
