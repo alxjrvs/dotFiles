@@ -1,8 +1,9 @@
 # Nord prompt — requires a Nerd Font
-# Powerline: REPO(PN2) -> DIR(SS1) -> BRANCH(PN1) -> git pips
+# Powerline: REPO or DIR (PN2) -> BRANCH (SS1) -> git pips
 # Matches Claude statusline line 1 layout
 
-format = """${custom.prompt_head}${custom.git_segment}$character"""
+format = """${custom.prompt_head}${custom.git_segment}
+$character"""
 
 add_newline = true
 command_timeout = 1000
@@ -22,8 +23,8 @@ shell = ["sh"]
 ignore_timeout = true
 
 [character]
-success_symbol = "[❯](fg:#ECEFF4)"
-error_symbol = "[❯](fg:#BF616A)"
+success_symbol = "[╰─](fg:#4C566A) [❯](fg:#ECEFF4)"
+error_symbol = "[╰─](fg:#4C566A) [❯](fg:#BF616A)"
 
 [cmd_duration]
 disabled = true
