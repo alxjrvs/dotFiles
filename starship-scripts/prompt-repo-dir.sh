@@ -1,7 +1,7 @@
 #!/bin/sh
-# prompt-repo-dir.sh — Repo link + directory powerline segment for starship
-# Outputs: [/PN2][GH REPO on PN2][PN2→SS1][DIR on SS1]
-# Leaves bg at SS1 (#D8DEE9) so git-powerline.sh can transition from there.
+# prompt-repo-dir.sh — Repo link OR directory powerline segment for starship
+# With remote: [/PN2][GH REPO on PN2]   Without: [/PN2][DIR on PN2]
+# Leaves bg at PN2 (#434C5E) so git-powerline.sh can transition from there.
 
 . "$HOME/dotFiles/theme.sh"
 
@@ -55,18 +55,14 @@ fi
 o=""
 
 if [ -n "$repo_name" ]; then
-  # Opening: diagonal edge from term bg into PN2
+  # Repo only: diagonal edge from term bg into PN2
   o="${o}$(bg $TERM_R $TERM_G $TERM_B)$(fg $PN2_R $PN2_G $PN2_B)${D}"
   # GitHub icon + repo name with OSC 8 hyperlink + underline
   o="${o}$(bg $PN2_R $PN2_G $PN2_B)$(fg $FG_L_R $FG_L_G $FG_L_B) ${GH} ${_ul_on}$(_osc8 "$repo_url")${repo_name}$(_osc8 "")${_ul_off} "
-  # PN2 -> SS1 transition
-  o="${o}$(bg $SS1_R $SS1_G $SS1_B)$(fg $PN2_R $PN2_G $PN2_B)${A}"
 else
-  # No repo: diagonal edge from term bg into SS1
-  o="${o}$(bg $TERM_R $TERM_G $TERM_B)$(fg $SS1_R $SS1_G $SS1_B)${D}"
+  # Dir only: diagonal edge from term bg into PN2
+  o="${o}$(bg $TERM_R $TERM_G $TERM_B)$(fg $PN2_R $PN2_G $PN2_B)${D}"
+  o="${o}$(bg $PN2_R $PN2_G $PN2_B)$(fg $FG_L_R $FG_L_G $FG_L_B) ${dir_display} "
 fi
-
-# Dir content (SS1 bg, dark text) - no closing arrow, git-powerline.sh handles transition
-o="${o}$(bg $SS1_R $SS1_G $SS1_B)$(fg $FG_D_R $FG_D_G $FG_D_B) ${dir_display} "
 
 printf '%s' "$o"

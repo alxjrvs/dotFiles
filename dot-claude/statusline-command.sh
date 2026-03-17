@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Claude Code status line - two rows:
-#   Line 1: [repo link][dir][git branch][worktree?][git pips]
+#   Line 1: [repo link OR dir][git branch][worktree?][git pips]
 #   Line 2: [cost][time][context bar][model]
 
 input=$(cat)
@@ -67,7 +67,7 @@ A=''  # solid arrow
 T=''  # thin separator
 
 # Alternating Polar Night / Snow Storm, offset between rows
-# Line 1: REPO=PN2, DIR=SS1, BRANCH=PN1 (handled by git-powerline.sh)
+# Line 1: REPO/DIR=PN2 (dark), BRANCH=SS1 (light, handled by git-powerline.sh)
 # Line 2: MODEL=SS1, COST=PN2, TIME=SS2, CONTEXT=PN1
 DARK_FG="46;52;64"         # #2E3440 Nord0
 TXT="236;239;244"          # #ECEFF4 Nord6 (light text on dark bg)
@@ -76,8 +76,8 @@ TXT_DARK="46;52;64"        # #2E3440 Nord0 (dark text on light bg)
 REPO_BG="67;76;94"            # #434C5E Nord2 (Polar Night 2)
 REPO_FG="${TXT}"
 
-DIR_BG="216;222;233"       # #D8DEE9 Nord4 (Snow Storm 1)
-DIR_FG="${TXT_DARK}"
+DIR_BG="67;76;94"          # #434C5E Nord2 (Polar Night 2, matches REPO)
+DIR_FG="${TXT}"
 
 MODEL_BG="216;222;233"     # #D8DEE9 Nord4 (Snow Storm 1)
 MODEL_FG="${TXT_DARK}"
@@ -90,25 +90,18 @@ TIME_FG="${TXT_DARK}"
 
 LIGHT_BG="59;66;82"        # #3B4252 Nord1 (Polar Night 1, CONTEXT label)
 
-# == Line 1: Repo + Dir + Git =================================================
+# == Line 1: Repo OR Dir + Git =================================================
 line1=""
 
-# Repo link segment (clickable name on terminal bg)
 if [ -n "$repo_name" ]; then
+  # Repo segment (clickable name, dark bg)
   line1="${line1}\e[48;2;${DARK_FG}m\e[38;2;${REPO_BG}m\e[48;2;${REPO_BG}m\e[38;2;${REPO_FG}m\e[22m  \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
-  # Repo -> Dir transition
-  line1="${line1}\e[48;2;${DIR_BG}m\e[38;2;${REPO_BG}m${A}"
+else
+  # Dir segment (dark bg, light text)
+  line1="${line1}\e[48;2;${DARK_FG}m\e[38;2;${DIR_BG}m\e[48;2;${DIR_BG}m\e[38;2;${DIR_FG}m\e[22m ${dir_display} "
 fi
 
-# No repo — glyph opens DIR segment directly
-if [ -z "$repo_name" ]; then
-  line1="${line1}\e[48;2;${DARK_FG}m\e[38;2;${DIR_BG}m"
-fi
-
-# Dir segment
-line1="${line1}\e[48;2;${DIR_BG}m\e[38;2;${DIR_FG}m\e[22m ${dir_display} "
-
-# Git or dir closing arrow
+# Git or segment closing arrow
 if [ -n "$git_seg" ]; then
   printf "%b%s\n" "$line1" "$git_seg"
 else
