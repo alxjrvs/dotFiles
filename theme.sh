@@ -23,6 +23,11 @@ NOVA_GIT_AHEAD="#D08770"     # Ahead     Nord 12 — Aurora orange  R208 G135 B1
 NOVA_GIT_BEHIND="#5E81AC"    # Behind    Nord 10 — Frost dark     R94  G129 B172
 NOVA_GIT_CLEAN="#A3BE8C"     # Clean     Nord 14 — Aurora green   R163 G190 B140
 
+# PR check status (colors the  icon in branch pill)
+NOVA_PR_PASS="#A3BE8C"       # Passing   Nord 14 — Aurora green   R163 G190 B140
+NOVA_PR_PENDING="#EBCB8B"    # Pending   Nord 13 — Aurora amber   R235 G203 B139
+NOVA_PR_FAIL="#BF616A"       # Failed    Nord 11 — Aurora red     R191 G97  B106
+
 # RGB components for ANSI 24-bit escape codes (git-powerline.sh)
 NOVA_BG_R=46;  NOVA_BG_G=52;   NOVA_BG_B=64
 NOVA_FG_R=236; NOVA_FG_G=239;  NOVA_FG_B=244
@@ -34,6 +39,9 @@ NOVA_GIT_UNTRACKED_R=129; NOVA_GIT_UNTRACKED_G=161; NOVA_GIT_UNTRACKED_B=193
 NOVA_GIT_AHEAD_R=208;     NOVA_GIT_AHEAD_G=135;     NOVA_GIT_AHEAD_B=112
 NOVA_GIT_BEHIND_R=94;     NOVA_GIT_BEHIND_G=129;    NOVA_GIT_BEHIND_B=172
 NOVA_GIT_CLEAN_R=163;     NOVA_GIT_CLEAN_G=190;     NOVA_GIT_CLEAN_B=140
+NOVA_PR_PASS_R=163;       NOVA_PR_PASS_G=190;       NOVA_PR_PASS_B=140
+NOVA_PR_PENDING_R=235;    NOVA_PR_PENDING_G=203;    NOVA_PR_PENDING_B=139
+NOVA_PR_FAIL_R=191;       NOVA_PR_FAIL_G=97;        NOVA_PR_FAIL_B=106
 
 # ── Prompt / pane segments ───────────────────────────────────────────────────
 NOVA_DIR="#D8DEE9"         # Directory — Nord 4 (Snow Storm 1)

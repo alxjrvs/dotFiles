@@ -36,6 +36,48 @@ if git rev-parse --git-dir > /dev/null 2>&1; then
   fi
 fi
 
+
+# -- PR check status (cached 60s) ---------------------------------------------
+pr_bg_r=$PN2_R; pr_bg_g=$PN2_G; pr_bg_b=$PN2_B  # default: same as segment
+pr_fg_r=$FG_L_R; pr_fg_g=$FG_L_G; pr_fg_b=$FG_L_B  # default: light text on dark bg
+if [ -n "$repo_name" ] && command -v gh >/dev/null 2>&1; then
+  _cache_dir="/tmp/git-pr-status"
+  _branch=$(git branch --show-current 2>/dev/null)
+  if [ -n "$_branch" ]; then
+    _repo_id=$(git rev-parse --show-toplevel 2>/dev/null | tr '/' '_')
+    _cache_file="${_cache_dir}/${_repo_id}_${_branch}"
+    _now=$(date +%s)
+    _ttl=60
+    pr_status="none"
+
+    if [ -f "$_cache_file" ]; then
+      _cached_time=$(head -1 "$_cache_file")
+      _age=$(( _now - ${_cached_time:-0} ))
+      if [ "$_age" -lt "$_ttl" ]; then
+        pr_status=$(tail -1 "$_cache_file")
+      fi
+    fi
+
+    if [ "$pr_status" = "none" ]; then
+      mkdir -p "$_cache_dir"
+      pr_status=$(gh pr checks --json state --jq '
+        if length == 0 then "none"
+        elif all(.state == "SUCCESS") then "pass"
+        elif any(.state == "FAILURE" or .state == "CANCELLED") then "fail"
+        else "pending"
+        end
+      ' 2>/dev/null || echo "none")
+      printf '%s
+%s' "$_now" "$pr_status" > "$_cache_file"
+    fi
+
+    case "$pr_status" in
+      pass)    pr_bg_r=$NOVA_PR_PASS_R;    pr_bg_g=$NOVA_PR_PASS_G;    pr_bg_b=$NOVA_PR_PASS_B;    pr_fg_r=$FG_D_R; pr_fg_g=$FG_D_G; pr_fg_b=$FG_D_B ;;
+      pending) pr_bg_r=$NOVA_PR_PENDING_R; pr_bg_g=$NOVA_PR_PENDING_G; pr_bg_b=$NOVA_PR_PENDING_B; pr_fg_r=$FG_D_R; pr_fg_g=$FG_D_G; pr_fg_b=$FG_D_B ;;
+      fail)    pr_bg_r=$NOVA_PR_FAIL_R;    pr_bg_g=$NOVA_PR_FAIL_G;    pr_bg_b=$NOVA_PR_FAIL_B;    pr_fg_r=$FG_L_R; pr_fg_g=$FG_L_G; pr_fg_b=$FG_L_B ;;
+    esac
+  fi
+fi
 # -- Directory (last 2 components, ~/ prefix) ----------------------------------
 cwd=$(pwd)
 _home="${HOME:-$(eval echo ~)}"
@@ -55,10 +97,17 @@ fi
 o=""
 
 if [ -n "$repo_name" ]; then
-  # Repo only: diagonal edge from term bg into PN2
-  o="${o}$(bg $TERM_R $TERM_G $TERM_B)$(fg $PN2_R $PN2_G $PN2_B)${D}"
-  # GitHub icon + repo name with OSC 8 hyperlink + underline
-  o="${o}$(bg $PN2_R $PN2_G $PN2_B)$(fg $FG_L_R $FG_L_G $FG_L_B) ${GH} ${_ul_on}$(_osc8 "$repo_url")${repo_name}$(_osc8 "")${_ul_off} "
+  if [ "${pr_status:-none}" != "none" ]; then
+    # PR exists: GH icon on PR-status-colored bg, then arrow into PN2 for repo name
+    o="${o}$(bg $TERM_R $TERM_G $TERM_B)$(fg $pr_bg_r $pr_bg_g $pr_bg_b)${D}"
+    o="${o}$(bg $pr_bg_r $pr_bg_g $pr_bg_b)$(fg $pr_fg_r $pr_fg_g $pr_fg_b) ${GH} "
+    o="${o}$(bg $PN2_R $PN2_G $PN2_B)$(fg $pr_bg_r $pr_bg_g $pr_bg_b)${A}"
+    o="${o}$(fg $FG_L_R $FG_L_G $FG_L_B)${_ul_on}$(_osc8 "$repo_url")${repo_name}$(_osc8 "")${_ul_off} "
+  else
+    # No PR: single segment, GH icon + repo name on PN2 (original style)
+    o="${o}$(bg $TERM_R $TERM_G $TERM_B)$(fg $PN2_R $PN2_G $PN2_B)${D}"
+    o="${o}$(bg $PN2_R $PN2_G $PN2_B)$(fg $FG_L_R $FG_L_G $FG_L_B) ${GH} ${_ul_on}$(_osc8 "$repo_url")${repo_name}$(_osc8 "")${_ul_off} "
+  fi
 else
   # Dir only: diagonal edge from term bg into PN2
   o="${o}$(bg $TERM_R $TERM_G $TERM_B)$(fg $PN2_R $PN2_G $PN2_B)${D}"
