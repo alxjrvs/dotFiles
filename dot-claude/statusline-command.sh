@@ -62,8 +62,8 @@ fi
 export STATUSLINE_WORKTREE="$worktree_name"
 
 # -- PR check status (cached 60s) ---------------------------------------------
-PR_BG="67;76;94"
-PR_FG="236;239;244"
+PR_BG="216;222;233"
+PR_FG="46;52;64"
 if [ -n "$repo_name" ] && command -v gh >/dev/null 2>&1; then
   _branch=$(git branch --show-current 2>/dev/null)
   if [ -n "$_branch" ]; then
@@ -144,7 +144,7 @@ if [ -n "$repo_name" ]; then
     line1="${line1}\e[48;2;${DARK_FG}m\e[38;2;${PR_BG}m\e[48;2;${PR_BG}m\e[38;2;${PR_FG}m\e[22m \e]8;;${pr_url}\a\e]8;;\a \e[48;2;${REPO_BG}m\e[38;2;${PR_BG}m\e[38;2;${REPO_FG}m\e[22m \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
   else
     # No PR: single segment, GH icon + repo name on REPO_BG (original style)
-    line1="${line1}\e[48;2;${DARK_FG}m\e[38;2;${PR_BG}m\e[48;2;${PR_BG}m\e[38;2;${PR_FG}m\e[22m  \e[48;2;${REPO_BG}m\e[38;2;${PR_BG}m\e[38;2;${REPO_FG}m  \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
+    line1="${line1}\e[48;2;${DARK_FG}m\e[38;2;${PR_BG}m\e[48;2;${PR_BG}m\e[38;2;${PR_FG}m\e[22m  \e[48;2;${REPO_BG}m\e[38;2;${PR_BG}m\e[38;2;${REPO_FG}m \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
   fi
 else
   # Dir segment (dark bg, light text)

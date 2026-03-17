@@ -38,7 +38,7 @@ fi
 
 
 # -- PR check status (cached 60s) ---------------------------------------------
-pr_bg_r=$FG_L_R; pr_bg_g=$FG_L_G; pr_bg_b=$FG_L_B  # default: white bg (no PR)
+pr_bg_r=$SS1_R; pr_bg_g=$SS1_G; pr_bg_b=$SS1_B  # default: model bg (no PR)
 pr_fg_r=$FG_D_R; pr_fg_g=$FG_D_G; pr_fg_b=$FG_D_B  # default: dark logo on white bg
 if [ -n "$repo_name" ] && command -v gh >/dev/null 2>&1; then
   _cache_dir="/tmp/git-pr-status"
@@ -108,11 +108,7 @@ if [ -n "$repo_name" ]; then
   fi
   # Transition: GH icon bg -> PN2 for repo name
   o="${o}$(bg $PN2_R $PN2_G $PN2_B)$(fg $pr_bg_r $pr_bg_g $pr_bg_b)${A}"
-  if [ -n "$pr_url" ]; then
-    o="${o}$(fg $FG_L_R $FG_L_G $FG_L_B)${_ul_on}$(_osc8 "$repo_url")${repo_name}$(_osc8 "")${_ul_off} "
-  else
-    o="${o}$(fg $FG_L_R $FG_L_G $FG_L_B) ${_ul_on}$(_osc8 "$repo_url")${repo_name}$(_osc8 "")${_ul_off} "
-  fi
+  o="${o}$(fg $FG_L_R $FG_L_G $FG_L_B) ${_ul_on}$(_osc8 "$repo_url")${repo_name}$(_osc8 "")${_ul_off} "
 else
   # Dir only: diagonal edge from term bg into PN2
   o="${o}$(bg $TERM_R $TERM_G $TERM_B)$(fg $PN2_R $PN2_G $PN2_B)${D}"

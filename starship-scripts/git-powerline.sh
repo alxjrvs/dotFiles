@@ -68,7 +68,7 @@ A=""
 # ── Branch pill ────────────────────────────────────────────────────────────
 o=""
 # Opening arrow: segment bg (Nord2 #434C5E) -> branch bg (Nord4 #D8DEE9)
-o="${o}$(bg $BR_R $BR_G $BR_B)$(fg 67 76 94)${A}"
+o="${o}$(bg 67 76 94) $(bg $BR_R $BR_G $BR_B)$(fg 67 76 94)${A}"
 # Branch text (dark on light)
 o="${o}$(bg $BR_R $BR_G $BR_B)$(fg $BG_R $BG_G $BG_B) ${branch} "
 
