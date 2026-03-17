@@ -274,6 +274,7 @@ fi
 if should_run symlinks shell; then
 link "$DOTFILES_DIR/.zshrc"              "$HOME/.zshrc"              ".zshrc"
 link "$DOTFILES_DIR/.zprofile"           "$HOME/.zprofile"           ".zprofile"
+link "$DOTFILES_DIR/.zshenv"             "$HOME/.zshenv"             ".zshenv"
 link "$DOTFILES_DIR/.hushlogin"          "$HOME/.hushlogin"          ".hushlogin"
 # Secrets file — gitignored, bootstrapped from .secrets.example
 if [ ! -f "$DOTFILES_DIR/.secrets" ]; then
