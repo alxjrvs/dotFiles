@@ -38,8 +38,8 @@ fi
 
 
 # -- PR check status (cached 60s) ---------------------------------------------
-pr_bg_r=$PN2_R; pr_bg_g=$PN2_G; pr_bg_b=$PN2_B  # default: same as segment
-pr_fg_r=$FG_L_R; pr_fg_g=$FG_L_G; pr_fg_b=$FG_L_B  # default: light text on dark bg
+pr_bg_r=$FG_L_R; pr_bg_g=$FG_L_G; pr_bg_b=$FG_L_B  # default: white bg (no PR)
+pr_fg_r=$FG_D_R; pr_fg_g=$FG_D_G; pr_fg_b=$FG_D_B  # default: dark logo on white bg
 if [ -n "$repo_name" ] && command -v gh >/dev/null 2>&1; then
   _cache_dir="/tmp/git-pr-status"
   _branch=$(git branch --show-current 2>/dev/null)
@@ -49,12 +49,14 @@ if [ -n "$repo_name" ] && command -v gh >/dev/null 2>&1; then
     _now=$(date +%s)
     _ttl=60
     pr_status="none"
+    pr_url=""
 
     if [ -f "$_cache_file" ]; then
       _cached_time=$(head -1 "$_cache_file")
       _age=$(( _now - ${_cached_time:-0} ))
       if [ "$_age" -lt "$_ttl" ]; then
-        pr_status=$(tail -1 "$_cache_file")
+        pr_status=$(sed -n '2p' "$_cache_file")
+        pr_url=$(sed -n '3p' "$_cache_file")
       fi
     fi
 
@@ -67,8 +69,8 @@ if [ -n "$repo_name" ] && command -v gh >/dev/null 2>&1; then
         else "pending"
         end
       ' 2>/dev/null || echo "none")
-      printf '%s
-%s' "$_now" "$pr_status" > "$_cache_file"
+      [ "$pr_status" != "none" ] && pr_url=$(gh pr view --json url --jq .url 2>/dev/null || echo "")
+      printf '%s\n%s\n%s' "$_now" "$pr_status" "$pr_url" > "$_cache_file"
     fi
 
     case "$pr_status" in
@@ -99,10 +101,18 @@ o=""
 if [ -n "$repo_name" ]; then
   # GH icon segment (bg colored by PR status, defaults to PN2 when no PR)
   o="${o}$(bg $TERM_R $TERM_G $TERM_B)$(fg $pr_bg_r $pr_bg_g $pr_bg_b)${D}"
-  o="${o}$(bg $pr_bg_r $pr_bg_g $pr_bg_b)$(fg $pr_fg_r $pr_fg_g $pr_fg_b) ${GH} "
+  if [ -n "$pr_url" ]; then
+    o="${o}$(bg $pr_bg_r $pr_bg_g $pr_bg_b)$(fg $pr_fg_r $pr_fg_g $pr_fg_b) $(_osc8 "$pr_url")${GH}$(_osc8 "") "
+  else
+    o="${o}$(bg $pr_bg_r $pr_bg_g $pr_bg_b)$(fg $pr_fg_r $pr_fg_g $pr_fg_b) ${GH} "
+  fi
   # Transition: GH icon bg -> PN2 for repo name
   o="${o}$(bg $PN2_R $PN2_G $PN2_B)$(fg $pr_bg_r $pr_bg_g $pr_bg_b)${A}"
-  o="${o}$(fg $FG_L_R $FG_L_G $FG_L_B)${_ul_on}$(_osc8 "$repo_url")${repo_name}$(_osc8 "")${_ul_off} "
+  if [ -n "$pr_url" ]; then
+    o="${o}$(fg $FG_L_R $FG_L_G $FG_L_B)${_ul_on}$(_osc8 "$repo_url")${repo_name}$(_osc8 "")${_ul_off} "
+  else
+    o="${o}$(fg $FG_L_R $FG_L_G $FG_L_B) ${_ul_on}$(_osc8 "$repo_url")${repo_name}$(_osc8 "")${_ul_off} "
+  fi
 else
   # Dir only: diagonal edge from term bg into PN2
   o="${o}$(bg $TERM_R $TERM_G $TERM_B)$(fg $PN2_R $PN2_G $PN2_B)${D}"
