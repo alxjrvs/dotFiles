@@ -47,7 +47,7 @@ if [ -n "$repo_name" ] && command -v gh >/dev/null 2>&1; then
     _repo_id=$(git rev-parse --show-toplevel 2>/dev/null | tr '/' '_')
     _cache_file="${_cache_dir}/${_repo_id}_${_branch}"
     _now=$(date +%s)
-    _ttl=60
+    _ttl=10
     pr_status="none"
     pr_url=""
 
