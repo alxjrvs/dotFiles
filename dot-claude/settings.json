@@ -157,5 +157,6 @@
         "@knip/mcp"
       ]
     }
-  }
+  },
+  "model": "sonnet"
 }
