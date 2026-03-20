@@ -2,7 +2,7 @@
 # Powerline: REPO or DIR (PN2) -> BRANCH (SS1) -> git pips
 # Matches Claude statusline line 1 layout
 
-format = """${custom.prompt_head}${custom.git_segment}"""
+format = """${custom.prompt_head}${custom.git_segment} """
 
 add_newline = false
 command_timeout = 1000

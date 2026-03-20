@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Claude Code status line - two rows:
 #   Line 1: [repo link OR dir][git branch][worktree?][git pips]
-#   Line 2: [cost][time][context bar][model]
+#   Line 2: [weekly remaining][time][context bar][model]
 
 input=$(cat)
 
@@ -14,8 +14,39 @@ duration_ms=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
 worktree_name=$(echo "$input" | jq -r '.worktree.name // empty')
 project_dir=$(echo "$input" | jq -r '.workspace.project_dir // empty')
 
-# -- Formatting ----------------------------------------------------------------
-cost_fmt=$(printf '$%.2f' "$cost_usd")
+# -- Weekly usage tracking -----------------------------------------------------
+WEEKLY_LIMIT=200
+_usage_dir="$HOME/.claude"
+_usage_log="${_usage_dir}/weekly-usage.log"
+_session_file="/tmp/claude-session-cost-$$-${PPID}"
+
+# Read last-recorded session cost to compute delta
+_last_cost=0
+[ -f "$_session_file" ] && _last_cost=$(cat "$_session_file")
+
+# Compute delta (new spend since last statusline call in this session)
+_delta=$(awk "BEGIN {d = $cost_usd - $_last_cost; print (d > 0.001) ? d : 0}")
+
+# Persist current session cost
+printf '%s' "$cost_usd" > "$_session_file"
+
+# Append delta to weekly log (format: YYYY-MM-DD amount)
+if [ "$(echo "$_delta > 0" | bc -l 2>/dev/null)" = "1" ]; then
+  _today=$(date +%Y-%m-%d)
+  printf '%s %s\n' "$_today" "$_delta" >> "$_usage_log"
+fi
+
+# Sum costs from the last 7 days
+_week_ago=$(date -v-7d +%Y-%m-%d 2>/dev/null || date -d '7 days ago' +%Y-%m-%d)
+_weekly_total=0
+if [ -f "$_usage_log" ]; then
+  _weekly_total=$(awk -v cutoff="$_week_ago" '$1 >= cutoff {s += $2} END {printf "%.2f", s}' "$_usage_log")
+  # Prune entries older than 7 days (in-place)
+  awk -v cutoff="$_week_ago" '$1 >= cutoff' "$_usage_log" > "${_usage_log}.tmp" && mv "${_usage_log}.tmp" "$_usage_log"
+fi
+
+_remaining=$(awk "BEGIN {r = $WEEKLY_LIMIT - $_weekly_total; printf \"%.0f\", (r > 0) ? r : 0}")
+cost_fmt="\$${_remaining} left"
 
 duration_sec=$(( ${duration_ms%%.*} / 1000 ))
 dur_hr=$(( duration_sec / 3600 ))
