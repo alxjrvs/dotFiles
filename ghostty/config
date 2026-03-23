@@ -35,7 +35,7 @@ copy-on-select = true
 # Scrollback
 scrollback-limit = 10000
 
-shell-integration = detect
+shell-integration = zsh
 
 # Keybindings
 keybind = ctrl+shift+w=close_surface

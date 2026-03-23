@@ -5,21 +5,19 @@
 format = """${custom.prompt_head}${custom.git_segment} """
 
 add_newline = false
-command_timeout = 1000
+command_timeout = 500
 
 [custom.prompt_head]
 command = "~/dotFiles/starship-scripts/prompt-repo-dir.sh"
-when = "true"
+when = true
 format = "$output"
 shell = ["sh"]
-ignore_timeout = true
 
 [custom.git_segment]
 command = "~/dotFiles/starship-scripts/git-powerline.sh"
-when = "true"
+when = true
 format = "$output"
 shell = ["sh"]
-ignore_timeout = true
 
 
 [cmd_duration]

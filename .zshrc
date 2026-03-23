@@ -42,11 +42,23 @@ fpath+=(/opt/homebrew/share/zsh/site-functions)
 
 autoload -Uz add-zsh-hook
 
+# Cached init helper — regenerates when the binary is updated.
+# Avoids subprocess spawn on every shell startup by caching init output.
+_cached_eval() {
+  local name="$1" cmd="$2" bin="$3"
+  local cache="${XDG_CACHE_HOME:-$HOME/.cache}/zsh-init/${name}.zsh"
+  if [[ ! -f "$cache" || "$bin" -nt "$cache" ]]; then
+    mkdir -p "${cache:h}"
+    command ${=cmd} > "$cache"
+  fi
+  source "$cache"
+}
+
 # Sheldon plugins (adds zsh-completions to fpath)
-eval "$(sheldon source)"
+_cached_eval sheldon "sheldon source" "$(command -v sheldon)"
 
 # Atuin shell history
-command -v atuin &>/dev/null && eval "$(atuin init zsh)"
+command -v atuin &>/dev/null && _cached_eval atuin "atuin init zsh" "$(command -v atuin)"
 
 # History substring search keybindings
 bindkey '^[[A' history-substring-search-up
@@ -91,12 +103,12 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 
 if command -v starship &>/dev/null; then
-  eval "$(starship init zsh)"
+  _cached_eval starship "starship init zsh" "$(command -v starship)"
 fi
 
 # fzf shell integration (modern)
 if command -v fzf &>/dev/null; then
-  eval "$(fzf --zsh)" 2>/dev/null
+  _cached_eval fzf "fzf --zsh" "$(command -v fzf)"
 fi
 export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40% --color=bg+:#3b4252,bg:#2e3440,spinner:#81a1c1,hl:#a3be8c,fg:#d8dee9,header:#a3be8c,info:#ebcb8b,pointer:#81a1c1,marker:#81a1c1,prompt:#81a1c1'
 export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
@@ -104,7 +116,7 @@ export FZF_CTRL_T_OPTS="--preview 'bat --color=always {}' --preview-window right
 export FZF_ALT_C_OPTS="--preview 'eza --icons -T {} | head -20'"
 
 # zoxide
-command -v zoxide &>/dev/null && eval "$(zoxide init zsh)"
+command -v zoxide &>/dev/null && _cached_eval zoxide "zoxide init zsh" "$(command -v zoxide)"
 
 # Aliases
 alias c="clear"
@@ -153,10 +165,10 @@ function sz()     { du -sh "${@:-.}" | sort -hr }
 
 
 # mise (tool version manager)
-command -v mise &>/dev/null && eval "$(mise activate zsh)"
+command -v mise &>/dev/null && _cached_eval mise "mise activate zsh" "$(command -v mise)"
 
 # direnv (per-directory environment)
-command -v direnv &>/dev/null && eval "$(direnv hook zsh)"
+command -v direnv &>/dev/null && _cached_eval direnv "direnv hook zsh" "$(command -v direnv)"
 
 # Colored man pages (CMYK)
 export LESS_TERMCAP_mb=$'\e[1;35m'

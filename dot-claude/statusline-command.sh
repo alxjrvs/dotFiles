@@ -5,14 +5,17 @@
 
 input=$(cat)
 
-model=$(echo "$input" | jq -r '.model.display_name // empty' | sed 's/ [0-9][0-9.]*//g')
-used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
-
-cost_usd=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
-duration_ms=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
-
-worktree_name=$(echo "$input" | jq -r '.worktree.name // empty')
-project_dir=$(echo "$input" | jq -r '.workspace.project_dir // empty')
+# Single jq call to extract all fields at once
+eval "$(echo "$input" | jq -r '
+  @sh "model=\(.model.display_name // "")",
+  @sh "used_pct=\(.context_window.used_percentage // "")",
+  @sh "cost_usd=\(.cost.total_cost_usd // 0)",
+  @sh "duration_ms=\(.cost.total_duration_ms // 0)",
+  @sh "worktree_name=\(.worktree.name // "")",
+  @sh "project_dir=\(.workspace.project_dir // "")",
+  @sh "cwd=\(.workspace.current_dir // "")"
+' | tr ',' '\n')"
+model=$(echo "$model" | sed 's/ [0-9][0-9.]*//g')
 
 # -- Weekly usage tracking -----------------------------------------------------
 WEEKLY_LIMIT=200
@@ -61,7 +64,6 @@ else
 fi
 
 # -- Directory -----------------------------------------------------------------
-cwd=$(echo "$input" | jq -r '.workspace.current_dir // empty')
 [ -n "$worktree_name" ] && [ -n "$project_dir" ] && cwd="$project_dir"
 [ -z "$cwd" ] && cwd=$(pwd)
 _home="${HOME:-$(eval echo ~)}"
@@ -92,7 +94,7 @@ fi
 
 export STATUSLINE_WORKTREE="$worktree_name"
 
-# -- PR check status (cached 60s) ---------------------------------------------
+# -- PR check status (async — reads shared cache from prompt-repo-dir.sh) ------
 PR_BG="216;222;233"
 PR_FG="46;52;64"
 if [ -n "$repo_name" ] && command -v gh >/dev/null 2>&1; then
@@ -101,31 +103,39 @@ if [ -n "$repo_name" ] && command -v gh >/dev/null 2>&1; then
     _cache_dir="/tmp/git-pr-status"
     _repo_id=$(git rev-parse --show-toplevel 2>/dev/null | tr '/' '_')
     _cache_file="${_cache_dir}/${_repo_id}_${_branch}"
+    _lock_file="${_cache_file}.lock"
     _now=$(date +%s)
-    _ttl=60
+    _ttl=30
     pr_status="none"
     pr_url=""
 
+    # Always read from cache (stale is fine — async refresh handles freshness)
     if [ -f "$_cache_file" ]; then
       _cached_time=$(head -1 "$_cache_file")
+      pr_status=$(sed -n '2p' "$_cache_file")
+      pr_url=$(sed -n '3p' "$_cache_file")
       _age=$(( _now - ${_cached_time:-0} ))
-      if [ "$_age" -lt "$_ttl" ]; then
-        pr_status=$(sed -n '2p' "$_cache_file")
-        pr_url=$(sed -n '3p' "$_cache_file")
-      fi
+    else
+      _age=999
     fi
 
-    if [ "$pr_status" = "none" ]; then
+    # If cache is stale, kick off a background refresh (non-blocking)
+    if [ "$_age" -ge "$_ttl" ] && ! [ -f "$_lock_file" ]; then
       mkdir -p "$_cache_dir"
-      pr_status=$(gh pr checks --json state --jq '
-        if length == 0 then "none"
-        elif all(.state == "SUCCESS") then "pass"
-        elif any(.state == "FAILURE" or .state == "CANCELLED") then "fail"
-        else "pending"
-        end
-      ' 2>/dev/null || echo "none")
-      [ "$pr_status" != "none" ] && pr_url=$(gh pr view --json url --jq .url 2>/dev/null || echo "")
-      printf "%s\n%s\n%s" "$_now" "$pr_status" "$pr_url" > "$_cache_file"
+      (
+        printf '%s' "$_now" > "$_lock_file"
+        _new_status=$(gh pr checks --json state --jq '
+          if length == 0 then "none"
+          elif all(.state == "SUCCESS") then "pass"
+          elif any(.state == "FAILURE" or .state == "CANCELLED") then "fail"
+          else "pending"
+          end
+        ' 2>/dev/null || echo "none")
+        _new_url=""
+        [ "$_new_status" != "none" ] && _new_url=$(gh pr view --json url --jq .url 2>/dev/null || echo "")
+        printf '%s\n%s\n%s' "$(date +%s)" "$_new_status" "$_new_url" > "$_cache_file"
+        rm -f "$_lock_file"
+      ) &
     fi
 
     case "$pr_status" in
