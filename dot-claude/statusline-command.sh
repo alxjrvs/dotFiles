@@ -151,7 +151,7 @@ else
   if [ -n "$worktree_name" ]; then
     _gs_WT_R=$NOVA_WORKTREE_R; _gs_WT_G=$NOVA_WORKTREE_G; _gs_WT_B=$NOVA_WORKTREE_B
     _gs_o="${_gs_o}$(_gbg $_gs_WT_R $_gs_WT_G $_gs_WT_B)$(_gfg $_gs_BR_R $_gs_BR_G $_gs_BR_B)${_gA}"
-    _gs_o="${_gs_o}$(_gfg $NOVA_FG_R $NOVA_FG_G $NOVA_FG_B) $worktree_name "
+    _gs_o="${_gs_o}$(_gfg $_gs_BG_R $_gs_BG_G $_gs_BG_B) $worktree_name "
     _gs_prev_r=$_gs_WT_R; _gs_prev_g=$_gs_WT_G; _gs_prev_b=$_gs_WT_B
   fi
 

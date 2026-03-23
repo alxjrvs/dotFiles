@@ -59,7 +59,7 @@ fi
 if [ -n "$STATUSLINE_WORKTREE" ]; then
   WT_R=$NOVA_WORKTREE_R; WT_G=$NOVA_WORKTREE_G; WT_B=$NOVA_WORKTREE_B
   o="${o}$(bg $WT_R $WT_G $WT_B)$(fg $BR_R $BR_G $BR_B)${A}"
-  o="${o}$(fg $NOVA_FG_R $NOVA_FG_G $NOVA_FG_B) $STATUSLINE_WORKTREE "
+  o="${o}$(fg $BG_R $BG_G $BG_B) $STATUSLINE_WORKTREE "
 fi
 
 # ── Render pips ────────────────────────────────────────────────────────────
