@@ -5,7 +5,12 @@
 
 input=$(cat)
 
-# Single jq call to extract all fields at once
+# -- Git data cache ------------------------------------------------------------
+bash "$HOME/dotFiles/starship-scripts/git-data.sh"
+# shellcheck disable=SC1090
+. "/tmp/git-data-cache-$(id -u).sh"
+
+# -- Single jq call to extract all fields at once
 eval "$(echo "$input" | jq -r '
   @sh "model=\(.model.display_name // "")",
   @sh "used_pct=\(.context_window.used_percentage // "")",
@@ -81,79 +86,90 @@ else
   dir_display="${_parts[$(( _n - 2 ))]}/${_parts[$(( _n - 1 ))]}"
 fi
 
-# -- Repo link ----------------------------------------------------------------
-repo_url=""
-repo_name=""
-if git rev-parse --git-dir > /dev/null 2>&1; then
-  _remote=$(git remote get-url origin 2>/dev/null)
-  if [ -n "$_remote" ]; then
-    repo_url=$(echo "$_remote" | sed 's|git@github.com:|https://github.com/|' | sed 's|\.git$||')
-    repo_name=$(basename "$repo_url")
-  fi
-fi
+# -- Repo link (from cache) ---------------------------------------------------
+repo_url="${GIT_REPO_HTTPS:-}"
+repo_name="${GIT_REPO_NAME:-}"
 
 export STATUSLINE_WORKTREE="$worktree_name"
 
-# -- PR check status (async — reads shared cache from prompt-repo-dir.sh) ------
+# -- PR status (from cache) ---------------------------------------------------
 PR_BG="216;222;233"
 PR_FG="46;52;64"
-if [ -n "$repo_name" ] && command -v gh >/dev/null 2>&1; then
-  _branch=$(git branch --show-current 2>/dev/null)
-  if [ -n "$_branch" ]; then
-    _cache_dir="/tmp/git-pr-status"
-    _repo_id=$(git rev-parse --show-toplevel 2>/dev/null | tr '/' '_')
-    _cache_file="${_cache_dir}/${_repo_id}_${_branch}"
-    _lock_file="${_cache_file}.lock"
-    _now=$(date +%s)
-    _ttl=30
-    pr_status="none"
-    pr_url=""
+pr_status="${GIT_PR_STATUS:-none}"
+pr_url="${GIT_PR_URL:-}"
 
-    # Always read from cache (stale is fine — async refresh handles freshness)
-    if [ -f "$_cache_file" ]; then
-      _cached_time=$(head -1 "$_cache_file")
-      pr_status=$(sed -n '2p' "$_cache_file")
-      pr_url=$(sed -n '3p' "$_cache_file")
-      _age=$(( _now - ${_cached_time:-0} ))
-    else
-      _age=999
-    fi
+case "$pr_status" in
+  pass)    PR_BG="163;190;140"; PR_FG="46;52;64" ;;
+  pending) PR_BG="235;203;139"; PR_FG="46;52;64" ;;
+  fail)    PR_BG="191;97;106";  PR_FG="236;239;244" ;;
+esac
 
-    # If cache is stale, kick off a background refresh (non-blocking)
-    if [ "$_age" -ge "$_ttl" ] && ! [ -f "$_lock_file" ]; then
-      mkdir -p "$_cache_dir"
-      (
-        printf '%s' "$_now" > "$_lock_file"
-        _new_status=$(gh pr checks --json state --jq '
-          if length == 0 then "none"
-          elif all(.state == "SUCCESS") then "pass"
-          elif any(.state == "FAILURE" or .state == "CANCELLED") then "fail"
-          else "pending"
-          end
-        ' 2>/dev/null || echo "none")
-        _new_url=""
-        [ "$_new_status" != "none" ] && _new_url=$(gh pr view --json url --jq .url 2>/dev/null || echo "")
-        printf '%s\n%s\n%s' "$(date +%s)" "$_new_status" "$_new_url" > "$_cache_file"
-        rm -f "$_lock_file"
-      ) &
-    fi
+# -- Git segment (inline rendering from cache) --------------------------------
+. "$HOME/dotFiles/theme.sh"
 
-    case "$pr_status" in
-      pass)    PR_BG="163;190;140"; PR_FG="46;52;64" ;;
-      pending) PR_BG="235;203;139"; PR_FG="46;52;64" ;;
-      fail)    PR_BG="191;97;106";  PR_FG="236;239;244" ;;
-    esac
+_gfg() { printf '\033[38;2;%d;%d;%dm' "$1" "$2" "$3"; }
+_gbg() { printf '\033[48;2;%d;%d;%dm' "$1" "$2" "$3"; }
+_grst() { printf '\033[0m'; }
+_gA=""
+
+_gs_branch="${GIT_BRANCH:-}"
+[ -z "$_gs_branch" ] && _gs_branch="-"
+_gs_BG_R=$NOVA_BG_R; _gs_BG_G=$NOVA_BG_G; _gs_BG_B=$NOVA_BG_B
+_gs_BR_R=$NOVA_BRANCH_R; _gs_BR_G=$NOVA_BRANCH_G; _gs_BR_B=$NOVA_BRANCH_B
+_gs_o=""
+
+# Opening arrow: Nord2 -> branch bg (Nord4)
+_gs_o="${_gs_o}$(_gbg 67 76 94) $(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg 67 76 94)${_gA}"
+# Branch text
+_gs_o="${_gs_o}$(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg $_gs_BG_R $_gs_BG_G $_gs_BG_B) ${_gs_branch} "
+
+if [ -z "${GIT_IS_REPO:-}" ]; then
+  # No git repo — close pill
+  _gs_o="${_gs_o}$(_grst)$(_gfg $_gs_BR_R $_gs_BR_G $_gs_BR_B)${_gA}$(_grst)"
+  git_seg="$_gs_o"
+else
+  # Track previous segment color for seamless powerline transitions
+  _gs_prev_r=$_gs_BR_R; _gs_prev_g=$_gs_BR_G; _gs_prev_b=$_gs_BR_B
+
+  # Worktree indicator
+  if [ -n "$worktree_name" ]; then
+    _gs_WT_R=$NOVA_WORKTREE_R; _gs_WT_G=$NOVA_WORKTREE_G; _gs_WT_B=$NOVA_WORKTREE_B
+    _gs_o="${_gs_o}$(_gbg $_gs_WT_R $_gs_WT_G $_gs_WT_B)$(_gfg $_gs_BR_R $_gs_BR_G $_gs_BR_B)${_gA}"
+    _gs_o="${_gs_o}$(_gfg $NOVA_FG_R $NOVA_FG_G $NOVA_FG_B) $worktree_name "
+    _gs_prev_r=$_gs_WT_R; _gs_prev_g=$_gs_WT_G; _gs_prev_b=$_gs_WT_B
   fi
-fi
 
-git_seg=$(~/dotFiles/starship-scripts/git-powerline.sh --no-prompt 2>/dev/null)
+  _gs_has_pips=0
+
+  # Pip macro: _gs_pip R G B "label"
+  _gs_pip() {
+    _gs_o="${_gs_o}$(_gbg "$1" "$2" "$3")$(_gfg $_gs_prev_r $_gs_prev_g $_gs_prev_b)${_gA}"
+    _gs_o="${_gs_o}$(_gfg $_gs_BG_R $_gs_BG_G $_gs_BG_B) ${4} "
+    _gs_prev_r=$1; _gs_prev_g=$2; _gs_prev_b=$3
+    _gs_has_pips=1
+  }
+
+  [ "${GIT_STASH_COUNT:-0}" -gt 0 ]    && _gs_pip $NOVA_GIT_STASH_R    $NOVA_GIT_STASH_G    $NOVA_GIT_STASH_B    "\$${GIT_STASH_COUNT}"
+  [ "${GIT_CONFLICT_COUNT:-0}" -gt 0 ] && _gs_pip $NOVA_GIT_CONFLICT_R  $NOVA_GIT_CONFLICT_G  $NOVA_GIT_CONFLICT_B  "!${GIT_CONFLICT_COUNT}"
+  [ "${GIT_UNTRACKED_COUNT:-0}" -gt 0 ] && _gs_pip $NOVA_GIT_UNTRACKED_R $NOVA_GIT_UNTRACKED_G $NOVA_GIT_UNTRACKED_B "?${GIT_UNTRACKED_COUNT}"
+  [ "${GIT_UNSTAGED_COUNT:-0}" -gt 0 ] && _gs_pip $NOVA_GIT_UNSTAGED_R  $NOVA_GIT_UNSTAGED_G  $NOVA_GIT_UNSTAGED_B  "~${GIT_UNSTAGED_COUNT}"
+  [ "${GIT_STAGED_COUNT:-0}" -gt 0 ]   && _gs_pip $NOVA_GIT_STAGED_R    $NOVA_GIT_STAGED_G    $NOVA_GIT_STAGED_B    "+${GIT_STAGED_COUNT}"
+  [ "${GIT_AHEAD:-0}" -gt 0 ]          && _gs_pip $NOVA_GIT_AHEAD_R     $NOVA_GIT_AHEAD_G     $NOVA_GIT_AHEAD_B     "$(printf '\xe2\x86\x91')${GIT_AHEAD}"
+  [ "${GIT_BEHIND:-0}" -gt 0 ]         && _gs_pip $NOVA_GIT_BEHIND_R    $NOVA_GIT_BEHIND_G    $NOVA_GIT_BEHIND_B    "$(printf '\xe2\x86\x93')${GIT_BEHIND}"
+
+  [ "$_gs_has_pips" -eq 0 ] && _gs_pip $NOVA_GIT_CLEAN_R $NOVA_GIT_CLEAN_G $NOVA_GIT_CLEAN_B "$(printf '\xe2\x9c\x93')"
+
+  # Closing arrow
+  _gs_o="${_gs_o}$(_grst)$(_gfg $_gs_prev_r $_gs_prev_g $_gs_prev_b)${_gA}$(_grst)"
+  git_seg="$_gs_o"
+fi
 
 # -- Colors --------------------------------------------------------------------
 A=''  # solid arrow
 T=''  # thin separator
 
 # Alternating Polar Night / Snow Storm, offset between rows
-# Line 1: REPO/DIR=PN2 (dark), BRANCH=SS1 (light, handled by git-powerline.sh)
+# Line 1: REPO/DIR=PN2 (dark), BRANCH=SS1 (light, rendered inline)
 # Line 2: MODEL=SS1, COST=PN2, TIME=SS2, CONTEXT=PN1
 DARK_FG="46;52;64"         # #2E3440 Nord0
 TXT="236;239;244"          # #ECEFF4 Nord6 (light text on dark bg)
