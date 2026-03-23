@@ -26,17 +26,33 @@ model=$(echo "$model" | sed 's/ [0-9][0-9.]*//g')
 WEEKLY_LIMIT=200
 _usage_dir="$HOME/.claude"
 _usage_log="${_usage_dir}/weekly-usage.log"
-_session_file="/tmp/claude-session-cost-$$-${PPID}"
+_cost_file="/tmp/claude-statusline-cost-$(id -u).dat"
+
+# One-time migration: remove legacy per-PID session cost files
+rm -f /tmp/claude-session-cost-* 2>/dev/null || true
+
+# Stale PR cache cleanup (best-effort)
+if [ -d /tmp/git-pr-status ]; then
+  find /tmp/git-pr-status -maxdepth 1 -type f -not -name '*.lock' -mmin +60 -delete 2>/dev/null || true
+  find /tmp/git-pr-status -maxdepth 1 -name '*.lock' -mmin +1 -delete 2>/dev/null || true
+fi
 
 # Read last-recorded session cost to compute delta
+# File format: one line per session — "<ppid> <cost_usd>"
 _last_cost=0
-[ -f "$_session_file" ] && _last_cost=$(cat "$_session_file")
+if [ -f "$_cost_file" ]; then
+  _last_cost=$(awk -v ppid="$PPID" '$1 == ppid {print $2}' "$_cost_file")
+  : "${_last_cost:=0}"
+fi
 
 # Compute delta (new spend since last statusline call in this session)
 _delta=$(awk "BEGIN {d = $cost_usd - $_last_cost; print (d > 0.001) ? d : 0}")
 
-# Persist current session cost
-printf '%s' "$cost_usd" > "$_session_file"
+# Persist current session cost (upsert this PPID's line)
+_tmp_cost_file="${_cost_file}.tmp.$$"
+{ [ -f "$_cost_file" ] && awk -v ppid="$PPID" '$1 != ppid' "$_cost_file"; } > "$_tmp_cost_file" 2>/dev/null || true
+printf '%s %s\n' "$PPID" "$cost_usd" >> "$_tmp_cost_file"
+mv "$_tmp_cost_file" "$_cost_file" 2>/dev/null || true
 
 # Append delta to weekly log (format: YYYY-MM-DD amount)
 if [ "$(echo "$_delta > 0" | bc -l 2>/dev/null)" = "1" ]; then
