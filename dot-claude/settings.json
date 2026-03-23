@@ -56,12 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/shfmt-on-save.sh",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/prettier-on-save.sh",
+            "command": "bash ~/.claude/hooks/format-on-save.sh",
             "timeout": 10
           }
         ]
