@@ -76,22 +76,23 @@ if _revparse=$(git rev-parse --git-dir --show-toplevel 2>/dev/null); then
   # Extract v1-compatible porcelain lines (non-header lines from v2 output)
   # v2 format: '1 XY ...' (ordinary), '2 XY ...' (rename), '? path' (untracked), 'u ...' (unmerged)
   # We re-derive v1-style XY codes for compatibility with downstream consumers.
-  GIT_PORCELAIN=$(printf '%s' "$_status_out" | grep -v '^#' | while IFS= read -r _line; do
+  _porcelain_tmp=$(mktemp)
+  printf '%s' "$_status_out" | grep -v '^#' | while IFS= read -r _line; do
     _type=$(printf '%.1s' "$_line")
     case "$_type" in
       1) # ordinary changed entry: '1 XY ...'
         _xy=$(printf '%s' "$_line" | cut -c3-4)
-        _path=$(printf '%s' "$_line" | cut -c9-)
+        _path=$(printf '%s' "$_line" | cut -d' ' -f9-)
         printf '%s %s\n' "$_xy" "$_path"
         ;;
       2) # renamed/copied entry: '2 XY ...'
         _xy=$(printf '%s' "$_line" | cut -c3-4)
-        _path=$(printf '%s' "$_line" | cut -c9-)
+        _path=$(printf '%s' "$_line" | cut -d' ' -f10-)
         printf '%s %s\n' "$_xy" "$_path"
         ;;
       u) # unmerged entry: 'u XY ...'
         _xy=$(printf '%s' "$_line" | cut -c3-4)
-        _path=$(printf '%s' "$_line" | cut -c9-)
+        _path=$(printf '%s' "$_line" | cut -d' ' -f11-)
         printf '%s %s\n' "$_xy" "$_path"
         ;;
       '?') # untracked: '? path'
@@ -99,7 +100,9 @@ if _revparse=$(git rev-parse --git-dir --show-toplevel 2>/dev/null); then
         printf '?? %s\n' "$_path"
         ;;
     esac
-  done)
+  done > "$_porcelain_tmp"
+  GIT_PORCELAIN=$(cat "$_porcelain_tmp")
+  rm -f "$_porcelain_tmp"
 
   # Parse porcelain in a single pass
   if [ -n "$GIT_PORCELAIN" ]; then
