@@ -181,6 +181,3 @@ export LESS_TERMCAP_us=$'\e[1;35m'
 
 # bun completions
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
-
-# Push prompt to bottom of terminal on new shell
-(( LINES > 0 )) && printf '\n%.0s' {1..$LINES}
