@@ -5,10 +5,15 @@
 
 . "$HOME/dotFiles/theme.sh"
 
+# Source git data cache
+bash "$HOME/dotFiles/starship-scripts/git-data.sh"
+# shellcheck disable=SC1090
+. "/tmp/git-data-cache-$(id -u).sh"
+
 # Powerline glyphs
-A=""
-D=""
-GH=""
+A=""
+D=""
+GH=""
 
 # Colors (RGB triplets for ANSI 24-bit)
 TERM_R=46;  TERM_G=52;  TERM_B=64       # #2E3440 Nord0
@@ -25,69 +30,22 @@ _ul_on=$(printf '\033[4m')
 _ul_off=$(printf '\033[24m')
 _osc8() { printf '\033]8;;%s\a' "$1"; }
 
-# -- Repo info -----------------------------------------------------------------
-repo_url=""
-repo_name=""
-if git rev-parse --git-dir > /dev/null 2>&1; then
-  _remote=$(git remote get-url origin 2>/dev/null)
-  if [ -n "$_remote" ]; then
-    repo_url=$(echo "$_remote" | sed 's|git@github.com:|https://github.com/|' | sed 's|\.git$||')
-    repo_name=$(basename "$repo_url")
-  fi
-fi
+# -- Repo info (from cache) ----------------------------------------------------
+repo_url="$GIT_REPO_HTTPS"
+repo_name="$GIT_REPO_NAME"
 
-
-# -- PR check status (async — never blocks prompt) ----------------------------
+# -- PR status (from cache) ----------------------------------------------------
 pr_bg_r=$SS1_R; pr_bg_g=$SS1_G; pr_bg_b=$SS1_B  # default: model bg (no PR)
 pr_fg_r=$FG_D_R; pr_fg_g=$FG_D_G; pr_fg_b=$FG_D_B  # default: dark logo on white bg
-if [ -n "$repo_name" ] && command -v gh >/dev/null 2>&1; then
-  _cache_dir="/tmp/git-pr-status"
-  _branch=$(git branch --show-current 2>/dev/null)
-  if [ -n "$_branch" ]; then
-    _repo_id=$(git rev-parse --show-toplevel 2>/dev/null | tr '/' '_')
-    _cache_file="${_cache_dir}/${_repo_id}_${_branch}"
-    _lock_file="${_cache_file}.lock"
-    _now=$(date +%s)
-    _ttl=30
-    pr_status="none"
-    pr_url=""
+pr_status="$GIT_PR_STATUS"
+pr_url="$GIT_PR_URL"
 
-    # Always read from cache (stale is fine — async refresh handles freshness)
-    if [ -f "$_cache_file" ]; then
-      _cached_time=$(head -1 "$_cache_file")
-      pr_status=$(sed -n '2p' "$_cache_file")
-      pr_url=$(sed -n '3p' "$_cache_file")
-      _age=$(( _now - ${_cached_time:-0} ))
-    else
-      _age=999
-    fi
+case "$pr_status" in
+  pass)    pr_bg_r=$NOVA_PR_PASS_R;    pr_bg_g=$NOVA_PR_PASS_G;    pr_bg_b=$NOVA_PR_PASS_B;    pr_fg_r=$FG_D_R; pr_fg_g=$FG_D_G; pr_fg_b=$FG_D_B ;;
+  pending) pr_bg_r=$NOVA_PR_PENDING_R; pr_bg_g=$NOVA_PR_PENDING_G; pr_bg_b=$NOVA_PR_PENDING_B; pr_fg_r=$FG_D_R; pr_fg_g=$FG_D_G; pr_fg_b=$FG_D_B ;;
+  fail)    pr_bg_r=$NOVA_PR_FAIL_R;    pr_bg_g=$NOVA_PR_FAIL_G;    pr_bg_b=$NOVA_PR_FAIL_B;    pr_fg_r=$FG_L_R; pr_fg_g=$FG_L_G; pr_fg_b=$FG_L_B ;;
+esac
 
-    # If cache is stale, kick off a background refresh (non-blocking)
-    if [ "$_age" -ge "$_ttl" ] && ! [ -f "$_lock_file" ]; then
-      mkdir -p "$_cache_dir"
-      (
-        printf '%s' "$_now" > "$_lock_file"
-        _new_status=$(gh pr checks --json state --jq '
-          if length == 0 then "none"
-          elif all(.state == "SUCCESS") then "pass"
-          elif any(.state == "FAILURE" or .state == "CANCELLED") then "fail"
-          else "pending"
-          end
-        ' 2>/dev/null || echo "none")
-        _new_url=""
-        [ "$_new_status" != "none" ] && _new_url=$(gh pr view --json url --jq .url 2>/dev/null || echo "")
-        printf '%s\n%s\n%s' "$(date +%s)" "$_new_status" "$_new_url" > "$_cache_file"
-        rm -f "$_lock_file"
-      ) &
-    fi
-
-    case "$pr_status" in
-      pass)    pr_bg_r=$NOVA_PR_PASS_R;    pr_bg_g=$NOVA_PR_PASS_G;    pr_bg_b=$NOVA_PR_PASS_B;    pr_fg_r=$FG_D_R; pr_fg_g=$FG_D_G; pr_fg_b=$FG_D_B ;;
-      pending) pr_bg_r=$NOVA_PR_PENDING_R; pr_bg_g=$NOVA_PR_PENDING_G; pr_bg_b=$NOVA_PR_PENDING_B; pr_fg_r=$FG_D_R; pr_fg_g=$FG_D_G; pr_fg_b=$FG_D_B ;;
-      fail)    pr_bg_r=$NOVA_PR_FAIL_R;    pr_bg_g=$NOVA_PR_FAIL_G;    pr_bg_b=$NOVA_PR_FAIL_B;    pr_fg_r=$FG_L_R; pr_fg_g=$FG_L_G; pr_fg_b=$FG_L_B ;;
-    esac
-  fi
-fi
 # -- Directory (last 2 components, ~/ prefix) ----------------------------------
 cwd=$(pwd)
 _home="${HOME:-$(eval echo ~)}"

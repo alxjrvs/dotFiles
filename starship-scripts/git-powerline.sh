@@ -1,56 +1,32 @@
 #!/bin/sh
 # git-powerline.sh — Git powerline segment for starship
 # Renders: [branch pill][status pips...] with seamless powerline transitions.
-# Pip order: stash  conflict  staged  unstaged  untracked  ahead  behind
+# Pip order: stash  conflict  staged  unstaged  untracked  ahead  behind
 # If none active: single clean pip with ✓
 # Colors: Nova palette (theme.sh)
 
 # shellcheck source=../theme.sh
 . "$HOME/dotFiles/theme.sh"
 
-if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+# Source git data cache
+bash "$HOME/dotFiles/starship-scripts/git-data.sh"
+# shellcheck disable=SC1090
+. "/tmp/git-data-cache-$(id -u).sh"
+
+if [ -z "$GIT_IS_REPO" ]; then
   branch="-"
   no_git=1
 else
-  branch=$(git branch --show-current 2>/dev/null)
-  [ -z "$branch" ] && branch=$(git rev-parse --short HEAD 2>/dev/null)
+  branch="$GIT_BRANCH"
   [ -z "$branch" ] && exit 0
 
-  porcelain=$(git status --porcelain 2>/dev/null)
-
-  # Stash count
-  stash_count=0
-  stash_out=$(git stash list 2>/dev/null)
-  [ -n "$stash_out" ] && stash_count=$(printf '%s\n' "$stash_out" | wc -l | tr -d ' ')
-
-  # Parse porcelain in a single pass
-  conflict_count=0; staged_count=0; unstaged_count=0; untracked_count=0
-  if [ -n "$porcelain" ]; then
-    while IFS= read -r _line; do
-      _x=$(printf '%.1s' "$_line")
-      _y=$(printf '%.1s' "${_line#?}")
-      case "${_x}${_y}" in
-        UU|AA|DD|AU|UA|DU|UD) conflict_count=$((conflict_count + 1)) ;;
-        '??') untracked_count=$((untracked_count + 1)) ;;
-        *)
-          case "$_x" in [MADRC]) staged_count=$((staged_count + 1)) ;; esac
-          case "$_y" in [MD]) unstaged_count=$((unstaged_count + 1)) ;; esac
-          ;;
-      esac
-    done <<PORCELAIN
-$porcelain
-PORCELAIN
-  fi
-
-  # Ahead / behind
-  ahead=0; behind=0
-  if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
-    _counts=$(git rev-list --left-right --count HEAD...@{u} 2>/dev/null)
-    ahead=$(printf '%s' "$_counts" | cut -f1)
-    behind=$(printf '%s' "$_counts" | cut -f2)
-    [ -z "$ahead" ] && ahead=0
-    [ -z "$behind" ] && behind=0
-  fi
+  stash_count="$GIT_STASH_COUNT"
+  conflict_count="$GIT_CONFLICT_COUNT"
+  staged_count="$GIT_STAGED_COUNT"
+  unstaged_count="$GIT_UNSTAGED_COUNT"
+  untracked_count="$GIT_UNTRACKED_COUNT"
+  ahead="$GIT_AHEAD"
+  behind="$GIT_BEHIND"
 fi
 
 # ── Colors (RGB triplets) ──────────────────────────────────────────────────
@@ -63,7 +39,7 @@ bg() { printf '\033[48;2;%d;%d;%dm' "$1" "$2" "$3"; }
 rst() { printf '\033[0m'; }
 
 # Powerline glyph
-A=""
+A=""
 
 # ── Branch pill ────────────────────────────────────────────────────────────
 o=""
