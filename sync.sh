@@ -31,8 +31,7 @@ for arg in "$@"; do
       echo "  brew      Homebrew, Brew Bundle, Brew doctor"
       echo "  mise      mise tool versions"
       echo "  sheldon   Sheldon plugin manager + config"
-      echo "  starship  Starship prompt + config"
-      echo "  symlinks  All symlinks"
+          echo "  symlinks  All symlinks"
       echo "  claude    Claude Code + config"
       echo "  fzf       fzf shell integration"
       echo "  gh        GitHub CLI + config"
@@ -180,17 +179,6 @@ else
 fi
 fi # should_run sheldon
 
-# ── 4. Starship (prompt) ───────────────────────────────────────────
-if should_run starship; then
-echo ""
-echo "==> Starship"
-if command -v starship &>/dev/null; then
-  ok "Starship installed"
-else
-  fail "Starship not found — should have been installed by brew bundle"
-fi
-fi # should_run starship
-
 fi # Darwin
 
 if [ "$OS" = "Linux" ]; then
@@ -255,7 +243,7 @@ fi # should_run mise
 fi # Darwin
 
 # ── 6. Symlinks ─────────────────────────────────────────────────────
-if should_run symlinks git shell mise sheldon starship ghostty nvim gh claude; then
+if should_run symlinks git shell mise sheldon ghostty nvim gh claude; then
 echo ""
 echo "==> Symlinks"
 fi
@@ -311,12 +299,6 @@ link "$DOTFILES_DIR/sheldon/plugins.toml" "$HOME/.config/sheldon/plugins.toml" "
 fi
 
 if [ "$OS" = "Darwin" ]; then
-# Starship config
-if should_run symlinks starship; then
-mkdir -p "$HOME/.config"
-link "$DOTFILES_DIR/starship.toml"        "$HOME/.config/starship.toml"         "starship.toml"
-fi
-
 # Ghostty config
 if should_run symlinks ghostty; then
 mkdir -p "$HOME/.config/ghostty"

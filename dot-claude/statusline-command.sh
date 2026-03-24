@@ -126,7 +126,7 @@ esac
 _gfg() { printf '\033[38;2;%d;%d;%dm' "$1" "$2" "$3"; }
 _gbg() { printf '\033[48;2;%d;%d;%dm' "$1" "$2" "$3"; }
 _grst() { printf '\033[0m'; }
-_gA=""
+_gA=""
 
 _gs_branch="${GIT_BRANCH:-}"
 [ -z "$_gs_branch" ] && _gs_branch="-"

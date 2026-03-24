@@ -49,6 +49,8 @@ NOVA_BRANCH="#D8DEE9"      # Git branch — Nord 4 (Snow Storm 1)
 NOVA_BRANCH_R=216; NOVA_BRANCH_G=222; NOVA_BRANCH_B=233
 NOVA_WORKTREE="#5E81AC"    # Worktree indicator — Nord 10 (Frost dark blue)
 NOVA_WORKTREE_R=94; NOVA_WORKTREE_G=129; NOVA_WORKTREE_B=172
+NOVA_SEG_BG="#434C5E"      # Segment background — Nord 2 (Polar Night)
+NOVA_SEG_BG_R=67; NOVA_SEG_BG_G=76; NOVA_SEG_BG_B=94
 
 # ── Status-right: Time ───────────────────────────────────────────────────────
 NOVA_TIME="#3B4252"        # Nord 1 (Polar Night) — far right edge
