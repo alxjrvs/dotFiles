@@ -226,18 +226,26 @@ function _prompt_git_seg() {
 }
 
 # Prompt rendering (runs before each prompt)
+# Strategy: render instantly from stale cache, refresh async for next prompt.
 _render_prompt() {
-  sh ~/dotFiles/starship-scripts/git-data.sh
-  source /tmp/git-data-cache-$(id -u).sh
+  local _cache="/tmp/git-data-cache-$(id -u).sh"
+
+  # Source existing cache immediately (stale is fine — instant render)
+  [[ -f "$_cache" ]] && source "$_cache"
+
+  # Render prompt now from whatever cache we have
   local repo_seg=$(_prompt_repo_dir)
   local git_seg=$(_prompt_git_seg)
   PROMPT="${repo_seg}${git_seg} "
+
+  # Refresh cache in background for next prompt (non-blocking)
+  (sh ~/dotFiles/starship-scripts/git-data.sh &) 2>/dev/null
 }
 precmd_functions+=(_render_prompt)
 
-# Transient prompt — collapses previous prompt to ❯
+# Transient prompt — collapses previous prompt to a single glyph
 _transient_accept_line() {
-  PROMPT=$'%{\e[0m%}❯ '
+  PROMPT=$'%{\e[0m%}\u276f '
   zle reset-prompt
   zle .accept-line
 }
