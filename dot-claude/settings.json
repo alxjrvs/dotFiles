@@ -143,6 +143,7 @@
   "outputStyle": "Concise",
   "alwaysThinkingEnabled": true,
   "autoUpdatesChannel": "latest",
+  "voiceEnabled": true,
   "skipDangerousModePermissionPrompt": true,
   "teammateMode": "in-process",
   "mcpServers": {
