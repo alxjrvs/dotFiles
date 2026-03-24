@@ -116,7 +116,7 @@ function _prompt_repo_dir() {
 
   # Glyph constants (unicode — written by Python)
   local _A=$''   # U+E0B0 right triangle
-  local _D=$''   # U+E0B2 left triangle
+  local _O=$''   # U+E0BA opening wedge
   local _GH=$''  # U+F09B GitHub
 
   # Color triplets
@@ -158,7 +158,7 @@ function _prompt_repo_dir() {
 
   if [[ -n "$GIT_REPO_NAME" ]]; then
     # Opening edge: terminal bg -> PR icon bg
-    o="${o}${_bg}${TERM_R};${TERM_G};${TERM_B}${_m}${_fg}${pr_bg_r};${pr_bg_g};${pr_bg_b}${_m}${_D}"
+    o="${o}${_bg}${TERM_R};${TERM_G};${TERM_B}${_m}${_fg}${pr_bg_r};${pr_bg_g};${pr_bg_b}${_m}${_O}"
     # GH icon segment
     if [[ -n "$GIT_PR_URL" ]]; then
       o="${o}${_bg}${pr_bg_r};${pr_bg_g};${pr_bg_b}${_m}${_fg}${pr_fg_r};${pr_fg_g};${pr_fg_b}${_m} ${_osc8_open}${GIT_PR_URL}${_osc8_mid}${_GH}${_osc8_close} "
@@ -171,7 +171,7 @@ function _prompt_repo_dir() {
     o="${o}${_fg}${FG_L_R};${FG_L_G};${FG_L_B}${_m} ${_ul}${_osc8_open}${GIT_REPO_HTTPS}${_osc8_mid}${GIT_REPO_NAME}${_osc8_close}${_noul} "
   else
     # Dir only: opening edge from terminal bg into PN2
-    o="${o}${_bg}${TERM_R};${TERM_G};${TERM_B}${_m}${_fg}${PN2_R};${PN2_G};${PN2_B}${_m}${_D}"
+    o="${o}${_bg}${TERM_R};${TERM_G};${TERM_B}${_m}${_fg}${PN2_R};${PN2_G};${PN2_B}${_m}${_O}"
     o="${o}${_bg}${PN2_R};${PN2_G};${PN2_B}${_m}${_fg}${FG_L_R};${FG_L_G};${FG_L_B}${_m} ${dir_display} "
   fi
 
