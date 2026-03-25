@@ -134,10 +134,15 @@ _gs_BG_R=$NOVA_BG_R; _gs_BG_G=$NOVA_BG_G; _gs_BG_B=$NOVA_BG_B
 _gs_BR_R=$NOVA_BRANCH_R; _gs_BR_G=$NOVA_BRANCH_G; _gs_BR_B=$NOVA_BRANCH_B
 _gs_o=""
 
-# Opening arrow: Nord2 -> branch bg (Nord4)
-_gs_o="${_gs_o}$(_gbg 67 76 94) $(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg 67 76 94)${_gA}"
+# Opening arrow into branch bg
+if [ -n "$repo_name" ]; then
+  # Direct from GH icon (PR_BG) -- no PN2 gap
+  _gs_o="${_gs_o}$(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg ${PR_BG//;/ })${_gA}"
+else
+  _gs_o="${_gs_o}$(_gbg 67 76 94) $(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg 67 76 94)${_gA}"
+fi
 # Branch text
-_gs_o="${_gs_o}$(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg $_gs_BG_R $_gs_BG_G $_gs_BG_B) ${_gs_branch} "
+_gs_o="${_gs_o}$(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg $_gs_BG_R $_gs_BG_G $_gs_BG_B)${_gs_branch} "
 
 if [ -z "${GIT_IS_REPO:-}" ]; then
   # No git repo — close pill
@@ -208,27 +213,35 @@ TIME_FG="${TXT_DARK}"
 
 LIGHT_BG="59;66;82"        # #3B4252 Nord1 (Polar Night 1, CONTEXT label)
 
-# == Line 1: Repo OR Dir + Git =================================================
-line1=""
+# == Line 1: CWD + Repo + Git =====================================================
+CWD_BG="59;66;82"
+
+# CWD cell (always first) -- Nord 1 bg
+line1="\e[48;2;${DARK_FG}m\e[38;2;${CWD_BG}m\e[48;2;${CWD_BG}m\e[38;2;${TXT}m\e[22m ${dir_display} "
 
 if [ -n "$repo_name" ]; then
+  REPO_NAME_BG="216;222;233"
+  # CWD -> repo name on white bg (dark text, underlined, linked)
+  line1="${line1}\e[48;2;${REPO_NAME_BG}m\e[38;2;${CWD_BG}m\e[38;2;${TXT_DARK}m\e[22m \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m"
+  # Repo -> GH icon on PR status bg
+  line1="${line1}\e[48;2;${PR_BG}m\e[38;2;${REPO_NAME_BG}m\e[38;2;${PR_FG}m\e[22m"
   if [ "${pr_status:-none}" != "none" ]; then
-    # PR exists: GH icon on PR-status bg, arrow into repo name on REPO_BG
-    line1="${line1}\e[48;2;${DARK_FG}m\e[38;2;${PR_BG}m\e[48;2;${PR_BG}m\e[38;2;${PR_FG}m\e[22m \e]8;;${pr_url}\a\e]8;;\a \e[48;2;${REPO_BG}m\e[38;2;${PR_BG}m\e[38;2;${REPO_FG}m\e[22m \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
+    line1="${line1}\e]8;;${pr_url}\a\e]8;;\a"
   else
-    # No PR: single segment, GH icon + repo name on REPO_BG (original style)
-    line1="${line1}\e[48;2;${DARK_FG}m\e[38;2;${PR_BG}m\e[48;2;${PR_BG}m\e[38;2;${PR_FG}m\e[22m  \e[48;2;${REPO_BG}m\e[38;2;${PR_BG}m\e[38;2;${REPO_FG}m \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
+    line1="${line1}"
   fi
-else
-  # Dir segment (dark bg, light text)
-  line1="${line1}\e[48;2;${DARK_FG}m\e[38;2;${DIR_BG}m\e[48;2;${DIR_BG}m\e[38;2;${DIR_FG}m\e[22m ${dir_display} "
+elif [ -n "${GIT_IS_REPO:-}" ]; then
+  # CWD -> SEG_BG for git segment
+  line1="${line1}\e[48;2;${REPO_BG}m\e[38;2;${CWD_BG}m"
 fi
 
-# Git or segment closing arrow
+# Git or closing arrow
 if [ -n "$git_seg" ]; then
   printf "%b%s\n" "$line1" "$git_seg"
+elif [ -n "$repo_name" ]; then
+  printf "%b\e[0m\e[38;2;${REPO_BG}m\e[0m\n" "$line1"
 else
-  printf "%b\e[0m\e[38;2;${DIR_BG}m${A}\e[0m\n" "$line1"
+  printf "%b\e[0m\e[38;2;${CWD_BG}m\e[0m\n" "$line1"
 fi
 
 # == Line 2: Cost + Time + Context + Model =====================================

@@ -106,21 +106,22 @@ zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 setopt promptsubst
 source ~/dotFiles/theme.sh
 
-# _prompt_repo_dir — renders repo+GH icon OR fallback directory segment
-# Reads: GIT_REPO_NAME, GIT_REPO_HTTPS, GIT_PR_STATUS, GIT_PR_URL (set by precmd)
-# Leaves bg at NOVA_SEG_BG (#434C5E) for the git segment to follow.
+# _prompt_repo_dir -- renders CWD cell + repo/GH icon segment
+# CWD cell (Nord 1) always first. Repo segment follows in git repos with remote.
+# Reads: GIT_REPO_NAME, GIT_REPO_HTTPS, GIT_PR_STATUS, GIT_PR_URL, GIT_IS_REPO
 function _prompt_repo_dir() {
   local _fg=$'%{\e[38;2;'   _bg=$'%{\e[48;2;'   _m=$'m%}'   _rst=$'%{\e[0m%}'
   local _ul=$'%{\e[4m%}'     _noul=$'%{\e[24m%}'
   local _osc8_open=$'%{\e]8;;'   _osc8_mid=$'\a%}'   _osc8_close=$'%{\e]8;;\a%}'
 
-  # Glyph constants (unicode — written by Python)
-  local _A=$''   # U+E0B0 right triangle
-  local _O=$''   # U+E0BA opening wedge
-  local _GH=$''  # U+F09B GitHub
+  # Glyph constants
+  local _A=$'\ue0b0'   # U+E0B0 right triangle
+  local _O=$'\ue0ba'   # U+E0BA opening wedge
+  local _GH=$'\uf09b'  # U+F09B GitHub
 
   # Color triplets
   local TERM_R=46  TERM_G=52  TERM_B=64      # #2E3440 terminal bg
+  local CWD_R=59   CWD_G=66   CWD_B=82       # #3B4252 Nord 1 (CWD cell)
   local PN2_R=67   PN2_G=76   PN2_B=94       # #434C5E segment bg
   local SS1_R=216  SS1_G=222  SS1_B=233      # #D8DEE9 Snow Storm 1
   local FG_L_R=236 FG_L_G=239 FG_L_B=244    # #ECEFF4 light text
@@ -145,7 +146,7 @@ function _prompt_repo_dir() {
       ;;
   esac
 
-  # Directory fallback: last 2 path components with ~/
+  # CWD: last 2 path components
   local cwd=${PWD/#$HOME/\~}
   local dir_display
   if [[ "$cwd" == */*/* ]]; then
@@ -156,23 +157,27 @@ function _prompt_repo_dir() {
 
   local o=""
 
+  # -- CWD cell (always first) -- Nord 1 bg
+  o+="${_bg}${TERM_R};${TERM_G};${TERM_B}${_m}${_fg}${CWD_R};${CWD_G};${CWD_B}${_m}${_O}"
+  o+="${_bg}${CWD_R};${CWD_G};${CWD_B}${_m}${_fg}${FG_L_R};${FG_L_G};${FG_L_B}${_m} ${dir_display} "
+
   if [[ -n "$GIT_REPO_NAME" ]]; then
-    # Opening edge: terminal bg -> PR icon bg
-    o="${o}${_bg}${TERM_R};${TERM_G};${TERM_B}${_m}${_fg}${pr_bg_r};${pr_bg_g};${pr_bg_b}${_m}${_O}"
-    # GH icon segment
+    # CWD -> repo name on SS1 (white bg, dark text)
+    o+="${_bg}${SS1_R};${SS1_G};${SS1_B}${_m}${_fg}${CWD_R};${CWD_G};${CWD_B}${_m}${_A}"
+    o+="${_fg}${FG_D_R};${FG_D_G};${FG_D_B}${_m} ${_ul}${_osc8_open}${GIT_REPO_HTTPS}${_osc8_mid}${GIT_REPO_NAME}${_osc8_close}${_noul}"
+    # Repo -> GH icon on PR status bg
+    o+="${_bg}${pr_bg_r};${pr_bg_g};${pr_bg_b}${_m}${_fg}${SS1_R};${SS1_G};${SS1_B}${_m}${_A}"
     if [[ -n "$GIT_PR_URL" ]]; then
-      o="${o}${_bg}${pr_bg_r};${pr_bg_g};${pr_bg_b}${_m}${_fg}${pr_fg_r};${pr_fg_g};${pr_fg_b}${_m} ${_osc8_open}${GIT_PR_URL}${_osc8_mid}${_GH}${_osc8_close} "
+      o+="${_fg}${pr_fg_r};${pr_fg_g};${pr_fg_b}${_m}${_osc8_open}${GIT_PR_URL}${_osc8_mid}${_GH}${_osc8_close}"
     else
-      o="${o}${_bg}${pr_bg_r};${pr_bg_g};${pr_bg_b}${_m}${_fg}${pr_fg_r};${pr_fg_g};${pr_fg_b}${_m} ${_GH} "
+      o+="${_fg}${pr_fg_r};${pr_fg_g};${pr_fg_b}${_m}${_GH}"
     fi
-    # Transition: PR icon bg -> PN2 for repo name
-    o="${o}${_bg}${PN2_R};${PN2_G};${PN2_B}${_m}${_fg}${pr_bg_r};${pr_bg_g};${pr_bg_b}${_m}${_A}"
-    # Repo name (underlined, OSC8 hyperlinked)
-    o="${o}${_fg}${FG_L_R};${FG_L_G};${FG_L_B}${_m} ${_ul}${_osc8_open}${GIT_REPO_HTTPS}${_osc8_mid}${GIT_REPO_NAME}${_osc8_close}${_noul} "
+  elif [[ -n "$GIT_IS_REPO" ]]; then
+    # Git repo but no remote: CWD -> SEG_BG for git segment
+    o+="${_bg}${PN2_R};${PN2_G};${PN2_B}${_m}${_fg}${CWD_R};${CWD_G};${CWD_B}${_m}${_A}"
   else
-    # Dir only: opening edge from terminal bg into PN2
-    o="${o}${_bg}${TERM_R};${TERM_G};${TERM_B}${_m}${_fg}${PN2_R};${PN2_G};${PN2_B}${_m}${_O}"
-    o="${o}${_bg}${PN2_R};${PN2_G};${PN2_B}${_m}${_fg}${FG_L_R};${FG_L_G};${FG_L_B}${_m} ${dir_display} "
+    # No git: close CWD cell
+    o+="${_rst}${_fg}${CWD_R};${CWD_G};${CWD_B}${_m}${_A}${_rst}"
   fi
 
   print -rn -- "$o"
@@ -188,11 +193,24 @@ function _prompt_git_seg() {
   local _fg=$'%{\e[38;2;'   _bg=$'%{\e[48;2;'   _m=$'m%}'   _rst=$'%{\e[0m%}'
   local _A=$'\ue0b0'  # U+E0B0 powerline right-triangle
 
-  # Branch pill: space on SEG_BG, then arrow into BRANCH bg
-  o+="${_bg}${NOVA_SEG_BG_R};${NOVA_SEG_BG_G};${NOVA_SEG_BG_B}${_m} "
-  o+="${_bg}${NOVA_BRANCH_R};${NOVA_BRANCH_G};${NOVA_BRANCH_B}${_m}"
-  o+="${_fg}${NOVA_SEG_BG_R};${NOVA_SEG_BG_G};${NOVA_SEG_BG_B}${_m}${_A}"
-  o+="${_fg}${NOVA_BG_R};${NOVA_BG_G};${NOVA_BG_B}${_m} ${GIT_BRANCH} "
+  # Branch pill opening
+  if [[ -n "$GIT_REPO_NAME" ]]; then
+    # Direct from repo GH icon (PR status bg) -- no PN2 gap
+    local _pr_r=216 _pr_g=222 _pr_b=233
+    case "$GIT_PR_STATUS" in
+      pass)    _pr_r=$NOVA_PR_PASS_R;    _pr_g=$NOVA_PR_PASS_G;    _pr_b=$NOVA_PR_PASS_B ;;
+      pending) _pr_r=$NOVA_PR_PENDING_R; _pr_g=$NOVA_PR_PENDING_G; _pr_b=$NOVA_PR_PENDING_B ;;
+      fail)    _pr_r=$NOVA_PR_FAIL_R;    _pr_g=$NOVA_PR_FAIL_G;    _pr_b=$NOVA_PR_FAIL_B ;;
+    esac
+    o+="${_bg}${NOVA_BRANCH_R};${NOVA_BRANCH_G};${NOVA_BRANCH_B}${_m}"
+    o+="${_fg}${_pr_r};${_pr_g};${_pr_b}${_m}${_A}"
+  else
+    # Standard: space on SEG_BG, arrow into branch
+    o+="${_bg}${NOVA_SEG_BG_R};${NOVA_SEG_BG_G};${NOVA_SEG_BG_B}${_m} "
+    o+="${_bg}${NOVA_BRANCH_R};${NOVA_BRANCH_G};${NOVA_BRANCH_B}${_m}"
+    o+="${_fg}${NOVA_SEG_BG_R};${NOVA_SEG_BG_G};${NOVA_SEG_BG_B}${_m}${_A}"
+  fi
+  o+="${_fg}${NOVA_BG_R};${NOVA_BG_G};${NOVA_BG_B}${_m}${GIT_BRANCH} "
   prev_r=$NOVA_BRANCH_R; prev_g=$NOVA_BRANCH_G; prev_b=$NOVA_BRANCH_B
 
   # Worktree cell (only if STATUSLINE_WORKTREE is set)
@@ -229,16 +247,21 @@ function _prompt_git_seg() {
 _build_prompt() {
   local _cache="/tmp/git-data-cache-$(id -u).sh"
   [[ -f "$_cache" ]] && source "$_cache"
+  # Invalidate stale git data if CWD moved outside cached repo
+  if [[ -n "$GIT_TOPLEVEL" ]] && [[ "$PWD" != "$GIT_TOPLEVEL"* ]]; then
+    GIT_IS_REPO="" GIT_REPO_NAME="" GIT_BRANCH=""
+  fi
   local repo_seg=$(_prompt_repo_dir)
   local git_seg=$(_prompt_git_seg)
   print -rn -- "${repo_seg}${git_seg} "
 }
 
-# Precmd: just kick off async cache refresh (prompt already set by accept-line)
+# Precmd: rebuild prompt on CWD change, kick off async cache refresh
 _render_prompt() {
-  # On first prompt (no prior accept-line), build it now
-  [[ -z "$_prompt_initialized" ]] && { PROMPT="$(_build_prompt)"; _prompt_initialized=1; }
-  # Refresh cache in background for next prompt
+  if [[ "$PWD" != "$_prompt_last_pwd" ]]; then
+    PROMPT="$(_build_prompt)"
+    _prompt_last_pwd="$PWD"
+  fi
   (sh ~/dotFiles/starship-scripts/git-data.sh &) 2>/dev/null
 }
 precmd_functions+=(_render_prompt)
