@@ -127,9 +127,9 @@ function _prompt_repo_dir() {
   local FG_L_R=236 FG_L_G=239 FG_L_B=244    # #ECEFF4 light text
   local FG_D_R=46  FG_D_G=52  FG_D_B=64     # #2E3440 dark text
 
-  # PR status -> icon bg/fg
-  local pr_bg_r=$SS1_R  pr_bg_g=$SS1_G  pr_bg_b=$SS1_B
-  local pr_fg_r=$FG_D_R pr_fg_g=$FG_D_G pr_fg_b=$FG_D_B
+  # PR status -> icon bg/fg (default: CWD bg, white icon)
+  local pr_bg_r=$CWD_R   pr_bg_g=$CWD_G   pr_bg_b=$CWD_B
+  local pr_fg_r=$FG_L_R  pr_fg_g=$FG_L_G  pr_fg_b=$FG_L_B
 
   case "$GIT_PR_STATUS" in
     pass)
@@ -164,13 +164,13 @@ function _prompt_repo_dir() {
   if [[ -n "$GIT_REPO_NAME" ]]; then
     # CWD -> repo name on SS1 (white bg, dark text)
     o+="${_bg}${SS1_R};${SS1_G};${SS1_B}${_m}${_fg}${CWD_R};${CWD_G};${CWD_B}${_m}${_A}"
-    o+="${_fg}${FG_D_R};${FG_D_G};${FG_D_B}${_m} ${_ul}${_osc8_open}${GIT_REPO_HTTPS}${_osc8_mid}${GIT_REPO_NAME}${_osc8_close}${_noul}"
+    o+="${_fg}${FG_D_R};${FG_D_G};${FG_D_B}${_m} ${_ul}${_osc8_open}${GIT_REPO_HTTPS}${_osc8_mid}${GIT_REPO_NAME}${_osc8_close}${_noul} "
     # Repo -> GH icon on PR status bg
     o+="${_bg}${pr_bg_r};${pr_bg_g};${pr_bg_b}${_m}${_fg}${SS1_R};${SS1_G};${SS1_B}${_m}${_A}"
     if [[ -n "$GIT_PR_URL" ]]; then
-      o+="${_fg}${pr_fg_r};${pr_fg_g};${pr_fg_b}${_m}${_osc8_open}${GIT_PR_URL}${_osc8_mid}${_GH}${_osc8_close}"
+      o+="${_fg}${pr_fg_r};${pr_fg_g};${pr_fg_b}${_m} ${_osc8_open}${GIT_PR_URL}${_osc8_mid}${_GH}${_osc8_close} "
     else
-      o+="${_fg}${pr_fg_r};${pr_fg_g};${pr_fg_b}${_m}${_GH}"
+      o+="${_fg}${pr_fg_r};${pr_fg_g};${pr_fg_b}${_m} ${_GH} "
     fi
   elif [[ -n "$GIT_IS_REPO" ]]; then
     # Git repo but no remote: CWD -> SEG_BG for git segment
@@ -193,25 +193,29 @@ function _prompt_git_seg() {
   local _fg=$'%{\e[38;2;'   _bg=$'%{\e[48;2;'   _m=$'m%}'   _rst=$'%{\e[0m%}'
   local _A=$'\ue0b0'  # U+E0B0 powerline right-triangle
 
+  # Branch pill — white bg (Snow Storm 1), dark text
+  local _BR_R=216 _BR_G=222 _BR_B=233
+  local _BR_FG_R=46 _BR_FG_G=52 _BR_FG_B=64
+
   # Branch pill opening
   if [[ -n "$GIT_REPO_NAME" ]]; then
-    # Direct from repo GH icon (PR status bg) -- no PN2 gap
-    local _pr_r=216 _pr_g=222 _pr_b=233
+    # Arrow from GH icon cell (default: CWD bg) into branch
+    local _pr_r=59 _pr_g=66 _pr_b=82
     case "$GIT_PR_STATUS" in
       pass)    _pr_r=$NOVA_PR_PASS_R;    _pr_g=$NOVA_PR_PASS_G;    _pr_b=$NOVA_PR_PASS_B ;;
       pending) _pr_r=$NOVA_PR_PENDING_R; _pr_g=$NOVA_PR_PENDING_G; _pr_b=$NOVA_PR_PENDING_B ;;
       fail)    _pr_r=$NOVA_PR_FAIL_R;    _pr_g=$NOVA_PR_FAIL_G;    _pr_b=$NOVA_PR_FAIL_B ;;
     esac
-    o+="${_bg}${NOVA_BRANCH_R};${NOVA_BRANCH_G};${NOVA_BRANCH_B}${_m}"
+    o+="${_bg}${_BR_R};${_BR_G};${_BR_B}${_m}"
     o+="${_fg}${_pr_r};${_pr_g};${_pr_b}${_m}${_A}"
   else
     # Standard: space on SEG_BG, arrow into branch
     o+="${_bg}${NOVA_SEG_BG_R};${NOVA_SEG_BG_G};${NOVA_SEG_BG_B}${_m} "
-    o+="${_bg}${NOVA_BRANCH_R};${NOVA_BRANCH_G};${NOVA_BRANCH_B}${_m}"
+    o+="${_bg}${_BR_R};${_BR_G};${_BR_B}${_m}"
     o+="${_fg}${NOVA_SEG_BG_R};${NOVA_SEG_BG_G};${NOVA_SEG_BG_B}${_m}${_A}"
   fi
-  o+="${_fg}${NOVA_BG_R};${NOVA_BG_G};${NOVA_BG_B}${_m}${GIT_BRANCH} "
-  prev_r=$NOVA_BRANCH_R; prev_g=$NOVA_BRANCH_G; prev_b=$NOVA_BRANCH_B
+  o+="${_fg}${_BR_FG_R};${_BR_FG_G};${_BR_FG_B}${_m} ${GIT_BRANCH} "
+  prev_r=$_BR_R; prev_g=$_BR_G; prev_b=$_BR_B
 
   # Worktree cell (only if STATUSLINE_WORKTREE is set)
   if [[ -n "$STATUSLINE_WORKTREE" ]]; then

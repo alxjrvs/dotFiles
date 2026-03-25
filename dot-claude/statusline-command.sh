@@ -109,8 +109,8 @@ repo_name="${GIT_REPO_NAME:-}"
 export STATUSLINE_WORKTREE="$worktree_name"
 
 # -- PR status (from cache) ---------------------------------------------------
-PR_BG="216;222;233"
-PR_FG="46;52;64"
+PR_BG="59;66;82"
+PR_FG="236;239;244"
 pr_status="${GIT_PR_STATUS:-none}"
 pr_url="${GIT_PR_URL:-}"
 
@@ -142,7 +142,7 @@ else
   _gs_o="${_gs_o}$(_gbg 67 76 94) $(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg 67 76 94)${_gA}"
 fi
 # Branch text
-_gs_o="${_gs_o}$(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg $_gs_BG_R $_gs_BG_G $_gs_BG_B)${_gs_branch} "
+_gs_o="${_gs_o}$(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg $_gs_BG_R $_gs_BG_G $_gs_BG_B) ${_gs_branch} "
 
 if [ -z "${GIT_IS_REPO:-}" ]; then
   # No git repo — close pill
@@ -222,13 +222,13 @@ line1="\e[48;2;${DARK_FG}m\e[38;2;${CWD_BG}m\e[48;2;${CWD_BG}m\e[38;2;${TXT}m
 if [ -n "$repo_name" ]; then
   REPO_NAME_BG="216;222;233"
   # CWD -> repo name on white bg (dark text, underlined, linked)
-  line1="${line1}\e[48;2;${REPO_NAME_BG}m\e[38;2;${CWD_BG}m\e[38;2;${TXT_DARK}m\e[22m \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m"
+  line1="${line1}\e[48;2;${REPO_NAME_BG}m\e[38;2;${CWD_BG}m\e[38;2;${TXT_DARK}m\e[22m \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
   # Repo -> GH icon on PR status bg
   line1="${line1}\e[48;2;${PR_BG}m\e[38;2;${REPO_NAME_BG}m\e[38;2;${PR_FG}m\e[22m"
   if [ "${pr_status:-none}" != "none" ]; then
-    line1="${line1}\e]8;;${pr_url}\a\e]8;;\a"
+    line1="${line1} \e]8;;${pr_url}\a\e]8;;\a "
   else
-    line1="${line1}"
+    line1="${line1}  "
   fi
 elif [ -n "${GIT_IS_REPO:-}" ]; then
   # CWD -> SEG_BG for git segment
