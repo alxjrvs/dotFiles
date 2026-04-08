@@ -60,6 +60,15 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$SUPERSET_HOME_DIR\" ] && [ -x \"$SUPERSET_HOME_DIR/hooks/notify.sh\" ] && \"$SUPERSET_HOME_DIR/hooks/notify.sh\" || true"
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -96,13 +105,80 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ELECTRON_RUN_AS_NODE=1 \"$(cat '/Users/jarvis/.baton/node-path')\" -e \"let input = \\\"\\\";let done = false;function send() {  if (done) return;  done = true;  let port; try { port = require(\\\"fs\\\").readFileSync(\\\"/Users/jarvis/.baton/port\\\", \\\"utf8\\\").trim(); } catch { process.exit(0); return; }  let parsed = {};  try { parsed = JSON.parse(input || \\\"{}\\\"); } catch {}  const payload = JSON.stringify({    cwd: typeof parsed.cwd === \\\"string\\\" ? parsed.cwd : process.cwd(),    kind: \\\"turn-complete\\\",    source: \\\"claude-code\\\",    message: (typeof parsed.message === \\\"string\\\" ? parsed.message : \\\"Claude finished\\\"),  });  const req = require(\\\"http\\\").request(\\\"http://localhost:\\\" + port + \\\"/api/v1/notify\\\", { method: \\\"POST\\\", timeout: 2000, headers: { \\\"Content-Type\\\": \\\"application/json\\\", \\\"Content-Length\\\": Buffer.byteLength(payload) } });  req.on(\\\"response\\\", res => { res.resume(); res.on(\\\"end\\\", () => process.exit(0)); });  req.on(\\\"error\\\", () => process.exit(0));  req.on(\\\"timeout\\\", () => { req.destroy(); process.exit(0); });  req.end(payload);}process.stdin.on(\\\"data\\\", chunk => input += chunk);process.stdin.on(\\\"end\\\", send);setTimeout(send, 1000);\" # baton-notification-hook",
+            "async": true
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$SUPERSET_HOME_DIR\" ] && [ -x \"$SUPERSET_HOME_DIR/hooks/notify.sh\" ] && \"$SUPERSET_HOME_DIR/hooks/notify.sh\" || true"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ELECTRON_RUN_AS_NODE=1 \"$(cat '/Users/jarvis/.baton/node-path')\" -e \"let input = \\\"\\\";let done = false;function send() {  if (done) return;  done = true;  let port; try { port = require(\\\"fs\\\").readFileSync(\\\"/Users/jarvis/.baton/port\\\", \\\"utf8\\\").trim(); } catch { process.exit(0); return; }  let parsed = {};  try { parsed = JSON.parse(input || \\\"{}\\\"); } catch {}  const payload = JSON.stringify({    cwd: typeof parsed.cwd === \\\"string\\\" ? parsed.cwd : process.cwd(),    kind: (parsed.notification_type === \\\"permission_prompt\\\" || parsed.notification_type === \\\"elicitation_dialog\\\" ? \\\"input-required\\\" : (parsed.notification_type === \\\"idle_prompt\\\" ? \\\"idle\\\" : \\\"generic\\\")),    source: \\\"claude-code\\\",    message: (typeof parsed.message === \\\"string\\\" ? parsed.message : undefined),  });  const req = require(\\\"http\\\").request(\\\"http://localhost:\\\" + port + \\\"/api/v1/notify\\\", { method: \\\"POST\\\", timeout: 2000, headers: { \\\"Content-Type\\\": \\\"application/json\\\", \\\"Content-Length\\\": Buffer.byteLength(payload) } });  req.on(\\\"response\\\", res => { res.resume(); res.on(\\\"end\\\", () => process.exit(0)); });  req.on(\\\"error\\\", () => process.exit(0));  req.on(\\\"timeout\\\", () => { req.destroy(); process.exit(0); });  req.end(payload);}process.stdin.on(\\\"data\\\", chunk => input += chunk);process.stdin.on(\\\"end\\\", send);setTimeout(send, 1000);\" # baton-notification-hook",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ELECTRON_RUN_AS_NODE=1 \"$(cat '/Users/jarvis/.baton/node-path')\" -e \"let input = \\\"\\\";let done = false;function send() {  if (done) return;  done = true;  let port; try { port = require(\\\"fs\\\").readFileSync(\\\"/Users/jarvis/.baton/port\\\", \\\"utf8\\\").trim(); } catch { process.exit(0); return; }  let parsed = {};  try { parsed = JSON.parse(input || \\\"{}\\\"); } catch {}  const payload = JSON.stringify({    cwd: typeof parsed.cwd === \\\"string\\\" ? parsed.cwd : process.cwd(),    kind: \\\"prompt-submit\\\",    source: \\\"claude-code\\\",    message: (typeof parsed.prompt === \\\"string\\\" ? parsed.prompt : undefined),  });  const req = require(\\\"http\\\").request(\\\"http://localhost:\\\" + port + \\\"/api/v1/notify\\\", { method: \\\"POST\\\", timeout: 2000, headers: { \\\"Content-Type\\\": \\\"application/json\\\", \\\"Content-Length\\\": Buffer.byteLength(payload) } });  req.on(\\\"response\\\", res => { res.resume(); res.on(\\\"end\\\", () => process.exit(0)); });  req.on(\\\"error\\\", () => process.exit(0));  req.on(\\\"timeout\\\", () => { req.destroy(); process.exit(0); });  req.end(payload);}process.stdin.on(\\\"data\\\", chunk => input += chunk);process.stdin.on(\\\"end\\\", send);setTimeout(send, 1000);\" # baton-notification-hook",
+            "async": true
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$SUPERSET_HOME_DIR\" ] && [ -x \"$SUPERSET_HOME_DIR/hooks/notify.sh\" ] && \"$SUPERSET_HOME_DIR/hooks/notify.sh\" || true"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$SUPERSET_HOME_DIR\" ] && [ -x \"$SUPERSET_HOME_DIR/hooks/notify.sh\" ] && \"$SUPERSET_HOME_DIR/hooks/notify.sh\" || true"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$SUPERSET_HOME_DIR\" ] && [ -x \"$SUPERSET_HOME_DIR/hooks/notify.sh\" ] && \"$SUPERSET_HOME_DIR/hooks/notify.sh\" || true"
+          }
+        ]
       }
     ]
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "bash /Users/jarvis/.claude/statusline-command.sh",
-    "padding": 0
   },
   "enabledPlugins": {
     "expo@expo-plugins": false,
@@ -130,7 +206,8 @@
     "learning-output-style@claude-plugins-official": false,
     "typescript-lsp@claude-plugins-official": false,
     "scram@jrvs-skills": true,
-    "playwright@claude-plugins-official": false
+    "playwright@claude-plugins-official": false,
+    "rust-analyzer-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "expo-plugins": {
@@ -156,6 +233,7 @@
   "alwaysThinkingEnabled": true,
   "autoUpdatesChannel": "latest",
   "voiceEnabled": true,
+  "autoDreamEnabled": true,
   "skipDangerousModePermissionPrompt": true,
   "teammateMode": "in-process",
   "mcpServers": {
