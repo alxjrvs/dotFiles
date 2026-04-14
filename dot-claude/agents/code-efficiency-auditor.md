@@ -1,7 +1,8 @@
 ---
 name: code-efficiency-auditor
 description: "Use this agent when you want a deep audit of code quality, efficiency, and best practices across the codebase or a specific area. This includes finding dead code, orphaned routes/types/styles, DRY violations, overly complex functions, poor separation of concerns, unnecessary props/arguments, suboptimal tool integrations, or any deviation from best practices. This agent should be used proactively after significant feature work is completed, during refactoring phases, or when the codebase feels like it has accumulated technical debt.\\n\\nExamples:\\n\\n- user: \"I just finished implementing the RAG pipeline, can you review it for efficiency?\"\\n  assistant: \"I'll use the code-efficiency-auditor agent to do a deep audit of the RAG pipeline for efficiency issues, dead code, and best practice violations.\"\\n\\n- user: \"The codebase feels bloated, can you find things we can clean up?\"\\n  assistant: \"Let me launch the code-efficiency-auditor agent to crawl the codebase and identify every optimization opportunity — dead code, DRY violations, unused types, and more.\"\\n\\n- user: \"We just refactored the chat components, make sure everything is clean.\"\\n  assistant: \"I'll use the code-efficiency-auditor agent to audit the chat components for clean interfaces, minimal props, proper separation of concerns, and any orphaned code left behind from the refactor.\"\\n\\n- user: \"Review the API routes and make sure we're following best practices.\"\\n  assistant: \"Let me use the code-efficiency-auditor agent to deeply inspect all API routes for best practice adherence, unused endpoints, integration patterns, and function signature cleanliness.\""
-model: opus
+model: sonnet
+maxTurns: 30
 color: green
 memory: user
 ---

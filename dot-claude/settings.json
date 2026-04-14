@@ -7,32 +7,13 @@
   },
   "permissions": {
     "allow": [
-      "Bash(xxd:*)",
-      "Bash(head:*)",
-      "Bash(bash:*)",
-      "Bash(git add:*)",
-      "Bash(zsh:*)",
-      "Bash(git push:*)",
-      "Bash(printf:*)",
-      "Bash(brew doctor:*)",
-      "Bash(brew list:*)",
-      "Bash(brew deps:*)",
       "WebFetch(domain:simonwillison.net)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:npmjs.com)",
       "WebFetch(domain:bun.sh)",
-      "Bash(python3:*)",
-      "Skill(commit-commands:commit-push-pr)",
-      "Bash(hexdump:*)",
-      "Bash(git:*)",
       "WebFetch(domain:mise.jdx.dev)",
-      "Bash(starship prompt:*)",
-      "Bash(starship config:*)",
-      "Bash(starship print-config:*)",
       "Skill(commit-commands:commit)",
-      "Bash(which mise:*)",
-      "Bash(echo:*)",
-      "Bash(.:*)"
+      "Skill(commit-commands:commit-push-pr)"
     ],
     "defaultMode": "bypassPermissions"
   },
@@ -102,7 +83,8 @@
   "statusLine": {
     "type": "command",
     "command": "bash /Users/jarvis/.claude/statusline-command.sh",
-    "padding": 0
+    "padding": 0,
+    "refreshInterval": 30000
   },
   "enabledPlugins": {
     "expo@expo-plugins": false,
@@ -130,7 +112,9 @@
     "learning-output-style@claude-plugins-official": false,
     "typescript-lsp@claude-plugins-official": false,
     "scram@jrvs-skills": true,
-    "playwright@claude-plugins-official": false
+    "playwright@claude-plugins-official": false,
+    "implement@gnar": true,
+    "rust-analyzer-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "expo-plugins": {
@@ -150,6 +134,13 @@
         "source": "github",
         "repo": "alxjrvs/skills-lib"
       }
+    },
+    "gnar": {
+      "source": {
+        "source": "github",
+        "repo": "thegnarco/agent-skills"
+      },
+      "autoUpdate": true
     }
   },
   "outputStyle": "Concise",

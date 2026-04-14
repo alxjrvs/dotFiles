@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Claude Code status line - two rows:
-#   Line 1: [repo link OR dir][git branch][worktree?][git pips]
-#   Line 2: [weekly remaining][time][context bar][model]
+#   Line 1: [repo OR dir][PR icon?][git branch][worktree?][git pips]
+#   Line 2: [time][context bar]
 
 input=$(cat)
 
@@ -12,66 +12,14 @@ bash "$HOME/dotFiles/starship-scripts/git-data.sh"
 
 # -- Single jq call to extract all fields at once
 eval "$(echo "$input" | jq -r '
-  @sh "model=\(.model.display_name // "")",
   @sh "used_pct=\(.context_window.used_percentage // "")",
-  @sh "cost_usd=\(.cost.total_cost_usd // 0)",
   @sh "duration_ms=\(.cost.total_duration_ms // 0)",
   @sh "worktree_name=\(.worktree.name // "")",
   @sh "project_dir=\(.workspace.project_dir // "")",
   @sh "cwd=\(.workspace.current_dir // "")"
 ' | tr ',' '\n')"
-model=$(echo "$model" | sed 's/ [0-9][0-9.]*//g')
 
-# -- Weekly usage tracking -----------------------------------------------------
-WEEKLY_LIMIT=200
-_usage_dir="$HOME/.claude"
-_usage_log="${_usage_dir}/weekly-usage.log"
-_cost_file="/tmp/claude-statusline-cost-$(id -u).dat"
-
-# One-time migration: remove legacy per-PID session cost files
-rm -f /tmp/claude-session-cost-* 2>/dev/null || true
-
-# Stale PR cache cleanup (best-effort)
-if [ -d /tmp/git-pr-status ]; then
-  find /tmp/git-pr-status -maxdepth 1 -type f -not -name '*.lock' -mmin +60 -delete 2>/dev/null || true
-  find /tmp/git-pr-status -maxdepth 1 -name '*.lock' -mmin +1 -delete 2>/dev/null || true
-fi
-
-# Read last-recorded session cost to compute delta
-# File format: one line per session — "<ppid> <cost_usd>"
-_last_cost=0
-if [ -f "$_cost_file" ]; then
-  _last_cost=$(awk -v ppid="$PPID" '$1 == ppid {print $2}' "$_cost_file")
-  : "${_last_cost:=0}"
-fi
-
-# Compute delta (new spend since last statusline call in this session)
-_delta=$(awk "BEGIN {d = $cost_usd - $_last_cost; print (d > 0.001) ? d : 0}")
-
-# Persist current session cost (upsert this PPID's line)
-_tmp_cost_file="${_cost_file}.tmp.$$"
-{ [ -f "$_cost_file" ] && awk -v ppid="$PPID" '$1 != ppid' "$_cost_file"; } > "$_tmp_cost_file" 2>/dev/null || true
-printf '%s %s\n' "$PPID" "$cost_usd" >> "$_tmp_cost_file"
-mv "$_tmp_cost_file" "$_cost_file" 2>/dev/null || true
-
-# Append delta to weekly log (format: YYYY-MM-DD amount)
-if [ "$(echo "$_delta > 0" | bc -l 2>/dev/null)" = "1" ]; then
-  _today=$(date +%Y-%m-%d)
-  printf '%s %s\n' "$_today" "$_delta" >> "$_usage_log"
-fi
-
-# Sum costs from the last 7 days
-_week_ago=$(date -v-7d +%Y-%m-%d 2>/dev/null || date -d '7 days ago' +%Y-%m-%d)
-_weekly_total=0
-if [ -f "$_usage_log" ]; then
-  _weekly_total=$(awk -v cutoff="$_week_ago" '$1 >= cutoff {s += $2} END {printf "%.2f", s}' "$_usage_log")
-  # Prune entries older than 7 days (in-place)
-  awk -v cutoff="$_week_ago" '$1 >= cutoff' "$_usage_log" > "${_usage_log}.tmp" && mv "${_usage_log}.tmp" "$_usage_log"
-fi
-
-_remaining=$(awk "BEGIN {r = $WEEKLY_LIMIT - $_weekly_total; printf \"%.0f\", (r > 0) ? r : 0}")
-cost_fmt="\$${_remaining} left"
-
+# -- Duration ------------------------------------------------------------------
 duration_sec=$(( ${duration_ms%%.*} / 1000 ))
 dur_hr=$(( duration_sec / 3600 ))
 dur_min=$(( (duration_sec % 3600) / 60 ))
@@ -108,6 +56,22 @@ repo_name="${GIT_REPO_NAME:-}"
 
 export STATUSLINE_WORKTREE="$worktree_name"
 
+# -- Colors (must be defined before git segment rendering) ---------------------
+. "$HOME/dotFiles/theme.sh"
+
+TXT="236;239;244"          # #ECEFF4 Nord6 (light text on dark bg)
+TXT_DARK="46;52;64"        # #2E3440 Nord0 (dark text on light bg)
+DARK_FG="46;52;64"         # #2E3440 Nord0
+
+# Identity cell: repo name (linked) or CWD -- same Snow Storm styling
+ID_BG="216;222;233"        # #D8DEE9 Nord4 (Snow Storm 1)
+ID_FG="${TXT_DARK}"
+
+TIME_BG="229;233;240"      # #E5E9F0 Nord5 (Snow Storm 2)
+TIME_FG="${TXT_DARK}"
+
+LIGHT_BG="59;66;82"        # #3B4252 Nord1 (Polar Night 1, CONTEXT label)
+
 # -- PR status (from cache) ---------------------------------------------------
 PR_BG="59;66;82"
 PR_FG="236;239;244"
@@ -121,7 +85,6 @@ case "$pr_status" in
 esac
 
 # -- Git segment (inline rendering from cache) --------------------------------
-. "$HOME/dotFiles/theme.sh"
 
 _gfg() { printf '\033[38;2;%d;%d;%dm' "$1" "$2" "$3"; }
 _gbg() { printf '\033[48;2;%d;%d;%dm' "$1" "$2" "$3"; }
@@ -139,13 +102,13 @@ if [ -n "$repo_name" ]; then
   # Direct from GH icon (PR_BG) -- no PN2 gap
   _gs_o="${_gs_o}$(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg ${PR_BG//;/ })${_gA}"
 else
-  _gs_o="${_gs_o}$(_gbg 67 76 94) $(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg 67 76 94)${_gA}"
+  _gs_o="${_gs_o}$(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg ${ID_BG//;/ })${_gA}"
 fi
 # Branch text
 _gs_o="${_gs_o}$(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg $_gs_BG_R $_gs_BG_G $_gs_BG_B) ${_gs_branch} "
 
 if [ -z "${GIT_IS_REPO:-}" ]; then
-  # No git repo — close pill
+  # No git repo -- close pill
   _gs_o="${_gs_o}$(_grst)$(_gfg $_gs_BR_R $_gs_BR_G $_gs_BR_B)${_gA}$(_grst)"
   git_seg="$_gs_o"
 else
@@ -185,68 +148,35 @@ else
   git_seg="$_gs_o"
 fi
 
-# -- Colors --------------------------------------------------------------------
-A=''  # solid arrow
-T=''  # thin separator
-
-# Alternating Polar Night / Snow Storm, offset between rows
-# Line 1: REPO/DIR=PN2 (dark), BRANCH=SS1 (light, rendered inline)
-# Line 2: MODEL=SS1, COST=PN2, TIME=SS2, CONTEXT=PN1
-DARK_FG="46;52;64"         # #2E3440 Nord0
-TXT="236;239;244"          # #ECEFF4 Nord6 (light text on dark bg)
-TXT_DARK="46;52;64"        # #2E3440 Nord0 (dark text on light bg)
-
-REPO_BG="67;76;94"            # #434C5E Nord2 (Polar Night 2)
-REPO_FG="${TXT}"
-
-DIR_BG="67;76;94"          # #434C5E Nord2 (Polar Night 2, matches REPO)
-DIR_FG="${TXT}"
-
-MODEL_BG="216;222;233"     # #D8DEE9 Nord4 (Snow Storm 1)
-MODEL_FG="${TXT_DARK}"
-
-COST_BG="67;76;94"         # #434C5E Nord2 (Polar Night 2)
-COST_FG="${TXT}"
-
-TIME_BG="229;233;240"      # #E5E9F0 Nord5 (Snow Storm 2)
-TIME_FG="${TXT_DARK}"
-
-LIGHT_BG="59;66;82"        # #3B4252 Nord1 (Polar Night 1, CONTEXT label)
-
-# == Line 1: CWD + Repo + Git =====================================================
-CWD_BG="59;66;82"
-
-# CWD cell (always first) -- Nord 1 bg
-line1="\e[48;2;${DARK_FG}m\e[38;2;${CWD_BG}m\e[48;2;${CWD_BG}m\e[38;2;${TXT}m\e[22m ${dir_display} "
+# == Line 1: Identity + Git ===================================================
 
 if [ -n "$repo_name" ]; then
-  REPO_NAME_BG="216;222;233"
-  # CWD -> repo name on white bg (dark text, underlined, linked)
-  line1="${line1}\e[48;2;${REPO_NAME_BG}m\e[38;2;${CWD_BG}m\e[38;2;${TXT_DARK}m\e[22m \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
-  # Repo -> GH icon on PR status bg
-  line1="${line1}\e[48;2;${PR_BG}m\e[38;2;${REPO_NAME_BG}m\e[38;2;${PR_FG}m\e[22m"
+  # Repo name: linked, underlined
+  line1="\e[48;2;${DARK_FG}m\e[38;2;${ID_BG}m\e[48;2;${ID_BG}m\e[38;2;${ID_FG}m\e[22m \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
+  # Identity -> GH icon on PR status bg
+  line1="${line1}\e[48;2;${PR_BG}m\e[38;2;${ID_BG}m\e[38;2;${PR_FG}m\e[22m"
   if [ "${pr_status:-none}" != "none" ]; then
     line1="${line1} \e]8;;${pr_url}\a\e]8;;\a "
   else
     line1="${line1}  "
   fi
-elif [ -n "${GIT_IS_REPO:-}" ]; then
-  # CWD -> SEG_BG for git segment
-  line1="${line1}\e[48;2;${REPO_BG}m\e[38;2;${CWD_BG}m"
+else
+  # CWD: same styling, no link
+  line1="\e[48;2;${DARK_FG}m\e[38;2;${ID_BG}m\e[48;2;${ID_BG}m\e[38;2;${ID_FG}m\e[22m ${dir_display} "
 fi
 
 # Git or closing arrow
 if [ -n "$git_seg" ]; then
   printf "%b%s\n" "$line1" "$git_seg"
 elif [ -n "$repo_name" ]; then
-  printf "%b\e[0m\e[38;2;${REPO_BG}m\e[0m\n" "$line1"
+  printf "%b\e[0m\e[38;2;${ID_BG}m\e[0m\n" "$line1"
 else
-  printf "%b\e[0m\e[38;2;${CWD_BG}m\e[0m\n" "$line1"
+  printf "%b\e[0m\e[38;2;${ID_BG}m\e[0m\n" "$line1"
 fi
 
-# == Line 2: Cost + Time + Context + Model =====================================
+# == Line 2: Time + Context ===================================================
 
-# -- Context bar (20 pips, 5% each) --------------------------------------------
+# -- Context bar (20 pips, 5% each) -------------------------------------------
 # Gradient: Nord2 blue-grey -> amber (~45%) -> red (~85%) -> white hot (100%)
 GRAD_0="67;76;94"
 GRAD_1="88;92;100"
@@ -314,29 +244,11 @@ bar_exit="\e[0m\e[38;2;${DARK_FG}m\e[0m"
 # -- Build line 2 --------------------------------------------------------------
 line2=""
 
-# Model segment (opening pill, if present)
-if [ -n "$model" ]; then
-  line2="${line2}\e[48;2;${DARK_FG}m\e[38;2;${MODEL_BG}m\e[48;2;${MODEL_BG}m\e[38;2;${MODEL_FG}m\e[22m ${model} "
-  # Model -> Cost transition
-  line2="${line2}\e[48;2;${COST_BG}m\e[38;2;${MODEL_BG}m${A}"
-fi
-
-# No model — glyph opens COST segment directly
-if [ -z "$model" ]; then
-  line2="${line2}\e[48;2;${DARK_FG}m\e[38;2;${COST_BG}m"
-fi
-
-# Cost segment
-line2="${line2}\e[48;2;${COST_BG}m\e[38;2;${COST_FG}m\e[22m ${cost_fmt} "
-
-# Cost -> Time transition
-line2="${line2}\e[48;2;${TIME_BG}m\e[38;2;${COST_BG}m${A}"
-
-# Time segment
-line2="${line2}\e[48;2;${TIME_BG}m\e[38;2;${TIME_FG}m\e[22m ${dur_fmt} "
+# Time segment (opening pill)
+line2="${line2}\e[48;2;${DARK_FG}m\e[38;2;${TIME_BG}m\e[48;2;${TIME_BG}m\e[38;2;${TIME_FG}m\e[22m ${dur_fmt} "
 
 # Time -> CONTEXT label transition
-line2="${line2}\e[48;2;${LIGHT_BG}m\e[38;2;${TIME_BG}m${A}"
+line2="${line2}\e[48;2;${LIGHT_BG}m\e[38;2;${TIME_BG}m"
 
 # Context label
 line2="${line2}\e[48;2;${LIGHT_BG}m\e[38;2;${TXT}m\e[22m CONTEXT "
