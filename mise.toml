@@ -2,3 +2,4 @@
 node = { version = "25.8.0", postinstall = "npm install -g typescript prettier eslint" }
 python = "3.13"
 deno = "2"
+rust = "1.94"
