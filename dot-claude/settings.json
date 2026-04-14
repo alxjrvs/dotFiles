@@ -15,7 +15,7 @@
       "Skill(commit-commands:commit)",
       "Skill(commit-commands:commit-push-pr)"
     ],
-    "defaultMode": "bypassPermissions"
+    "defaultMode": "auto"
   },
   "enableAllProjectMcpServers": true,
   "hooks": {
@@ -146,8 +146,8 @@
   "outputStyle": "Concise",
   "alwaysThinkingEnabled": true,
   "autoUpdatesChannel": "latest",
-  "voiceEnabled": true,
   "skipDangerousModePermissionPrompt": true,
+  "voiceEnabled": true,
   "teammateMode": "in-process",
   "mcpServers": {
     "knip": {
@@ -157,5 +157,6 @@
         "@knip/mcp"
       ]
     }
-  }
+  },
+  "skipAutoPermissionPrompt": true
 }
