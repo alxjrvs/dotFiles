@@ -18,7 +18,7 @@
       "Skill(commit-commands:commit)",
       "Skill(commit-commands:commit-push-pr)"
     ],
-    "defaultMode": "auto"
+    "defaultMode": "acceptEdits"
   },
   "enableAllProjectMcpServers": true,
   "hooks": {
