@@ -9,6 +9,9 @@
     "allow": [
       "WebFetch(domain:simonwillison.net)",
       "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:objects.githubusercontent.com)",
       "WebFetch(domain:npmjs.com)",
       "WebFetch(domain:bun.sh)",
       "WebFetch(domain:mise.jdx.dev)",
@@ -16,10 +19,6 @@
       "Skill(commit-commands:commit-push-pr)"
     ],
     "defaultMode": "auto"
-  },
-  "sandbox": {
-    "enabled": true,
-    "autoAllowBashIfSandboxed": true
   },
   "enableAllProjectMcpServers": true,
   "hooks": {
@@ -119,7 +118,8 @@
     "playwright@claude-plugins-official": false,
     "implement@gnar": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
-    "spacebase@gnar": true
+    "spacebase@gnar": true,
+    "cloudflare@gnar": true
   },
   "extraKnownMarketplaces": {
     "expo-plugins": {
@@ -149,6 +149,10 @@
     }
   },
   "outputStyle": "Concise",
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  },
   "alwaysThinkingEnabled": true,
   "autoUpdatesChannel": "latest",
   "skipDangerousModePermissionPrompt": true,
