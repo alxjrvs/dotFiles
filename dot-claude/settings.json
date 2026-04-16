@@ -114,7 +114,8 @@
     "scram@jrvs-skills": true,
     "playwright@claude-plugins-official": false,
     "implement@gnar": true,
-    "rust-analyzer-lsp@claude-plugins-official": true
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "spacebase@gnar": true
   },
   "extraKnownMarketplaces": {
     "expo-plugins": {
@@ -147,6 +148,7 @@
   "alwaysThinkingEnabled": true,
   "autoUpdatesChannel": "latest",
   "skipDangerousModePermissionPrompt": true,
+  "skipAutoPermissionPrompt": true,
   "voiceEnabled": true,
   "teammateMode": "in-process",
   "mcpServers": {
@@ -157,6 +159,5 @@
         "@knip/mcp"
       ]
     }
-  },
-  "skipAutoPermissionPrompt": true
+  }
 }
