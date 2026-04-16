@@ -31,7 +31,7 @@
 - Rebase on pull (`pull.rebase = true`)
 - Push auto-sets upstream (`push.autoSetupRemote = true`)
 - Rerere enabled for conflict resolution
-- NEVER run `git push --force` under any circumstances
+- `git push` and `git push --force-with-lease` are acceptable; NEVER run `git push --force`
 
 ## Dotfiles
 
