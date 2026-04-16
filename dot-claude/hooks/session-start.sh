@@ -11,8 +11,7 @@ warnings=0
 # Check key symlinks
 for pair in \
   "$HOME/.zshrc:$DOTFILES/.zshrc" \
-  "$HOME/.gitconfig:$DOTFILES/.gitconfig" \
-  "$HOME/.config/starship.toml:$DOTFILES/starship.toml"; do
+  "$HOME/.gitconfig:$DOTFILES/.gitconfig"; do
 
   link="${pair%%:*}"
   target="${pair##*:}"

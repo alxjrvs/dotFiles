@@ -262,13 +262,37 @@ _build_prompt() {
   print -rn -- "${repo_seg}${git_seg} "
 }
 
-# Precmd: rebuild prompt on CWD change, kick off async cache refresh
+# zsh/stat: fast mtime checks without forking `stat(1)`
+zmodload -F zsh/stat b:zstat 2>/dev/null
+
+# Precmd: sync-refresh when PWD or git state (HEAD/index mtime) changed,
+# otherwise keep the cheap async refresh path.
 _render_prompt() {
-  if [[ "$PWD" != "$_prompt_last_pwd" ]]; then
+  local _cache="/tmp/git-data-cache-$(id -u).sh"
+  [[ -f "$_cache" ]] && source "$_cache"
+
+  local _need_sync=0 _head_mtime="" _index_mtime=""
+
+  [[ "$PWD" != "$_prompt_last_pwd" ]] && _need_sync=1
+
+  if [[ -n "$GIT_DIR" ]]; then
+    _head_mtime=$(zstat +mtime "$GIT_DIR/HEAD" 2>/dev/null)
+    _index_mtime=$(zstat +mtime "$GIT_DIR/index" 2>/dev/null)
+    if [[ "$_head_mtime" != "$_prompt_last_head_mtime" ]] || \
+       [[ "$_index_mtime" != "$_prompt_last_index_mtime" ]]; then
+      _need_sync=1
+    fi
+  fi
+
+  if (( _need_sync )); then
+    sh ~/dotFiles/starship-scripts/git-data.sh
     PROMPT="$(_build_prompt)"
     _prompt_last_pwd="$PWD"
+    _prompt_last_head_mtime="$_head_mtime"
+    _prompt_last_index_mtime="$_index_mtime"
+  else
+    (sh ~/dotFiles/starship-scripts/git-data.sh &) 2>/dev/null
   fi
-  (sh ~/dotFiles/starship-scripts/git-data.sh &) 2>/dev/null
 }
 precmd_functions+=(_render_prompt)
 
