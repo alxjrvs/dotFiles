@@ -17,6 +17,10 @@
     ],
     "defaultMode": "auto"
   },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  },
   "enableAllProjectMcpServers": true,
   "hooks": {
     "PreToolUse": [
