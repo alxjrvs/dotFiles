@@ -7,46 +7,6 @@
   },
   "permissions": {
     "allow": [
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:api.github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:docs.anthropic.com)",
-      "WebFetch(domain:docs.claude.com)",
-      "WebFetch(domain:developer.mozilla.org)",
-      "WebFetch(domain:bun.sh)",
-      "WebFetch(domain:nodejs.org)",
-      "WebFetch(domain:typescriptlang.org)",
-      "WebFetch(domain:stackoverflow.com)",
-      "Bash(git status*)",
-      "Bash(git log*)",
-      "Bash(git diff*)",
-      "Bash(git show*)",
-      "Bash(git blame*)",
-      "Bash(git branch)",
-      "Bash(git branch --list*)",
-      "Bash(git branch -a*)",
-      "Bash(git branch -v*)",
-      "Bash(git branch -vv*)",
-      "Bash(git remote)",
-      "Bash(git remote -v)",
-      "Bash(git remote show*)",
-      "Bash(git remote get-url*)",
-      "Bash(git config --get*)",
-      "Bash(git config --list*)",
-      "Bash(git ls-files*)",
-      "Bash(git ls-remote*)",
-      "Bash(git rev-parse*)",
-      "Bash(git describe*)",
-      "Bash(git stash list)",
-      "Bash(git stash show*)",
-      "Bash(git reflog)",
-      "Bash(git reflog show*)",
-      "Bash(git shortlog*)",
-      "Bash(git merge-base*)",
-      "Bash(git name-rev*)",
-      "Bash(git for-each-ref*)",
-      "Bash(git count-objects*)",
-      "Bash(git grep*)",
       "Bash(git add*)",
       "Bash(git commit -m*)",
       "Bash(git commit -F*)",
@@ -56,107 +16,29 @@
       "Bash(git checkout -b*)",
       "Bash(git switch*)",
       "Bash(git fetch*)",
-      "Bash(git pull*)",
+      "Bash(git pull)",
       "Bash(git push*)",
       "Bash(git worktree*)",
       "Bash(git tag*)",
       "Bash(git mv*)",
       "Bash(git rm*)",
-      "Bash(ls)",
-      "Bash(ls *)",
-      "Bash(tree*)",
-      "Bash(wc*)",
-      "Bash(file*)",
-      "Bash(stat*)",
-      "Bash(which*)",
-      "Bash(type *)",
-      "Bash(pwd)",
-      "Bash(env)",
-      "Bash(whoami)",
-      "Bash(date*)",
-      "Bash(realpath*)",
-      "Bash(readlink*)",
-      "Bash(head*)",
-      "Bash(tail*)",
-      "Bash(cat*)",
-      "Bash(diff*)",
-      "Bash(echo*)",
-      "Bash(printf*)",
-      "Bash(node --version)",
-      "Bash(bun --version)",
-      "Bash(npm --version)",
-      "Bash(brew --version)",
-      "Bash(git --version)",
-      "Bash(mise --version)",
-      "Bash(rg --version)",
-      "Bash(fzf --version)",
-      "Bash(bun pm ls*)",
-      "Bash(bun outdated)",
-      "Bash(bun info*)",
       "Bash(bun run*)",
       "Bash(bun test*)",
       "Bash(bun x*)",
       "Bash(bunx*)",
-      "Bash(npm ls*)",
-      "Bash(npm outdated)",
-      "Bash(npm view*)",
       "Bash(npm run*)",
       "Bash(npm test*)",
       "Bash(npx*)",
-      "Bash(mise ls*)",
-      "Bash(mise current*)",
-      "Bash(mise which*)",
-      "Bash(mise env*)",
-      "Bash(brew list*)",
-      "Bash(brew info*)",
-      "Bash(brew outdated*)",
-      "Bash(brew deps*)",
-      "Bash(brew leaves)",
-      "Bash(brew search*)",
-      "Bash(gh auth status)",
-      "Bash(gh repo view*)",
-      "Bash(gh workflow list*)",
-      "Bash(gh workflow view*)",
-      "Bash(gh browse*)",
-      "Bash(gh release list*)",
-      "Bash(gh release view*)",
-      "Bash(gh api*)",
       "Bash(gh pr create*)",
       "Bash(gh pr edit*)",
       "Bash(gh pr comment*)",
-      "Bash(gh pr view*)",
-      "Bash(gh pr list*)",
-      "Bash(gh pr diff*)",
-      "Bash(gh pr checks*)",
       "Bash(gh issue create*)",
       "Bash(gh issue edit*)",
       "Bash(gh issue comment*)",
-      "Bash(gh issue view*)",
-      "Bash(gh issue list*)",
-      "Bash(gh run list*)",
-      "Bash(gh run view*)",
-      "Bash(gh run watch*)",
-      "Bash(gh search*)",
-      "Bash(defaults read *)",
+      "Bash(gh api*)",
       "Skill(commit-commands:commit)",
       "Skill(commit-commands:commit-push-pr)",
       "mcp__plugin_context7_context7__query-docs"
-    ],
-    "ask": [
-      "Bash(git branch -D*)",
-      "Bash(git branch -d*)",
-      "Bash(rm *)",
-      "Bash(gh pr close*)",
-      "Bash(gh pr merge*)",
-      "Bash(gh issue close*)",
-      "Bash(bun add*)",
-      "Bash(bun remove*)",
-      "Bash(npm install*)",
-      "Bash(npm uninstall*)",
-      "Bash(mise install*)",
-      "Bash(mise use*)",
-      "Bash(brew install*)",
-      "Bash(brew upgrade*)"
     ],
     "deny": [
       "Bash(git push --force)",
@@ -203,6 +85,7 @@
       "Bash(yarn publish*)",
       "Bash(cargo publish*)",
       "Bash(gh repo delete*)",
+      "Bash(gh pr merge*)",
       "Bash(gh release delete*)",
       "Bash(docker system prune*)",
       "Bash(docker volume prune*)",
@@ -211,8 +94,17 @@
       "Bash(dropdb*)",
       "Bash(createdb --force*)"
     ],
+    "ask": [
+      "Bash(git branch -D*)",
+      "Bash(git branch -d*)",
+      "Bash(rm *)",
+      "Bash(gh pr close*)",
+      "Bash(gh issue close*)"
+    ],
+    "defaultMode": "default",
     "additionalDirectories": [
-      "/tmp/claude"
+      "/tmp/claude",
+      "/private/tmp/claude"
     ]
   },
   "enableAllProjectMcpServers": false,
@@ -276,51 +168,16 @@
           }
         ]
       }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/notify.sh stop",
-            "timeout": 3
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/notify.sh notification",
-            "timeout": 3
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/notify.sh subagent-stop",
-            "timeout": 3
-          }
-        ]
-      }
     ]
   },
   "statusLine": {
     "type": "command",
-    "command": "bash ~/.claude/statusline-command.sh",
+    "command": "bash /Users/jarvis/.claude/statusline-command.sh",
     "padding": 0,
     "refreshInterval": 30000
   },
   "enabledPlugins": {
+    "expo@expo-plugins": false,
     "frontend-design@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
@@ -330,11 +187,34 @@
     "feature-dev@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": false,
+    "figma@claude-plugins-official": false,
     "pr-review-toolkit@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": false,
+    "claude-code-setup@claude-plugins-official": false,
+    "supabase@claude-plugins-official": false,
+    "agent-sdk-dev@claude-plugins-official": false,
+    "explanatory-output-style@claude-plugins-official": false,
+    "plugin-dev@claude-plugins-official": false,
     "hookify@claude-plugins-official": true,
-    "implement@gnar": true
+    "vercel@claude-plugins-official": false,
+    "playground@claude-plugins-official": false,
+    "learning-output-style@claude-plugins-official": false,
+    "typescript-lsp@claude-plugins-official": false,
+    "scram@jrvs-skills": false,
+    "playwright@claude-plugins-official": false,
+    "implement@gnar": true,
+    "rust-analyzer-lsp@claude-plugins-official": false,
+    "spacebase@gnar": false,
+    "cloudflare@gnar": false
   },
   "extraKnownMarketplaces": {
+    "expo-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "expo/skills"
+      }
+    },
     "claude-plugins-official": {
       "source": {
         "source": "github",
@@ -358,6 +238,7 @@
   "outputStyle": "Concise",
   "sandbox": {
     "enabled": true,
+    "autoAllowBashIfSandboxed": true,
     "filesystem": {
       "allowWrite": [
         "~/.claude",
@@ -367,14 +248,24 @@
     "network": {
       "allowLocalBinding": true,
       "allowedDomains": [
-        "*.npmjs.org",
-        "*.jsr.io",
+        "github.com",
+        "*.github.com",
         "*.githubusercontent.com",
         "*.anthropic.com",
-        "*.brew.sh"
+        "*.claude.com",
+        "*.npmjs.org",
+        "registry.npmjs.org",
+        "*.jsr.io",
+        "*.brew.sh",
+        "developer.mozilla.org",
+        "bun.sh",
+        "nodejs.org",
+        "typescriptlang.org",
+        "stackoverflow.com"
       ]
     }
   },
   "autoUpdatesChannel": "latest",
-  "voiceEnabled": true
+  "voiceEnabled": true,
+  "skipAutoPermissionPrompt": true
 }
