@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Claude Code status line - two rows:
-#   Line 1: [repo OR dir][PR icon?][git branch][worktree?][git pips]
-#   Line 2: [time][context bar]
+# Claude Code status line - plain-ASCII layout with colored git values:
+#   Line 1: repo/dir  branch  [wt:name]  [counters]  [PR:status]
+#   Line 2: context [bar] N%
+#   Line 3: session [bar] N%
 
 input=$(cat)
 
@@ -10,7 +11,13 @@ bash "$HOME/dotFiles/starship-scripts/git-data.sh"
 # shellcheck disable=SC1090
 . "/tmp/git-data-cache-$(id -u).sh"
 
-# -- Single jq call to extract all fields at once
+# -- Session window cache (async via ccusage) ----------------------------------
+sh "$HOME/dotFiles/starship-scripts/session-data.sh"
+_session_cache="/tmp/session-data-cache-$(id -u).sh"
+# shellcheck disable=SC1090
+[ -f "$_session_cache" ] && . "$_session_cache"
+
+# -- Parse JSON input ----------------------------------------------------------
 eval "$(echo "$input" | jq -r '
   @sh "used_pct=\(.context_window.used_percentage // "")",
   @sh "duration_ms=\(.cost.total_duration_ms // 0)",
@@ -18,19 +25,6 @@ eval "$(echo "$input" | jq -r '
   @sh "project_dir=\(.workspace.project_dir // "")",
   @sh "cwd=\(.workspace.current_dir // "")"
 ' | tr ',' '\n')"
-
-# -- Duration ------------------------------------------------------------------
-duration_sec=$(( ${duration_ms%%.*} / 1000 ))
-dur_hr=$(( duration_sec / 3600 ))
-dur_min=$(( (duration_sec % 3600) / 60 ))
-dur_sec=$(( duration_sec % 60 ))
-if [ "$dur_hr" -gt 0 ]; then
-  dur_fmt="${dur_hr}h ${dur_min}m"
-elif [ "$dur_min" -gt 0 ]; then
-  dur_fmt="${dur_min}m ${dur_sec}s"
-else
-  dur_fmt="${dur_sec}s"
-fi
 
 # -- Directory -----------------------------------------------------------------
 [ -n "$worktree_name" ] && [ -n "$project_dir" ] && cwd="$project_dir"
@@ -50,210 +44,156 @@ else
   dir_display="${_parts[$(( _n - 2 ))]}/${_parts[$(( _n - 1 ))]}"
 fi
 
-# -- Repo link (from cache) ---------------------------------------------------
+# -- Cache values --------------------------------------------------------------
 repo_url="${GIT_REPO_HTTPS:-}"
 repo_name="${GIT_REPO_NAME:-}"
+pr_status="${GIT_PR_STATUS:-none}"
+pr_url="${GIT_PR_URL:-}"
+branch="${GIT_BRANCH:-}"
 
 export STATUSLINE_WORKTREE="$worktree_name"
 
-# -- Colors (must be defined before git segment rendering) ---------------------
-. "$HOME/dotFiles/theme.sh"
+# -- Styling -------------------------------------------------------------------
+DIM=$'\e[2m'
+UNDIM=$'\e[22m'
+BOLD=$'\e[1m'
+RESET=$'\e[0m'
+MUTED=$'\e[90m'   # bright black — matches Claude TUI secondary text
+RED=$'\e[31m'
+GREEN=$'\e[32m'
+YELLOW=$'\e[33m'
+BLUE=$'\e[34m'
+MAGENTA=$'\e[35m'
+CYAN=$'\e[36m'
 
-TXT="236;239;244"          # #ECEFF4 Nord6 (light text on dark bg)
-TXT_DARK="46;52;64"        # #2E3440 Nord0 (dark text on light bg)
-DARK_FG="46;52;64"         # #2E3440 Nord0
+# -- Gradient: neutral -> warm -> white hot (blackbody-style) ------------------
+# Anchors (R G B):
+#   0%:  74 79 92     cool neutral grey
+#   35%: 176 74 58    dull warm red
+#   70%: 240 160 64   orange / amber
+#   90%: 255 232 144  hot yellow
+#   100%: 255 255 255 white hot
+PIP_COUNT=30
 
-# Identity cell: repo name (linked) or CWD -- same Snow Storm styling
-ID_BG="216;222;233"        # #D8DEE9 Nord4 (Snow Storm 1)
-ID_FG="${TXT_DARK}"
-
-TIME_BG="229;233;240"      # #E5E9F0 Nord5 (Snow Storm 2)
-TIME_FG="${TXT_DARK}"
-
-LIGHT_BG="59;66;82"        # #3B4252 Nord1 (Polar Night 1, CONTEXT label)
-
-# -- PR status (from cache) ---------------------------------------------------
-PR_BG="59;66;82"
-PR_FG="236;239;244"
-pr_status="${GIT_PR_STATUS:-none}"
-pr_url="${GIT_PR_URL:-}"
-
-case "$pr_status" in
-  pass)    PR_BG="163;190;140"; PR_FG="46;52;64" ;;
-  pending) PR_BG="235;203;139"; PR_FG="46;52;64" ;;
-  fail)    PR_BG="191;97;106";  PR_FG="236;239;244" ;;
-esac
-
-# -- Git segment (inline rendering from cache) --------------------------------
-
-_gfg() { printf '\033[38;2;%d;%d;%dm' "$1" "$2" "$3"; }
-_gbg() { printf '\033[48;2;%d;%d;%dm' "$1" "$2" "$3"; }
-_grst() { printf '\033[0m'; }
-_gA=""
-
-_gs_branch="${GIT_BRANCH:-}"
-[ -z "$_gs_branch" ] && _gs_branch="-"
-_gs_BG_R=$NOVA_BG_R; _gs_BG_G=$NOVA_BG_G; _gs_BG_B=$NOVA_BG_B
-_gs_BR_R=$NOVA_BRANCH_R; _gs_BR_G=$NOVA_BRANCH_G; _gs_BR_B=$NOVA_BRANCH_B
-_gs_o=""
-
-# Opening arrow into branch bg
-if [ -n "$repo_name" ]; then
-  # Direct from GH icon (PR_BG) -- no PN2 gap
-  _gs_o="${_gs_o}$(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg ${PR_BG//;/ })${_gA}"
-else
-  _gs_o="${_gs_o}$(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg ${ID_BG//;/ })${_gA}"
-fi
-# Branch text
-_gs_o="${_gs_o}$(_gbg $_gs_BR_R $_gs_BR_G $_gs_BR_B)$(_gfg $_gs_BG_R $_gs_BG_G $_gs_BG_B) ${_gs_branch} "
-
-if [ -z "${GIT_IS_REPO:-}" ]; then
-  # No git repo -- close pill
-  _gs_o="${_gs_o}$(_grst)$(_gfg $_gs_BR_R $_gs_BR_G $_gs_BR_B)${_gA}$(_grst)"
-  git_seg="$_gs_o"
-else
-  # Track previous segment color for seamless powerline transitions
-  _gs_prev_r=$_gs_BR_R; _gs_prev_g=$_gs_BR_G; _gs_prev_b=$_gs_BR_B
-
-  # Worktree indicator
-  if [ -n "$worktree_name" ]; then
-    _gs_WT_R=$NOVA_WORKTREE_R; _gs_WT_G=$NOVA_WORKTREE_G; _gs_WT_B=$NOVA_WORKTREE_B
-    _gs_o="${_gs_o}$(_gbg $_gs_WT_R $_gs_WT_G $_gs_WT_B)$(_gfg $_gs_BR_R $_gs_BR_G $_gs_BR_B)${_gA}"
-    _gs_o="${_gs_o}$(_gfg $_gs_BG_R $_gs_BG_G $_gs_BG_B) $worktree_name "
-    _gs_prev_r=$_gs_WT_R; _gs_prev_g=$_gs_WT_G; _gs_prev_b=$_gs_WT_B
-  fi
-
-  _gs_has_pips=0
-
-  # Pip macro: _gs_pip R G B "label"
-  _gs_pip() {
-    _gs_o="${_gs_o}$(_gbg "$1" "$2" "$3")$(_gfg $_gs_prev_r $_gs_prev_g $_gs_prev_b)${_gA}"
-    _gs_o="${_gs_o}$(_gfg $_gs_BG_R $_gs_BG_G $_gs_BG_B) ${4} "
-    _gs_prev_r=$1; _gs_prev_g=$2; _gs_prev_b=$3
-    _gs_has_pips=1
-  }
-
-  [ "${GIT_STASH_COUNT:-0}" -gt 0 ]    && _gs_pip $NOVA_GIT_STASH_R    $NOVA_GIT_STASH_G    $NOVA_GIT_STASH_B    "\$${GIT_STASH_COUNT}"
-  [ "${GIT_CONFLICT_COUNT:-0}" -gt 0 ] && _gs_pip $NOVA_GIT_CONFLICT_R  $NOVA_GIT_CONFLICT_G  $NOVA_GIT_CONFLICT_B  "!${GIT_CONFLICT_COUNT}"
-  [ "${GIT_UNTRACKED_COUNT:-0}" -gt 0 ] && _gs_pip $NOVA_GIT_UNTRACKED_R $NOVA_GIT_UNTRACKED_G $NOVA_GIT_UNTRACKED_B "?${GIT_UNTRACKED_COUNT}"
-  [ "${GIT_UNSTAGED_COUNT:-0}" -gt 0 ] && _gs_pip $NOVA_GIT_UNSTAGED_R  $NOVA_GIT_UNSTAGED_G  $NOVA_GIT_UNSTAGED_B  "~${GIT_UNSTAGED_COUNT}"
-  [ "${GIT_STAGED_COUNT:-0}" -gt 0 ]   && _gs_pip $NOVA_GIT_STAGED_R    $NOVA_GIT_STAGED_G    $NOVA_GIT_STAGED_B    "+${GIT_STAGED_COUNT}"
-  [ "${GIT_AHEAD:-0}" -gt 0 ]          && _gs_pip $NOVA_GIT_AHEAD_R     $NOVA_GIT_AHEAD_G     $NOVA_GIT_AHEAD_B     "$(printf '\xe2\x86\x91')${GIT_AHEAD}"
-  [ "${GIT_BEHIND:-0}" -gt 0 ]         && _gs_pip $NOVA_GIT_BEHIND_R    $NOVA_GIT_BEHIND_G    $NOVA_GIT_BEHIND_B    "$(printf '\xe2\x86\x93')${GIT_BEHIND}"
-
-  [ "$_gs_has_pips" -eq 0 ] && _gs_pip $NOVA_GIT_CLEAN_R $NOVA_GIT_CLEAN_G $NOVA_GIT_CLEAN_B "$(printf '\xe2\x9c\x93')"
-
-  # Closing arrow
-  _gs_o="${_gs_o}$(_grst)$(_gfg $_gs_prev_r $_gs_prev_g $_gs_prev_b)${_gA}$(_grst)"
-  git_seg="$_gs_o"
-fi
-
-# == Line 1: Identity + Git ===================================================
-
-if [ -n "$repo_name" ]; then
-  # Repo name: linked, underlined
-  line1="\e[48;2;${DARK_FG}m\e[38;2;${ID_BG}m\e[48;2;${ID_BG}m\e[38;2;${ID_FG}m\e[22m \e[4m\e]8;;${repo_url}\a${repo_name}\e]8;;\a\e[24m "
-  # Identity -> GH icon on PR status bg
-  line1="${line1}\e[48;2;${PR_BG}m\e[38;2;${ID_BG}m\e[38;2;${PR_FG}m\e[22m"
-  if [ "${pr_status:-none}" != "none" ]; then
-    line1="${line1} \e]8;;${pr_url}\a\e]8;;\a "
+_grad_at() {
+  local t="$1" r g b u
+  if [ "$t" -le 3500 ]; then
+    u=$(( t * 10000 / 3500 ))
+    r=$(( 74 + (176 - 74) * u / 10000 ))
+    g=$(( 79 + (74 - 79) * u / 10000 ))
+    b=$(( 92 + (58 - 92) * u / 10000 ))
+  elif [ "$t" -le 7000 ]; then
+    u=$(( (t - 3500) * 10000 / 3500 ))
+    r=$(( 176 + (240 - 176) * u / 10000 ))
+    g=$(( 74 + (160 - 74) * u / 10000 ))
+    b=$(( 58 + (64 - 58) * u / 10000 ))
+  elif [ "$t" -le 9000 ]; then
+    u=$(( (t - 7000) * 10000 / 2000 ))
+    r=$(( 240 + (255 - 240) * u / 10000 ))
+    g=$(( 160 + (232 - 160) * u / 10000 ))
+    b=$(( 64 + (144 - 64) * u / 10000 ))
   else
-    line1="${line1}  "
+    u=$(( (t - 9000) * 10000 / 1000 ))
+    r=255
+    g=$(( 232 + (255 - 232) * u / 10000 ))
+    b=$(( 144 + (255 - 144) * u / 10000 ))
   fi
+  printf '%d;%d;%d' "$r" "$g" "$b"
+}
+
+declare -a PIPS
+for ((k=0; k<PIP_COUNT; k++)); do
+  PIPS[$k]=$(_grad_at "$(( k * 10000 / (PIP_COUNT - 1) ))")
+done
+
+render_bar() {
+  local pct="$1"
+  [ -z "$pct" ] && pct=0
+  local filled=$(( pct * PIP_COUNT / 100 ))
+  [ "$filled" -gt "$PIP_COUNT" ] && filled="$PIP_COUNT"
+  [ "$pct" -gt 0 ] && [ "$filled" -eq 0 ] && filled=1
+  local out="${MUTED}[${RESET}"
+  local i=0
+  while [ "$i" -lt "$PIP_COUNT" ]; do
+    if [ "$i" -lt "$filled" ]; then
+      out="${out}${UNDIM}"$'\e[38;2;'"${PIPS[$i]}"$'m#'
+    else
+      out="${out}${DIM}-"
+    fi
+    i=$(( i + 1 ))
+  done
+  out="${out}${RESET}${MUTED}]${RESET}"
+  printf '%s' "$out"
+}
+
+# == Line 1: Identity + git ===================================================
+# Repo name carries CI color and links to the PR (if open) or the repo
+if [ -n "$repo_name" ]; then
+  case "$pr_status" in
+    pass)    id_color="${BOLD}${GREEN}" ;;
+    pending) id_color="${BOLD}${YELLOW}" ;;
+    fail)    id_color="${BOLD}${RED}" ;;
+    *)       id_color="${BOLD}" ;;
+  esac
+  id_link="$repo_url"
+  [ -n "$pr_url" ] && id_link="$pr_url"
+  id_part=$'\e]8;;'"${id_link}"$'\a'"${id_color}${repo_name}${RESET}"$'\e]8;;\a'
 else
-  # CWD: same styling, no link
-  line1="\e[48;2;${DARK_FG}m\e[38;2;${ID_BG}m\e[48;2;${ID_BG}m\e[38;2;${ID_FG}m\e[22m ${dir_display} "
+  id_part="${BOLD}${dir_display}${RESET}"
 fi
 
-# Git or closing arrow
-if [ -n "$git_seg" ]; then
-  printf "%b%s\n" "$line1" "$git_seg"
-elif [ -n "$repo_name" ]; then
-  printf "%b\e[0m\e[38;2;${ID_BG}m\e[0m\n" "$line1"
-else
-  printf "%b\e[0m\e[38;2;${ID_BG}m\e[0m\n" "$line1"
+line1="$id_part"
+
+if [ -n "${GIT_IS_REPO:-}" ] || [ -n "$branch" ]; then
+  [ -z "$branch" ] && branch="-"
+  line1="${line1} ${MUTED}[${RESET}${BLUE}${branch}${MUTED}]${RESET}"
 fi
 
-# == Line 2: Time + Context ===================================================
+[ -z "$worktree_name" ] && worktree_name="${GIT_WORKTREE_NAME:-}"
+[ -n "$worktree_name" ] && line1="${line1} ${MUTED}[${RESET}${MAGENTA}${worktree_name}${MUTED}]${RESET}"
 
-# -- Context bar (20 pips, 5% each) -------------------------------------------
-# Gradient: Nord2 blue-grey -> amber (~45%) -> red (~85%) -> white hot (100%)
-GRAD_0="67;76;94"
-GRAD_1="88;92;100"
-GRAD_2="108;107;105"
-GRAD_3="129;123;111"
-GRAD_4="149;138;116"
-GRAD_5="170;154;122"
-GRAD_6="190;170;127"
-GRAD_7="211;185;133"
-GRAD_8="232;201;138"
-GRAD_9="230;192;136"
-GRAD_10="225;178;131"
-GRAD_11="219;165;127"
-GRAD_12="214;152;123"
-GRAD_13="208;139;119"
-GRAD_14="203;126;115"
-GRAD_15="198;114;111"
-GRAD_16="192;101;107"
-GRAD_17="203;134;142"
-GRAD_18="219;187;193"
-GRAD_19="236;239;244"
-grad=("$GRAD_0" "$GRAD_1" "$GRAD_2" "$GRAD_3" "$GRAD_4" "$GRAD_5" "$GRAD_6" "$GRAD_7" "$GRAD_8" "$GRAD_9" "$GRAD_10" "$GRAD_11" "$GRAD_12" "$GRAD_13" "$GRAD_14" "$GRAD_15" "$GRAD_16" "$GRAD_17" "$GRAD_18" "$GRAD_19")
+_pl() { [ "$1" -eq 1 ] && printf '%s' "$2" || printf '%s' "$3"; }
 
-if [ -n "$used_pct" ]; then
-  used_int=${used_pct%%.*}
-  filled=$(( used_int * 20 / 100 ))
-  [ "$filled" -gt 20 ] && filled=20
-  # At least 1 pip when there's any usage
-  [ "$used_int" -gt 0 ] && [ "$filled" -eq 0 ] && filled=1
-else
-  filled=0
-fi
+counters=""
+_sep="${MUTED}, ${RESET}"
+_push() { [ -z "$counters" ] && counters="$1" || counters="${counters}${_sep}${1}"; }
 
-bar=''
-i=0
-while [ "$i" -lt "$filled" ]; do
-  if [ "$i" -eq $(( filled - 1 )) ]; then
-    # Last filled pip: bg = terminal bg
-    bar="${bar}\e[38;2;${grad[$i]}m\e[48;2;${DARK_FG}m"
-    # Percentage floats right of last colored pip (light text on terminal bg)
-    bar="${bar}\e[38;2;${TXT}m${used_int}%"
+[ "${GIT_STASH_COUNT:-0}" -gt 0 ]     && _push "${MAGENTA}${GIT_STASH_COUNT} $(_pl "${GIT_STASH_COUNT}" stash stashes)${RESET}"
+[ "${GIT_CONFLICT_COUNT:-0}" -gt 0 ]  && _push "${BOLD}${RED}${GIT_CONFLICT_COUNT} $(_pl "${GIT_CONFLICT_COUNT}" conflict conflicts)${RESET}"
+[ "${GIT_UNTRACKED_COUNT:-0}" -gt 0 ] && _push "${CYAN}${GIT_UNTRACKED_COUNT} untracked${RESET}"
+[ "${GIT_UNSTAGED_COUNT:-0}" -gt 0 ]  && _push "${YELLOW}${GIT_UNSTAGED_COUNT} modified${RESET}"
+[ "${GIT_STAGED_COUNT:-0}" -gt 0 ]    && _push "${GREEN}${GIT_STAGED_COUNT} staged${RESET}"
+[ "${GIT_AHEAD:-0}" -gt 0 ]           && _push "${GREEN}${GIT_AHEAD} ahead${RESET}"
+[ "${GIT_BEHIND:-0}" -gt 0 ]          && _push "${RED}${GIT_BEHIND} behind${RESET}"
+[ -n "$counters" ] && line1="${line1} ${MUTED}[${RESET}${counters}${MUTED}]${RESET}"
+
+printf '%s\n' "$line1"
+
+# == Line 2: Context bar ======================================================
+used_int=0
+[ -n "$used_pct" ] && used_int=${used_pct%%.*}
+ctx_bar=$(render_bar "$used_int")
+printf '%scontext%s %s %s[%3d%%]%s\n' "$MUTED" "$RESET" "$ctx_bar" "$MUTED" "$used_int" "$RESET"
+
+# == Line 3: Session bar (5h window via ccusage) ==============================
+sess_int=0
+sess_label=""
+if [ -n "${SESSION_REMAINING_MIN:-}" ] && [ -n "${SESSION_START:-}" ]; then
+  remain_min="${SESSION_REMAINING_MIN%.*}"
+  [ -z "$remain_min" ] && remain_min=0
+  [ "$remain_min" -lt 0 ] && remain_min=0
+  [ "$remain_min" -gt 300 ] && remain_min=300
+  sess_int=$(( (300 - remain_min) * 100 / 300 ))
+  rh=$(( remain_min / 60 ))
+  rm=$(( remain_min % 60 ))
+  if [ "$rh" -gt 0 ]; then
+    sess_label=$(printf '%dh %02dm left' "$rh" "$rm")
   else
-    # Filled pip: fg = this color, bg = next color
-    bar="${bar}\e[38;2;${grad[$i]}m\e[48;2;${grad[$(( i + 1 ))]}m"
+    sess_label=$(printf '%dm left' "$rm")
   fi
-  i=$(( i + 1 ))
-done
-# Unfilled pips: invisible
-while [ "$i" -lt 20 ]; do
-  bar="${bar}\e[38;2;${DARK_FG}m\e[48;2;${DARK_FG}m"
-  i=$(( i + 1 ))
-done
-val_text="$bar"
-
-# Arrow: CONTEXT label -> bar area
-if [ "$filled" -gt 0 ]; then
-  left_glyph="\e[48;2;${grad[0]}m\e[38;2;${LIGHT_BG}m"
-else
-  left_glyph="\e[48;2;${DARK_FG}m\e[38;2;${LIGHT_BG}m"
 fi
 
-# Arrow: bar area -> terminal (closing)
-bar_exit="\e[0m\e[38;2;${DARK_FG}m\e[0m"
-
-# -- Build line 2 --------------------------------------------------------------
-line2=""
-
-# Time segment (opening pill)
-line2="${line2}\e[48;2;${DARK_FG}m\e[38;2;${TIME_BG}m\e[48;2;${TIME_BG}m\e[38;2;${TIME_FG}m\e[22m ${dur_fmt} "
-
-# Time -> CONTEXT label transition
-line2="${line2}\e[48;2;${LIGHT_BG}m\e[38;2;${TIME_BG}m"
-
-# Context label
-line2="${line2}\e[48;2;${LIGHT_BG}m\e[38;2;${TXT}m\e[22m CONTEXT "
-
-# Bar area + closing arrow
-line2="${line2}${left_glyph}${val_text}${bar_exit}"
-
-printf "%b" "$line2"
+if [ -n "$sess_label" ]; then
+  sess_bar=$(render_bar "$sess_int")
+  printf '%ssession%s %s %s[%3d%%] [%s]%s' "$MUTED" "$RESET" "$sess_bar" "$MUTED" "$sess_int" "$sess_label" "$RESET"
+fi

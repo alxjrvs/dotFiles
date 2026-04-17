@@ -6,6 +6,8 @@
 #
 # Variables written:
 #   GIT_IS_REPO        — "1" if inside a git work tree, "" otherwise
+#   GIT_IS_WORKTREE    — "1" if inside a linked worktree, "" otherwise
+#   GIT_WORKTREE_NAME  — basename of the worktree's toplevel dir (empty outside a linked worktree)
 #   GIT_DIR            — path to .git dir
 #   GIT_TOPLEVEL       — repo root path
 #   GIT_BRANCH         — current branch or short HEAD hash
@@ -28,6 +30,8 @@ _cache_file="/tmp/git-data-cache-$(id -u).sh"
 
 # -- Repo detection ------------------------------------------------------------
 GIT_IS_REPO=""
+GIT_IS_WORKTREE=""
+GIT_WORKTREE_NAME=""
 GIT_DIR=""
 GIT_TOPLEVEL=""
 GIT_BRANCH=""
@@ -45,10 +49,17 @@ GIT_BEHIND=0
 GIT_PR_STATUS="none"
 GIT_PR_URL=""
 
-if _revparse=$(git rev-parse --git-dir --show-toplevel 2>/dev/null); then
+if _revparse=$(git rev-parse --git-dir --git-common-dir --show-toplevel 2>/dev/null); then
   GIT_IS_REPO="1"
   GIT_DIR=$(printf '%s' "$_revparse" | sed -n '1p')
-  GIT_TOPLEVEL=$(printf '%s' "$_revparse" | sed -n '2p')
+  _git_common_dir=$(printf '%s' "$_revparse" | sed -n '2p')
+  GIT_TOPLEVEL=$(printf '%s' "$_revparse" | sed -n '3p')
+
+  # Linked worktree: --git-dir diverges from --git-common-dir
+  if [ "$GIT_DIR" != "$_git_common_dir" ]; then
+    GIT_IS_WORKTREE="1"
+    GIT_WORKTREE_NAME=$(basename "$GIT_TOPLEVEL")
+  fi
 
   # Single git call: branch name, ahead/behind, and porcelain status
   # --porcelain=v2 header lines start with '#'; file entries do not.
@@ -179,6 +190,8 @@ cat > "$_cache_file" <<CACHE
 # Generated: $(date)
 GIT_CACHE_TIME='${GIT_CACHE_TIME}'
 GIT_IS_REPO='${GIT_IS_REPO}'
+GIT_IS_WORKTREE='${GIT_IS_WORKTREE}'
+GIT_WORKTREE_NAME='${GIT_WORKTREE_NAME}'
 GIT_DIR='${GIT_DIR}'
 GIT_TOPLEVEL='${GIT_TOPLEVEL}'
 GIT_BRANCH='${GIT_BRANCH}'

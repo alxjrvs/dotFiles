@@ -358,6 +358,17 @@ if command -v claude &>/dev/null; then
 else
   warn "Claude Code not installed — will be installed by mise postinstall hook"
 fi
+
+# ccusage — powers the session-window bar in statusline-command.sh
+if [ -x "$HOME/.bun/bin/ccusage" ]; then
+  ok "ccusage installed"
+elif command -v bun &>/dev/null; then
+  warn "Installing ccusage via bun..."
+  bun add -g ccusage
+  ok "ccusage installed"
+else
+  fail "ccusage missing — install bun (via Brewfile) then re-run"
+fi
 fi # should_run claude
 
 if [ "$OS" = "Darwin" ]; then
