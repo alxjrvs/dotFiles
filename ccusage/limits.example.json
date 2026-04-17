@@ -1,0 +1,5 @@
+{
+  "_doc": "Map Claude account email (from ~/.claude.json oauthAccount.emailAddress) to the 5-hour block token cap for that plan. Unknown accounts fall back to 'max' (ccusage's historical-peak heuristic). Approximate caps: Pro ~19000000, Max 5x ~88000000, Max 20x ~220000000 — confirm with your plan.",
+  "you@example.com": "max",
+  "you@work.example.com": 220000000
+}

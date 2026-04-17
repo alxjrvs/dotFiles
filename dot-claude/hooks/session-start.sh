@@ -10,8 +10,8 @@ DOTFILES=~/dotFiles
 warnings=0
 
 # Prime ccusage-backed session-window cache in the background (~4s otherwise)
-if [[ -x "$HOME/dotFiles/starship-scripts/session-data.sh" ]]; then
-  sh "$HOME/dotFiles/starship-scripts/session-data.sh" >/dev/null 2>&1 &
+if [[ -x "$HOME/dotFiles/scripts/session-data.sh" ]]; then
+  sh "$HOME/dotFiles/scripts/session-data.sh" >/dev/null 2>&1 &
   disown 2>/dev/null || true
 fi
 

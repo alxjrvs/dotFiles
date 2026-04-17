@@ -369,6 +369,14 @@ elif command -v bun &>/dev/null; then
 else
   fail "ccusage missing — install bun (via Brewfile) then re-run"
 fi
+
+# ccusage per-account limits — bootstrap from example if missing (gitignored)
+if [ ! -f "$DOTFILES_DIR/ccusage/limits.json" ]; then
+  cp "$DOTFILES_DIR/ccusage/limits.example.json" "$DOTFILES_DIR/ccusage/limits.json"
+  warn "ccusage/limits.json bootstrapped from example — edit to map account emails to token caps"
+else
+  ok "ccusage/limits.json present"
+fi
 fi # should_run claude
 
 if [ "$OS" = "Darwin" ]; then

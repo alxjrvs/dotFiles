@@ -285,13 +285,13 @@ _render_prompt() {
   fi
 
   if (( _need_sync )); then
-    sh ~/dotFiles/starship-scripts/git-data.sh
+    sh ~/dotFiles/scripts/git-data.sh
     PROMPT="$(_build_prompt)"
     _prompt_last_pwd="$PWD"
     _prompt_last_head_mtime="$_head_mtime"
     _prompt_last_index_mtime="$_index_mtime"
   else
-    (sh ~/dotFiles/starship-scripts/git-data.sh &) 2>/dev/null
+    (sh ~/dotFiles/scripts/git-data.sh &) 2>/dev/null
   fi
 }
 precmd_functions+=(_render_prompt)

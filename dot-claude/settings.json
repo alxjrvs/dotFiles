@@ -4,8 +4,7 @@
     "EDITOR": "nvim",
     "NODE_ENV": "development",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-    "ENABLE_PROMPT_CACHING_1H": "1",
-    "CCUSAGE_TOKEN_LIMIT": "100000000"
+    "ENABLE_PROMPT_CACHING_1H": "1"
   },
   "permissions": {
     "allow": [

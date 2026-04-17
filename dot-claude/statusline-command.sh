@@ -7,12 +7,12 @@
 input=$(cat)
 
 # -- Git data cache ------------------------------------------------------------
-bash "$HOME/dotFiles/starship-scripts/git-data.sh"
+bash "$HOME/dotFiles/scripts/git-data.sh"
 # shellcheck disable=SC1090
 . "/tmp/git-data-cache-$(id -u).sh"
 
 # -- Session window cache (async via ccusage) ----------------------------------
-sh "$HOME/dotFiles/starship-scripts/session-data.sh"
+sh "$HOME/dotFiles/scripts/session-data.sh"
 _session_cache="/tmp/session-data-cache-$(id -u).sh"
 # shellcheck disable=SC1090
 [ -f "$_session_cache" ] && . "$_session_cache"
@@ -142,7 +142,17 @@ else
   id_part="${BOLD}${dir_display}${RESET}"
 fi
 
-line1="$id_part"
+# CI status pill — only when repo is GitHub-backed and has a PR with a resolved status
+ci_part=""
+if [ -n "$repo_name" ]; then
+  case "$pr_status" in
+    pass)    ci_part="${MUTED}[${RESET}${GREEN}ci:pass${MUTED}]${RESET} " ;;
+    pending) ci_part="${MUTED}[${RESET}${YELLOW}ci:pending${MUTED}]${RESET} " ;;
+    fail)    ci_part="${MUTED}[${RESET}${RED}ci:fail${MUTED}]${RESET} " ;;
+  esac
+fi
+
+line1="${ci_part}${id_part}"
 
 if [ -n "${GIT_IS_REPO:-}" ] || [ -n "$branch" ]; then
   [ -z "$branch" ] && branch="-"
@@ -176,24 +186,34 @@ ctx_bar=$(render_bar "$used_int")
 printf '%scontext%s %s %s[%3d%%]%s\n' "$MUTED" "$RESET" "$ctx_bar" "$MUTED" "$used_int" "$RESET"
 
 # == Line 3: Session — burn % against block token limit; time-left as indicator
-sess_int=0
-sess_label=""
-if [ -n "${SESSION_START:-}" ]; then
-  sess_int="${SESSION_BURN_PCT:-0}"
-  [ -z "$sess_int" ] && sess_int=0
-  remain_min="${SESSION_REMAINING_MIN%.*}"
-  [ -z "$remain_min" ] && remain_min=0
-  [ "$remain_min" -lt 0 ] && remain_min=0
-  rh=$(( remain_min / 60 ))
-  rm=$(( remain_min % 60 ))
-  if [ "$rh" -gt 0 ]; then
-    sess_label=$(printf '%dh %02dm left' "$rh" "$rm")
-  else
-    sess_label=$(printf '%dm left' "$rm")
-  fi
+_have_ccusage=0
+if [ -x "$HOME/.bun/bin/ccusage" ] || command -v ccusage >/dev/null 2>&1; then
+  _have_ccusage=1
 fi
 
-if [ -n "$sess_label" ]; then
-  sess_bar=$(render_bar "$sess_int")
-  printf '%ssession%s %s %s[%3d%%] [%s]%s' "$MUTED" "$RESET" "$sess_bar" "$MUTED" "$sess_int" "$sess_label" "$RESET"
+if [ "$_have_ccusage" -eq 0 ]; then
+  printf '%ssession%s %s[ install ccusage for session chart: %sbun add -g ccusage%s %s]%s' \
+    "$MUTED" "$RESET" "$MUTED" "$YELLOW" "$RESET" "$MUTED" "$RESET"
+else
+  sess_int=0
+  sess_label=""
+  if [ -n "${SESSION_START:-}" ]; then
+    sess_int="${SESSION_BURN_PCT:-0}"
+    [ -z "$sess_int" ] && sess_int=0
+    remain_min="${SESSION_REMAINING_MIN%.*}"
+    [ -z "$remain_min" ] && remain_min=0
+    [ "$remain_min" -lt 0 ] && remain_min=0
+    rh=$(( remain_min / 60 ))
+    rm=$(( remain_min % 60 ))
+    if [ "$rh" -gt 0 ]; then
+      sess_label=$(printf '%dh %02dm left' "$rh" "$rm")
+    else
+      sess_label=$(printf '%dm left' "$rm")
+    fi
+  fi
+
+  if [ -n "$sess_label" ]; then
+    sess_bar=$(render_bar "$sess_int")
+    printf '%ssession%s %s %s[%3d%%] [%s]%s' "$MUTED" "$RESET" "$sess_bar" "$MUTED" "$sess_int" "$sess_label" "$RESET"
+  fi
 fi

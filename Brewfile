@@ -27,7 +27,6 @@ brew "unbound", restart_service: true
 brew "gnutls"
 brew "gnupg"
 brew "krb5"
-brew "tmux"
 brew "overmind"
 brew "redis", restart_service: true
 brew "direnv"
@@ -37,7 +36,6 @@ brew "tealdeer"
 brew "zoxide"
 brew "sheldon"
 brew "shfmt"
-brew "starship"
 brew "supabase/tap/supabase"
 # brew "wix/brew/applesimutils"  # iOS simulator
 tap "manaflow-ai/cmux"

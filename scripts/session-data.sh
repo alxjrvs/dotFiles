@@ -15,9 +15,10 @@
 #   SESSION_REMAINING_MIN  — minutes remaining in the current block
 #   SESSION_COST_USD       — cost accumulated in this block
 #   SESSION_TOKENS         — total tokens consumed in this block
-#   SESSION_TOKEN_LIMIT    — token limit for the block (from --token-limit; defaults to "max"
-#                            which is historical peak — override via CCUSAGE_TOKEN_LIMIT env var
-#                            to match your plan's actual cap, e.g. 100000000 for Claude Max 5x)
+#   SESSION_TOKEN_LIMIT    — token limit for the block (from --token-limit). Resolved per-account
+#                            via ~/dotFiles/ccusage/limits.json keyed by the logged-in Claude
+#                            email (~/.claude.json oauthAccount.emailAddress). Override with the
+#                            CCUSAGE_TOKEN_LIMIT env var; fallback is "max" (historical peak).
 #   SESSION_BURN_PCT       — current tokens as % of limit (integer, capped at 100)
 
 _cache_file="/tmp/session-data-cache-$(id -u).sh"
@@ -40,12 +41,37 @@ if [ -f "$_cache_file" ]; then
   _age=$(( _now - ${_cached_time:-0} ))
 fi
 
+# Resolve token limit by logged-in Claude account.
+# Lookup order:
+#   1) CCUSAGE_TOKEN_LIMIT env var (explicit override, highest priority)
+#   2) ~/dotFiles/ccusage/limits.json keyed by ~/.claude.json oauthAccount.emailAddress
+#   3) "max" fallback (ccusage historical-peak heuristic)
+_resolve_token_limit() {
+  if [ -n "${CCUSAGE_TOKEN_LIMIT:-}" ]; then
+    printf '%s' "$CCUSAGE_TOKEN_LIMIT"
+    return
+  fi
+  _limits_file="$HOME/dotFiles/ccusage/limits.json"
+  _claude_config="$HOME/.claude.json"
+  if [ -f "$_limits_file" ] && [ -f "$_claude_config" ] && command -v jq >/dev/null 2>&1; then
+    _email=$(jq -r '.oauthAccount.emailAddress // empty' "$_claude_config" 2>/dev/null)
+    if [ -n "$_email" ]; then
+      _lookup=$(jq -r --arg e "$_email" '.[$e] // empty' "$_limits_file" 2>/dev/null)
+      if [ -n "$_lookup" ]; then
+        printf '%s' "$_lookup"
+        return
+      fi
+    fi
+  fi
+  printf 'max'
+}
+
 # Async refresh if stale and no refresh in flight
 if [ -n "$_ccusage" ] && [ "$_age" -ge "$_ttl" ] && [ ! -f "$_lock_file" ]; then
   mkdir -p "$(dirname "$_lock_file")" 2>/dev/null
   (
     printf '%s' "$_now" > "$_lock_file"
-    _limit_arg="${CCUSAGE_TOKEN_LIMIT:-max}"
+    _limit_arg=$(_resolve_token_limit)
     _raw=$("$_ccusage" blocks --active --json --token-limit "$_limit_arg" 2>/dev/null)
     _start=""
     _end=""
