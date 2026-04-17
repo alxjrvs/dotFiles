@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 # SessionStart hook: quick health check for dotfiles environment.
 # Spot-checks key symlinks and warns about uncommitted changes.
+# Also primes the session-window cache so the statusline renders on first paint.
 # Exit 0 always — informational only, never blocks.
 
 set -uo pipefail
 
 DOTFILES=~/dotFiles
 warnings=0
+
+# Prime ccusage-backed session-window cache in the background (~4s otherwise)
+if [[ -x "$HOME/dotFiles/starship-scripts/session-data.sh" ]]; then
+  sh "$HOME/dotFiles/starship-scripts/session-data.sh" >/dev/null 2>&1 &
+  disown 2>/dev/null || true
+fi
 
 # Check key symlinks
 for pair in \

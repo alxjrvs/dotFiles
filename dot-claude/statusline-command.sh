@@ -175,15 +175,15 @@ used_int=0
 ctx_bar=$(render_bar "$used_int")
 printf '%scontext%s %s %s[%3d%%]%s\n' "$MUTED" "$RESET" "$ctx_bar" "$MUTED" "$used_int" "$RESET"
 
-# == Line 3: Session bar (5h window via ccusage) ==============================
+# == Line 3: Session — burn % against block token limit; time-left as indicator
 sess_int=0
 sess_label=""
-if [ -n "${SESSION_REMAINING_MIN:-}" ] && [ -n "${SESSION_START:-}" ]; then
+if [ -n "${SESSION_START:-}" ]; then
+  sess_int="${SESSION_BURN_PCT:-0}"
+  [ -z "$sess_int" ] && sess_int=0
   remain_min="${SESSION_REMAINING_MIN%.*}"
   [ -z "$remain_min" ] && remain_min=0
   [ "$remain_min" -lt 0 ] && remain_min=0
-  [ "$remain_min" -gt 300 ] && remain_min=300
-  sess_int=$(( (300 - remain_min) * 100 / 300 ))
   rh=$(( remain_min / 60 ))
   rm=$(( remain_min % 60 ))
   if [ "$rh" -gt 0 ]; then

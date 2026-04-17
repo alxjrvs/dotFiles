@@ -3,7 +3,9 @@
   "env": {
     "EDITOR": "nvim",
     "NODE_ENV": "development",
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "ENABLE_PROMPT_CACHING_1H": "1",
+    "CCUSAGE_TOKEN_LIMIT": "100000000"
   },
   "permissions": {
     "allow": [
@@ -16,8 +18,21 @@
       "WebFetch(domain:bun.sh)",
       "WebFetch(domain:mise.jdx.dev)",
       "Bash(git *)",
+      "Bash(npx vitest *)",
+      "Bash(npm run typecheck *)",
+      "Bash(npx jest *)",
+      "Bash(npm run lint *)",
+      "Bash(npm run validate *)",
+      "Bash(cargo clippy *)",
+      "Bash(node ace test *)",
+      "Bash(bun run test *)",
+      "Bash(npm run check *)",
+      "Bash(cargo test *)",
+      "Bash(cargo check *)",
+      "Bash(bun run typecheck *)",
       "Skill(commit-commands:commit)",
-      "Skill(commit-commands:commit-push-pr)"
+      "Skill(commit-commands:commit-push-pr)",
+      "mcp__plugin_context7_context7__query-docs"
     ],
     "defaultMode": "acceptEdits"
   },
