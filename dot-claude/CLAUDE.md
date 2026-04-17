@@ -6,6 +6,7 @@
 - Editor: neovim (`nvim`)
 - Shell: zsh with vi keybindings
 - Package managers: bun (preferred for JS), brew (system)
+- Power user of Claude Code: hand-rolls dotfiles, hooks, statusline, ccusage integration. Assume familiarity with the feature surface. Don't soften recommendations or default to basic workflows — pitch the advanced option directly.
 
 ## Preferences
 
@@ -13,6 +14,7 @@
 - Use conventional commit style (feat:, fix:, chore:, etc.)
 - When a term is ambiguous, ask for clarification rather than assuming a meaning
 - No audio output from Claude or its hooks — no `say`, no notification sounds. Silent desktop notifications are fine. Voice input (me talking to Claude) is fine.
+- **Meaningful-benefit filter**: for every proposed change, ask *does this provide real payoff?* Skip nice-to-haves, redundant additions, and belts-and-suspenders safety without a real risk. "Do them all" means "do the ones worth doing" — say what you're skipping and why. Completeness is not a virtue.
 
 ## Coding Style
 
@@ -23,6 +25,7 @@
 ## Git Workflow
 
 - Default branch: main
+- Rebase, squash, linear history. Avoid merge commits.
 - `git push` and `git push --force-with-lease` are acceptable; NEVER run `git push --force`
 
 ## Tool Preferences

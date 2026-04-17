@@ -15,7 +15,7 @@ case "$file_path" in
   *.sh)
     command -v shfmt &>/dev/null && shfmt -w -i 2 "$file_path" 2>/dev/null || true
     ;;
-  *.ts | *.tsx | *.js | *.jsx | *.css | *.json | *.md | *.mdx)
+  *.ts | *.tsx | *.js | *.jsx | *.css)
     command -v prettier &>/dev/null && prettier --write "$file_path" 2>/dev/null || true
     ;;
 esac

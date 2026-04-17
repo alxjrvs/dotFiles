@@ -213,8 +213,7 @@
     ],
     "additionalDirectories": [
       "/tmp/claude"
-    ],
-    "defaultMode": "default"
+    ]
   },
   "enableAllProjectMcpServers": false,
   "hooks": {
@@ -317,7 +316,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash /Users/jarvis/.claude/statusline-command.sh",
+    "command": "bash ~/.claude/statusline-command.sh",
     "padding": 0,
     "refreshInterval": 30000
   },
@@ -336,12 +335,6 @@
     "implement@gnar": true
   },
   "extraKnownMarketplaces": {
-    "expo-plugins": {
-      "source": {
-        "source": "github",
-        "repo": "expo/skills"
-      }
-    },
     "claude-plugins-official": {
       "source": {
         "source": "github",
