@@ -145,7 +145,7 @@ PORCELAIN
     _pr_cache_file="${_pr_cache_dir}/${_repo_id}_${_branch_id}"
     _pr_lock_file="${_pr_cache_file}.lock"
     _now=$(date +%s)
-    _ttl=30
+    _ttl=10
 
     # Always read from cache (stale is fine — async refresh handles freshness)
     if [ -f "$_pr_cache_file" ]; then
