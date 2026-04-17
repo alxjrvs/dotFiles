@@ -15,6 +15,7 @@
       "WebFetch(domain:npmjs.com)",
       "WebFetch(domain:bun.sh)",
       "WebFetch(domain:mise.jdx.dev)",
+      "Bash(git *)",
       "Skill(commit-commands:commit)",
       "Skill(commit-commands:commit-push-pr)"
     ],
@@ -107,14 +108,14 @@
     "claude-code-setup@claude-plugins-official": true,
     "supabase@claude-plugins-official": false,
     "agent-sdk-dev@claude-plugins-official": false,
-    "explanatory-output-style@claude-plugins-official": true,
+    "explanatory-output-style@claude-plugins-official": false,
     "plugin-dev@claude-plugins-official": true,
     "hookify@claude-plugins-official": true,
     "vercel@claude-plugins-official": true,
     "playground@claude-plugins-official": false,
     "learning-output-style@claude-plugins-official": false,
     "typescript-lsp@claude-plugins-official": false,
-    "scram@jrvs-skills": true,
+    "scram@jrvs-skills": false,
     "playwright@claude-plugins-official": false,
     "implement@gnar": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
@@ -158,7 +159,7 @@
   "skipDangerousModePermissionPrompt": true,
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true,
-  "teammateMode": "in-process",
+  "teammateMode": "separate-process",
   "mcpServers": {
     "knip": {
       "command": "npx",
