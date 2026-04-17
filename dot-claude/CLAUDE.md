@@ -11,7 +11,6 @@
 
 - Keep responses concise and direct
 - Use bun over npm/yarn unless a project requires otherwise
-- Never auto-commit; always ask first
 - Use conventional commit style (feat:, fix:, chore:, etc.)
 - Prefer editing existing files over creating new ones
 - No emojis in code or commit messages unless asked
