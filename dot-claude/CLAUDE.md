@@ -31,9 +31,8 @@
 - Rerere enabled for conflict resolution
 - `git push` and `git push --force-with-lease` are acceptable; NEVER run `git push --force`
 
-## Dotfiles
+## Tool Preferences
 
-- Managed at `~/dotFiles` with symlinks via `sync.sh` (alias: `env-sync`)
-- Changes to shell config go in `.zshrc`
-- Changes to git config go in `.gitconfig`
-- Claude settings live in `.claude/` and are symlinked to `~/.claude/`
+- For library, framework, SDK, or API docs, prefer the `context7` MCP (`query-docs`) over `WebFetch`. Faster, more accurate, and doesn't consume browse budget.
+- For multi-file or multi-step work, enter plan mode (`EnterPlanMode`) before touching code. Short, clearly-scoped tasks (one or two files) don't need it.
+- For long-running or polling work (CI checks, deploy status, slow builds), use `ScheduleWakeup` or the `loop` skill rather than manually re-running commands.
