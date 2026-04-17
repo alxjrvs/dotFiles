@@ -15,6 +15,9 @@ if [[ -x "$HOME/dotFiles/scripts/session-data.sh" ]]; then
   disown 2>/dev/null || true
 fi
 
+# Prune stale security_warnings_state files (>7 days old) — they accumulate per session UUID
+find "$HOME/.claude" -maxdepth 1 -name 'security_warnings_state_*.json' -mtime +7 -delete 2>/dev/null || true
+
 # Check key symlinks
 for pair in \
   "$HOME/.zshrc:$DOTFILES/.zshrc" \

@@ -9,7 +9,6 @@
 
 ## Preferences
 
-- Keep responses concise and direct
 - Use bun over npm/yarn unless a project requires otherwise
 - Use conventional commit style (feat:, fix:, chore:, etc.)
 - Prefer editing existing files over creating new ones

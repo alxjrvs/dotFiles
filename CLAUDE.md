@@ -74,6 +74,17 @@ This directory is symlinked wholesale to `~/.claude/`. It contains:
 
 Managed by **mise** via `mise.toml`. Default npm packages (TypeScript, Prettier, ESLint, Claude Code) auto-install with each Node version via the `postinstall` hook in `mise.toml`.
 
+## Guardrails
+
+Pause and confirm with the user before doing any of these:
+
+- **Prompt code in `.zshrc` / `theme.sh`**: contains raw powerline glyphs (U+E0B0, U+E0B2, U+E0A0, U+276F). The Write/Edit tools strip unicode. To modify these sections, use a Python helper that writes the file byte-exact; never Edit a line containing a glyph directly.
+- **Dependency lockfiles** (any file matching `*-lock*` or `*.lock*`): never edit by hand. The `lock-file-guard.sh` PreToolUse hook blocks these; do not work around it.
+- **`ccusage/limits.json`**: gitignored, personal per-account token caps. Never edit or overwrite without explicit user request.
+- **`sync.sh` symlink semantics**: the `link()` function prompts on conflict and is interactive. Do not refactor it to auto-overwrite or skip prompts.
+- **Hardcoded `$HOME/dotFiles` paths**: `scripts/*.sh`, `ccusage/*`, and `theme.sh` assume this absolute path. Do not refactor them to use `$PWD` or relative paths.
+- **Starship references**: the user replaced Starship with a hand-rolled prompt. If you see `starship` in files, treat it as historical — do not reintroduce Starship code or dependencies.
+
 ## Important Gotchas
 
 - **Unicode/Nerd Font glyphs**: The Write/Edit tools strip unicode characters. Use Python to write files containing special codepoints (e.g., powerline glyphs U+E0B0, U+E0B2, U+E0A0 in prompt code).
