@@ -37,6 +37,7 @@
 - For multi-file or multi-step work, enter plan mode (`EnterPlanMode`) before touching code. Short, clearly-scoped tasks (one or two files) don't need it.
 - For long-running or polling work (CI checks, deploy status, slow builds), use `ScheduleWakeup` or the `loop` skill rather than manually re-running commands.
 - For codebase research spanning more than ~3 file lookups, dispatch the `Explore` subagent rather than grepping inline.
+- When dispatching an `Agent` that will edit code, pass `isolation: "worktree"` — the worktree auto-cleans if no changes, and leaves a reviewable branch if there are edits.
 
 ## Skill Usage
 

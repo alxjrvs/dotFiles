@@ -147,7 +147,16 @@
       "Bash(git branch -d*)",
       "Bash(rm *)",
       "Bash(gh pr close*)",
-      "Bash(gh issue close*)"
+      "Bash(gh pr merge*)",
+      "Bash(gh issue close*)",
+      "Bash(bun add*)",
+      "Bash(bun remove*)",
+      "Bash(npm install*)",
+      "Bash(npm uninstall*)",
+      "Bash(mise install*)",
+      "Bash(mise use*)",
+      "Bash(brew install*)",
+      "Bash(brew upgrade*)"
     ],
     "deny": [
       "Bash(git push --force)",
@@ -194,7 +203,6 @@
       "Bash(yarn publish*)",
       "Bash(cargo publish*)",
       "Bash(gh repo delete*)",
-      "Bash(gh pr merge*)",
       "Bash(gh release delete*)",
       "Bash(docker system prune*)",
       "Bash(docker volume prune*)",
@@ -270,6 +278,54 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/notify.sh stop",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/notify.sh notification",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/notify.sh subagent-stop",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/pre-compact.sh",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -339,7 +395,23 @@
   },
   "outputStyle": "Concise",
   "sandbox": {
-    "enabled": true
+    "enabled": true,
+    "filesystem": {
+      "allowWrite": [
+        "~/.claude",
+        "~/.claude.json"
+      ]
+    },
+    "network": {
+      "allowLocalBinding": true,
+      "allowedDomains": [
+        "*.npmjs.org",
+        "*.jsr.io",
+        "*.githubusercontent.com",
+        "*.anthropic.com",
+        "*.brew.sh"
+      ]
+    }
   },
   "autoUpdatesChannel": "latest",
   "voiceEnabled": true
