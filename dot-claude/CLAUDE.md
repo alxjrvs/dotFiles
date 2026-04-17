@@ -40,11 +40,22 @@
 
 ## Skill Usage
 
-Invoke these before defaulting to ad-hoc behavior — they override the default system prompt where they conflict:
+Invoke skills before defaulting to ad-hoc behavior — they override the default system prompt where they conflict.
 
-- `superpowers:brainstorming` — before any creative work: features, components, behavior changes.
+**Prefer `implement:*` (CDD cycle: Define → Generate → Verify) for code-change workflows.** Fall back to `superpowers:*` for anything implement doesn't cover.
+
+Implement (first choice for code work):
+
+- `implement:build` — orchestrates Define → Generate → Verify for any code change; scales from one-liner to full epic.
+- `implement:define` — planning/breakdown only; dispatches Plan agents with distinct analytical perspectives.
+- `implement:generate` — single TDD cycle (red-green-refactor, or verify mode for UI/config).
+- `implement:verify` — code review gate after a changeset.
+- `implement:adr` — record an architecture decision worth preserving.
+- `implement:docgen` — generate / update project documentation.
+
+Superpowers (fill-in for non-implementation work):
+
+- `superpowers:brainstorming` — before any creative work when the task isn't yet well-defined.
 - `superpowers:systematic-debugging` — on any bug, test failure, or unexpected behavior, before proposing a fix.
-- `superpowers:writing-plans` / `superpowers:executing-plans` — for multi-step implementations; writes the plan, then executes it with review checkpoints.
-- `superpowers:test-driven-development` — when implementing a feature or bugfix with testable logic.
 - `superpowers:verification-before-completion` — before claiming work done, fixed, or passing. Evidence before assertions.
-- `superpowers:requesting-code-review` — before merging or at major milestones.
+- `superpowers:dispatching-parallel-agents` — for 2+ independent tasks with no shared state.
