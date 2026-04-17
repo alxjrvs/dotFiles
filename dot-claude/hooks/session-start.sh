@@ -41,8 +41,4 @@ if git -C "$DOTFILES" status --porcelain 2>/dev/null | grep -q .; then
   ((warnings++)) || true
 fi
 
-if [[ $warnings -eq 0 ]]; then
-  echo "dotfiles: all symlinks intact, working tree clean"
-fi
-
 exit 0

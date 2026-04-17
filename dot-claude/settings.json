@@ -56,7 +56,7 @@
       "Bash(git checkout -b*)",
       "Bash(git switch*)",
       "Bash(git fetch*)",
-      "Bash(git pull)",
+      "Bash(git pull*)",
       "Bash(git push*)",
       "Bash(git worktree*)",
       "Bash(git tag*)",
@@ -212,8 +212,7 @@
       "Bash(createdb --force*)"
     ],
     "additionalDirectories": [
-      "/tmp/claude",
-      "/private/tmp/claude"
+      "/tmp/claude"
     ],
     "defaultMode": "default"
   },
@@ -314,18 +313,6 @@
           }
         ]
       }
-    ],
-    "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/pre-compact.sh",
-            "timeout": 5
-          }
-        ]
-      }
     ]
   },
   "statusLine": {
@@ -335,7 +322,6 @@
     "refreshInterval": 30000
   },
   "enabledPlugins": {
-    "expo@expo-plugins": false,
     "frontend-design@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
@@ -345,26 +331,9 @@
     "feature-dev@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": false,
-    "figma@claude-plugins-official": false,
     "pr-review-toolkit@claude-plugins-official": true,
-    "skill-creator@claude-plugins-official": false,
-    "claude-code-setup@claude-plugins-official": false,
-    "supabase@claude-plugins-official": false,
-    "agent-sdk-dev@claude-plugins-official": false,
-    "explanatory-output-style@claude-plugins-official": false,
-    "plugin-dev@claude-plugins-official": false,
     "hookify@claude-plugins-official": true,
-    "vercel@claude-plugins-official": false,
-    "playground@claude-plugins-official": false,
-    "learning-output-style@claude-plugins-official": false,
-    "typescript-lsp@claude-plugins-official": false,
-    "scram@jrvs-skills": false,
-    "playwright@claude-plugins-official": false,
-    "implement@gnar": true,
-    "rust-analyzer-lsp@claude-plugins-official": false,
-    "spacebase@gnar": false,
-    "cloudflare@gnar": false
+    "implement@gnar": true
   },
   "extraKnownMarketplaces": {
     "expo-plugins": {
