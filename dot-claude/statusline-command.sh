@@ -127,32 +127,27 @@ render_bar() {
 }
 
 # == Line 1: Identity + git ===================================================
-# Repo name carries CI color and links to the PR (if open) or the repo
+# Repo name stays a consistent near-white; CI state is conveyed by the pill to its right
+NEAR_WHITE=$'\e[38;2;235;235;235m'
 if [ -n "$repo_name" ]; then
-  case "$pr_status" in
-    pass)    id_color="${BOLD}${GREEN}" ;;
-    pending) id_color="${BOLD}${YELLOW}" ;;
-    fail)    id_color="${BOLD}${RED}" ;;
-    *)       id_color="${BOLD}" ;;
-  esac
   id_link="$repo_url"
   [ -n "$pr_url" ] && id_link="$pr_url"
-  id_part=$'\e]8;;'"${id_link}"$'\a'"${id_color}${repo_name}${RESET}"$'\e]8;;\a'
+  id_part=$'\e]8;;'"${id_link}"$'\a'"${BOLD}${NEAR_WHITE}${repo_name}${RESET}"$'\e]8;;\a'
 else
-  id_part="${BOLD}${dir_display}${RESET}"
+  id_part="${BOLD}${NEAR_WHITE}${dir_display}${RESET}"
 fi
 
 # CI status pill — only when repo is GitHub-backed and has a PR with a resolved status
 ci_part=""
 if [ -n "$repo_name" ]; then
   case "$pr_status" in
-    pass)    ci_part="${MUTED}[${RESET}${GREEN}ci:pass${MUTED}]${RESET} " ;;
-    pending) ci_part="${MUTED}[${RESET}${YELLOW}ci:pending${MUTED}]${RESET} " ;;
-    fail)    ci_part="${MUTED}[${RESET}${RED}ci:fail${MUTED}]${RESET} " ;;
+    pass)    ci_part=" ${MUTED}[${RESET}${GREEN}ci:pass${MUTED}]${RESET}" ;;
+    pending) ci_part=" ${MUTED}[${RESET}${YELLOW}ci:pending${MUTED}]${RESET}" ;;
+    fail)    ci_part=" ${MUTED}[${RESET}${RED}ci:fail${MUTED}]${RESET}" ;;
   esac
 fi
 
-line1="${ci_part}${id_part}"
+line1="${id_part}${ci_part}"
 
 if [ -n "${GIT_IS_REPO:-}" ] || [ -n "$branch" ]; then
   [ -z "$branch" ] && branch="-"
