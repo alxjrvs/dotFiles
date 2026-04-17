@@ -334,10 +334,8 @@ if should_run symlinks claude; then
 mkdir -p "$HOME/.claude"
 link "$DOTFILES_DIR/dot-claude/CLAUDE.md"     "$HOME/.claude/CLAUDE.md"     "claude/CLAUDE.md"
 link "$DOTFILES_DIR/dot-claude/settings.json" "$HOME/.claude/settings.json" "claude/settings.json"
-link "$DOTFILES_DIR/dot-claude/agents"        "$HOME/.claude/agents"        "claude/agents"
 link "$DOTFILES_DIR/dot-claude/hooks"              "$HOME/.claude/hooks"                    "claude/hooks"
 link "$DOTFILES_DIR/dot-claude/statusline-command.sh" "$HOME/.claude/statusline-command.sh" "claude/statusline-command.sh"
-link "$DOTFILES_DIR/dot-claude/commands"     "$HOME/.claude/commands"     "claude/commands"
 fi
 
 # ── 7. Sheldon plugins ─────────────────────────────────────────────
