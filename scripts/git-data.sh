@@ -26,7 +26,11 @@
 #   GIT_PR_URL         — PR URL (empty when no PR)
 #   GIT_CACHE_TIME     — unix timestamp when cache was written
 
-_cache_file="/tmp/git-data-cache-$(id -u).sh"
+# Key cache by repo toplevel (or cwd if not in a repo) so concurrent sessions
+# in different projects don't clobber each other's state.
+_git_key=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
+_git_hash=$(printf '%s' "$_git_key" | shasum -a 256 | cut -c1-12)
+_cache_file="/tmp/git-data-cache-$(id -u)-${_git_hash}.sh"
 
 # -- Repo detection ------------------------------------------------------------
 GIT_IS_REPO=""

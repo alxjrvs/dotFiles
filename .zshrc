@@ -251,7 +251,9 @@ function _prompt_git_seg() {
 
 # Prompt rendering helpers
 _build_prompt() {
-  local _cache="/tmp/git-data-cache-$(id -u).sh"
+  local _git_key=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
+  local _git_hash=$(printf '%s' "$_git_key" | shasum -a 256 | cut -c1-12)
+  local _cache="/tmp/git-data-cache-$(id -u)-${_git_hash}.sh"
   [[ -f "$_cache" ]] && source "$_cache"
   # Invalidate stale git data if CWD moved outside cached repo
   if [[ -n "$GIT_TOPLEVEL" ]] && [[ "$PWD" != "$GIT_TOPLEVEL"* ]]; then
@@ -268,7 +270,9 @@ zmodload -F zsh/stat b:zstat 2>/dev/null
 # Precmd: sync-refresh when PWD or git state (HEAD/index mtime) changed,
 # otherwise keep the cheap async refresh path.
 _render_prompt() {
-  local _cache="/tmp/git-data-cache-$(id -u).sh"
+  local _git_key=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
+  local _git_hash=$(printf '%s' "$_git_key" | shasum -a 256 | cut -c1-12)
+  local _cache="/tmp/git-data-cache-$(id -u)-${_git_hash}.sh"
   [[ -f "$_cache" ]] && source "$_cache"
 
   local _need_sync=0 _head_mtime="" _index_mtime=""

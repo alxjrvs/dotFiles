@@ -16,7 +16,9 @@ if [[ -n "$session_id" ]]; then
   date +%s > "/tmp/claude-turn-start-${session_id}" 2>/dev/null || true
 fi
 
-git_cache="/tmp/git-data-cache-$(id -u).sh"
+_git_key=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
+_git_hash=$(printf '%s' "$_git_key" | shasum -a 256 | cut -c1-12)
+git_cache="/tmp/git-data-cache-$(id -u)-${_git_hash}.sh"
 age_max=60
 
 # Kick off a background git refresh if stale (next turn gets fresh data)

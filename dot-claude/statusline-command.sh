@@ -8,8 +8,10 @@ input=$(cat)
 
 # -- Git data cache ------------------------------------------------------------
 bash "$HOME/dotFiles/scripts/git-data.sh"
+_git_key=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
+_git_hash=$(printf '%s' "$_git_key" | shasum -a 256 | cut -c1-12)
 # shellcheck disable=SC1090
-. "/tmp/git-data-cache-$(id -u).sh"
+. "/tmp/git-data-cache-$(id -u)-${_git_hash}.sh"
 
 # -- Session window cache (async via ccusage) ----------------------------------
 sh "$HOME/dotFiles/scripts/session-data.sh"
