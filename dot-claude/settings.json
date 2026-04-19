@@ -161,10 +161,10 @@
     "frontend-design@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
-    "code-review@claude-plugins-official": true,
+    "code-review@claude-plugins-official": false,
     "github@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true,
-    "feature-dev@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": false,
     "commit-commands@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": false,
@@ -216,6 +216,16 @@
     }
   },
   "outputStyle": "Concise",
+  "skillListingBudgetFraction": 0.005,
+  "skillListingMaxDescChars": 400,
+  "skillOverrides": {
+    "commit-commands:commit": "user-invocable-only",
+    "commit-commands:commit-push-pr": "user-invocable-only",
+    "commit-commands:clean_gone": "user-invocable-only",
+    "review": "user-invocable-only",
+    "security-review": "user-invocable-only",
+    "init": "user-invocable-only"
+  },
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
