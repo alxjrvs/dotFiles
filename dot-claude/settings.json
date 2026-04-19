@@ -8,8 +8,6 @@
   "permissions": {
     "allow": [
       "Bash(git *)",
-      "Bash(git add)",
-      "Bash(git add *)",
       "Bash(gh *)",
       "Bash(bun run*)",
       "Bash(bun test*)",
@@ -247,8 +245,14 @@
       ]
     },
     "excludedCommands": [
-      "git",
-      "gh"
+      "gh",
+      "lefthook",
+      "cargo",
+      "npm",
+      "npx",
+      "bun",
+      "bunx",
+      "node"
     ]
   },
   "autoUpdatesChannel": "latest",
