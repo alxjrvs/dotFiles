@@ -35,6 +35,7 @@
 - For long-running or polling work, use `ScheduleWakeup` or the `loop` skill rather than re-running commands manually.
 - For codebase research spanning more than ~3 file lookups, dispatch the `Explore` subagent.
 - When dispatching an `Agent` that edits code, pass `isolation: "worktree"`.
+- When dispatching an `Agent`, default to `model: "sonnet"`. Use `"haiku"` for pure lookups (file reads, greps, one-shot searches). Reserve the default (opus) for architecture, debugging, code review, or tasks that explicitly need heavy reasoning.
 
 ## Skill Usage
 
