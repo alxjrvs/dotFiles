@@ -67,6 +67,7 @@ YELLOW=$'\e[33m'
 BLUE=$'\e[34m'
 MAGENTA=$'\e[35m'
 CYAN=$'\e[36m'
+MARKER=$'\e[38;2;96;200;255m'   # bright cyan — clock-time marker (distinct from burn gradient)
 
 # -- Gradient: neutral -> warm -> white hot (blackbody-style) ------------------
 # Anchors (R G B):
@@ -110,14 +111,23 @@ done
 
 render_bar() {
   local pct="$1"
+  local marker_pct="$2"
   [ -z "$pct" ] && pct=0
   local filled=$(( pct * PIP_COUNT / 100 ))
   [ "$filled" -gt "$PIP_COUNT" ] && filled="$PIP_COUNT"
   [ "$pct" -gt 0 ] && [ "$filled" -eq 0 ] && filled=1
+  local marker_idx=-1
+  if [ -n "$marker_pct" ]; then
+    marker_idx=$(( marker_pct * PIP_COUNT / 100 ))
+    [ "$marker_idx" -ge "$PIP_COUNT" ] && marker_idx=$(( PIP_COUNT - 1 ))
+    [ "$marker_idx" -lt 0 ] && marker_idx=0
+  fi
   local out="${MUTED}[${RESET}"
   local i=0
   while [ "$i" -lt "$PIP_COUNT" ]; do
-    if [ "$i" -lt "$filled" ]; then
+    if [ "$i" -eq "$marker_idx" ]; then
+      out="${out}${UNDIM}${MARKER}|"
+    elif [ "$i" -lt "$filled" ]; then
       out="${out}${UNDIM}"$'\e[38;2;'"${PIPS[$i]}"$'m#'
     else
       out="${out}${DIM}-"
@@ -194,12 +204,15 @@ if [ "$_have_ccusage" -eq 0 ]; then
 else
   sess_int=0
   sess_label=""
+  clock_pct=""
   if [ -n "${SESSION_START:-}" ]; then
     sess_int="${SESSION_BURN_PCT:-0}"
     [ -z "$sess_int" ] && sess_int=0
     remain_min="${SESSION_REMAINING_MIN%.*}"
     [ -z "$remain_min" ] && remain_min=0
     [ "$remain_min" -lt 0 ] && remain_min=0
+    [ "$remain_min" -gt 300 ] && remain_min=300
+    clock_pct=$(( (300 - remain_min) * 100 / 300 ))
     rh=$(( remain_min / 60 ))
     rm=$(( remain_min % 60 ))
     if [ "$rh" -gt 0 ]; then
@@ -210,7 +223,7 @@ else
   fi
 
   if [ -n "$sess_label" ]; then
-    sess_bar=$(render_bar "$sess_int")
-    printf '%ssession%s %s %s[%3d%%] [%s]%s' "$MUTED" "$RESET" "$sess_bar" "$MUTED" "$sess_int" "$sess_label" "$RESET"
+    sess_bar=$(render_bar "$sess_int" "$clock_pct")
+    printf '%ssession%s %s %s[%3d%%] [%s%s%s]%s' "$MUTED" "$RESET" "$sess_bar" "$MUTED" "$sess_int" "$MARKER" "$sess_label" "$MUTED" "$RESET"
   fi
 fi
