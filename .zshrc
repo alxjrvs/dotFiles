@@ -363,6 +363,7 @@ alias vim="nvim"
 
 # System
 alias env-sync="~/dotFiles/sync.sh"
+alias claude='command claude --allow-dangerously-skip-permissions'
 claude-fix() { claude -p "Fix the following issue without committing: $*"; }
 
 # Functions
