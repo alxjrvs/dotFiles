@@ -1,5 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "skillListingMaxDescChars": 400,
+  "skillListingBudgetFraction": 0.005,
   "env": {
     "EDITOR": "nvim",
     "NODE_ENV": "development",
@@ -89,6 +91,14 @@
     ]
   },
   "enableAllProjectMcpServers": false,
+  "skillOverrides": {
+    "commit-commands:commit": "user-invocable-only",
+    "commit-commands:commit-push-pr": "user-invocable-only",
+    "commit-commands:clean_gone": "user-invocable-only",
+    "review": "user-invocable-only",
+    "security-review": "user-invocable-only",
+    "init": "user-invocable-only"
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -149,6 +159,11 @@
           }
         ]
       }
+    ]
+  },
+  "worktree": {
+    "symlinkDirectories": [
+      "node_modules"
     ]
   },
   "statusLine": {
@@ -217,28 +232,10 @@
     }
   },
   "outputStyle": "Concise",
-  "skillListingBudgetFraction": 0.005,
-  "skillListingMaxDescChars": 400,
-  "skillOverrides": {
-    "commit-commands:commit": "user-invocable-only",
-    "commit-commands:commit-push-pr": "user-invocable-only",
-    "commit-commands:clean_gone": "user-invocable-only",
-    "review": "user-invocable-only",
-    "security-review": "user-invocable-only",
-    "init": "user-invocable-only"
-  },
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
-    "filesystem": {
-      "allowWrite": [
-        "~/.claude",
-        "~/.claude.json",
-        "~/.config/.wrangler"
-      ]
-    },
     "network": {
-      "allowLocalBinding": true,
       "allowedDomains": [
         "github.com",
         "*.github.com",
@@ -254,6 +251,14 @@
         "nodejs.org",
         "typescriptlang.org",
         "stackoverflow.com"
+      ],
+      "allowLocalBinding": true
+    },
+    "filesystem": {
+      "allowWrite": [
+        "~/.claude",
+        "~/.claude.json",
+        "~/.config/.wrangler"
       ]
     },
     "excludedCommands": [
@@ -267,8 +272,13 @@
       "node"
     ]
   },
+  "feedbackSurveyRate": 0,
+  "autoCompactWindow": 600000,
+  "advisorModel": "opus",
   "autoUpdatesChannel": "latest",
-  "voiceEnabled": true,
+  "showThinkingSummaries": true,
+  "skipDangerousModePermissionPrompt": true,
   "skipAutoPermissionPrompt": true,
-  "skipDangerousModePermissionPrompt": true
+  "voiceEnabled": true,
+  "model": "sonnet"
 }
