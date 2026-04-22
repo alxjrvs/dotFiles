@@ -29,6 +29,7 @@ ccusage/limits.json
 
 # Transient/generated
 .playwright-mcp/
+.gnar-term/
 Brewfile.lock.json
 
 # Machine-specific overrides
