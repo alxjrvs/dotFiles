@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# UserPromptSubmit hook: record turn-start + inject git-state only when non-trivial.
-# - Writes /tmp/claude-turn-start-<session> so notify.sh can gate short Stop events.
+# UserPromptSubmit hook: inject git-state only when non-trivial.
 # - Emits git-line only when there's something actionable (non-default branch,
 #   uncommitted, ahead/behind, conflicts, PR status). Silent on clean default.
 # Session burn % lives in the statusline; not injected here.
@@ -9,12 +8,6 @@
 set -uo pipefail
 
 input=$(cat 2>/dev/null || true)
-session_id=$(echo "$input" | jq -r '.session_id // empty' 2>/dev/null)
-
-# Record turn start for the Stop hook duration gate
-if [[ -n "$session_id" ]]; then
-  date +%s > "/tmp/claude-turn-start-${session_id}" 2>/dev/null || true
-fi
 
 _git_key=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
 _git_hash=$(printf '%s' "$_git_key" | shasum -a 256 | cut -c1-12)
