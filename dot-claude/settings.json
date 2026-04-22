@@ -90,6 +90,7 @@
       "/private/tmp/claude"
     ]
   },
+  "model": "claude-sonnet-4-6",
   "enableAllProjectMcpServers": false,
   "skillOverrides": {
     "commit-commands:commit": "user-invocable-only",
@@ -202,7 +203,8 @@
     "implement@gnar": true,
     "rust-analyzer-lsp@claude-plugins-official": false,
     "spacebase@gnar": false,
-    "cloudflare@gnar": false
+    "cloudflare@gnar": false,
+    "swift-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "expo-plugins": {
@@ -279,6 +281,5 @@
   "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
   "skipAutoPermissionPrompt": true,
-  "voiceEnabled": true,
-  "model": "sonnet"
+  "voiceEnabled": true
 }

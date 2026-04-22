@@ -215,9 +215,26 @@ _push() { [ -z "$counters" ] && counters="$1" || counters="${counters}${_sep}${1
 printf '%s\n' "$line1"
 
 # == Line 2: Model + advisor ==================================================
+_short_model_name() {
+  local lower
+  lower=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')
+  case "$lower" in
+    *sonnet*) printf 'Sonnet' ;;
+    *opus*)   printf 'Opus' ;;
+    *haiku*)  printf 'Haiku' ;;
+    *)        printf '%s' "$1" ;;
+  esac
+}
+
 model_part=""
-[ -n "$model_name" ]   && model_part="${model_part}${MUTED}[${RESET}${CYAN}M: ${model_name}${MUTED}]${RESET}"
-[ -n "$advisor_name" ] && model_part="${model_part} ${MUTED}[${RESET}${CYAN}A: ${advisor_name}${MUTED}]${RESET}"
+if [ -n "$model_name" ]; then
+  _m=$(_short_model_name "$model_name")
+  model_part="${model_part}${MUTED}[${RESET}${CYAN}M: ${_m}${MUTED}]${RESET}"
+fi
+if [ -n "$advisor_name" ]; then
+  _a=$(_short_model_name "$advisor_name")
+  model_part="${model_part} ${MUTED}[${RESET}${CYAN}A: ${_a}${MUTED}]${RESET}"
+fi
 [ -n "$model_part" ] && printf '%s\n' "$model_part"
 
 # == Line 3: Context bar ======================================================
