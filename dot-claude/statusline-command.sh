@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Claude Code status line - plain-ASCII layout with colored git values:
 #   Line 1: repo/dir  branch  [wt:name]  [counters]  [PR:status]
-#   Line 2: context [bar] N%
-#   Line 3: session [bar] N%
+#   Line 2: [M: model]  [A: advisor]
+#   Line 3: context [bar] N%
+#   Line 4: session [bar] N%
 
 input=$(cat)
 
@@ -213,14 +214,17 @@ _push() { [ -z "$counters" ] && counters="$1" || counters="${counters}${_sep}${1
 
 printf '%s\n' "$line1"
 
-# == Line 2: Context bar ======================================================
+# == Line 2: Model + advisor ==================================================
+model_part=""
+[ -n "$model_name" ]   && model_part="${model_part}${MUTED}[${RESET}${CYAN}M: ${model_name}${MUTED}]${RESET}"
+[ -n "$advisor_name" ] && model_part="${model_part} ${MUTED}[${RESET}${CYAN}A: ${advisor_name}${MUTED}]${RESET}"
+[ -n "$model_part" ] && printf '%s\n' "$model_part"
+
+# == Line 3: Context bar ======================================================
 used_int=0
 [ -n "$used_pct" ] && used_int=${used_pct%%.*}
 ctx_bar=$(render_bar "$used_int")
-model_part=""
-[ -n "$model_name" ]   && model_part="${model_part} ${MUTED}[${RESET}${CYAN}M: ${model_name}${MUTED}]${RESET}"
-[ -n "$advisor_name" ] && model_part="${model_part} ${MUTED}[${RESET}${CYAN}A: ${advisor_name}${MUTED}]${RESET}"
-printf '%scontext%s %s %s[%3d%%]%s%s\n' "$MUTED" "$RESET" "$ctx_bar" "$MUTED" "$used_int" "$RESET" "$model_part"
+printf '%scontext%s %s %s[%3d%%]%s\n' "$MUTED" "$RESET" "$ctx_bar" "$MUTED" "$used_int" "$RESET"
 
 # == Line 3: Session — burn % against block token limit; time-left as indicator
 _have_ccusage=0
