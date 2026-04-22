@@ -25,8 +25,15 @@ eval "$(echo "$input" | jq -r '
   @sh "duration_ms=\(.cost.total_duration_ms // 0)",
   @sh "worktree_name=\(.worktree.name // "")",
   @sh "project_dir=\(.workspace.project_dir // "")",
-  @sh "cwd=\(.workspace.current_dir // "")"
+  @sh "cwd=\(.workspace.current_dir // "")",
+  @sh "model_name=\(.model.display_name // "")"
 ' | tr ',' '\n')"
+
+_settings="$HOME/.claude/settings.json"
+advisor_name=""
+if [ -f "$_settings" ]; then
+  advisor_name=$(jq -r '.advisorModel // ""' "$_settings" 2>/dev/null)
+fi
 
 # -- Directory -----------------------------------------------------------------
 [ -n "$worktree_name" ] && [ -n "$project_dir" ] && cwd="$project_dir"
@@ -210,7 +217,10 @@ printf '%s\n' "$line1"
 used_int=0
 [ -n "$used_pct" ] && used_int=${used_pct%%.*}
 ctx_bar=$(render_bar "$used_int")
-printf '%scontext%s %s %s[%3d%%]%s\n' "$MUTED" "$RESET" "$ctx_bar" "$MUTED" "$used_int" "$RESET"
+model_part=""
+[ -n "$model_name" ]   && model_part="${model_part} ${MUTED}[${RESET}${CYAN}M: ${model_name}${MUTED}]${RESET}"
+[ -n "$advisor_name" ] && model_part="${model_part} ${MUTED}[${RESET}${CYAN}A: ${advisor_name}${MUTED}]${RESET}"
+printf '%scontext%s %s %s[%3d%%]%s%s\n' "$MUTED" "$RESET" "$ctx_bar" "$MUTED" "$used_int" "$RESET" "$model_part"
 
 # == Line 3: Session — burn % against block token limit; time-left as indicator
 _have_ccusage=0
