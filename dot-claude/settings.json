@@ -196,7 +196,7 @@
     "vercel@claude-plugins-official": false,
     "playground@claude-plugins-official": false,
     "learning-output-style@claude-plugins-official": false,
-    "typescript-lsp@claude-plugins-official": false,
+    "typescript-lsp@claude-plugins-official": true,
     "scram@jrvs-skills": false,
     "playwright@claude-plugins-official": false,
     "implement@gnar": true,

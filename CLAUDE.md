@@ -45,14 +45,6 @@ Some files are consumed directly from `$HOME/dotFiles/` by scripts that hardcode
 - `theme.sh` — color palette sourced by `.zshrc`'s hand-rolled prompt.
 - `ccusage/limits.json` — per-account token cap map (gitignored, bootstrapped from `ccusage/limits.example.json`). Read by `scripts/session-data.sh` to resolve `--token-limit` based on `~/.claude.json`'s `oauthAccount.emailAddress`.
 
-### Shell Stack
-
-- **Sheldon** manages zsh plugins (autosuggestions, syntax-highlighting, completions)
-- **Prompt** is hand-rolled in `.zshrc` using `promptsubst` + `theme.sh` (replaces the previous Starship setup). Requires a Nerd Font for powerline glyphs.
-- **fzf** and **zoxide** provide fuzzy finding and smart directory jumping
-- **Vi mode** keybindings (`bindkey -v`)
-- Transient prompt collapses previous prompts to a single `❯` character
-
 ### Claude Code Configuration (`dot-claude/`)
 
 This directory is symlinked wholesale to `~/.claude/`. It contains:
@@ -60,19 +52,6 @@ This directory is symlinked wholesale to `~/.claude/`. It contains:
 - `settings.json` — permissions, hooks, environment variables
 - `agents/` — custom subagent definitions
 - `hooks/` — event hooks (shell formatting, lock file protection)
-
-#### Custom Agents
-
-| Agent | When to use |
-|-------|-------------|
-| **Senior Software Engineer** | Feature implementation, bug fixes, and design decisions requiring careful trade-off analysis |
-| **Code Efficiency Auditor** | Post-feature audits, refactoring phases, or cleaning up accumulated tech debt |
-| **Dependency Upgrader** | Researching, evaluating, and executing upgrades of dependencies, runtimes, or frameworks |
-| **UI Refine** | Iterative CSS/styling/layout changes requiring precise control over spacing, colors, and positioning |
-
-### Language Versions
-
-Managed by **mise** via `mise.toml`. Default npm packages (TypeScript, Prettier, ESLint, Claude Code) auto-install with each Node version via the `postinstall` hook in `mise.toml`.
 
 ## Guardrails
 

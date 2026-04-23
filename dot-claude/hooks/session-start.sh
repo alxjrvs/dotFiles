@@ -35,10 +35,4 @@ for pair in \
   fi
 done
 
-# Check for uncommitted changes
-if git -C "$DOTFILES" status --porcelain 2>/dev/null | grep -q .; then
-  echo "warning: uncommitted changes in $DOTFILES"
-  ((warnings++)) || true
-fi
-
 exit 0

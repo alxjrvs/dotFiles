@@ -15,7 +15,15 @@ case "$file_path" in
   *.sh)
     command -v shfmt &>/dev/null && shfmt -w -i 2 "$file_path" 2>/dev/null || true
     ;;
-  *.ts | *.tsx | *.js | *.jsx | *.css)
+  *.ts | *.tsx | *.js | *.jsx)
+    command -v prettier &>/dev/null && prettier --write "$file_path" 2>/dev/null || true
+    if command -v eslint &>/dev/null; then
+      lint_out=$(eslint --fix --format=compact "$file_path" 2>/dev/null) || {
+        [[ -n "$lint_out" ]] && jq -n --arg out "$lint_out" '{"additionalContext": $out}'
+      }
+    fi
+    ;;
+  *.css)
     command -v prettier &>/dev/null && prettier --write "$file_path" 2>/dev/null || true
     ;;
 esac
