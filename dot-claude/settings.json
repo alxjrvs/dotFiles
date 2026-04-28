@@ -195,7 +195,7 @@
     "code-review@claude-plugins-official": false,
     "github@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true,
-    "feature-dev@claude-plugins-official": false,
+    "feature-dev@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": false,
@@ -252,13 +252,6 @@
     "autoAllowBashIfSandboxed": true,
     "allowUnsandboxedCommands": false,
     "network": {
-      "allowMachLookup": [
-        "com.apple.SecurityServer",
-        "com.apple.securityd.systemkeychain",
-        "com.apple.security.KeychainStasher",
-        "com.apple.security.XPCKeychainSandboxCheck",
-        "com.apple.trustd.agent"
-      ],
       "allowedDomains": [
         "github.com",
         "*.github.com",
@@ -275,7 +268,14 @@
         "typescriptlang.org",
         "stackoverflow.com"
       ],
-      "allowLocalBinding": true
+      "allowLocalBinding": true,
+      "allowMachLookup": [
+        "com.apple.SecurityServer",
+        "com.apple.securityd.systemkeychain",
+        "com.apple.security.KeychainStasher",
+        "com.apple.security.XPCKeychainSandboxCheck",
+        "com.apple.trustd.agent"
+      ]
     },
     "filesystem": {
       "allowWrite": [
@@ -311,11 +311,11 @@
   "autoUpdatesChannel": "latest",
   "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
-  "skipAutoPermissionPrompt": true,
   "editorMode": "vim",
   "verbose": true,
   "teammateMode": "auto",
   "remoteControlAtStartup": true,
   "agentPushNotifEnabled": true,
+  "skipAutoPermissionPrompt": true,
   "voiceEnabled": true
 }
