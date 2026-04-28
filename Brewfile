@@ -36,6 +36,7 @@ brew "tealdeer"
 brew "zoxide"
 brew "sheldon"
 brew "shfmt"
+brew "rtk"
 brew "supabase/tap/supabase"
 # brew "wix/brew/applesimutils"  # iOS simulator
 tap "manaflow-ai/cmux"

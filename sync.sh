@@ -368,6 +368,20 @@ else
   fail "ccusage missing — install bun (via Brewfile) then re-run"
 fi
 
+# code-review-graph — MCP server for knowledge-graph-based code review
+if command -v code-review-graph &>/dev/null; then
+  ok "code-review-graph installed"
+else
+  if ! command -v pipx &>/dev/null; then
+    warn "Installing pipx..."
+    python3 -m pip install --user pipx
+    ok "pipx installed"
+  fi
+  warn "Installing code-review-graph via pipx..."
+  pipx install code-review-graph
+  ok "code-review-graph installed"
+fi
+
 # ccusage per-account limits — bootstrap from example if missing (gitignored)
 if [ ! -f "$DOTFILES_DIR/ccusage/limits.json" ]; then
   cp "$DOTFILES_DIR/ccusage/limits.example.json" "$DOTFILES_DIR/ccusage/limits.json"
