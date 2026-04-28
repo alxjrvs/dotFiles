@@ -73,7 +73,7 @@
       "Bash(gh pr merge*)",
       "Bash(gh release delete*)",
       "Bash(gh ssh-key add*)",
-      "Bash(gh gpg-key add*)",
+      "Bash(gh gpg-key add*)"
     ],
     "ask": [
       "Bash(rm *)",
