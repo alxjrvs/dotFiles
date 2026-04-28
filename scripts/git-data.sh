@@ -22,8 +22,6 @@
 #   GIT_STASH_COUNT
 #   GIT_AHEAD
 #   GIT_BEHIND
-#   GIT_PR_STATUS      — "none" | "pass" | "pending" | "fail"
-#   GIT_PR_URL         — PR URL (empty when no PR)
 #   GIT_CACHE_TIME     — unix timestamp when cache was written
 
 # Key cache by repo toplevel (or cwd if not in a repo) so concurrent sessions
@@ -50,8 +48,6 @@ GIT_UNTRACKED_COUNT=0
 GIT_STASH_COUNT=0
 GIT_AHEAD=0
 GIT_BEHIND=0
-GIT_PR_STATUS="none"
-GIT_PR_URL=""
 
 if _revparse=$(git rev-parse --git-dir --git-common-dir --show-toplevel 2>/dev/null); then
   GIT_IS_REPO="1"
@@ -141,45 +137,6 @@ PORCELAIN
   _stash_out=$(git stash list 2>/dev/null)
   [ -n "$_stash_out" ] && GIT_STASH_COUNT=$(printf '%s\n' "$_stash_out" | wc -l | tr -d ' ')
 
-  # -- PR cache (async refresh) ------------------------------------------------
-  if [ -n "$GIT_REPO_NAME" ] && [ -n "$GIT_BRANCH" ] && command -v gh >/dev/null 2>&1; then
-    _pr_cache_dir="/tmp/git-pr-status"
-    _repo_id=$(printf '%s' "$GIT_TOPLEVEL" | tr '/' '_')
-    _branch_id=$(printf '%s' "$GIT_BRANCH" | tr '/' '_')
-    _pr_cache_file="${_pr_cache_dir}/${_repo_id}_${_branch_id}"
-    _pr_lock_file="${_pr_cache_file}.lock"
-    _now=$(date +%s)
-    _ttl=10
-
-    # Always read from cache (stale is fine — async refresh handles freshness)
-    if [ -f "$_pr_cache_file" ]; then
-      _cached_time=$(sed -n '1p' "$_pr_cache_file")
-      GIT_PR_STATUS=$(sed -n '2p' "$_pr_cache_file")
-      GIT_PR_URL=$(sed -n '3p' "$_pr_cache_file")
-      _age=$(( _now - ${_cached_time:-0} ))
-    else
-      _age=999
-    fi
-
-    # If cache is stale, kick off a background refresh (non-blocking)
-    if [ "$_age" -ge "$_ttl" ] && ! [ -f "$_pr_lock_file" ]; then
-      mkdir -p "$_pr_cache_dir"
-      (
-        printf '%s' "$_now" > "$_pr_lock_file"
-        _new_status=$(gh pr checks --json state --jq '
-          if length == 0 then "none"
-          elif all(.state == "SUCCESS") then "pass"
-          elif any(.state == "FAILURE" or .state == "CANCELLED") then "fail"
-          else "pending"
-          end
-        ' 2>/dev/null || echo "none")
-        _new_url=""
-        [ "$_new_status" != "none" ] && _new_url=$(gh pr view --json url --jq .url 2>/dev/null || echo "")
-        printf '%s\n%s\n%s' "$(date +%s)" "$_new_status" "$_new_url" > "$_pr_cache_file"
-        rm -f "$_pr_lock_file"
-      ) &
-    fi
-  fi
 fi
 
 # -- Write cache ---------------------------------------------------------------
@@ -210,6 +167,4 @@ GIT_UNTRACKED_COUNT='${GIT_UNTRACKED_COUNT}'
 GIT_STASH_COUNT='${GIT_STASH_COUNT}'
 GIT_AHEAD='${GIT_AHEAD}'
 GIT_BEHIND='${GIT_BEHIND}'
-GIT_PR_STATUS='${GIT_PR_STATUS}'
-GIT_PR_URL='${GIT_PR_URL}'
 CACHE

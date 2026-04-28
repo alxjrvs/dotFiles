@@ -5,7 +5,9 @@
   "env": {
     "EDITOR": "nvim",
     "NODE_ENV": "development",
-    "ENABLE_PROMPT_CACHING_1H": "1"
+    "ENABLE_PROMPT_CACHING_1H": "1",
+    "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80"
   },
   "permissions": {
     "allow": [
@@ -84,7 +86,7 @@
       "Bash(gh variable set*)",
       "Bash(gh repo edit*)"
     ],
-    "defaultMode": "acceptEdits",
+    "defaultMode": "auto",
     "additionalDirectories": [
       "/tmp/claude",
       "/private/tmp/claude"
@@ -109,6 +111,15 @@
             "type": "command",
             "command": "bash ~/.claude/hooks/lock-file-guard.sh",
             "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rtk hook claude"
           }
         ]
       }
@@ -242,7 +253,8 @@
         "com.apple.SecurityServer",
         "com.apple.securityd.systemkeychain",
         "com.apple.security.KeychainStasher",
-        "com.apple.security.XPCKeychainSandboxCheck"
+        "com.apple.security.XPCKeychainSandboxCheck",
+        "com.apple.trustd.agent"
       ],
       "allowedDomains": [
         "github.com",
@@ -277,7 +289,6 @@
         "~/.cache"
       ],
       "denyRead": [
-        "~/.ssh",
         "~/.aws",
         "~/.gnupg",
         "~/.netrc",
@@ -297,6 +308,7 @@
   "autoUpdatesChannel": "latest",
   "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
+  "skipAutoPermissionPrompt": true,
   "editorMode": "vim",
   "verbose": true,
   "teammateMode": "auto",
