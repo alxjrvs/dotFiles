@@ -274,7 +274,9 @@
         "~/.config/.wrangler",
         "~/.config/gh",
         "/dev/ptmx",
-        "/dev/ttys"
+        "/dev/ttys",
+        ".git",
+        "~/.gitconfig"
       ],
       "denyRead": [
         "~/.ssh",
