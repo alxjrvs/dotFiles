@@ -3,9 +3,7 @@ tap "supabase/tap"
 brew "mise"
 # brew "bundletool"      # Android only
 # brew "cmake"           # C/C++ only
-brew "libsodium"
 # brew "fastlane"        # iOS CI only
-brew "flyctl"
 brew "atuin"
 brew "fzf"
 brew "gh"
@@ -23,12 +21,7 @@ brew "fd"
 brew "jq"
 brew "yq"
 brew "neovim"
-brew "unbound", restart_service: true
-brew "gnutls"
 brew "gnupg"
-brew "krb5"
-brew "overmind"
-brew "redis", restart_service: true
 brew "direnv"
 brew "ripgrep"
 brew "tealdeer"

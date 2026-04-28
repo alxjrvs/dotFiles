@@ -291,7 +291,12 @@
         "~/.gitconfig",
         "~/.npm",
         "~/.bun/install/cache",
-        "~/.cache"
+        "~/.cache",
+        "/tmp",
+        "/private/tmp",
+        "/opt/homebrew",
+        "~/Library/Caches/Homebrew",
+        "~/Library/Logs/Homebrew"
       ],
       "denyRead": [
         "~/.aws",
@@ -304,7 +309,8 @@
       "git",
       "gh",
       "lefthook",
-      "cargo"
+      "cargo",
+      "brew"
     ]
   },
   "feedbackSurveyRate": 0,
