@@ -74,12 +74,6 @@
       "Bash(gh release delete*)",
       "Bash(gh ssh-key add*)",
       "Bash(gh gpg-key add*)",
-      "Bash(docker system prune*)",
-      "Bash(docker volume prune*)",
-      "Bash(docker image prune*)",
-      "Bash(brew uninstall*)",
-      "Bash(dropdb*)",
-      "Bash(createdb --force*)"
     ],
     "ask": [
       "Bash(rm *)",
@@ -89,7 +83,14 @@
       "Bash(git push origin :*)",
       "Bash(gh secret set*)",
       "Bash(gh variable set*)",
-      "Bash(gh repo edit*)"
+      "Bash(gh repo edit*)",
+      "Bash(brew install*)",
+      "Bash(brew uninstall*)",
+      "Bash(docker system prune*)",
+      "Bash(docker volume prune*)",
+      "Bash(docker image prune*)",
+      "Bash(dropdb*)",
+      "Bash(createdb --force*)"
     ],
     "defaultMode": "auto",
     "additionalDirectories": [
