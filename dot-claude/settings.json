@@ -13,6 +13,8 @@
     "allow": [
       "Bash(git *)",
       "Bash(gh *)",
+      "Bash(sed:*)",
+      "WebSearch",
       "Bash(cargo *)",
       "Bash(lefthook *)",
       "Skill(commit-commands:*)",

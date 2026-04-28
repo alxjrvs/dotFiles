@@ -336,6 +336,12 @@ link "$DOTFILES_DIR/dot-claude/CLAUDE.md"     "$HOME/.claude/CLAUDE.md"     "cla
 link "$DOTFILES_DIR/dot-claude/settings.json" "$HOME/.claude/settings.json" "claude/settings.json"
 link "$DOTFILES_DIR/dot-claude/hooks"              "$HOME/.claude/hooks"                    "claude/hooks"
 link "$DOTFILES_DIR/dot-claude/statusline-command.sh" "$HOME/.claude/statusline-command.sh" "claude/statusline-command.sh"
+# settings.local.json is gitignored (contains secrets) — only link if present
+if [ -f "$DOTFILES_DIR/dot-claude/settings.local.json" ]; then
+  link "$DOTFILES_DIR/dot-claude/settings.local.json" "$HOME/.claude/settings.local.json" "claude/settings.local.json"
+else
+  dim "claude/settings.local.json not present — skipping"
+fi
 fi
 
 # ── 7. Sheldon plugins ─────────────────────────────────────────────
