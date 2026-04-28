@@ -29,7 +29,7 @@
 	editor = nvim
 	excludesfile = ~/.gitignore
 	pager = delta
-	fsmonitor = true
+	fsmonitor = false
 	untrackedCache = true
 
 [init]
