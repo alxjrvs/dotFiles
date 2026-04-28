@@ -37,6 +37,10 @@
 - When dispatching an `Agent` that edits code, pass `isolation: "worktree"`.
 - When dispatching an `Agent`, default to `model: "sonnet"`. Use `"haiku"` for pure lookups (file reads, greps, one-shot searches). Reserve the default (opus) for architecture, debugging, code review, or tasks that explicitly need heavy reasoning.
 
+## Worktrees
+
+- Worktree directory: `.worktrees`
+
 ## Skill Usage
 
 Prefer `implement:*` (CDD cycle) for code changes; `superpowers:*` as fallback. Always run `superpowers:verification-before-completion` before claiming work done.

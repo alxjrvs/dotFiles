@@ -18,10 +18,19 @@
       "Bash(node *)",
       "Bash(cargo *)",
       "Bash(lefthook *)",
-      "Bash(gh pr merge 128 --squash --delete-branch)",
-      "Skill(commit-commands:commit)",
-      "Skill(commit-commands:commit-push-pr)",
-      "mcp__plugin_context7_context7__query-docs"
+      "Bash(git branch -d*)",
+      "Bash(git branch -D*)",
+      "Bash(gh pr close*)",
+      "Bash(gh issue close*)",
+      "Skill(commit-commands:*)",
+      "Skill(superpowers:*)",
+      "Skill(implement:*)",
+      "Skill(pr-review-toolkit:*)",
+      "Skill(hookify:*)",
+      "Skill(frontend-design:*)",
+      "Skill(update-config)",
+      "mcp__plugin_context7_context7",
+      "mcp__gnar-term"
     ],
     "deny": [
       "Bash(git push --force)",
@@ -78,18 +87,15 @@
       "Bash(createdb --force*)"
     ],
     "ask": [
-      "Bash(git branch -D*)",
-      "Bash(git branch -d*)",
-      "Bash(rm *)",
-      "Bash(gh pr close*)",
-      "Bash(gh issue close*)"
+      "Bash(rm *)"
     ],
-    "defaultMode": "default",
+    "defaultMode": "acceptEdits",
     "additionalDirectories": [
       "/tmp/claude",
       "/private/tmp/claude"
     ]
   },
+  "model": "sonnet",
   "enableAllProjectMcpServers": false,
   "skillOverrides": {
     "commit-commands:commit": "user-invocable-only",
@@ -235,7 +241,14 @@
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false,
     "network": {
+      "allowMachLookup": [
+        "com.apple.SecurityServer",
+        "com.apple.securityd.systemkeychain",
+        "com.apple.security.KeychainStasher",
+        "com.apple.security.XPCKeychainSandboxCheck"
+      ],
       "allowedDomains": [
         "github.com",
         "*.github.com",
@@ -258,10 +271,21 @@
       "allowWrite": [
         "~/.claude",
         "~/.claude.json",
-        "~/.config/.wrangler"
+        "~/.config/.wrangler",
+        "~/.config/gh",
+        "/dev/ptmx",
+        "/dev/ttys"
+      ],
+      "denyRead": [
+        "~/.ssh",
+        "~/.aws",
+        "~/.gnupg",
+        "~/.netrc",
+        "~/.config/op"
       ]
     },
     "excludedCommands": [
+      "git",
       "gh",
       "lefthook",
       "cargo",
@@ -278,7 +302,10 @@
   "autoUpdatesChannel": "latest",
   "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
-  "skipAutoPermissionPrompt": true,
-  "voiceEnabled": true,
-  "model": "sonnet"
+  "editorMode": "vim",
+  "verbose": true,
+  "teammateMode": "auto",
+  "remoteControlAtStartup": true,
+  "agentPushNotifEnabled": true,
+  "voiceEnabled": true
 }
