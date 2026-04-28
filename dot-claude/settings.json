@@ -11,17 +11,8 @@
     "allow": [
       "Bash(git *)",
       "Bash(gh *)",
-      "Bash(bun *)",
-      "Bash(bunx *)",
-      "Bash(npm *)",
-      "Bash(npx *)",
-      "Bash(node *)",
       "Bash(cargo *)",
       "Bash(lefthook *)",
-      "Bash(git branch -d*)",
-      "Bash(git branch -D*)",
-      "Bash(gh pr close*)",
-      "Bash(gh issue close*)",
       "Skill(commit-commands:*)",
       "Skill(superpowers:*)",
       "Skill(implement:*)",
@@ -39,12 +30,7 @@
       "Bash(git push -f *)",
       "Bash(git reset --hard)",
       "Bash(git reset --hard *)",
-      "Bash(git clean -f)",
-      "Bash(git clean -f *)",
-      "Bash(git clean -d)",
-      "Bash(git clean -d *)",
-      "Bash(git clean -fd*)",
-      "Bash(git clean -df*)",
+      "Bash(git clean *)",
       "Bash(git rebase -i*)",
       "Bash(git commit --amend*)",
       "Bash(git filter-branch*)",
@@ -79,6 +65,8 @@
       "Bash(gh repo delete*)",
       "Bash(gh pr merge*)",
       "Bash(gh release delete*)",
+      "Bash(gh ssh-key add*)",
+      "Bash(gh gpg-key add*)",
       "Bash(docker system prune*)",
       "Bash(docker volume prune*)",
       "Bash(docker image prune*)",
@@ -87,7 +75,14 @@
       "Bash(createdb --force*)"
     ],
     "ask": [
-      "Bash(rm *)"
+      "Bash(rm *)",
+      "Bash(git config*)",
+      "Bash(git restore*)",
+      "Bash(git push --delete*)",
+      "Bash(git push origin :*)",
+      "Bash(gh secret set*)",
+      "Bash(gh variable set*)",
+      "Bash(gh repo edit*)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
@@ -276,7 +271,10 @@
         "/dev/ptmx",
         "/dev/ttys",
         ".git",
-        "~/.gitconfig"
+        "~/.gitconfig",
+        "~/.npm",
+        "~/.bun/install/cache",
+        "~/.cache"
       ],
       "denyRead": [
         "~/.ssh",
@@ -290,12 +288,7 @@
       "git",
       "gh",
       "lefthook",
-      "cargo",
-      "npm",
-      "npx",
-      "bun",
-      "bunx",
-      "node"
+      "cargo"
     ]
   },
   "feedbackSurveyRate": 0,
