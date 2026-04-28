@@ -42,6 +42,7 @@
       "Bash(bun run typecheck)",
       "Bash(npm view *)",
       "Bash(bun run knip)",
+      "Bash(git merge-base *)",
       "Bash(bash /Users/jarvis/.claude/plugins/marketplaces/jrvs-skills/scram/scripts/scram-state.sh)",
       "Bash(npm run format:check)",
       "Bash(gh pr create *)",
