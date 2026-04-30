@@ -28,8 +28,7 @@
       "mcp__gnar-term",
       "mcp__code-review-graph",
       "Bash(npx svelte-check *)",
-      "Bash(npx prettier --check *)",
-      "Bash(open *)"
+      "Bash(npx prettier --check *)"
     ],
     "deny": [
       "Bash(git push --force)",
@@ -91,7 +90,8 @@
       "Bash(docker image prune*)",
       "Bash(dropdb*)",
       "Bash(createdb --force*)",
-      "Bash(gh pr merge*)"
+      "Bash(gh pr merge*)",
+      "Bash(open *)"
     ],
     "defaultMode": "auto",
     "additionalDirectories": [
