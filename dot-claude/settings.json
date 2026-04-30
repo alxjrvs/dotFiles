@@ -29,7 +29,12 @@
       "mcp__code-review-graph",
       "Bash(npx svelte-check *)",
       "Bash(npx prettier --check *)",
-      "Bash(open *)"
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(bun *)",
+      "Bash(bunx *)",
+      "Bash(mise *)"
     ],
     "deny": [
       "Bash(git push --force)",
@@ -91,13 +96,11 @@
       "Bash(docker image prune*)",
       "Bash(dropdb*)",
       "Bash(createdb --force*)",
-      "Bash(gh pr merge*)"
+      "Bash(gh pr merge*)",
+      "Bash(open *)"
     ],
     "defaultMode": "auto",
-    "additionalDirectories": [
-      "/tmp/claude",
-      "/private/tmp/claude"
-    ]
+    "additionalDirectories": ["/tmp/claude", "/private/tmp/claude"]
   },
   "model": "sonnet",
   "enableAllProjectMcpServers": false,
@@ -181,9 +184,7 @@
     ]
   },
   "worktree": {
-    "symlinkDirectories": [
-      "node_modules"
-    ]
+    "symlinkDirectories": ["node_modules"]
   },
   "statusLine": {
     "type": "command",
@@ -300,21 +301,9 @@
         "~/Library/Caches/Homebrew",
         "~/Library/Logs/Homebrew"
       ],
-      "denyRead": [
-        "~/.aws",
-        "~/.gnupg",
-        "~/.netrc",
-        "~/.config/op"
-      ]
+      "denyRead": ["~/.aws", "~/.gnupg", "~/.netrc", "~/.config/op"]
     },
-    "excludedCommands": [
-      "git",
-      "gh",
-      "lefthook",
-      "cargo",
-      "brew",
-      "open"
-    ]
+    "excludedCommands": ["git", "gh", "lefthook", "cargo", "brew", "open", "npm", "npx", "node", "bun", "bunx", "mise"]
   },
   "feedbackSurveyRate": 0,
   "autoCompactWindow": 600000,

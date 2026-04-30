@@ -71,6 +71,7 @@ Pause and confirm with the user before doing any of these:
 - **dot-claude vs .claude**: Source of truth is `dot-claude/` in this repo. The `.claude/` directory at repo root holds machine-local overrides (e.g. `settings.local.json`) that are gitignored — don't confuse it with project-local Claude config.
 - **Sheldon plugin order matters**: `zsh-syntax-highlighting` must be last in `sheldon/plugins.toml`.
 - **Hardcoded `$HOME/dotFiles` path**: Scripts in `scripts/`, `ccusage/`, and `theme.sh` are read via absolute path. If the repo is cloned somewhere else, those consumers break.
+- **settings.json allow + excludedCommands**: When adding a new command binary to `permissions.allow`, you must also add it to `sandbox.excludedCommands` — omitting it means the sandbox blocks the command regardless of the allow rule. The reverse also applies: an `excludedCommands` entry without a matching allow rule signals intent but has no effect on prompting.
 
 <!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph
