@@ -33,7 +33,8 @@
       "Bash(npx *)",
       "Bash(node *)",
       "Bash(bun *)",
-      "Bash(bunx *)"
+      "Bash(bunx *)",
+      "Bash(mise *)"
     ],
     "deny": [
       "Bash(git push --force)",
