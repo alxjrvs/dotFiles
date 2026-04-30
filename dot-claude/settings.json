@@ -28,7 +28,8 @@
       "mcp__gnar-term",
       "mcp__code-review-graph",
       "Bash(npx svelte-check *)",
-      "Bash(npx prettier --check *)"
+      "Bash(npx prettier --check *)",
+      "Bash(open *)"
     ],
     "deny": [
       "Bash(git push --force)",
@@ -70,7 +71,6 @@
       "Bash(yarn publish*)",
       "Bash(cargo publish*)",
       "Bash(gh repo delete*)",
-      "Bash(gh pr merge*)",
       "Bash(gh release delete*)",
       "Bash(gh ssh-key add*)",
       "Bash(gh gpg-key add*)"
@@ -90,7 +90,8 @@
       "Bash(docker volume prune*)",
       "Bash(docker image prune*)",
       "Bash(dropdb*)",
-      "Bash(createdb --force*)"
+      "Bash(createdb --force*)",
+      "Bash(gh pr merge*)"
     ],
     "defaultMode": "auto",
     "additionalDirectories": [
@@ -311,7 +312,8 @@
       "gh",
       "lefthook",
       "cargo",
-      "brew"
+      "brew",
+      "open"
     ]
   },
   "feedbackSurveyRate": 0,
@@ -320,6 +322,7 @@
   "autoUpdatesChannel": "latest",
   "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
+  "theme": "auto",
   "editorMode": "vim",
   "verbose": true,
   "teammateMode": "auto",
