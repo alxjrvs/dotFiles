@@ -28,7 +28,8 @@
       "mcp__gnar-term",
       "mcp__code-review-graph",
       "Bash(npx svelte-check *)",
-      "Bash(npx prettier --check *)"
+      "Bash(npx prettier --check *)",
+      "Bash(open *)"
     ],
     "deny": [
       "Bash(git push --force)",
@@ -311,7 +312,8 @@
       "gh",
       "lefthook",
       "cargo",
-      "brew"
+      "brew",
+      "open"
     ]
   },
   "feedbackSurveyRate": 0,
@@ -320,6 +322,7 @@
   "autoUpdatesChannel": "latest",
   "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
+  "theme": "auto",
   "editorMode": "vim",
   "verbose": true,
   "teammateMode": "auto",
