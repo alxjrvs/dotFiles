@@ -45,5 +45,3 @@
 ## Skill Usage
 
 Prefer `implement:*` (CDD cycle) for code changes; `superpowers:*` as fallback. Always run `superpowers:verification-before-completion` before claiming work done.
-
-@RTK.md
