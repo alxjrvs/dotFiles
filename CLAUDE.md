@@ -34,7 +34,7 @@ There are no build, test, or lint commands for this repo.
 | `ghostty/config` | `~/.config/ghostty/config` |
 | `nvim/` | `~/.config/nvim` (AstroNvim v5) |
 | `gh/config.yml` | `~/.config/gh/config.yml` |
-| `dot-claude/*` | `~/.claude/*` (CLAUDE.md, settings.json, agents/, hooks/, commands/, statusline-command.sh) |
+| `dot-claude/{CLAUDE.md, settings.json, hooks/, statusline-command.sh}` | `~/.claude/` (individually symlinked) |
 
 ### Read-in-place (no symlink)
 
@@ -47,11 +47,11 @@ Some files are consumed directly from `$HOME/dotFiles/` by scripts that hardcode
 
 ### Claude Code Configuration (`dot-claude/`)
 
-This directory is symlinked wholesale to `~/.claude/`. It contains:
+Each entry below is symlinked individually into `~/.claude/` by `sync.sh`. It contains:
 - `CLAUDE.md` — user-level global instructions (identity, preferences, coding style)
 - `settings.json` — permissions, hooks, environment variables
-- `agents/` — custom subagent definitions
-- `hooks/` — event hooks (shell formatting, lock file protection)
+- `hooks/` — event hooks (shell formatting, lock file protection, output trimming, statusline data)
+- `statusline-command.sh` — statusline renderer
 
 ## Guardrails
 
