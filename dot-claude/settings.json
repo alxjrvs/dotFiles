@@ -34,15 +34,19 @@
       "Bash(node *)",
       "Bash(bun *)",
       "Bash(bunx *)",
-      "Bash(mise *)"
+      "Bash(mise *)",
+      "Bash(git reset --hard origin/*)",
+      "Bash(git reset --hard upstream/*)"
     ],
     "deny": [
       "Bash(git push --force)",
       "Bash(git push --force *)",
       "Bash(git push -f)",
       "Bash(git push -f *)",
-      "Bash(git reset --hard)",
-      "Bash(git reset --hard *)",
+      "Bash(git reset --hard HEAD~*)",
+      "Bash(git reset --hard HEAD@*)",
+      "Bash(git reset --hard ORIG_HEAD*)",
+      "Bash(git reset --hard @{*)",
       "Bash(git clean *)",
       "Bash(git rebase -i*)",
       "Bash(git commit --amend*)",
@@ -100,7 +104,10 @@
       "Bash(open *)"
     ],
     "defaultMode": "auto",
-    "additionalDirectories": ["/tmp/claude", "/private/tmp/claude"]
+    "additionalDirectories": [
+      "/tmp/claude",
+      "/private/tmp/claude"
+    ]
   },
   "enableAllProjectMcpServers": false,
   "skillOverrides": {
@@ -143,6 +150,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/trim-bash-output.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -183,7 +200,9 @@
     ]
   },
   "worktree": {
-    "symlinkDirectories": ["node_modules"]
+    "symlinkDirectories": [
+      "node_modules"
+    ]
   },
   "statusLine": {
     "type": "command",
@@ -221,7 +240,9 @@
     "implement@gnar": true,
     "rust-analyzer-lsp@claude-plugins-official": false,
     "spacebase@gnar": false,
-    "cloudflare@gnar": false
+    "audit@gnar": true,
+    "ideate@gnar": true,
+    "ignite@gnar": true
   },
   "extraKnownMarketplaces": {
     "expo-plugins": {
@@ -289,7 +310,7 @@
         "~/.config/gh",
         "/dev/ptmx",
         "/dev/ttys",
-        ".git",
+        "**/.git/**",
         "~/.gitconfig",
         "~/.npm",
         "~/.bun/install/cache",
@@ -300,7 +321,12 @@
         "~/Library/Caches/Homebrew",
         "~/Library/Logs/Homebrew"
       ],
-      "denyRead": ["~/.aws", "~/.gnupg", "~/.netrc", "~/.config/op"]
+      "denyRead": [
+        "~/.aws",
+        "~/.gnupg",
+        "~/.netrc",
+        "~/.config/op"
+      ]
     },
     "excludedCommands": [
       "git",
