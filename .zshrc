@@ -8,6 +8,9 @@ export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
 export ANDROID_HOME="$HOME/Library/Android/sdk"
 export PATH="$PATH:$ANDROID_HOME/platform-tools"
 
+# GitHub MCP server (plugin:github:github) reads this; sourced lazily from gh CLI keychain.
+export GITHUB_PERSONAL_ACCESS_TOKEN="${GITHUB_PERSONAL_ACCESS_TOKEN:-$(gh auth token 2>/dev/null)}"
+
 # Machine-local secrets (not in git)
 [[ -f ~/.secrets ]] && source ~/.secrets
 

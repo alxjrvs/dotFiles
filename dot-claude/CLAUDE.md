@@ -27,6 +27,14 @@
 - Default branch: main
 - Rebase, squash, linear history. Avoid merge commits.
 - `git push` and `git push --force-with-lease` are acceptable; NEVER run `git push --force`
+- NEVER use `--no-verify` on commit/push. Pre-commit and pre-push hooks are mandatory; if a hook fails, fix the underlying issue.
+- NEVER delete the base branch of an open PR — it permanently closes dependent PRs. Run `gh pr list --base <branch>` before any branch deletion.
+- Do not delete tracked files during working-tree cleanup without explicit confirmation. `git clean -fd` is destructive; prefer `git status` first.
+
+## Investigation Discipline
+
+- For ambiguous tasks, ask a clarifying question after ~10 tool calls of exploration rather than spending 50+ calls investigating autonomously.
+- "Do them all" / "finish phase X" / "address all open issues" are broad delegations: enter plan mode first, enumerate scope, then execute.
 
 ## Tool Preferences
 
