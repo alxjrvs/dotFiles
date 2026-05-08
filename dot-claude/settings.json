@@ -1,7 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "skillListingMaxDescChars": 400,
-  "skillListingBudgetFraction": 0.005,
   "env": {
     "EDITOR": "nvim",
     "NODE_ENV": "development",
@@ -52,16 +50,11 @@
       "Bash(git commit --amend*)",
       "Bash(git filter-branch*)",
       "Bash(git filter-repo*)",
-      "Bash(git update-ref -d*)",
-      "Bash(git reflog delete*)",
-      "Bash(git reflog expire*)",
       "Bash(rm -rf /)",
       "Bash(rm -rf /*)",
       "Bash(rm -rf ~)",
       "Bash(rm -rf ~/*)",
       "Bash(rm -rf $HOME*)",
-      "Bash(rm -rf ..)",
-      "Bash(rm -rf ../*)",
       "Bash(chmod -R*)",
       "Bash(chown -R*)",
       "Bash(sudo)",
@@ -70,14 +63,8 @@
       "Bash(curl * | sh *)",
       "Bash(curl * | bash)",
       "Bash(curl * | bash *)",
-      "Bash(wget * | sh)",
-      "Bash(wget * | sh *)",
-      "Bash(wget * | bash)",
-      "Bash(wget * | bash *)",
       "Bash(npm publish*)",
       "Bash(bun publish*)",
-      "Bash(pnpm publish*)",
-      "Bash(yarn publish*)",
       "Bash(cargo publish*)",
       "Bash(gh repo delete*)",
       "Bash(gh release delete*)",
@@ -109,7 +96,6 @@
       "/private/tmp/claude"
     ]
   },
-  "enableAllProjectMcpServers": false,
   "skillOverrides": {
     "commit-commands:commit": "user-invocable-only",
     "commit-commands:commit-push-pr": "user-invocable-only",
@@ -237,7 +223,6 @@
     "refreshInterval": 30000
   },
   "enabledPlugins": {
-    "expo@expo-plugins": false,
     "frontend-design@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
@@ -247,25 +232,13 @@
     "feature-dev@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": false,
-    "figma@claude-plugins-official": false,
     "pr-review-toolkit@claude-plugins-official": true,
-    "skill-creator@claude-plugins-official": false,
     "claude-code-setup@claude-plugins-official": true,
-    "supabase@claude-plugins-official": false,
-    "agent-sdk-dev@claude-plugins-official": false,
-    "explanatory-output-style@claude-plugins-official": false,
-    "plugin-dev@claude-plugins-official": false,
     "hookify@claude-plugins-official": true,
-    "vercel@claude-plugins-official": false,
     "playground@claude-plugins-official": true,
-    "learning-output-style@claude-plugins-official": false,
     "typescript-lsp@claude-plugins-official": true,
-    "scram@jrvs-skills": false,
     "playwright@claude-plugins-official": true,
     "implement@gnar": true,
-    "rust-analyzer-lsp@claude-plugins-official": false,
-    "spacebase@gnar": false,
     "audit@gnar": true,
     "ideate@gnar": true,
     "ignite@gnar": true
@@ -301,7 +274,6 @@
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
-    "allowUnsandboxedCommands": false,
     "network": {
       "allowedDomains": [
         "github.com",
@@ -370,13 +342,8 @@
     ]
   },
   "feedbackSurveyRate": 0,
-  "autoCompactWindow": 600000,
-  "autoUpdatesChannel": "latest",
-  "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
-  "theme": "auto",
   "editorMode": "vim",
-  "verbose": true,
   "teammateMode": "auto",
   "remoteControlAtStartup": true,
   "agentPushNotifEnabled": true,
