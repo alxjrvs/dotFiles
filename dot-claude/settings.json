@@ -223,12 +223,9 @@
   },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
-    "code-review@claude-plugins-official": true,
     "github@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true,
-    "feature-dev@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
     "pr-review-toolkit@claude-plugins-official": true,
@@ -240,25 +237,15 @@
     "implement@gnar": true,
     "audit@gnar": true,
     "ideate@gnar": true,
-    "ignite@gnar": true
+    "ignite@gnar": true,
+    "superpowers@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
-    "expo-plugins": {
-      "source": {
-        "source": "github",
-        "repo": "expo/skills"
-      }
-    },
     "claude-plugins-official": {
       "source": {
         "source": "github",
         "repo": "anthropics/claude-plugins-official"
-      }
-    },
-    "jrvs-skills": {
-      "source": {
-        "source": "github",
-        "repo": "alxjrvs/skills-lib"
       }
     },
     "gnar": {
@@ -343,10 +330,10 @@
   "feedbackSurveyRate": 0,
   "skipDangerousModePermissionPrompt": true,
   "editorMode": "vim",
+  "verbose": true,
   "teammateMode": "auto",
   "remoteControlAtStartup": true,
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
-  "voiceEnabled": true,
-  "verbose": true
+  "voiceEnabled": true
 }
