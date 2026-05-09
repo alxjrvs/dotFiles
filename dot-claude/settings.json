@@ -294,7 +294,7 @@
         "~/.config/gh",
         "/dev/ptmx",
         "/dev/ttys",
-        "**/.git/**",
+        "~/**/.git/**",
         "~/.gitconfig",
         "~/.npm",
         "~/.bun/install/cache",
