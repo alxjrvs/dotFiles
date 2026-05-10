@@ -11,6 +11,10 @@
 .idea/
 .vscode/
 
+# Backups (e.g. harness-tuneup .bak-<ISO> files)
+*.bak
+*.bak-*
+
 # Logs
 *.log
 npm-debug.log*
