@@ -1,9 +1,5 @@
 tap "supabase/tap"
-# tap "wix/brew"          # iOS simulator tools
 brew "mise"
-# brew "bundletool"      # Android only
-# brew "cmake"           # C/C++ only
-# brew "fastlane"        # iOS CI only
 brew "atuin"
 brew "fzf"
 brew "gh"
@@ -25,12 +21,10 @@ brew "gnupg"
 brew "direnv"
 brew "ripgrep"
 brew "tealdeer"
-# brew "watchman"        # React Native only
 brew "zoxide"
 brew "sheldon"
 brew "shfmt"
 brew "supabase/tap/supabase"
-# brew "wix/brew/applesimutils"  # iOS simulator
 tap "manaflow-ai/cmux"
 cask "cmux"
 cask "1password-cli"
@@ -47,4 +41,3 @@ cask "notunes"
 cask "rectangle"
 cask "slack"
 cask "tuple"
-# cask "zulu@17"          # Java/Android only

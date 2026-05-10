@@ -1,6 +1,6 @@
 #!/bin/sh
 # Nova — unified terminal colorscheme
-# Usage: . "$HOME/dotFiles/theme.sh"
+# Usage: . "$HOME/dotFiles/scripts/theme.sh"
 #
 # Background: #2E3440 (Nord 0). All contrast ratios relative to this.
 # Contrast notation: W=vs #ECEFF4 (white text on segment), B=vs bg (segment visibility)

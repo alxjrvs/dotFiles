@@ -110,7 +110,7 @@ zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 
 # Prompt setup (replaces starship)
 setopt promptsubst
-source ~/dotFiles/theme.sh
+source ~/dotFiles/scripts/theme.sh
 
 # _prompt_repo_dir -- renders identity cell (repo OR CWD) + GH icon
 # Shows repo name (linked, underlined) if in GH repo, else CWD path.
@@ -192,7 +192,7 @@ function _prompt_repo_dir() {
 #        STATUSLINE_WORKTREE, GIT_STASH_COUNT, GIT_CONFLICT_COUNT,
 #        GIT_UNTRACKED_COUNT, GIT_UNSTAGED_COUNT, GIT_STAGED_COUNT,
 #        GIT_AHEAD, GIT_BEHIND
-# Expects NOVA_* color vars from theme.sh (already sourced).
+# Expects NOVA_* color vars from scripts/theme.sh (already sourced).
 function _prompt_git_seg() {
   [[ -z "$GIT_IS_REPO" ]] && return
   local o="" prev_r prev_g prev_b

@@ -231,18 +231,9 @@
     "playground@claude-plugins-official": false,
     "typescript-lsp@claude-plugins-official": true,
     "playwright@claude-plugins-official": true,
-    "implement@gnar": true,
-    "audit@gnar": true,
-    "ideate@gnar": true,
-    "ignite@gnar": true,
-    "superpowers@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
-    "audit@gnar-next": true,
-    "ideate@gnar-next": true,
-    "ignite@gnar-next": true,
-    "implement@gnar-next": true,
-    "meta@gnar-next": true,
-    "spacebase@gnar-next": true
+    "spacebase@gnar-next": true,
+    "superpowers@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -250,13 +241,6 @@
         "source": "github",
         "repo": "anthropics/claude-plugins-official"
       }
-    },
-    "gnar": {
-      "source": {
-        "source": "github",
-        "repo": "thegnarco/agent-skills"
-      },
-      "autoUpdate": true
     },
     "gnar-next": {
       "source": {
