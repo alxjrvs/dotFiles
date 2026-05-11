@@ -2,9 +2,9 @@
 # Claude Code status line - plain-ASCII layout with colored git values:
 #   Line 1: repo/dir  branch  [wt:name]  [counters]
 #   Line 2: [M: model]  [A: advisor]
-#   Line 3: context [bar] N%
-#   Line 4: 5h      [bar] N%  [time left]  [delta]
-#   Line 5: 7d      [bar] N%  [time left]  [delta]
+#   Line 3: Ctx [bar] N%
+#   Line 4: 5h  [bar] N%  [time left]  [delta]
+#   Line 5: 7d  [bar] N%  [time left]  [delta]
 
 input=$(cat)
 
@@ -211,7 +211,7 @@ model_part=""
 used_int=0
 [ -n "$used_pct" ] && used_int=${used_pct%%.*}
 ctx_bar=$(render_bar "$used_int")
-printf '%scontext%s %s %s[%3d%%]%s\n' "$MUTED" "$RESET" "$ctx_bar" "$MUTED" "$used_int" "$RESET"
+printf '%s%-3s%s %s %s[%3d%%]%s\n' "$MUTED" "Ctx" "$RESET" "$ctx_bar" "$MUTED" "$used_int" "$RESET"
 
 # == Lines 4-5: rate limits (5-hour + 7-day) ==================================
 # render_window: pct resets_at window_min label
@@ -261,7 +261,7 @@ render_window() {
 
   local bar
   bar=$(render_bar "$pct" "$clock_pct" "$proj_pct")
-  printf '%s%s%s %s %s[%3d%%] [%s%s%s] [%s%s]%s' \
+  printf '%s%-3s%s %s %s[%3d%%] [%s%s%s] [%s%s]%s' \
     "$MUTED" "$label" "$RESET" \
     "$bar" \
     "$MUTED" "$pct" \
@@ -274,8 +274,8 @@ if [ -n "$five_pct" ] && [ -n "$five_resets_at" ]; then
   render_window "${five_pct%%.*}" "$five_resets_at" 300 "5h"
   printf '\n'
 else
-  printf '%s5h%s %s[ rate_limits unavailable — make a request to populate ]%s\n' \
-    "$MUTED" "$RESET" "$MUTED" "$RESET"
+  printf '%s%-3s%s %s[ rate_limits unavailable — make a request to populate ]%s\n' \
+    "$MUTED" "5h" "$RESET" "$MUTED" "$RESET"
 fi
 
 if [ -n "$seven_pct" ] && [ -n "$seven_resets_at" ]; then
