@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Claude Code status line - plain-ASCII layout with colored git values:
 #   Line 1: repo/dir  branch  [wt:name]  [counters]
-#   Line 2: [M: model]  [A: advisor]
+#   Line 2: [M: model]  [A: advisor]  [E: effort]
 #   Line 3: Ctx [bar] N%
 #   Line 4: 5h  [bar] N%  [time left]  [delta]
 #   Line 5: 7d  [bar] N%  [time left]  [delta]
@@ -26,6 +26,7 @@ eval "$(echo "$input" | jq -r '
   @sh "project_dir=\(.workspace.project_dir // "")",
   @sh "cwd=\(.workspace.current_dir // "")",
   @sh "model_name=\(.model.display_name // "")",
+  @sh "effort_level=\(.effort.level // "")",
   @sh "five_pct=\(.rate_limits.five_hour.used_percentage // "")",
   @sh "five_resets_at=\(.rate_limits.five_hour.resets_at // "")",
   @sh "seven_pct=\(.rate_limits.seven_day.used_percentage // "")",
@@ -203,8 +204,9 @@ printf '%s\n' "$line1"
 
 # == Line 2: Model + advisor ==================================================
 model_part=""
-[ -n "$model_name" ]   && model_part="${model_part}${MUTED}[${RESET}${CYAN}M: ${model_name}${MUTED}]${RESET}"
-[ -n "$advisor_name" ] && model_part="${model_part} ${MUTED}[${RESET}${CYAN}A: ${advisor_name}${MUTED}]${RESET}"
+[ -n "$model_name" ]    && model_part="${model_part}${MUTED}[${RESET}${CYAN}M: ${model_name}${MUTED}]${RESET}"
+[ -n "$advisor_name" ]  && model_part="${model_part} ${MUTED}[${RESET}${CYAN}A: ${advisor_name}${MUTED}]${RESET}"
+[ -n "$effort_level" ]  && model_part="${model_part} ${MUTED}[${RESET}${CYAN}E: ${effort_level}${MUTED}]${RESET}"
 [ -n "$model_part" ] && printf '%s\n' "$model_part"
 
 # == Line 3: Context bar ======================================================
