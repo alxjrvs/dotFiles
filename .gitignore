@@ -28,9 +28,6 @@ yarn-error.log*
 .secrets
 .npmrc
 
-# Per-account ccusage limits (contains account emails — bootstrapped from ccusage/limits.example.json)
-ccusage/limits.json
-
 # Transient/generated
 .playwright-mcp/
 .gnar-term/

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A dotfiles repository for macOS. All config files live here. Most are symlinked to their expected locations via `sync.sh`; a few (like `scripts/` and `ccusage/`) are read directly from `$HOME/dotFiles/` by shell scripts that hardcode that path.
+A dotfiles repository for macOS. All config files live here. Most are symlinked to their expected locations via `sync.sh`; a few (like `scripts/`) are read directly from `$HOME/dotFiles/` by shell scripts that hardcode that path.
 
 ## Key Commands
 
@@ -41,9 +41,7 @@ There are no build, test, or lint commands for this repo.
 Some files are consumed directly from `$HOME/dotFiles/` by scripts that hardcode that path. These must remain at that absolute location — they are not synced anywhere:
 
 - `scripts/git-data.sh` — git state cache; sourced by `.zshrc` prompt and the Claude statusline.
-- `scripts/session-data.sh` — ccusage 5-hour-window cache; sourced by the Claude statusline and warmed by `dot-claude/hooks/session-start.sh`.
 - `scripts/theme.sh` — color palette sourced by `.zshrc`'s hand-rolled prompt.
-- `ccusage/limits.json` — per-account token cap map (gitignored, bootstrapped from `ccusage/limits.example.json`). Read by `scripts/session-data.sh` to resolve `--token-limit` based on `~/.claude.json`'s `oauthAccount.emailAddress`.
 
 ### Claude Code Configuration (`dot-claude/`)
 
@@ -59,9 +57,8 @@ Pause and confirm with the user before doing any of these:
 
 - **Prompt code in `.zshrc` / `scripts/theme.sh`**: contains raw powerline glyphs (U+E0B0, U+E0B2, U+E0A0, U+276F). The Write/Edit tools strip unicode. To modify these sections, use a Python helper that writes the file byte-exact; never Edit a line containing a glyph directly.
 - **Dependency lockfiles** (any file matching `*-lock*` or `*.lock*`): never edit by hand. The `lock-file-guard.sh` PreToolUse hook blocks these; do not work around it.
-- **`ccusage/limits.json`**: gitignored, personal per-account token caps. Never edit or overwrite without explicit user request.
 - **`sync.sh` symlink semantics**: the `link()` function prompts on conflict and is interactive. Do not refactor it to auto-overwrite or skip prompts.
-- **Hardcoded `$HOME/dotFiles` paths**: `scripts/*.sh` and `ccusage/*` assume this absolute path. Do not refactor them to use `$PWD` or relative paths.
+- **Hardcoded `$HOME/dotFiles` paths**: `scripts/*.sh` assumes this absolute path. Do not refactor them to use `$PWD` or relative paths.
 - **Starship references**: the user replaced Starship with a hand-rolled prompt. If you see `starship` in files, treat it as historical — do not reintroduce Starship code or dependencies.
 
 ## Important Gotchas
@@ -70,7 +67,7 @@ Pause and confirm with the user before doing any of these:
 - **sync.sh is interactive**: The `link()` function prompts on conflicts. Don't expect unattended runs if symlink targets already exist as regular files.
 - **dot-claude vs .claude**: Source of truth is `dot-claude/` in this repo. The `.claude/` directory at repo root holds machine-local overrides (e.g. `settings.local.json`) that are gitignored — don't confuse it with project-local Claude config.
 - **Sheldon plugin order matters**: `zsh-syntax-highlighting` must be last in `sheldon/plugins.toml`.
-- **Hardcoded `$HOME/dotFiles` path**: Scripts in `scripts/` and `ccusage/` are read via absolute path. If the repo is cloned somewhere else, those consumers break.
+- **Hardcoded `$HOME/dotFiles` path**: Scripts in `scripts/` are read via absolute path. If the repo is cloned somewhere else, those consumers break.
 - **settings.json allow + excludedCommands**: When adding a new command binary to `permissions.allow`, you must also add it to `sandbox.excludedCommands` — omitting it means the sandbox blocks the command regardless of the allow rule. The reverse also applies: an `excludedCommands` entry without a matching allow rule signals intent but has no effect on prompting.
 
 <!-- code-review-graph MCP tools -->

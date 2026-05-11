@@ -28,13 +28,12 @@ Idempotent. Installs Homebrew packages, language versions via mise, creates syml
 
 `dot-claude/` is symlinked to `~/.claude/`. It includes:
 
-- **hooks** — shell formatting, lock file protection, session warming
+- **hooks** — shell formatting, lock file protection
 - **agents** — custom subagent definitions
 - **settings.json** — permissions (allow/ask/deny) and env vars
-- **statusline-command.sh** — ccusage-powered token usage in the terminal statusline
+- **statusline-command.sh** — context bar plus Pro/Max 5h + 7d rate-limit windows sourced from Claude Code's native `rate_limits` JSON
 
 ## Notes
 
-- Scripts under `scripts/` and `ccusage/` hard-code `$HOME/dotFiles` — clone there or update those paths.
+- Scripts under `scripts/` hard-code `$HOME/dotFiles` — clone there or update those paths.
 - Files with powerline glyphs (prompt code, tmux config) must be edited with Python, not the Claude Edit tool, to avoid unicode stripping.
-- `ccusage/limits.json` is gitignored — bootstrap from `ccusage/limits.example.json`.

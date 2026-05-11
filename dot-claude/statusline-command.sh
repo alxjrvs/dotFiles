@@ -3,7 +3,8 @@
 #   Line 1: repo/dir  branch  [wt:name]  [counters]
 #   Line 2: [M: model]  [A: advisor]
 #   Line 3: context [bar] N%
-#   Line 4: session [bar] N%
+#   Line 4: 5h      [bar] N%  [time left]  [delta]
+#   Line 5: 7d      [bar] N%  [time left]  [delta]
 
 input=$(cat)
 
@@ -14,20 +15,21 @@ _git_hash=$(printf '%s' "$_git_key" | shasum -a 256 | cut -c1-12)
 # shellcheck disable=SC1090
 . "/tmp/git-data-cache-$(id -u)-${_git_hash}.sh"
 
-# -- Session window cache (async via ccusage) ----------------------------------
-sh "$HOME/dotFiles/scripts/session-data.sh"
-_session_cache="/tmp/session-data-cache-$(id -u).sh"
-# shellcheck disable=SC1090
-[ -f "$_session_cache" ] && . "$_session_cache"
-
 # -- Parse JSON input ----------------------------------------------------------
+# rate_limits.* are first-party Claude.ai subscription windows (Pro/Max). They
+# appear only AFTER the first API response in the session, so handle absence
+# gracefully. resets_at is unix epoch seconds.
 eval "$(echo "$input" | jq -r '
   @sh "used_pct=\(.context_window.used_percentage // "")",
   @sh "duration_ms=\(.cost.total_duration_ms // 0)",
   @sh "worktree_name=\(.worktree.name // "")",
   @sh "project_dir=\(.workspace.project_dir // "")",
   @sh "cwd=\(.workspace.current_dir // "")",
-  @sh "model_name=\(.model.display_name // "")"
+  @sh "model_name=\(.model.display_name // "")",
+  @sh "five_pct=\(.rate_limits.five_hour.used_percentage // "")",
+  @sh "five_resets_at=\(.rate_limits.five_hour.resets_at // "")",
+  @sh "seven_pct=\(.rate_limits.seven_day.used_percentage // "")",
+  @sh "seven_resets_at=\(.rate_limits.seven_day.resets_at // "")"
 ' | tr ',' '\n')"
 
 _settings="$HOME/.claude/settings.json"
@@ -211,62 +213,71 @@ used_int=0
 ctx_bar=$(render_bar "$used_int")
 printf '%scontext%s %s %s[%3d%%]%s\n' "$MUTED" "$RESET" "$ctx_bar" "$MUTED" "$used_int" "$RESET"
 
-# == Line 3: Session — burn % against block token limit; time-left as indicator
-_have_ccusage=0
-if [ -x "$HOME/.bun/bin/ccusage" ] || command -v ccusage >/dev/null 2>&1; then
-  _have_ccusage=1
+# == Lines 4-5: rate limits (5-hour + 7-day) ==================================
+# render_window: pct resets_at window_min label
+#   pct          — used percentage (integer)
+#   resets_at    — unix epoch seconds when window resets
+#   window_min   — total minutes in the window (300 for 5h, 10080 for 7d)
+#   label        — left-column label (e.g. "5h", "7d")
+render_window() {
+  local pct="$1" resets_at="$2" window_min="$3" label="$4"
+  local _now remain_sec remain_min clock_pct proj_pct delta delta_str time_label
+  _now=$(date +%s)
+  remain_sec=$(( resets_at - _now ))
+  [ "$remain_sec" -lt 0 ] && remain_sec=0
+  remain_min=$(( remain_sec / 60 ))
+  [ "$remain_min" -gt "$window_min" ] && remain_min=$window_min
+
+  clock_pct=$(( (window_min - remain_min) * 100 / window_min ))
+
+  # Projection: linear extrapolation. Suppress early — division by small
+  # clock_pct produces noise.
+  proj_pct=""
+  if [ "$clock_pct" -gt 5 ]; then
+    proj_pct=$(( pct * 100 / clock_pct ))
+  fi
+
+  delta=$(( pct - clock_pct ))
+  if [ "$delta" -gt 0 ]; then
+    delta_str="${RED}+${delta}%${RESET}"
+  elif [ "$delta" -lt 0 ]; then
+    delta_str="${GREEN}${delta}%${RESET}"
+  else
+    delta_str="${MUTED}0%${RESET}"
+  fi
+
+  local d h m
+  if [ "$remain_min" -ge 1440 ]; then
+    d=$(( remain_min / 1440 ))
+    h=$(( (remain_min % 1440) / 60 ))
+    time_label=$(printf '%dd %02dh left' "$d" "$h")
+  elif [ "$remain_min" -ge 60 ]; then
+    h=$(( remain_min / 60 ))
+    m=$(( remain_min % 60 ))
+    time_label=$(printf '%dh %02dm left' "$h" "$m")
+  else
+    time_label=$(printf '%dm left' "$remain_min")
+  fi
+
+  local bar
+  bar=$(render_bar "$pct" "$clock_pct" "$proj_pct")
+  printf '%s%s%s %s %s[%3d%%] [%s%s%s] [%s%s]%s' \
+    "$MUTED" "$label" "$RESET" \
+    "$bar" \
+    "$MUTED" "$pct" \
+    "$MARKER" "$time_label" "$MUTED" \
+    "$delta_str" "$MUTED" \
+    "$RESET"
+}
+
+if [ -n "$five_pct" ] && [ -n "$five_resets_at" ]; then
+  render_window "${five_pct%%.*}" "$five_resets_at" 300 "5h"
+  printf '\n'
+else
+  printf '%s5h%s %s[ rate_limits unavailable — make a request to populate ]%s\n' \
+    "$MUTED" "$RESET" "$MUTED" "$RESET"
 fi
 
-if [ "$_have_ccusage" -eq 0 ]; then
-  printf '%ssession%s %s[ install ccusage for session chart: %sbun add -g ccusage%s %s]%s' \
-    "$MUTED" "$RESET" "$MUTED" "$YELLOW" "$RESET" "$MUTED" "$RESET"
-else
-  sess_int=0
-  sess_label=""
-  clock_pct=""
-  proj_pct=""
-  delta_str=""
-  if [ -n "${SESSION_START:-}" ]; then
-    sess_int="${SESSION_BURN_PCT:-0}"
-    [ -z "$sess_int" ] && sess_int=0
-    remain_min="${SESSION_REMAINING_MIN%.*}"
-    [ -z "$remain_min" ] && remain_min=0
-    [ "$remain_min" -lt 0 ] && remain_min=0
-    [ "$remain_min" -gt 300 ] && remain_min=300
-    clock_pct=$(( (300 - remain_min) * 100 / 300 ))
-
-    # Projection: linear extrapolation of current burn to end of block.
-    # Suppress early in block — division by small clock_pct yields noise.
-    if [ "$clock_pct" -gt 5 ]; then
-      proj_pct=$(( sess_int * 100 / clock_pct ))
-    fi
-
-    delta=$(( sess_int - clock_pct ))
-    if [ "$delta" -gt 0 ]; then
-      delta_str="${RED}+${delta}%${RESET}"
-    elif [ "$delta" -lt 0 ]; then
-      delta_str="${GREEN}${delta}%${RESET}"
-    else
-      delta_str="${MUTED}0%${RESET}"
-    fi
-
-    rh=$(( remain_min / 60 ))
-    rm=$(( remain_min % 60 ))
-    if [ "$rh" -gt 0 ]; then
-      sess_label=$(printf '%dh %02dm left' "$rh" "$rm")
-    else
-      sess_label=$(printf '%dm left' "$rm")
-    fi
-  fi
-
-  if [ -n "$sess_label" ]; then
-    sess_bar=$(render_bar "$sess_int" "$clock_pct" "$proj_pct")
-    printf '%ssession%s %s %s[%3d%%] [%s%s%s] [%s%s]%s' \
-      "$MUTED" "$RESET" \
-      "$sess_bar" \
-      "$MUTED" "$sess_int" \
-      "$MARKER" "$sess_label" "$MUTED" \
-      "$delta_str" "$MUTED" \
-      "$RESET"
-  fi
+if [ -n "$seven_pct" ] && [ -n "$seven_resets_at" ]; then
+  render_window "${seven_pct%%.*}" "$seven_resets_at" 10080 "7d"
 fi

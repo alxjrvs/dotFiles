@@ -6,7 +6,7 @@
 - Editor: neovim (`nvim`)
 - Shell: zsh with vi keybindings
 - Package managers: bun (preferred for JS), brew (system)
-- Power user of Claude Code: hand-rolls dotfiles, hooks, statusline, ccusage integration. Assume familiarity with the feature surface. Don't soften recommendations or default to basic workflows — pitch the advanced option directly.
+- Power user of Claude Code: hand-rolls dotfiles, hooks, statusline. Assume familiarity with the feature surface. Don't soften recommendations or default to basic workflows — pitch the advanced option directly.
 
 ## Preferences
 

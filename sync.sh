@@ -363,17 +363,6 @@ else
   warn "Claude Code not installed — will be installed by mise postinstall hook"
 fi
 
-# ccusage — powers the session-window bar in statusline-command.sh
-if [ -x "$HOME/.bun/bin/ccusage" ]; then
-  ok "ccusage installed"
-elif command -v bun &>/dev/null; then
-  warn "Installing ccusage via bun..."
-  bun add -g ccusage
-  ok "ccusage installed"
-else
-  fail "ccusage missing — install bun (via Brewfile) then re-run"
-fi
-
 # code-review-graph — MCP server for knowledge-graph-based code review
 if command -v code-review-graph &>/dev/null; then
   ok "code-review-graph installed"
@@ -388,13 +377,6 @@ else
   ok "code-review-graph installed"
 fi
 
-# ccusage per-account limits — bootstrap from example if missing (gitignored)
-if [ ! -f "$DOTFILES_DIR/ccusage/limits.json" ]; then
-  cp "$DOTFILES_DIR/ccusage/limits.example.json" "$DOTFILES_DIR/ccusage/limits.json"
-  warn "ccusage/limits.json bootstrapped from example — edit to map account emails to token caps"
-else
-  ok "ccusage/limits.json present"
-fi
 fi # should_run claude
 
 if [ "$OS" = "Darwin" ]; then
