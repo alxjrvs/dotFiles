@@ -88,10 +88,7 @@
       "Bash(open *)"
     ],
     "defaultMode": "auto",
-    "additionalDirectories": [
-      "/tmp/claude",
-      "/private/tmp/claude"
-    ]
+    "additionalDirectories": ["/tmp/claude", "/private/tmp/claude"]
   },
   "skillOverrides": {
     "commit-commands:commit": "user-invocable-only",
@@ -208,9 +205,7 @@
     ]
   },
   "worktree": {
-    "symlinkDirectories": [
-      "node_modules"
-    ]
+    "symlinkDirectories": ["node_modules"]
   },
   "statusLine": {
     "type": "command",
@@ -305,12 +300,7 @@
         "~/Library/Caches/Homebrew",
         "~/Library/Logs/Homebrew"
       ],
-      "denyRead": [
-        "~/.aws",
-        "~/.gnupg",
-        "~/.netrc",
-        "~/.config/op"
-      ]
+      "denyRead": ["~/.aws", "~/.gnupg", "~/.netrc", "~/.config/op"]
     },
     "excludedCommands": [
       "git",
