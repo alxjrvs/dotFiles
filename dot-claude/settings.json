@@ -12,7 +12,7 @@
     "allow": [
       "Bash(git *)",
       "Bash(gh *)",
-      "Bash(sed:*)",
+      "Bash(sed *)",
       "WebSearch",
       "Bash(cargo *)",
       "Bash(lefthook *)",
@@ -42,11 +42,15 @@
       "Bash(git reset --hard HEAD@*)",
       "Bash(git reset --hard ORIG_HEAD*)",
       "Bash(git reset --hard @{*)",
+      "Bash(git reset --hard *)",
       "Bash(git clean *)",
       "Bash(git rebase -i*)",
       "Bash(git commit --amend*)",
       "Bash(git filter-branch*)",
       "Bash(git filter-repo*)",
+      "Bash(git update-ref -d*)",
+      "Bash(git reflog delete*)",
+      "Bash(git reflog expire*)",
       "Bash(rm -rf /)",
       "Bash(rm -rf /*)",
       "Bash(rm -rf ~)",
@@ -60,6 +64,10 @@
       "Bash(curl * | sh *)",
       "Bash(curl * | bash)",
       "Bash(curl * | bash *)",
+      "Bash(wget * | sh)",
+      "Bash(wget * | sh *)",
+      "Bash(wget * | bash)",
+      "Bash(wget * | bash *)",
       "Bash(npm publish*)",
       "Bash(bun publish*)",
       "Bash(cargo publish*)",
@@ -87,7 +95,7 @@
       "Bash(gh pr merge*)",
       "Bash(open *)"
     ],
-    "defaultMode": "auto",
+    "defaultMode": "dontAsk",
     "additionalDirectories": ["/tmp/claude", "/private/tmp/claude"]
   },
   "skillOverrides": {
@@ -318,6 +326,8 @@
     ]
   },
   "feedbackSurveyRate": 0,
+  "forceLoginMethod": "claudeai",
+  "bypassPermissionsModeAccepted": true,
   "skipDangerousModePermissionPrompt": true,
   "editorMode": "vim",
   "verbose": true,
