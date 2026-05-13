@@ -87,6 +87,8 @@ PROJ=$'\e[38;2;255;210;80m'     # amber — projected end-of-block burn marker
 #   90%: 255 232 144  hot yellow
 #   100%: 255 255 255 white hot
 PIP_COUNT=30
+PIP_FILL=$'▰'   # ▰  filled pip — matches Claude's progress bar
+PIP_EMPTY=$'▱'  # ▱  empty pip
 
 _grad_at() {
   local t="$1" r g b u
@@ -145,25 +147,26 @@ render_bar() {
     [ "$proj_idx" -lt 0 ] && proj_idx=0
   fi
 
-  local out="${MUTED}[${RESET}"
-  local i=0
+  local out=""
+  local i=0 pip
   while [ "$i" -lt "$PIP_COUNT" ]; do
+    if [ "$i" -lt "$filled" ]; then pip="$PIP_FILL"; else pip="$PIP_EMPTY"; fi
     if [ "$i" -eq "$marker_idx" ]; then
       if [ "$marker_expired" -eq 1 ]; then
-        out="${out}${UNDIM}${MARKER}X"
+        out="${out}${UNDIM}${RED}${pip}"
       else
-        out="${out}${UNDIM}${MARKER}|"
+        out="${out}${UNDIM}${MARKER}${pip}"
       fi
     elif [ "$i" -eq "$proj_idx" ]; then
-      out="${out}${UNDIM}${PROJ}*"
+      out="${out}${UNDIM}${PROJ}${pip}"
     elif [ "$i" -lt "$filled" ]; then
-      out="${out}${UNDIM}"$'\e[38;2;'"${PIPS[$i]}"$'m#'
+      out="${out}${UNDIM}"$'\e[38;2;'"${PIPS[$i]}"$'m'"${pip}"
     else
-      out="${out}${DIM}-"
+      out="${out}${MUTED}${pip}"
     fi
     i=$(( i + 1 ))
   done
-  out="${out}${RESET}${MUTED}]${RESET}"
+  out="${out}${RESET}"
   printf '%s' "$out"
 }
 
@@ -213,7 +216,7 @@ model_part=""
 used_int=0
 [ -n "$used_pct" ] && used_int=${used_pct%%.*}
 ctx_bar=$(render_bar "$used_int")
-printf '%s%-3s%s %s %s[%3d%%]%s\n' "$MUTED" "Ctx" "$RESET" "$ctx_bar" "$MUTED" "$used_int" "$RESET"
+printf '%s%-3s%s %s %s%3d%%%s\n' "$MUTED" "Ctx" "$RESET" "$ctx_bar" "$MUTED" "$used_int" "$RESET"
 
 # == Lines 4-5: rate limits (5-hour + 7-day) ==================================
 # render_window: pct resets_at window_min label
@@ -263,10 +266,10 @@ render_window() {
 
   local bar
   bar=$(render_bar "$pct" "$clock_pct" "$proj_pct")
-  printf '%s%-3s%s %s %s[%3d%%] [%s%s%s] [%s%s]%s' \
+  printf '%s%-3s%s %s %s%3d%%%s [%s%s%s] [%s%s]%s' \
     "$MUTED" "$label" "$RESET" \
     "$bar" \
-    "$MUTED" "$pct" \
+    "$MUTED" "$pct" "$RESET" \
     "$MARKER" "$time_label" "$MUTED" \
     "$delta_str" "$MUTED" \
     "$RESET"
