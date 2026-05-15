@@ -392,3 +392,9 @@ export LESS_TERMCAP_us=$'\e[1;35m'
 
 # bun completions
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
+
+# Gnar `meta` plugin: opt in to adoption telemetry. The Stop hook
+# (stop-skill-telemetry.sh) no-ops unless this is set; flipping it on
+# here lets every Claude session ship one event per Stop to the
+# gnar-telem Worker. See meta/README.md for the privacy contract.
+export META_TELEMETRY_ENABLE=1
