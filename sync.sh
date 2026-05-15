@@ -193,7 +193,7 @@ if [ "$OS" = "Darwin" ]; then
       # Each entry is crate:binary-name (binary differs for watchexec-cli, bottom).
       # --locked respects the crate's pinned dependency graph so transitive yanks
       # don't silently change the build on a fresh box.
-      for entry in watchexec-cli:watchexec pueue:pueue bottom:btm; do
+      for entry in watchexec-cli:watchexec pueue:pueue bottom:btm git-absorb:git-absorb; do
         crate="${entry%%:*}"
         bin="${entry##*:}"
         if command -v "$bin" &> /dev/null; then
@@ -576,7 +576,10 @@ fi # should_run gh
 if should_run git; then
   echo ""
   echo "==> git maintenance"
-  if git -C "$DOTFILES_DIR" maintenance start 2> /dev/null; then
+  # GIT_CONFIG_GLOBAL redirects the maintenance.repo write to ~/.gitconfig.local
+  # (machine-local) so the tracked ~/.gitconfig stays portable across boxes.
+  if GIT_CONFIG_GLOBAL="$HOME/.gitconfig.local" \
+    git -C "$DOTFILES_DIR" maintenance start 2> /dev/null; then
     ok "git maintenance scheduled for $DOTFILES_DIR"
   else
     dim "git maintenance already scheduled or not supported"

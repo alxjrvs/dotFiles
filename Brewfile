@@ -4,7 +4,6 @@ brew "atuin"
 brew "fzf"
 brew "gh"
 brew "git-delta"
-brew "git-absorb"   # auto-fixup staged hunks to the right commit
 brew "lazygit"
 brew "bat"
 brew "difftastic"
@@ -29,13 +28,14 @@ brew "shellcheck"
 brew "uv"
 # NOTE: Tier 3 systems (macOS Tahoe / Apple Silicon) lack pre-built bottles
 # for these. sync.sh's "Tier 3 fallback installs" section auto-installs them
-# via cargo (watchexec/pueue/bottom) and GitHub releases (carapace).
+# via cargo (watchexec/pueue/bottom/git-absorb) and GitHub releases (carapace).
 # These brew entries are kept so the canonical install lights up when
 # upstream bottles eventually arrive.
 brew "carapace"      # multi-shell completions for ~600 tools (gh, mise, op, kubectl, ...)
 brew "watchexec"     # fast file-change watcher (run cmds on edits, smart restart)
 brew "pueue"         # persistent task queue daemon for long-running/background jobs
 brew "btop"          # modern resource monitor (top / htop replacement)
+brew "git-absorb"    # auto-fixup staged hunks to the right history commit
 brew "supabase/tap/supabase"
 tap "manaflow-ai/cmux"
 cask "cmux"
