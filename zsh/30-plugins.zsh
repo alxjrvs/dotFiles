@@ -19,8 +19,9 @@ _zsh_cached_load() {
 # Sheldon plugins (adds zsh-completions to fpath, loads FSH last)
 _zsh_cached_load sheldon "sheldon source" "$(command -v sheldon)"
 
-# Atuin shell history
-command -v atuin &>/dev/null && _zsh_cached_load atuin "atuin init zsh" "$(command -v atuin)"
+# Atuin shell history. --disable-up-arrow leaves Up/Down to history-substring-search
+# below; atuin owns Ctrl-R for full-history fuzzy search.
+command -v atuin &>/dev/null && _zsh_cached_load atuin "atuin init zsh --disable-up-arrow" "$(command -v atuin)"
 
 # History substring search keybindings
 bindkey '^[[A' history-substring-search-up

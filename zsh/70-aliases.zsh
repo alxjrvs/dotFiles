@@ -28,6 +28,7 @@ alias ll="eza --icons --group-directories-first -lh --git"
 alias lt="eza --icons --group-directories-first -T --level=2"
 alias tree="eza --icons --group-directories-first -T"
 alias b="bat --style=plain"
+alias btop="btm"  # bottom (rust) stands in for btop until Tier 3 bottles arrive
 
 # Editor
 alias v="nvim"

@@ -6,10 +6,8 @@ export LANG=en_US.UTF-8
 export LESS='-RFX'
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 
-# JDK / Android
+# JDK (Android SDK paths live in .zprofile so login env owns them once)
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
-export ANDROID_HOME="$HOME/Library/Android/sdk"
-export PATH="$PATH:$ANDROID_HOME/platform-tools"
 
 # GitHub MCP server (plugin:github:github) reads this; sourced lazily from gh CLI keychain.
 export GITHUB_PERSONAL_ACCESS_TOKEN="${GITHUB_PERSONAL_ACCESS_TOKEN:-$(gh auth token 2>/dev/null)}"

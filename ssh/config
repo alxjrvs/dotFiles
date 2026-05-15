@@ -1,0 +1,33 @@
+# ~/.ssh/config — symlinked from dotfiles. Permissions: 600.
+#
+# Augment remote agent SSH connections (externally managed; preserve at top).
+Include ~/.augment/ssh-config
+
+Host *
+  # Add keys to ssh-agent on first use; keep passphrase cached.
+  AddKeysToAgent yes
+
+  # macOS Keychain integration for passphrases.
+  IgnoreUnknown UseKeychain
+  UseKeychain yes
+
+  # Default identity. Override per-Host below as needed.
+  IdentityFile ~/.ssh/id_ed25519
+
+  # Keep idle connections alive (NAT/firewall friendly).
+  ServerAliveInterval 60
+  ServerAliveCountMax 3
+
+  # Connection multiplexing — second `git push` reuses the first connection.
+  ControlMaster auto
+  ControlPath ~/.ssh/cm-%r@%h:%p
+  ControlPersist 10m
+
+  # 1Password SSH agent integration. Uncomment after enabling SSH agent in
+  # 1Password → Settings → Developer. Replaces UseKeychain semantics.
+  # IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+
+# Example per-host override (uncomment + fill in):
+# Host github.com
+#   User git
+#   IdentityFile ~/.ssh/id_ed25519

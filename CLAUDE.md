@@ -34,6 +34,8 @@ There are no build, test, or lint commands for this repo.
 | `ghostty/config` | `~/.config/ghostty/config` |
 | `nvim/` | `~/.config/nvim` (AstroNvim v5) |
 | `gh/config.yml` | `~/.config/gh/config.yml` |
+| `ssh/config` | `~/.ssh/config` |
+| `macos/LaunchAgents/*.plist` | `~/Library/LaunchAgents/` (per-file; Caps→Esc lives here) |
 | `dot-claude/{CLAUDE.md, settings.json, hooks/, statusline-command.sh}` | `~/.claude/` (individually symlinked) |
 
 ### Read-in-place (no symlink)
@@ -50,6 +52,10 @@ Each entry below is symlinked individually into `~/.claude/` by `sync.sh`. It co
 - `settings.json` — permissions, hooks, environment variables
 - `hooks/` — event hooks (shell formatting, lock file protection, output trimming, statusline data)
 - `statusline-command.sh` — statusline renderer
+
+## Secrets convention
+
+`.secrets` (gitignored) is sourced by `zsh/00-exports.zsh` in interactive shells only. Use it only for values that subprocesses must inherit at fork time (e.g., `GITHUB_PERSONAL_ACCESS_TOKEN` for Claude MCP). Everything else uses 1Password CLI via the `op-run` wrapper in `zsh/80-functions.zsh` — pattern: `op-run npm publish` with `.npmrc` containing `op://` references. Do NOT add new plaintext tokens to `.secrets`; route them through `op`.
 
 ## Guardrails
 

@@ -27,6 +27,8 @@ macOS dotfiles for [alxjrvs](https://github.com/alxjrvs).
 | `atuin/config.toml` | Atuin (shell history) config |
 | `lazygit/config.yml` | Lazygit config (Nord theme) |
 | `bat/config` | Bat config |
+| `ssh/config` | SSH client config (ControlMaster, AddKeysToAgent, Augment include) |
+| `macos/LaunchAgents/` | macOS LaunchAgents (Caps→Esc via hidutil) |
 | `dot-claude/` | Claude Code: `CLAUDE.md`, `settings.json`, `hooks/`, `agents/`, `commands/`, `statusline-command.sh` |
 | `scripts/theme.sh` | Nova color palette (Nord-derived); hex is canonical, decimals auto-derived |
 | `scripts/git-data.sh` | Git-state cache feeding the prompt and statusline |
@@ -61,6 +63,24 @@ To disable signing on a given machine, edit `~/.gitconfig.local`.
 ## difftastic
 
 Wired as a git difftool. Run with `git dft` (alias for `git difftool`) — uses [difft](https://difftastic.wilfred.me.uk/) for syntax-aware diffs.
+
+## Secrets
+
+`.secrets` is gitignored and sourced by `zsh/00-exports.zsh` in interactive shells. Convention: only put values in there when subprocesses need them inherited at fork time (e.g., `GITHUB_PERSONAL_ACCESS_TOKEN` for Claude MCP servers). Everything else goes through 1Password CLI via the `op-run` wrapper (`zsh/80-functions.zsh`) — e.g., `op-run npm publish`. See `.secrets.example` for the pattern.
+
+## Completions
+
+`carapace` provides multi-shell completions for ~600 CLIs (gh, mise, op, kubectl, …). Loaded via `_zsh_cached_load` in `zsh/40-completions.zsh`, integrated with `fzf-tab` for preview windows. First shell after install regenerates the cache automatically.
+
+## Tier 3 fallback installs
+
+Apple Silicon Tahoe is a Tier 3 Homebrew configuration — several formulas have no pre-built bottles. `sync.sh` handles this automatically: after `brew bundle`, it installs `watchexec` / `pueue` / `bottom` via `cargo install` (rust toolchain comes from mise) and pulls `carapace` from its GitHub releases into `~/.local/bin/`. Each step is idempotent and short-circuits when the binary is already present. The Brewfile entries stay in place so the canonical install lights up automatically when upstream bottles arrive.
+
+Note: `bottom` (binary `btm`) is used in place of `btop` since `btop` is C++ and lacks a Tier 3 build path via cargo.
+
+## Caps Lock → Escape
+
+`macos/LaunchAgents/com.alxjrvs.capsescape.plist` is symlinked into `~/Library/LaunchAgents/` and remaps Caps Lock to Escape via `hidutil`. Revert with `launchctl unload ~/Library/LaunchAgents/com.alxjrvs.capsescape.plist` + reboot, or `hidutil property --set '{"UserKeyMapping":[]}'` for the current session.
 
 ## Notes
 

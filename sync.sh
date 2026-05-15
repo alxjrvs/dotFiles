@@ -47,8 +47,9 @@ for arg in "$@"; do
       echo "  zsh       Zsh fragments (~/.config/zsh/*.zsh)"
       echo "  git       Git config files"
       echo "  shell     Shell config (.zshrc, .zprofile)"
+      echo "  ssh       ~/.ssh/config symlink"
       echo "  health    Health checks"
-      echo "  macos     macOS defaults"
+      echo "  macos     macOS defaults + Caps→Esc LaunchAgent"
       echo "  linux     Linux system setup"
       exit 0
       ;;
@@ -178,6 +179,68 @@ if brew list --cask docker-desktop &>/dev/null && brew list --formula docker &>/
   brew uninstall --formula docker-completion 2>/dev/null || true
   ok "docker formula removed — Docker Desktop provides the CLI"
 fi
+
+# ── 2a. Tier 3 fallback installs ─────────────────────────────────────
+# Apple Silicon Tahoe (and other Tier 3 configurations) lack pre-built
+# bottles for several formulas the Brewfile lists. Use cargo for rust
+# crates and direct GitHub releases for carapace until upstream bottles
+# arrive. Idempotent — re-runs are no-ops once binaries exist.
+echo ""
+echo "==> Tier 3 fallback installs"
+
+if command -v cargo &>/dev/null; then
+  # Each entry is crate:binary-name (binary differs for watchexec-cli, bottom).
+  for entry in watchexec-cli:watchexec pueue:pueue bottom:btm; do
+    crate="${entry%%:*}"
+    bin="${entry##*:}"
+    if command -v "$bin" &>/dev/null; then
+      dim "$bin already installed"
+    else
+      warn "cargo install $crate (no Tahoe bottle — compiling)..."
+      if cargo install "$crate"; then
+        ok "$crate installed"
+      else
+        warn "$crate install failed"
+      fi
+    fi
+  done
+else
+  warn "cargo not found — skipping rust fallbacks (run: mise install)"
+fi
+
+# Carapace: Go binary, also no Tahoe bottle. Pull the latest release from
+# carapace-sh/carapace-bin. Needs jq (in Brewfile).
+if command -v carapace &>/dev/null; then
+  dim "carapace already installed ($(carapace --version 2>&1 | head -1))"
+elif command -v jq &>/dev/null; then
+  case "$(uname -m)" in
+    arm64) _carapace_arch="darwin_arm64" ;;
+    x86_64) _carapace_arch="darwin_amd64" ;;
+    *) _carapace_arch="" ;;
+  esac
+  if [ -n "$_carapace_arch" ]; then
+    warn "Installing carapace from GitHub releases..."
+    mkdir -p "$HOME/.local/bin"
+    _tmp=$(mktemp -d)
+    _url=$(curl -fsSL "https://api.github.com/repos/carapace-sh/carapace-bin/releases/latest" \
+      | jq -r --arg pat "$_carapace_arch" '.assets[] | select(.name | test($pat) and test("tar.gz$")) | .browser_download_url' \
+      | head -1)
+    if [ -n "$_url" ] \
+       && curl -fsSL "$_url" -o "$_tmp/carapace.tar.gz" \
+       && tar xzf "$_tmp/carapace.tar.gz" -C "$_tmp" \
+       && mv "$_tmp/carapace" "$HOME/.local/bin/carapace" \
+       && chmod +x "$HOME/.local/bin/carapace"; then
+      ok "carapace installed at ~/.local/bin/carapace"
+    else
+      warn "carapace install failed"
+    fi
+    rm -rf "$_tmp"
+  else
+    warn "carapace skipped (unsupported arch: $(uname -m))"
+  fi
+else
+  warn "carapace skipped (jq not installed)"
+fi
 fi # should_run brew
 
 # ── 3. Sheldon (plugin manager) ─────────────────────────────────────
@@ -256,7 +319,7 @@ fi # should_run mise
 fi # Darwin
 
 # ── 6. Symlinks ─────────────────────────────────────────────────────
-if should_run symlinks git shell mise sheldon ghostty bat gnar-term atuin lazygit zsh git-hooks nvim gh claude; then
+if should_run symlinks git shell mise sheldon ghostty bat gnar-term atuin lazygit zsh git-hooks nvim gh claude ssh; then
 echo ""
 echo "==> Symlinks"
 fi
@@ -301,6 +364,14 @@ if [ ! -f "$HOME/.ssh/allowed_signers" ] && [ -f "$HOME/.ssh/id_ed25519.pub" ] &
   # shellcheck disable=SC2088 # display string, not path
   warn "~/.ssh/allowed_signers bootstrapped"
 fi
+fi
+
+# SSH config
+if should_run symlinks ssh; then
+mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
+link "$DOTFILES_DIR/ssh/config" "$HOME/.ssh/config" "ssh/config"
+chmod 600 "$HOME/.ssh/config" 2>/dev/null || true
 fi
 
 # Shell config
@@ -433,9 +504,14 @@ if should_run claude; then
 echo ""
 echo "==> Claude Code"
 if command -v claude &>/dev/null; then
-  ok "Claude Code installed ($(claude --version 2>/dev/null))"
+  ok "Claude Code CLI installed ($(claude --version 2>/dev/null))"
 else
-  warn "Claude Code not installed — will be installed by mise postinstall hook"
+  warn "Installing Claude Code CLI (native installer)..."
+  if curl -fsSL https://claude.ai/install.sh | bash; then
+    ok "Claude Code CLI installed"
+  else
+    fail "Claude Code CLI install failed — re-run sync.sh or install manually"
+  fi
 fi
 
 # code-review-graph — MCP server installed/run on demand via `uvx code-review-graph`.
@@ -462,6 +538,17 @@ echo ""
 echo "==> GitHub CLI"
 if gh auth status &>/dev/null; then
   ok "gh authenticated"
+  # gh-dash: TUI for PR/issue triage. Requires auth.
+  if gh extension list 2>/dev/null | grep -q dlvhdr/gh-dash; then
+    dim "gh-dash extension already installed"
+  else
+    warn "Installing gh-dash extension..."
+    if gh extension install dlvhdr/gh-dash; then
+      ok "gh-dash installed"
+    else
+      warn "gh-dash install failed"
+    fi
+  fi
 else
   warn "Not authenticated — run: gh auth login"
 fi
@@ -522,6 +609,21 @@ defaults write com.apple.dock tilesize -int 48
 killall Dock 2>/dev/null || true
 killall Finder 2>/dev/null || true
 ok "macOS defaults applied (Dock and Finder restarted)"
+
+# Caps Lock → Escape via hidutil. LaunchAgent re-applies at every login;
+# the inline hidutil call below applies it for the current session.
+mkdir -p "$HOME/Library/LaunchAgents"
+link "$DOTFILES_DIR/macos/LaunchAgents/com.alxjrvs.capsescape.plist" \
+     "$HOME/Library/LaunchAgents/com.alxjrvs.capsescape.plist" \
+     "LaunchAgents/capsescape.plist"
+if ! launchctl list 2>/dev/null | grep -q com.alxjrvs.capsescape; then
+  launchctl load -w "$HOME/Library/LaunchAgents/com.alxjrvs.capsescape.plist" 2>/dev/null || true
+fi
+if hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x700000039,"HIDKeyboardModifierMappingDst":0x700000029}]}' >/dev/null 2>&1; then
+  ok "Caps Lock → Escape remap active"
+else
+  warn "hidutil failed — Caps→Esc not active this session"
+fi
 fi # should_run macos
 
 # ── 13. Brew doctor ────────────────────────────────────────────────
