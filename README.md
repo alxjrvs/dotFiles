@@ -97,6 +97,7 @@ Commit signing piggybacks on the same SSH key via `gpg.format = ssh` in `.gitcon
 - **Docker Desktop → OrbStack**: Docker Desktop is removed from Brewfile in favor of `orbstack`. Containers and volumes do NOT migrate automatically — export anything you need from Docker Desktop before uninstalling. OrbStack ships its own `docker` CLI, so existing scripts keep working.
 - **Rectangle → Raycast**: `rectangle` is removed in favor of `raycast`. Hotkeys do not transfer; rebind window-snap commands in Raycast preferences.
 - **`bun` → mise**: `bun` is removed from Brewfile and pinned in `mise.toml` instead. Run `mise install` after pulling.
+- **`supabase` → mise**: `supabase/tap/supabase` is removed from Brewfile (the tap's formula breaks on Tier 3 — missing top-level URL). Now installed via mise's aqua backend (`aqua:supabase/cli`); pinned in `mise.toml`. Run `mise install` after pulling.
 
 ## Notes
 

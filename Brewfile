@@ -1,4 +1,5 @@
-tap "supabase/tap"
+# supabase moved to mise (aqua:supabase/cli) — the supabase/tap formula breaks
+# on Tier 3 (Tahoe / Apple Silicon) due to missing top-level URL resolution.
 brew "mise"
 brew "atuin"
 brew "fzf"
@@ -36,7 +37,6 @@ brew "watchexec"     # fast file-change watcher (run cmds on edits, smart restar
 brew "pueue"         # persistent task queue daemon for long-running/background jobs
 brew "btop"          # modern resource monitor (top / htop replacement)
 brew "git-absorb"    # auto-fixup staged hunks to the right history commit
-brew "supabase/tap/supabase"
 tap "manaflow-ai/cmux"
 cask "cmux"
 cask "1password-cli"
