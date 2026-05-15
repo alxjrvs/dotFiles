@@ -4,7 +4,6 @@
     "EDITOR": "nvim",
     "NODE_ENV": "development",
     "ENABLE_PROMPT_CACHING_1H": "1",
-    "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
@@ -38,10 +37,6 @@
       "Bash(git push --force *)",
       "Bash(git push -f)",
       "Bash(git push -f *)",
-      "Bash(git reset --hard HEAD~*)",
-      "Bash(git reset --hard HEAD@*)",
-      "Bash(git reset --hard ORIG_HEAD*)",
-      "Bash(git reset --hard @{*)",
       "Bash(git reset --hard *)",
       "Bash(git clean *)",
       "Bash(git rebase -i*)",
@@ -95,7 +90,7 @@
       "Bash(gh pr merge*)",
       "Bash(open *)"
     ],
-    "defaultMode": "dontAsk",
+    "defaultMode": "auto",
     "additionalDirectories": ["/tmp/claude", "/private/tmp/claude"]
   },
   "skillOverrides": {
@@ -124,7 +119,7 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/policy-guard.sh",
-            "timeout": 3
+            "timeout": 5
           }
         ]
       }
@@ -170,7 +165,7 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/user-prompt-submit.sh",
-            "timeout": 3
+            "timeout": 5
           }
         ]
       }
@@ -298,6 +293,8 @@
         "/dev/ptmx",
         "/dev/ttys",
         "~/**/.git/**",
+        "~/**/.git/config",
+        "~/**/.git/config.lock",
         "~/.gitconfig",
         "~/.npm",
         "~/.bun/install/cache",
@@ -325,6 +322,7 @@
       "mise"
     ]
   },
+  "cleanupPeriodDays": 14,
   "feedbackSurveyRate": 0,
   "forceLoginMethod": "claudeai",
   "bypassPermissionsModeAccepted": true,
