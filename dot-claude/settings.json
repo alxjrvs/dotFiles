@@ -1,5 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "cleanupPeriodDays": 14,
   "env": {
     "EDITOR": "nvim",
     "NODE_ENV": "development",
@@ -91,7 +92,10 @@
       "Bash(open *)"
     ],
     "defaultMode": "auto",
-    "additionalDirectories": ["/tmp/claude", "/private/tmp/claude"]
+    "additionalDirectories": [
+      "/tmp/claude",
+      "/private/tmp/claude"
+    ]
   },
   "skillOverrides": {
     "commit-commands:commit": "user-invocable-only",
@@ -208,7 +212,9 @@
     ]
   },
   "worktree": {
-    "symlinkDirectories": ["node_modules"]
+    "symlinkDirectories": [
+      "node_modules"
+    ]
   },
   "statusLine": {
     "type": "command",
@@ -254,6 +260,7 @@
       "autoUpdate": true
     }
   },
+  "forceLoginMethod": "claudeai",
   "outputStyle": "Concise",
   "sandbox": {
     "enabled": true,
@@ -305,7 +312,12 @@
         "~/Library/Caches/Homebrew",
         "~/Library/Logs/Homebrew"
       ],
-      "denyRead": ["~/.aws", "~/.gnupg", "~/.netrc", "~/.config/op"]
+      "denyRead": [
+        "~/.aws",
+        "~/.gnupg",
+        "~/.netrc",
+        "~/.config/op"
+      ]
     },
     "excludedCommands": [
       "git",
@@ -319,19 +331,21 @@
       "node",
       "bun",
       "bunx",
-      "mise"
+      "mise",
+      "sh",
+      "bash",
+      "gitleaks"
     ]
   },
-  "cleanupPeriodDays": 14,
   "feedbackSurveyRate": 0,
-  "forceLoginMethod": "claudeai",
-  "bypassPermissionsModeAccepted": true,
   "skipDangerousModePermissionPrompt": true,
   "editorMode": "vim",
   "verbose": true,
   "teammateMode": "auto",
   "remoteControlAtStartup": true,
+  "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
-  "voiceEnabled": true
+  "voiceEnabled": true,
+  "bypassPermissionsModeAccepted": true
 }
