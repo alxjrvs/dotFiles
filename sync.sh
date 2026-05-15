@@ -11,20 +11,23 @@ DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 OS="$(uname -s)"  # "Darwin" (macOS) or "Linux" (Raspberry Pi OS)
 LINK_MODE=""  # "", "overwrite", or "skip"
 ONLY=""       # "", or comma-separated section names
+UPGRADE=0     # 1 = run brew update/upgrade/cleanup; 0 = config-only
 
 for arg in "$@"; do
   case "$arg" in
     -f) LINK_MODE="overwrite" ;;
     -s) LINK_MODE="skip" ;;
+    --upgrade|-u) UPGRADE=1 ;;
     --only=*)
       ONLY="${arg#--only=}"
       ;;
     -h|--help)
-      echo "Usage: $0 [-f] [-s] [--only=SECTION[,SECTION,...]]"
+      echo "Usage: $0 [-f] [-s] [-u|--upgrade] [--only=SECTION[,SECTION,...]]"
       echo ""
       echo "Options:"
       echo "  -f              Auto-overwrite conflicts (force)"
       echo "  -s              Auto-skip conflicts"
+      echo "  -u, --upgrade   Run brew update + upgrade + cleanup (slow)"
       echo "  --only=SECTION  Only run specified section(s), comma-separated"
       echo ""
       echo "Sections:"
@@ -37,6 +40,11 @@ for arg in "$@"; do
       echo "  gh        GitHub CLI + config"
       echo "  nvim      Neovim config"
       echo "  ghostty   Ghostty config"
+      echo "  gnar-term gnar-term config"
+      echo "  bat       Bat config"
+      echo "  atuin     Atuin config"
+      echo "  lazygit   Lazygit config"
+      echo "  zsh       Zsh fragments (~/.config/zsh/*.zsh)"
       echo "  git       Git config files"
       echo "  shell     Shell config (.zshrc, .zprofile)"
       echo "  health    Health checks"
@@ -133,15 +141,19 @@ else
   eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
-warn "Updating Homebrew..."
-brew update
+if (( UPGRADE )); then
+  warn "Updating Homebrew..."
+  brew update
 
-warn "Upgrading formulae and casks..."
-brew upgrade
-brew upgrade --cask
+  warn "Upgrading formulae and casks..."
+  brew upgrade
+  brew upgrade --cask
 
-warn "Removing outdated versions..."
-brew cleanup --prune=all
+  warn "Removing outdated versions..."
+  brew cleanup --prune=all
+else
+  dim "Skipping brew update/upgrade/cleanup (pass --upgrade to run)"
+fi
 
 # ── 2. Brew Bundle ──────────────────────────────────────────────────
 echo ""
@@ -208,6 +220,7 @@ if [ ! -f "$HOME/.gitconfig.local" ]; then
   printf '[credential]\n\thelper = cache\n' > "$HOME/.gitconfig.local"
   ok "Created ~/.gitconfig.local with credential helper = cache"
 else
+  # shellcheck disable=SC2088 # display string, not path
   ok "~/.gitconfig.local already exists"
 fi
 fi # should_run linux
@@ -243,7 +256,7 @@ fi # should_run mise
 fi # Darwin
 
 # ── 6. Symlinks ─────────────────────────────────────────────────────
-if should_run symlinks git shell mise sheldon ghostty nvim gh claude; then
+if should_run symlinks git shell mise sheldon ghostty bat gnar-term atuin lazygit zsh git-hooks nvim gh claude; then
 echo ""
 echo "==> Symlinks"
 fi
@@ -256,6 +269,38 @@ link "$DOTFILES_DIR/.gitignore"          "$HOME/.gitignore"          ".gitignore
 link "$DOTFILES_DIR/.editorconfig"       "$HOME/.editorconfig"       ".editorconfig"
 link "$DOTFILES_DIR/.ripgreprc"          "$HOME/.ripgreprc"          ".ripgreprc"
 link "$DOTFILES_DIR/.fdignore"           "$HOME/.fdignore"           ".fdignore"
+
+# Global git pre-commit hook (referenced by core.hooksPath in .gitconfig)
+mkdir -p "$HOME/.config/git/hooks"
+link "$DOTFILES_DIR/git-hooks/pre-commit" "$HOME/.config/git/hooks/pre-commit" "git-hooks/pre-commit"
+
+# Bootstrap ~/.gitconfig.local with gpgSign overrides (only if missing).
+# gpgSign was moved out of dotfiles so fresh boxes don't fail commits before
+# SSH keys are present. Edit ~/.gitconfig.local to toggle signing locally.
+if [ ! -f "$HOME/.gitconfig.local" ]; then
+  cat >"$HOME/.gitconfig.local" <<'GITLOCAL'
+# Machine-local git overrides — NOT in dotfiles.
+# Enable SSH commit/tag signing on this machine.
+[commit]
+	gpgSign = true
+[tag]
+	gpgSign = true
+GITLOCAL
+  warn ".gitconfig.local bootstrapped (gpgSign enabled)"
+else
+  dim ".gitconfig.local already exists"
+fi
+
+# Bootstrap ~/.ssh/allowed_signers (required for `git log --show-signature` to
+# verify your own commits). Generated from ~/.ssh/id_ed25519.pub.
+_email=$(git config --file "$DOTFILES_DIR/.gitconfig" user.email 2>/dev/null)
+if [ ! -f "$HOME/.ssh/allowed_signers" ] && [ -f "$HOME/.ssh/id_ed25519.pub" ] && [ -n "$_email" ]; then
+  mkdir -p "$HOME/.ssh"
+  printf '%s %s\n' "$_email" "$(cat "$HOME/.ssh/id_ed25519.pub")" >"$HOME/.ssh/allowed_signers"
+  chmod 600 "$HOME/.ssh/allowed_signers"
+  # shellcheck disable=SC2088 # display string, not path
+  warn "~/.ssh/allowed_signers bootstrapped"
+fi
 fi
 
 # Shell config
@@ -310,6 +355,34 @@ if should_run symlinks bat; then
 mkdir -p "$HOME/.config/bat"
 link "$DOTFILES_DIR/bat/config"           "$HOME/.config/bat/config"            "bat/config"
 fi
+
+# gnar-term config
+if should_run symlinks gnar-term; then
+mkdir -p "$HOME/.config/gnar-term"
+link "$DOTFILES_DIR/gnar-term/gnar-term.json" "$HOME/.config/gnar-term/gnar-term.json" "gnar-term/gnar-term.json"
+fi
+
+# atuin config
+if should_run symlinks atuin; then
+mkdir -p "$HOME/.config/atuin"
+link "$DOTFILES_DIR/atuin/config.toml" "$HOME/.config/atuin/config.toml" "atuin/config.toml"
+fi
+
+# lazygit config
+if should_run symlinks lazygit; then
+mkdir -p "$HOME/.config/lazygit"
+link "$DOTFILES_DIR/lazygit/config.yml" "$HOME/.config/lazygit/config.yml" "lazygit/config.yml"
+fi
+
+# zsh fragments (sourced by ~/.zshrc — see zsh/README.md)
+if should_run symlinks zsh; then
+mkdir -p "$HOME/.config/zsh"
+for _zf in "$DOTFILES_DIR"/zsh/[0-9]*.zsh; do
+  [ -f "$_zf" ] || continue
+  _name=$(basename "$_zf")
+  link "$_zf" "$HOME/.config/zsh/$_name" "zsh/$_name"
+done
+fi
 fi # Darwin
 
 # Neovim config (AstroNvim — symlink entire directory)
@@ -335,6 +408,8 @@ mkdir -p "$HOME/.claude"
 link "$DOTFILES_DIR/dot-claude/CLAUDE.md"     "$HOME/.claude/CLAUDE.md"     "claude/CLAUDE.md"
 link "$DOTFILES_DIR/dot-claude/settings.json" "$HOME/.claude/settings.json" "claude/settings.json"
 link "$DOTFILES_DIR/dot-claude/hooks"              "$HOME/.claude/hooks"                    "claude/hooks"
+link "$DOTFILES_DIR/dot-claude/agents"             "$HOME/.claude/agents"                   "claude/agents"
+link "$DOTFILES_DIR/dot-claude/commands"           "$HOME/.claude/commands"                 "claude/commands"
 link "$DOTFILES_DIR/dot-claude/statusline-command.sh" "$HOME/.claude/statusline-command.sh" "claude/statusline-command.sh"
 # settings.local.json is gitignored (contains secrets) — only link if present
 if [ -f "$DOTFILES_DIR/dot-claude/settings.local.json" ]; then
@@ -363,19 +438,8 @@ else
   warn "Claude Code not installed — will be installed by mise postinstall hook"
 fi
 
-# code-review-graph — MCP server for knowledge-graph-based code review
-if command -v code-review-graph &>/dev/null; then
-  ok "code-review-graph installed"
-else
-  if ! command -v pipx &>/dev/null; then
-    warn "Installing pipx..."
-    python3 -m pip install --user pipx
-    ok "pipx installed"
-  fi
-  warn "Installing code-review-graph via pipx..."
-  pipx install code-review-graph
-  ok "code-review-graph installed"
-fi
+# code-review-graph — MCP server installed/run on demand via `uvx code-review-graph`.
+# No persistent install needed; configure it under user-level Claude settings if desired.
 
 fi # should_run claude
 

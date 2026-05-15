@@ -1,0 +1,14 @@
+{
+  "theme": "github-dark",
+  "fontSize": 14,
+  "fontFamily": "",
+  "scrollback": 10000,
+  "extensions": {
+    "branched-workspaces": {
+      "enabled": true
+    }
+  },
+  "worktrees": {
+    "entries": []
+  }
+}

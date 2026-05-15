@@ -1,0 +1,35 @@
+gui:
+  theme:
+    lightTheme: false
+    activeBorderColor:
+      - "#88c0d0"
+      - bold
+    inactiveBorderColor:
+      - "#4c566a"
+    selectedLineBgColor:
+      - "#3b4252"
+    optionsTextColor:
+      - "#81a1c1"
+    cherryPickedCommitFgColor:
+      - "#2e3440"
+    cherryPickedCommitBgColor:
+      - "#a3be8c"
+  nerdFontsVersion: "3"
+  showCommandLog: false
+  showIcons: true
+  sidePanelWidth: 0.3333
+  expandFocusedSidePanel: true
+git:
+  paging:
+    colorArg: always
+    pager: delta --paging=never --side-by-side
+  commit:
+    signOff: false
+  fetchAll: true
+os:
+  edit: "nvim {{filename}}"
+  editAtLine: "nvim +{{line}} {{filename}}"
+keybinding:
+  universal:
+    quit: "q"
+    return: "<esc>"

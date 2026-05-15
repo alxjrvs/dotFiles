@@ -9,6 +9,7 @@
   st = status -sb
   undo = reset HEAD~1 --mixed
   sync = "!f() { git fetch --prune && git rebase origin/$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's|origin/||'); }; f"
+  dft = difftool
 
 [color "branch"]
   current = yellow reverse
@@ -31,13 +32,15 @@
 	pager = delta
 	fsmonitor = false
 	untrackedCache = true
+	hooksPath = ~/.config/git/hooks
 
 [init]
 	defaultBranch = main
 [commit]
 	template = ~/.gitmessage
 	verbose = true
-	gpgSign = true
+	# gpgSign lives in ~/.gitconfig.local (machine-local) so fresh boxes don't
+	# fail commits before SSH keys are set up. See sync.sh bootstrap step.
 [push]
 	autoSetupRemote = true
 	followTags = true
@@ -68,13 +71,18 @@
 	algorithm = histogram
 	colorMoved = dimmed-zebra
 	mnemonicPrefix = true
+	tool = difftastic
+[difftool]
+	prompt = false
+[difftool "difftastic"]
+	cmd = difft "$LOCAL" "$REMOTE"
 [rebase]
 	autoSquash = true
 	autoStash = true
 	updateRefs = true
 [tag]
 	sort = version:refname
-	gpgSign = true
+	# gpgSign lives in ~/.gitconfig.local
 [gpg]
 	format = ssh
 [gpg "ssh"]

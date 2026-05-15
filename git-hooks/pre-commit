@@ -1,0 +1,18 @@
+#!/bin/sh
+# Global pre-commit hook (referenced by core.hooksPath in ~/.gitconfig).
+# Runs gitleaks on staged changes; falls back to a repo-local pre-commit if present.
+#
+# Bypass for a single commit:
+#   git commit --no-verify  (only when you really need to)
+
+set -e
+
+# Repo-local pre-commit takes precedence if it exists.
+repo_hook="$(git rev-parse --git-path hooks/pre-commit)"
+if [ -f "$repo_hook" ] && [ -x "$repo_hook" ]; then
+  "$repo_hook" || exit $?
+fi
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact -v --no-banner
+fi

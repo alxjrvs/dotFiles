@@ -1,10 +1,12 @@
 #!/bin/sh
-# Nova — unified terminal colorscheme
-# Usage: . "$HOME/dotFiles/scripts/theme.sh"
+# shellcheck disable=SC2034
+# Nova — unified terminal colorscheme. Sourced (not executed).
+# Usage: . "$DOTFILES_DIR/scripts/theme.sh"
 #
 # Background: #2E3440 (Nord 0). All contrast ratios relative to this.
-# Contrast notation: W=vs #ECEFF4 (white text on segment), B=vs bg (segment visibility)
-# WCAG large/bold text target: 3:1
+# Hex is the single source of truth; *_R/_G/_B decimal triplets are
+# auto-derived at the bottom for ANSI 24-bit consumers (prompt, statusline).
+# SC2034 suppressed file-wide: every NOVA_* is consumed by external scripts.
 
 # ── Core ─────────────────────────────────────────────────────────────────────
 NOVA_BG="#2E3440"         # Terminal background (Nord 0 — Polar Night)
@@ -13,44 +15,25 @@ NOVA_FG="#ECEFF4"         # Primary text (Nord 6 — Snow Storm)
 NOVA_FG_DIM="#D8DEE9"     # Dimmed / inactive text (Nord 4)
 
 # ── Git status ───────────────────────────────────────────────────────────────
-# Pip order: stash → conflict → staged → unstaged → untracked → ahead → behind (or clean)
-NOVA_GIT_STASH="#B48EAD"     # Stash     Nord 15 — Aurora purple  R180 G142 B173
-NOVA_GIT_CONFLICT="#BF616A"  # Conflict  Nord 11 — Aurora red     R191 G97  B106
-NOVA_GIT_STAGED="#A3BE8C"    # Staged    Nord 14 — Aurora green   R163 G190 B140
-NOVA_GIT_UNSTAGED="#EBCB8B"  # Unstaged  Nord 13 — Aurora amber   R235 G203 B139
-NOVA_GIT_UNTRACKED="#81A1C1" # Untracked Nord 9  — Frost blue     R129 G161 B193
-NOVA_GIT_AHEAD="#D08770"     # Ahead     Nord 12 — Aurora orange  R208 G135 B112
-NOVA_GIT_BEHIND="#5E81AC"    # Behind    Nord 10 — Frost dark     R94  G129 B172
-NOVA_GIT_CLEAN="#A3BE8C"     # Clean     Nord 14 — Aurora green   R163 G190 B140
+NOVA_GIT_STASH="#B48EAD"     # Stash     Nord 15 — Aurora purple
+NOVA_GIT_CONFLICT="#BF616A"  # Conflict  Nord 11 — Aurora red
+NOVA_GIT_STAGED="#A3BE8C"    # Staged    Nord 14 — Aurora green
+NOVA_GIT_UNSTAGED="#EBCB8B"  # Unstaged  Nord 13 — Aurora amber
+NOVA_GIT_UNTRACKED="#81A1C1" # Untracked Nord 9  — Frost blue
+NOVA_GIT_AHEAD="#D08770"     # Ahead     Nord 12 — Aurora orange
+NOVA_GIT_BEHIND="#5E81AC"    # Behind    Nord 10 — Frost dark
+NOVA_GIT_CLEAN="#A3BE8C"     # Clean     Nord 14 — Aurora green
 
-# PR check status (colors the  icon in branch pill)
-NOVA_PR_PASS="#A3BE8C"       # Passing   Nord 14 — Aurora green   R163 G190 B140
-NOVA_PR_PENDING="#EBCB8B"    # Pending   Nord 13 — Aurora amber   R235 G203 B139
-NOVA_PR_FAIL="#BF616A"       # Failed    Nord 11 — Aurora red     R191 G97  B106
-
-# RGB components for ANSI 24-bit escape codes (git-powerline.sh)
-NOVA_BG_R=46;  NOVA_BG_G=52;   NOVA_BG_B=64
-NOVA_FG_R=236; NOVA_FG_G=239;  NOVA_FG_B=244
-NOVA_GIT_STASH_R=180;     NOVA_GIT_STASH_G=142;     NOVA_GIT_STASH_B=173
-NOVA_GIT_CONFLICT_R=191;  NOVA_GIT_CONFLICT_G=97;   NOVA_GIT_CONFLICT_B=106
-NOVA_GIT_STAGED_R=163;    NOVA_GIT_STAGED_G=190;    NOVA_GIT_STAGED_B=140
-NOVA_GIT_UNSTAGED_R=235;  NOVA_GIT_UNSTAGED_G=203;  NOVA_GIT_UNSTAGED_B=139
-NOVA_GIT_UNTRACKED_R=129; NOVA_GIT_UNTRACKED_G=161; NOVA_GIT_UNTRACKED_B=193
-NOVA_GIT_AHEAD_R=208;     NOVA_GIT_AHEAD_G=135;     NOVA_GIT_AHEAD_B=112
-NOVA_GIT_BEHIND_R=94;     NOVA_GIT_BEHIND_G=129;    NOVA_GIT_BEHIND_B=172
-NOVA_GIT_CLEAN_R=163;     NOVA_GIT_CLEAN_G=190;     NOVA_GIT_CLEAN_B=140
-NOVA_PR_PASS_R=163;       NOVA_PR_PASS_G=190;       NOVA_PR_PASS_B=140
-NOVA_PR_PENDING_R=235;    NOVA_PR_PENDING_G=203;    NOVA_PR_PENDING_B=139
-NOVA_PR_FAIL_R=191;       NOVA_PR_FAIL_G=97;        NOVA_PR_FAIL_B=106
+# PR check status (colors the GitHub icon in branch pill)
+NOVA_PR_PASS="#A3BE8C"       # Passing   Nord 14 — Aurora green
+NOVA_PR_PENDING="#EBCB8B"    # Pending   Nord 13 — Aurora amber
+NOVA_PR_FAIL="#BF616A"       # Failed    Nord 11 — Aurora red
 
 # ── Prompt / pane segments ───────────────────────────────────────────────────
 NOVA_DIR="#D8DEE9"         # Directory — Nord 4 (Snow Storm 1)
 NOVA_BRANCH="#D8DEE9"      # Git branch — Nord 4 (Snow Storm 1)
-NOVA_BRANCH_R=216; NOVA_BRANCH_G=222; NOVA_BRANCH_B=233
 NOVA_WORKTREE="#5E81AC"    # Worktree indicator — Nord 10 (Frost dark blue)
-NOVA_WORKTREE_R=94; NOVA_WORKTREE_G=129; NOVA_WORKTREE_B=172
 NOVA_SEG_BG="#434C5E"      # Segment background — Nord 2 (Polar Night)
-NOVA_SEG_BG_R=67; NOVA_SEG_BG_G=76; NOVA_SEG_BG_B=94
 
 # ── Status-right: Time ───────────────────────────────────────────────────────
 NOVA_TIME="#3B4252"        # Nord 1 (Polar Night) — far right edge
@@ -73,7 +56,7 @@ NOVA_CPU_HIGH="#BF616A"    # Nord 11 — Aurora red (functional)
 NOVA_TAB_ACTIVE_ID="#5E81AC"   # Nord 10 — Frost blue
 
 # ── Tabs: inactive bg + active name section (1=darkest/left, 6=brightest/center) ──
-# A*_DK are the actual colors used; derived from Nord 12 (#D08770) at 22%–85% brightness.
+# Derived from Nord 12 (#D08770) at 22%–85% brightness.
 NOVA_TAB_A1_DK="#2E1E19"
 NOVA_TAB_A2_DK="#432B24"
 NOVA_TAB_A3_DK="#593A30"
@@ -88,3 +71,21 @@ NOVA_PANE_PATH="#81A1C1"     # Nord 9 — Frost blue (inactive path text)
 
 # ── Claude Code alert ────────────────────────────────────────────────────────
 NOVA_CLAUDE_ALERT="#D08770"  # Nord 12 — Aurora orange — tab ID blink when needs input
+
+# ── R/G/B decimal triplets (auto-derived from hex above) ─────────────────────
+# Consumers needing decimal ANSI codes get them via NOVA_<NAME>_R / _G / _B.
+# Add a NAME to this list when a new color needs decimal access.
+for _c in NOVA_BG NOVA_FG NOVA_BRANCH NOVA_WORKTREE NOVA_SEG_BG \
+          NOVA_GIT_STASH NOVA_GIT_CONFLICT NOVA_GIT_STAGED NOVA_GIT_UNSTAGED \
+          NOVA_GIT_UNTRACKED NOVA_GIT_AHEAD NOVA_GIT_BEHIND NOVA_GIT_CLEAN \
+          NOVA_PR_PASS NOVA_PR_PENDING NOVA_PR_FAIL
+do
+  _hex=$(eval "printf '%s' \"\$$_c\"")
+  _hex=${_hex#\#}
+  _hr=${_hex%????}
+  _rest=${_hex#??}
+  _hg=${_rest%??}
+  _hb=${_rest#??}
+  eval "${_c}_R=$((0x$_hr)) ${_c}_G=$((0x$_hg)) ${_c}_B=$((0x$_hb))"
+done
+unset _c _hex _rest _hr _hg _hb
