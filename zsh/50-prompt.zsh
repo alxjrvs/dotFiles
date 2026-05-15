@@ -116,11 +116,13 @@ function _prompt_git_seg() {
   o+="${_fg}${_BR_FG_R};${_BR_FG_G};${_BR_FG_B}${_m} ${GIT_BRANCH} "
   prev_r=$_BR_R; prev_g=$_BR_G; prev_b=$_BR_B
 
-  # Worktree cell (only if STATUSLINE_WORKTREE is set)
-  if [[ -n "$STATUSLINE_WORKTREE" ]]; then
+  # Worktree cell: STATUSLINE_WORKTREE overrides; otherwise auto-detect via
+  # GIT_IS_WORKTREE / GIT_WORKTREE_NAME from scripts/git-data.sh.
+  local _wt_label="${STATUSLINE_WORKTREE:-${GIT_IS_WORKTREE:+$GIT_WORKTREE_NAME}}"
+  if [[ -n "$_wt_label" ]]; then
     o+="${_bg}${NOVA_WORKTREE_R};${NOVA_WORKTREE_G};${NOVA_WORKTREE_B}${_m}"
     o+="${_fg}${prev_r};${prev_g};${prev_b}${_m}${_A}"
-    o+="${_fg}${NOVA_BG_R};${NOVA_BG_G};${NOVA_BG_B}${_m} ${STATUSLINE_WORKTREE} "
+    o+="${_fg}${NOVA_BG_R};${NOVA_BG_G};${NOVA_BG_B}${_m} ${_wt_label} "
     prev_r=$NOVA_WORKTREE_R; prev_g=$NOVA_WORKTREE_G; prev_b=$NOVA_WORKTREE_B
   fi
 
@@ -147,10 +149,15 @@ function _prompt_git_seg() {
 }
 
 # Prompt rendering helpers
+# _build_prompt — accepts cache path as $1 to avoid recomputing git rev-parse
+# + shasum on every redraw. Falls back to computing if called with no arg.
 _build_prompt() {
-  local _git_key=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
-  local _git_hash=$(printf '%s' "$_git_key" | shasum -a 256 | cut -c1-12)
-  local _cache="/tmp/git-data-cache-$(id -u)-${_git_hash}.sh"
+  local _cache="$1"
+  if [[ -z "$_cache" ]]; then
+    local _git_key=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
+    local _git_hash=$(printf '%s' "$_git_key" | shasum -a 256 | cut -c1-12)
+    _cache="/tmp/git-data-cache-$(id -u)-${_git_hash}.sh"
+  fi
   [[ -f "$_cache" ]] && source "$_cache"
   # Invalidate stale git data if CWD moved outside cached repo
   if [[ -n "$GIT_TOPLEVEL" ]] && [[ "$PWD" != "$GIT_TOPLEVEL"* ]]; then
@@ -187,20 +194,22 @@ _render_prompt() {
 
   if (( _need_sync )); then
     sh "$DOTFILES_DIR/scripts/git-data.sh"
-    PROMPT="$(_build_prompt)"
+    PROMPT="$(_build_prompt "$_cache")"
     _prompt_last_pwd="$PWD"
     _prompt_last_head_mtime="$_head_mtime"
     _prompt_last_index_mtime="$_index_mtime"
   else
     (sh "$DOTFILES_DIR/scripts/git-data.sh" &) 2>/dev/null
   fi
+  # Stash the cache path for _transient_accept_line so it doesn't recompute.
+  _prompt_last_cache="$_cache"
 }
 precmd_functions+=(_render_prompt)
 
 # Transient prompt + pre-compute next prompt (eliminates blink).
 # Collapse current line to U+276F on accept; pre-compute next prompt from cache.
 _transient_accept_line() {
-  local _next="$(_build_prompt)"
+  local _next="$(_build_prompt "$_prompt_last_cache")"
   PROMPT=$'%{\e[0m%}\u276f '
   zle reset-prompt
   # Set next prompt BEFORE command runs - no gap when it finishes

@@ -3,6 +3,7 @@ node = "25"
 python = "3.13"
 deno = "2"
 rust = "1.94"
+bun = "latest"
 
 [settings]
 trusted_config_paths = ["~/**/.worktrees"]

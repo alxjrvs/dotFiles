@@ -7,12 +7,10 @@ Host *
   # Add keys to ssh-agent on first use; keep passphrase cached.
   AddKeysToAgent yes
 
-  # macOS Keychain integration for passphrases.
-  IgnoreUnknown UseKeychain
-  UseKeychain yes
-
-  # Default identity. Override per-Host below as needed.
-  IdentityFile ~/.ssh/id_ed25519
+  # 1Password SSH agent: keys live in 1Password, touch-to-sign on each use.
+  # Requires "SSH agent" enabled in 1Password → Settings → Developer.
+  # Replaces UseKeychain + IdentityFile semantics.
+  IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
 
   # Keep idle connections alive (NAT/firewall friendly).
   ServerAliveInterval 60
@@ -23,11 +21,7 @@ Host *
   ControlPath ~/.ssh/cm-%r@%h:%p
   ControlPersist 10m
 
-  # 1Password SSH agent integration. Uncomment after enabling SSH agent in
-  # 1Password → Settings → Developer. Replaces UseKeychain semantics.
-  # IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
-
-# Example per-host override (uncomment + fill in):
-# Host github.com
-#   User git
-#   IdentityFile ~/.ssh/id_ed25519
+Host github.com
+  User git
+  # Explicit entry so future per-org keys / settings have a place to land.
+  # Inherits IdentityAgent from Host * above.

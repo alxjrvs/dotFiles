@@ -27,15 +27,16 @@ macOS dotfiles for [alxjrvs](https://github.com/alxjrvs).
 | `atuin/config.toml` | Atuin (shell history) config |
 | `lazygit/config.yml` | Lazygit config (Nord theme) |
 | `bat/config` | Bat config |
-| `ssh/config` | SSH client config (ControlMaster, AddKeysToAgent, Augment include) |
-| `macos/LaunchAgents/` | macOS LaunchAgents (Caps→Esc via hidutil) |
+| `tmux/tmux.conf` | tmux config (prefix C-a, vi mode, true color, no plugins) |
+| `ssh/config` | SSH client config (1Password agent, ControlMaster, Augment include) |
+| `macos/LaunchAgents/` | macOS LaunchAgents (Caps→Esc via hidutil, fallback to Karabiner) |
 | `dot-claude/` | Claude Code: `CLAUDE.md`, `settings.json`, `hooks/`, `agents/`, `commands/`, `statusline-command.sh` |
 | `scripts/theme.sh` | Nova color palette (Nord-derived); hex is canonical, decimals auto-derived |
 | `scripts/git-data.sh` | Git-state cache feeding the prompt and statusline |
 | `Brewfile` | Homebrew packages |
-| `mise.toml` | Language version pinning |
+| `mise.toml` | Language version pinning (node, python, deno, rust, bun) |
 | `sheldon/plugins.toml` | Zsh plugin config |
-| `Makefile` | `make lint` (shellcheck) and `make fmt` (shfmt) |
+| `Makefile` | `make sync` / `upgrade` / `doctor` / `lint` / `fmt` |
 
 ## Claude Code integration
 
@@ -80,7 +81,22 @@ Note: `bottom` (binary `btm`) is used in place of `btop` since `btop` is C++ and
 
 ## Caps Lock → Escape
 
-`macos/LaunchAgents/com.alxjrvs.capsescape.plist` is symlinked into `~/Library/LaunchAgents/` and remaps Caps Lock to Escape via `hidutil`. Revert with `launchctl unload ~/Library/LaunchAgents/com.alxjrvs.capsescape.plist` + reboot, or `hidutil property --set '{"UserKeyMapping":[]}'` for the current session.
+Two-layer setup, belt-and-suspenders:
+
+1. **hidutil** (primary) — `macos/LaunchAgents/com.alxjrvs.capsescape.plist` is symlinked into `~/Library/LaunchAgents/` and remaps Caps Lock to Escape at every login. Revert with `launchctl unload ~/Library/LaunchAgents/com.alxjrvs.capsescape.plist` + reboot, or `hidutil property --set '{"UserKeyMapping":[]}'` for the current session.
+2. **Karabiner-Elements** (fallback) — installed via Brewfile cask. On first launch grant Input Monitoring + Accessibility, then toggle "caps_lock → escape" in Simple Modifications. Survives sleep cycles and external keyboards better than hidutil; left running alongside hidutil so Caps→Esc is never broken if one layer fails.
+
+## 1Password SSH agent
+
+`ssh/config` points `IdentityAgent` at the 1Password 8 agent socket. Enable the agent in 1Password → Settings → Developer → "Use the SSH agent" before pushing this config — otherwise SSH breaks. Keys stored in your 1Password vault are then offered to every SSH host (with touch-to-approve if configured).
+
+Commit signing piggybacks on the same SSH key via `gpg.format = ssh` in `.gitconfig`.
+
+## Migration notes
+
+- **Docker Desktop → OrbStack**: Docker Desktop is removed from Brewfile in favor of `orbstack`. Containers and volumes do NOT migrate automatically — export anything you need from Docker Desktop before uninstalling. OrbStack ships its own `docker` CLI, so existing scripts keep working.
+- **Rectangle → Raycast**: `rectangle` is removed in favor of `raycast`. Hotkeys do not transfer; rebind window-snap commands in Raycast preferences.
+- **`bun` → mise**: `bun` is removed from Brewfile and pinned in `mise.toml` instead. Run `mise install` after pulling.
 
 ## Notes
 

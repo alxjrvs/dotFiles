@@ -17,3 +17,17 @@ op-run() {
   command -v op &>/dev/null || { echo "op (1Password CLI) not installed"; return 1; }
   op run --no-masking -- "$@"
 }
+
+# Re-run a command on edits to common source extensions. Respects .gitignore.
+# Usage: dev bun test    |    dev cargo build    |    dev make
+dev() {
+  command -v watchexec &>/dev/null || { echo "watchexec not installed"; return 1; }
+  watchexec --clear -e ts,tsx,js,jsx,go,py,rs,lua,sh,zsh -- "$@"
+}
+
+# pueue: persistent task queue. Short aliases for the common verbs.
+alias pq='pueue'
+alias pqs='pueue status'
+alias pqa='pueue add'
+alias pql='pueue log'
+alias pqf='pueue follow'

@@ -15,6 +15,8 @@ alias gaa="git add --all"
 alias gb="git branch"
 alias gl="git log --oneline -10"
 alias lg="lazygit"
+# git absorb: auto-fixup staged hunks against the right history commit, then squash.
+alias gab="git absorb --and-rebase"
 
 # Navigation
 alias ..="cd .."

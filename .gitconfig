@@ -39,6 +39,8 @@
 [commit]
 	template = ~/.gitmessage
 	verbose = true
+	# Anything below the scissors line in the commit message is stripped.
+	cleanup = scissors
 	# gpgSign lives in ~/.gitconfig.local (machine-local) so fresh boxes don't
 	# fail commits before SSH keys are set up. See sync.sh bootstrap step.
 [push]

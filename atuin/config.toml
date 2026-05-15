@@ -5,6 +5,13 @@
 # prompt for editing" behavior).
 enter_accept = true
 
+# Match the shell's vi-mode (zsh `bindkey -v`).
+keymap_mode = "vim-normal"
+
+# Compact rendering — less screen-takeover than the default full TUI.
+style = "compact"
+inline_height = 20
+
 [sync]
 # Atuin sync v2 (encrypted record sync). Required for cross-machine history.
 records = true

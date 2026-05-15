@@ -23,6 +23,16 @@ zstyle ':fzf-tab:complete:*:*' fzf-preview \
    || bat --color=always --style=plain --line-range :40 $realpath 2>/dev/null \
    || echo $realpath'
 
+# Specialized previews: git branch context, git diff, process info, ssh resolution.
+zstyle ':fzf-tab:complete:git-(checkout|switch|log|show):*' fzf-preview \
+  'git log --oneline --color=always --decorate $word 2>/dev/null | head -50'
+zstyle ':fzf-tab:complete:git-(diff|restore|add):*' fzf-preview \
+  'git diff --color=always -- $word 2>/dev/null | head -200'
+zstyle ':fzf-tab:complete:kill:argument-rest' fzf-preview \
+  'ps -p $word -o pid,ppid,user,start,command 2>/dev/null'
+zstyle ':fzf-tab:complete:ssh:argument-rest' fzf-preview \
+  'echo "DNS:"; dig +short $word 2>/dev/null; echo; echo "ssh -G:"; ssh -G $word 2>/dev/null | head -20'
+
 # Carapace — drop-in completions for ~600 CLIs. Loads after compinit;
 # the cached-init pattern keeps shell startup fast.
 if command -v carapace &>/dev/null; then
