@@ -53,9 +53,37 @@ Each entry below is symlinked individually into `~/.claude/` by `sync.sh`. It co
 - `hooks/` — event hooks (shell formatting, lock file protection, output trimming, statusline data)
 - `statusline-command.sh` — statusline renderer
 
-## Secrets convention
+## Secrets management
 
-`.secrets` (gitignored) is sourced by `zsh/00-exports.zsh` in interactive shells only. Use it only for values that subprocesses must inherit at fork time (e.g., `GITHUB_PERSONAL_ACCESS_TOKEN` for Claude MCP). Everything else uses 1Password CLI via the `op-run` wrapper in `zsh/80-functions.zsh` — pattern: `op-run npm publish` with `.npmrc` containing `op://` references. Do NOT add new plaintext tokens to `.secrets`; route them through `op`.
+1Password CLI (`op`) is the source of truth. `.secrets` exists only as a fallback for the narrow case where a subprocess must inherit a value at fork time. Use the patterns below in priority order — drop down a tier only when the one above doesn't apply.
+
+### Patterns
+
+**1. `op-run` wrapper — one-shot CLI injection** (`zsh/80-functions.zsh`)
+```sh
+op-run npm publish               # = op run --no-masking -- npm publish
+```
+For any CLI invocation that reads a token from env. Nothing is exported to the shell session; `op` resolves `op://` references at exec time only.
+
+**2. `op://` references in config files**
+```ini
+# .npmrc
+//registry.npmjs.org/:_authToken=op://Personal/npm/credential
+```
+Pair with `op-run` (pattern 1) — the wrapper resolves the references just for the child process. Use for any tool whose config file holds tokens.
+
+**3. `gh auth token` keychain fallback — GitHub specifically**
+`zsh/00-exports.zsh` derives `GITHUB_PERSONAL_ACCESS_TOKEN` from `gh auth token` at shell start; the token lives in the macOS keychain (managed by `gh auth login`), never on disk. This is the right pattern for any GH-token consumer (Claude MCP, scripts, etc.) because it inherits at fork time without writing the token anywhere.
+
+**4. Eager `.secrets` export — last resort**
+Only justified when a subprocess must inherit the value at fork time AND no keychain-backed CLI exists for that service. Today `.secrets` is empty of secrets; if you add one back, document inline why patterns 1–3 don't apply.
+
+### Rules
+
+- **Never commit a plaintext token** to any file, including `.secrets` (which is gitignored but lives on disk as plaintext). Use an `op://` reference or `op-run` instead.
+- **Never add a token to a config file as plaintext.** If `.npmrc`-shape tools need credentials, use `op://` refs + `op-run`.
+- **If you find a plaintext token anywhere**, revoke first, then migrate to `op` or a keychain CLI.
+- `gitleaks` runs as a global pre-commit hook (`git-hooks/pre-commit`); known token shapes that hit a commit block it. Don't rely on this catching everything — it's a backstop, not the policy.
 
 ## Guardrails
 
