@@ -56,5 +56,6 @@ cask "ngrok"
 cask "notunes"
 # Window mgmt + launcher + clipboard (replaces Rectangle + Spotlight).
 cask "raycast"
+cask "rowanj-gitx"   # GitX (Rowanj fork) — keep alongside lazygit for visual history dives
 cask "slack"
 cask "tuple"
