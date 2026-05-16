@@ -16,6 +16,9 @@ require("lazy").setup({
 } --[[@as LazySpec]], {
   install = { colorscheme = { "astrotheme", "habamax" } },
   ui = { backdrop = 100 },
+  -- We don't use any plugins that depend on luarocks, so disable Lazy's
+  -- rocks integration. Eliminates the hererocks Lua 5.1 / luarocks warnings.
+  rocks = { enabled = false },
   performance = {
     rtp = {
       disabled_plugins = {

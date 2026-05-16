@@ -8,6 +8,18 @@ vim.g.loaded_perl_provider = 0
 vim.g.loaded_python3_provider = 0
 vim.g.loaded_ruby_provider = 0
 
+-- Snacks runs each submodule's health() regardless of its `enabled` flag, so
+-- Snacks.image still complains about magick/ghostscript/tectonic/mmdc and the
+-- kitty graphics protocol even when we've disabled the module. Marking
+-- `meta.health = false` makes snacks's health dispatcher skip it entirely.
+vim.api.nvim_create_autocmd("User", {
+  pattern = "VeryLazy",
+  once = true,
+  callback = function()
+    pcall(function() require("snacks.image").meta.health = false end)
+  end,
+})
+
 -- Yank to system clipboard by default.
 vim.opt.clipboard = "unnamedplus"
 
