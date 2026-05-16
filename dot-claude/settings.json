@@ -306,8 +306,8 @@
         "~/.npm",
         "~/.bun/install/cache",
         "~/.cache",
-        "/tmp",
-        "/private/tmp",
+        "/tmp/claude",
+        "/private/tmp/claude",
         "/opt/homebrew",
         "~/Library/Caches/Homebrew",
         "~/Library/Logs/Homebrew"
@@ -338,7 +338,7 @@
     ]
   },
   "feedbackSurveyRate": 0,
-  "skipDangerousModePermissionPrompt": true,
+  "skipDangerousModePermissionPrompt": false,
   "editorMode": "vim",
   "verbose": true,
   "teammateMode": "auto",

@@ -15,3 +15,13 @@ inline_height = 20
 [sync]
 # Atuin sync v2 (encrypted record sync). Required for cross-machine history.
 records = true
+
+[history]
+# Drop accidentally-typed secrets BEFORE they're stored / synced. zsh's
+# HIST_IGNORE_SPACE doesn't propagate to atuin's preexec hook.
+secret_filters = [
+  "(?i)(password|secret|token|apikey|api[_-]?key|pat)\\s*[:=]\\s*\\S+",
+  "gh[oprsu]_[A-Za-z0-9]{20,}",
+  "sk-[A-Za-z0-9_-]{20,}",
+  "AKIA[0-9A-Z]{16}",
+]

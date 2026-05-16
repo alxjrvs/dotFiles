@@ -18,7 +18,8 @@ Host *
 
   # Connection multiplexing — second `git push` reuses the first connection.
   ControlMaster auto
-  ControlPath ~/.ssh/cm-%r@%h:%p
+  # Sockets live in /tmp (user-private 600) — avoids ~/.ssh/ if its perms ever drift.
+  ControlPath /tmp/ssh-cm-%r@%h:%p
   ControlPersist 10m
 
 Host github.com

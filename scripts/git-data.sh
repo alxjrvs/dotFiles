@@ -140,9 +140,10 @@ fi
 # -- Write cache (atomic, user-private) ----------------------------------------
 GIT_CACHE_TIME=$(date +%s)
 
-# Escape GIT_PORCELAIN for safe single-quoted assignment
-# Replace each ' with '\'' so the single-quote wrapping stays valid
-_porcelain_escaped=$(printf '%s' "$GIT_PORCELAIN" | sed "s/'/'\\\\''/g")
+# Escape every string field for safe single-quoted assignment. Without this, a
+# crafted branch name or repo path could break out of the single-quote wrapping
+# and execute when consumers source the cache.
+_sq() { printf '%s' "$1" | sed "s/'/'\\\\''/g"; }
 
 # Ensure cache dir exists and is user-private. Mode 700 protects against any
 # future config that puts other users in the same group on shared boxes.
@@ -159,14 +160,14 @@ _cache_tmp="${_cache_file}.$$.tmp"
 GIT_CACHE_TIME='${GIT_CACHE_TIME}'
 GIT_IS_REPO='${GIT_IS_REPO}'
 GIT_IS_WORKTREE='${GIT_IS_WORKTREE}'
-GIT_WORKTREE_NAME='${GIT_WORKTREE_NAME}'
-GIT_DIR='${GIT_DIR}'
-GIT_TOPLEVEL='${GIT_TOPLEVEL}'
-GIT_BRANCH='${GIT_BRANCH}'
-GIT_REMOTE_URL='${GIT_REMOTE_URL}'
-GIT_REPO_NAME='${GIT_REPO_NAME}'
-GIT_REPO_HTTPS='${GIT_REPO_HTTPS}'
-GIT_PORCELAIN='${_porcelain_escaped}'
+GIT_WORKTREE_NAME='$(_sq "$GIT_WORKTREE_NAME")'
+GIT_DIR='$(_sq "$GIT_DIR")'
+GIT_TOPLEVEL='$(_sq "$GIT_TOPLEVEL")'
+GIT_BRANCH='$(_sq "$GIT_BRANCH")'
+GIT_REMOTE_URL='$(_sq "$GIT_REMOTE_URL")'
+GIT_REPO_NAME='$(_sq "$GIT_REPO_NAME")'
+GIT_REPO_HTTPS='$(_sq "$GIT_REPO_HTTPS")'
+GIT_PORCELAIN='$(_sq "$GIT_PORCELAIN")'
 GIT_CONFLICT_COUNT='${GIT_CONFLICT_COUNT}'
 GIT_STAGED_COUNT='${GIT_STAGED_COUNT}'
 GIT_UNSTAGED_COUNT='${GIT_UNSTAGED_COUNT}'

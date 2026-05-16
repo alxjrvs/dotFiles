@@ -20,19 +20,32 @@ _git_cache="${XDG_CACHE_HOME:-$HOME/.cache}/git-data/${_git_hash}.sh"
 # rate_limits.* are first-party Claude.ai subscription windows (Pro/Max). They
 # appear only AFTER the first API response in the session, so handle absence
 # gracefully. resets_at is unix epoch seconds.
-eval "$(echo "$input" | jq -r '
-  @sh "used_pct=\(.context_window.used_percentage // "")",
-  @sh "duration_ms=\(.cost.total_duration_ms // 0)",
-  @sh "worktree_name=\(.worktree.name // "")",
-  @sh "project_dir=\(.workspace.project_dir // "")",
-  @sh "cwd=\(.workspace.current_dir // "")",
-  @sh "model_name=\(.model.display_name // "")",
-  @sh "effort_level=\(.effort.level // "")",
-  @sh "five_pct=\(.rate_limits.five_hour.used_percentage // "")",
-  @sh "five_resets_at=\(.rate_limits.five_hour.resets_at // "")",
-  @sh "seven_pct=\(.rate_limits.seven_day.used_percentage // "")",
-  @sh "seven_resets_at=\(.rate_limits.seven_day.resets_at // "")"
-' | tr ',' '\n')"
+#
+# One jq call emits fields newline-delimited; read into named vars without eval.
+{ IFS= read -r used_pct
+  IFS= read -r duration_ms
+  IFS= read -r worktree_name
+  IFS= read -r project_dir
+  IFS= read -r cwd
+  IFS= read -r model_name
+  IFS= read -r effort_level
+  IFS= read -r five_pct
+  IFS= read -r five_resets_at
+  IFS= read -r seven_pct
+  IFS= read -r seven_resets_at
+} < <(jq -r '
+  .context_window.used_percentage // "",
+  .cost.total_duration_ms // 0,
+  .worktree.name // "",
+  .workspace.project_dir // "",
+  .workspace.current_dir // "",
+  .model.display_name // "",
+  .effort.level // "",
+  .rate_limits.five_hour.used_percentage // "",
+  .rate_limits.five_hour.resets_at // "",
+  .rate_limits.seven_day.used_percentage // "",
+  .rate_limits.seven_day.resets_at // ""
+' <<<"$input")
 
 _settings="$HOME/.claude/settings.json"
 advisor_name=""

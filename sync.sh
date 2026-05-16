@@ -80,7 +80,8 @@ should_run() {
 set -eo pipefail
 
 # ── Prevent concurrent runs ────────────────────────────────────
-LOCK_FILE="/tmp/dotfiles-sync.lock"
+# Use user-private $TMPDIR; atomic noclobber write closes the check-then-set race.
+LOCK_FILE="${TMPDIR:-/tmp}/dotfiles-sync.lock"
 if [ -f "$LOCK_FILE" ]; then
   lock_pid=$(cat "$LOCK_FILE" 2> /dev/null)
   if kill -0 "$lock_pid" 2> /dev/null; then
@@ -91,7 +92,7 @@ if [ -f "$LOCK_FILE" ]; then
     rm -f "$LOCK_FILE"
   fi
 fi
-echo $$ > "$LOCK_FILE"
+( set -C; echo $$ > "$LOCK_FILE" ) 2> /dev/null || { fail "Could not acquire lock"; exit 1; }
 trap 'rm -f "$LOCK_FILE"' EXIT
 trap 'echo ""; fail "Cancelled — stopping install."; exit 1' INT TERM
 
