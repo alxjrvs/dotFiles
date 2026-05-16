@@ -212,6 +212,7 @@
     ]
   },
   "worktree": {
+    "baseRef": "head",
     "symlinkDirectories": [
       "node_modules"
     ]
@@ -339,7 +340,7 @@
   },
   "feedbackSurveyRate": 0,
   "skipDangerousModePermissionPrompt": false,
-  "editorMode": "vim",
+  "editorMode": "normal",
   "verbose": true,
   "teammateMode": "auto",
   "remoteControlAtStartup": true,
