@@ -85,32 +85,28 @@ if _revparse=$(git rev-parse --git-dir --git-common-dir --show-toplevel 2>/dev/n
     GIT_REPO_NAME=$(basename "$GIT_REPO_HTTPS")
   fi
 
-  # Extract v1-compatible porcelain lines (non-header lines from v2 output)
-  # v2 format: '1 XY ...' (ordinary), '2 XY ...' (rename), '? path' (untracked), 'u ...' (unmerged)
-  # We re-derive v1-style XY codes for compatibility with downstream consumers.
+  # Extract v1-compatible porcelain lines (non-header lines from v2 output).
+  # v2 row prefixes: 1=ordinary, 2=rename/copy, u=unmerged, ?=untracked.
+  # Using if/elif instead of case here because bash 3.2 (macOS /bin/sh)
+  # mis-parses case statements inside nested command substitutions.
   GIT_PORCELAIN=$(printf '%s' "$_status_out" | grep -v '^#' | while IFS= read -r _line; do
     _type=$(printf '%.1s' "$_line")
-    case "$_type" in
-      1) # ordinary changed entry: '1 XY ...'
-        _xy=$(printf '%s' "$_line" | cut -c3-4)
-        _path=$(printf '%s' "$_line" | cut -d' ' -f9-)
-        printf '%s %s\n' "$_xy" "$_path"
-        ;;
-      2) # renamed/copied entry: '2 XY ...'
-        _xy=$(printf '%s' "$_line" | cut -c3-4)
-        _path=$(printf '%s' "$_line" | cut -d' ' -f10-)
-        printf '%s %s\n' "$_xy" "$_path"
-        ;;
-      u) # unmerged entry: 'u XY ...'
-        _xy=$(printf '%s' "$_line" | cut -c3-4)
-        _path=$(printf '%s' "$_line" | cut -d' ' -f11-)
-        printf '%s %s\n' "$_xy" "$_path"
-        ;;
-      '?') # untracked: '? path'
-        _path=$(printf '%s' "$_line" | cut -c3-)
-        printf '?? %s\n' "$_path"
-        ;;
-    esac
+    if [ "$_type" = "1" ]; then
+      _xy=$(printf '%s' "$_line" | cut -c3-4)
+      _path=$(printf '%s' "$_line" | cut -d' ' -f9-)
+      printf '%s %s\n' "$_xy" "$_path"
+    elif [ "$_type" = "2" ]; then
+      _xy=$(printf '%s' "$_line" | cut -c3-4)
+      _path=$(printf '%s' "$_line" | cut -d' ' -f10-)
+      printf '%s %s\n' "$_xy" "$_path"
+    elif [ "$_type" = "u" ]; then
+      _xy=$(printf '%s' "$_line" | cut -c3-4)
+      _path=$(printf '%s' "$_line" | cut -d' ' -f11-)
+      printf '%s %s\n' "$_xy" "$_path"
+    elif [ "$_type" = "?" ]; then
+      _path=$(printf '%s' "$_line" | cut -c3-)
+      printf '?? %s\n' "$_path"
+    fi
   done)
 
   # Parse porcelain in a single pass
@@ -142,8 +138,20 @@ GIT_CACHE_TIME=$(date +%s)
 
 # Escape every string field for safe single-quoted assignment. Without this, a
 # crafted branch name or repo path could break out of the single-quote wrapping
-# and execute when consumers source the cache.
-_sq() { printf '%s' "$1" | sed "s/'/'\\\\''/g"; }
+# and execute when consumers source the cache. Done OUTSIDE the heredoc because
+# bash 3.2 (macOS /bin/sh) mis-parses $(...) containing double-quoted args
+# inside an unquoted heredoc.
+_sq_escape() {
+  printf '%s' "$1" | sed "s/'/'\\\\''/g"
+}
+_e_worktree_name=$(_sq_escape "$GIT_WORKTREE_NAME")
+_e_dir=$(_sq_escape "$GIT_DIR")
+_e_toplevel=$(_sq_escape "$GIT_TOPLEVEL")
+_e_branch=$(_sq_escape "$GIT_BRANCH")
+_e_remote_url=$(_sq_escape "$GIT_REMOTE_URL")
+_e_repo_name=$(_sq_escape "$GIT_REPO_NAME")
+_e_repo_https=$(_sq_escape "$GIT_REPO_HTTPS")
+_e_porcelain=$(_sq_escape "$GIT_PORCELAIN")
 
 # Ensure cache dir exists and is user-private. Mode 700 protects against any
 # future config that puts other users in the same group on shared boxes.
@@ -160,14 +168,14 @@ _cache_tmp="${_cache_file}.$$.tmp"
 GIT_CACHE_TIME='${GIT_CACHE_TIME}'
 GIT_IS_REPO='${GIT_IS_REPO}'
 GIT_IS_WORKTREE='${GIT_IS_WORKTREE}'
-GIT_WORKTREE_NAME='$(_sq "$GIT_WORKTREE_NAME")'
-GIT_DIR='$(_sq "$GIT_DIR")'
-GIT_TOPLEVEL='$(_sq "$GIT_TOPLEVEL")'
-GIT_BRANCH='$(_sq "$GIT_BRANCH")'
-GIT_REMOTE_URL='$(_sq "$GIT_REMOTE_URL")'
-GIT_REPO_NAME='$(_sq "$GIT_REPO_NAME")'
-GIT_REPO_HTTPS='$(_sq "$GIT_REPO_HTTPS")'
-GIT_PORCELAIN='$(_sq "$GIT_PORCELAIN")'
+GIT_WORKTREE_NAME='${_e_worktree_name}'
+GIT_DIR='${_e_dir}'
+GIT_TOPLEVEL='${_e_toplevel}'
+GIT_BRANCH='${_e_branch}'
+GIT_REMOTE_URL='${_e_remote_url}'
+GIT_REPO_NAME='${_e_repo_name}'
+GIT_REPO_HTTPS='${_e_repo_https}'
+GIT_PORCELAIN='${_e_porcelain}'
 GIT_CONFLICT_COUNT='${GIT_CONFLICT_COUNT}'
 GIT_STAGED_COUNT='${GIT_STAGED_COUNT}'
 GIT_UNSTAGED_COUNT='${GIT_UNSTAGED_COUNT}'
