@@ -27,6 +27,9 @@ brew "sheldon"
 brew "shfmt"
 brew "shellcheck"
 brew "uv"
+brew "luarocks"        # Lua package manager — required by lazy.nvim for plugins that need luarocks deps
+brew "tree-sitter-cli" # `tree-sitter` CLI parser-generator — needed by nvim-treesitter for :TSInstallFromGrammar
+brew "gdu"             # interactive disk usage analyzer; installs as `gdu-go` to avoid coreutils conflict
 # NOTE: Tier 3 systems (macOS Tahoe / Apple Silicon) lack pre-built bottles
 # for these. sync.sh's "Tier 3 fallback installs" section auto-installs them
 # via cargo (watchexec/pueue/bottom/git-absorb) and GitHub releases (carapace).

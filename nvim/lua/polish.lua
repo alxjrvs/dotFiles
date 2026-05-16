@@ -1,5 +1,13 @@
 -- Personal nvim overrides loaded after AstroNvim.
 
+-- Disable remote-plugin host providers we don't use. Modern Lua plugins don't
+-- need them; leaving them on produces :checkhealth noise about missing
+-- `neovim` npm/gem/cpan/pip packages.
+vim.g.loaded_node_provider = 0
+vim.g.loaded_perl_provider = 0
+vim.g.loaded_python3_provider = 0
+vim.g.loaded_ruby_provider = 0
+
 -- Yank to system clipboard by default.
 vim.opt.clipboard = "unnamedplus"
 

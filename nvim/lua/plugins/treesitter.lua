@@ -21,6 +21,7 @@ return {
       "dockerfile",
       "yaml",
       "toml",
+      "regex", -- Snacks.picker uses this for prompt highlighting
     },
   },
 }
