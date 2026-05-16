@@ -12,8 +12,9 @@ input=$(cat)
 bash "$HOME/dotFiles/scripts/git-data.sh"
 _git_key=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
 _git_hash=$(printf '%s' "$_git_key" | shasum -a 256 | cut -c1-12)
+_git_cache="${XDG_CACHE_HOME:-$HOME/.cache}/git-data/${_git_hash}.sh"
 # shellcheck disable=SC1090
-. "/tmp/git-data-cache-$(id -u)-${_git_hash}.sh"
+[ -f "$_git_cache" ] && . "$_git_cache"
 
 # -- Parse JSON input ----------------------------------------------------------
 # rate_limits.* are first-party Claude.ai subscription windows (Pro/Max). They

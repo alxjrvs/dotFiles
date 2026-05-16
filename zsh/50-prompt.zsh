@@ -1,6 +1,6 @@
 # Hand-rolled powerline prompt (replaces starship).
 # Colors come from $DOTFILES_DIR/scripts/theme.sh; git state from
-# $DOTFILES_DIR/scripts/git-data.sh (cached at /tmp/git-data-cache-*).
+# $DOTFILES_DIR/scripts/git-data.sh (cached at ~/.cache/git-data/<hash>.sh).
 
 setopt promptsubst
 source "$DOTFILES_DIR/scripts/theme.sh"
@@ -156,7 +156,7 @@ _build_prompt() {
   if [[ -z "$_cache" ]]; then
     local _git_key=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
     local _git_hash=$(printf '%s' "$_git_key" | shasum -a 256 | cut -c1-12)
-    _cache="/tmp/git-data-cache-$(id -u)-${_git_hash}.sh"
+    _cache="${XDG_CACHE_HOME:-$HOME/.cache}/git-data/${_git_hash}.sh"
   fi
   [[ -f "$_cache" ]] && source "$_cache"
   # Invalidate stale git data if CWD moved outside cached repo
@@ -176,7 +176,7 @@ zmodload -F zsh/stat b:zstat 2>/dev/null
 _render_prompt() {
   local _git_key=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
   local _git_hash=$(printf '%s' "$_git_key" | shasum -a 256 | cut -c1-12)
-  local _cache="/tmp/git-data-cache-$(id -u)-${_git_hash}.sh"
+  local _cache="${XDG_CACHE_HOME:-$HOME/.cache}/git-data/${_git_hash}.sh"
   [[ -f "$_cache" ]] && source "$_cache"
 
   local _need_sync=0 _head_mtime="" _index_mtime=""

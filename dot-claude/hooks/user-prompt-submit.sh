@@ -11,7 +11,7 @@ input=$(cat 2>/dev/null || true)
 
 _git_key=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
 _git_hash=$(printf '%s' "$_git_key" | shasum -a 256 | cut -c1-12)
-git_cache="/tmp/git-data-cache-$(id -u)-${_git_hash}.sh"
+git_cache="${XDG_CACHE_HOME:-$HOME/.cache}/git-data/${_git_hash}.sh"
 age_max=60
 
 # Kick off a background git refresh if stale (next turn gets fresh data)
