@@ -94,7 +94,9 @@
     "defaultMode": "auto",
     "additionalDirectories": [
       "/tmp/claude",
-      "/private/tmp/claude"
+      "/private/tmp/claude",
+      "~/.cargo/registry",
+      "~/.cargo/git"
     ]
   },
   "skillOverrides": {
@@ -215,7 +217,8 @@
     "baseRef": "head",
     "symlinkDirectories": [
       "node_modules"
-    ]
+    ],
+    "bgIsolation": "none"
   },
   "statusLine": {
     "type": "command",
@@ -311,13 +314,28 @@
         "/private/tmp/claude",
         "/opt/homebrew",
         "~/Library/Caches/Homebrew",
-        "~/Library/Logs/Homebrew"
+        "~/Library/Logs/Homebrew",
+        "~/**/.git/HEAD",
+        "~/**/.git/index",
+        "~/**/.git/index.lock",
+        "~/**/.git/objects/**",
+        "~/**/.git/refs/**",
+        "~/**/.git/logs/**",
+        "~/**/.git/worktrees/**"
       ],
       "denyRead": [
         "~/.aws",
         "~/.gnupg",
         "~/.netrc",
         "~/.config/op"
+      ],
+      "denyWithinAllow": [
+        "~/.claude/settings.json",
+        "~/dotFiles/.claude/settings.json",
+        "~/dotFiles/.claude/settings.local.json",
+        "/Library/Application Support/ClaudeCode/managed-settings.json",
+        "/Library/Application Support/ClaudeCode/managed-settings.d",
+        "~/dotFiles/.claude/skills"
       ]
     },
     "excludedCommands": [
