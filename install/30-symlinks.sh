@@ -2,7 +2,7 @@
 # Cross-OS symlinks. Tags inside should_run() determine which subsections
 # run under --only=. The umbrella `symlinks` tag selects everything below.
 
-if should_run symlinks git shell mise sheldon ghostty bat gnar-term atuin lazygit tmux zsh git-hooks nvim gh claude ssh; then
+if should_run symlinks git shell mise sheldon ghostty bat gnar-term atuin lazygit zsh git-hooks nvim gh claude ssh; then
   echo ""
   echo "==> Symlinks"
 fi
@@ -63,24 +63,6 @@ if should_run symlinks shell; then
   link "$DOTFILES_DIR/.zprofile" "$HOME/.zprofile" ".zprofile"
   link "$DOTFILES_DIR/.zshenv" "$HOME/.zshenv" ".zshenv"
   link "$DOTFILES_DIR/.hushlogin" "$HOME/.hushlogin" ".hushlogin"
-  # Secrets file — gitignored, bootstrapped from .secrets.example
-  if [ ! -f "$DOTFILES_DIR/.secrets" ]; then
-    echo ""
-    echo "  Setting up .secrets from .secrets.example..."
-    cp "$DOTFILES_DIR/.secrets.example" "$DOTFILES_DIR/.secrets"
-    while IFS= read -r line; do
-      if [[ "$line" =~ ^export\ ([A-Z_]+)=\"\"$ ]]; then
-        var="${BASH_REMATCH[1]}"
-        printf "  %s (press Enter to skip): " "$var"
-        read -r value < /dev/tty
-        if [ -n "$value" ]; then
-          sed -i '' "s|export ${var}=\"\"|export ${var}=\"${value}\"|" "$DOTFILES_DIR/.secrets"
-        fi
-      fi
-    done < "$DOTFILES_DIR/.secrets.example"
-    chmod 600 "$DOTFILES_DIR/.secrets"
-  fi
-  link "$DOTFILES_DIR/.secrets" "$HOME/.secrets" ".secrets"
 fi
 
 # mise config (Darwin only)
@@ -129,12 +111,6 @@ if [ "$OS" = "Darwin" ]; then
   if should_run symlinks lazygit; then
     mkdir -p "$HOME/.config/lazygit"
     link "$DOTFILES_DIR/lazygit/config.yml" "$HOME/.config/lazygit/config.yml" "lazygit/config.yml"
-  fi
-
-  # tmux config
-  if should_run symlinks tmux; then
-    mkdir -p "$HOME/.config/tmux"
-    link "$DOTFILES_DIR/tmux/tmux.conf" "$HOME/.config/tmux/tmux.conf" "tmux/tmux.conf"
   fi
 
   # zsh fragments (sourced by ~/.zshrc — see zsh/README.md)

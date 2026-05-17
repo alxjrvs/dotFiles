@@ -12,9 +12,6 @@ export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
 # GitHub MCP server (plugin:github:github) reads this; sourced lazily from gh CLI keychain.
 export GITHUB_PERSONAL_ACCESS_TOKEN="${GITHUB_PERSONAL_ACCESS_TOKEN:-$(gh auth token 2>/dev/null)}"
 
-# Machine-local secrets (not in git)
-[[ -f ~/.secrets ]] && source ~/.secrets
-
 # Colored man pages (CMYK)
 export LESS_TERMCAP_mb=$'\e[1;35m'
 export LESS_TERMCAP_md=$'\e[1;36m'

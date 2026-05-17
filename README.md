@@ -27,9 +27,7 @@ macOS dotfiles for [alxjrvs](https://github.com/alxjrvs).
 | `atuin/config.toml` | Atuin (shell history) config |
 | `lazygit/config.yml` | Lazygit config (Nord theme) |
 | `bat/config` | Bat config |
-| `tmux/tmux.conf` | tmux config (prefix C-a, vi mode, true color, no plugins) |
 | `ssh/config` | SSH client config (1Password agent, ControlMaster, Augment include) |
-| `macos/LaunchAgents/` | macOS LaunchAgents (Caps→Esc via hidutil, fallback to Karabiner) |
 | `dot-claude/` | Claude Code: `CLAUDE.md`, `settings.json`, `hooks/`, `agents/`, `commands/`, `statusline-command.sh` |
 | `scripts/theme.sh` | Nova color palette (Nord-derived); hex is canonical, decimals auto-derived |
 | `scripts/git-data.sh` | Git-state cache feeding the prompt and statusline |
@@ -71,7 +69,12 @@ Wired as a git difftool. Run with `git dft` (alias for `git difftool`) — uses 
 
 ## Secrets
 
-`.secrets` is gitignored and sourced by `zsh/00-exports.zsh` in interactive shells. Convention: only put values in there when subprocesses need them inherited at fork time (e.g., `GITHUB_PERSONAL_ACCESS_TOKEN` for Claude MCP servers). Everything else goes through 1Password CLI via the `op-run` wrapper (`zsh/80-functions.zsh`) — e.g., `op-run npm publish`. See `.secrets.example` for the pattern.
+1Password CLI (`op`) is the source of truth — there is no on-disk `.secrets` file. Patterns:
+
+- **`op-run <cmd>`** (`zsh/80-functions.zsh`) — one-shot CLI injection. `op-run npm publish` resolves `op://` refs at exec time and never writes them anywhere.
+- **`op://` references in config files** — pair with `op-run`. The wrapper resolves them just for the child process.
+- **`gh auth token` keychain fallback** — `zsh/00-exports.zsh` derives `GITHUB_PERSONAL_ACCESS_TOKEN` from the gh keychain at shell start, so subprocesses (Claude MCP, scripts) inherit it without plaintext on disk.
+- **`direnv` + `op read` in `.envrc`** — for project-local env that must inherit at fork time. `direnv` is already hooked in `zsh/30-plugins.zsh`.
 
 ## Completions
 
@@ -85,10 +88,7 @@ Note: `bottom` (binary `btm`) is used in place of `btop` since `btop` is C++ and
 
 ## Caps Lock → Escape
 
-Two-layer setup, belt-and-suspenders:
-
-1. **hidutil** (primary) — `macos/LaunchAgents/com.alxjrvs.capsescape.plist` is symlinked into `~/Library/LaunchAgents/` and remaps Caps Lock to Escape at every login. Revert with `launchctl unload ~/Library/LaunchAgents/com.alxjrvs.capsescape.plist` + reboot, or `hidutil property --set '{"UserKeyMapping":[]}'` for the current session.
-2. **Karabiner-Elements** (fallback) — installed via Brewfile cask. On first launch grant Input Monitoring + Accessibility, then toggle "caps_lock → escape" in Simple Modifications. Survives sleep cycles and external keyboards better than hidutil; left running alongside hidutil so Caps→Esc is never broken if one layer fails.
+Via Karabiner-Elements (Brewfile cask). On first launch grant Input Monitoring + Accessibility, then enable "caps_lock → escape" in Simple Modifications. Survives sleep cycles and external keyboards.
 
 ## 1Password SSH agent
 
@@ -111,4 +111,3 @@ Commit signing piggybacks on the same SSH key via `gpg.format = ssh` in `.gitcon
 
 - `scripts/*.sh` reference `"$DOTFILES_DIR/..."` (exported from `.zshenv`); the default points to `$HOME/dotFiles`. Override via `DOTFILES_DIR=...` if your clone lives elsewhere.
 - Files containing PUA powerline glyphs (`zsh/50-prompt.zsh`) use `$'\uXXXX'` escape syntax — ASCII source, evaluated at runtime. Safe to edit with the Claude Edit tool.
-- `code-review-graph` MCP is installed-on-demand via `uvx code-review-graph serve` — no persistent Python install required.

@@ -1,6 +1,5 @@
 # shellcheck shell=bash
 # Claude Code CLI install. Cross-OS — the native installer handles both.
-# code-review-graph MCP runs on demand via `uvx`, so no persistent install.
 
 if should_run claude; then
   echo ""

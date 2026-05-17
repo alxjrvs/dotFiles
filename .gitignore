@@ -25,8 +25,7 @@ yarn-error.log*
 .claude/*.local.json
 .claude/worktrees/
 
-# Secrets (never commit)
-.secrets
+# Secrets (never commit) — .secrets was decommissioned in favor of op-run / op://
 .npmrc
 
 # Transient/generated
