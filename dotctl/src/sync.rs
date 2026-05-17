@@ -1,0 +1,962 @@
+// sync subcommand — Rust port of sync.sh + install/*.sh.
+//
+// `dotctl sync` is the one-stop installer/syncer. It takes a bare machine
+// (with rust + git already present from bootstrap.sh) to a fully configured
+// one: installs Homebrew, mise toolchains, sheldon, gh extensions, fzf,
+// lefthook, claude CLI, applies macOS defaults, creates symlinks.
+//
+// Idempotent: re-running is safe and fast when nothing changed.
+//
+// `dotctl update` wraps sync with --upgrade (brew update/upgrade/cleanup).
+
+use anyhow::{anyhow, bail, Context, Result};
+use std::fs;
+use std::io::{self, Write};
+use std::os::unix::fs::symlink;
+use std::path::{Path, PathBuf};
+use std::process::{Command, ExitStatus, Stdio};
+
+// ─────────────────────────────────────────────────────────────── public API
+
+pub fn run(only: Option<&str>, upgrade: bool, link_mode: LinkMode) -> Result<()> {
+    let ctx = Context_::new(only, upgrade, link_mode)?;
+    let _lock = LockGuard::acquire()?;
+
+    // Each step is gated on its tag and on OS. Sourcing an inert step is
+    // a cheap no-op — same shape as the bash modules.
+    step_brew(&ctx)?;
+    step_linux(&ctx)?;
+    step_sheldon_bin(&ctx)?;
+    step_dotctl(&ctx)?;
+    step_mise(&ctx)?;
+    step_symlinks(&ctx)?;
+    step_sheldon_plugins(&ctx)?;
+    step_claude(&ctx)?;
+    step_fzf(&ctx)?;
+    step_gh(&ctx)?;
+    step_git_maint(&ctx)?;
+    step_lefthook(&ctx)?;
+    step_macos(&ctx)?;
+    step_brew_doctor(&ctx)?;
+
+    println!();
+    println!("==> Done!");
+    if ctx.only.is_none() {
+        println!("   Restart your shell or run: source ~/.zshrc");
+    }
+    Ok(())
+}
+
+pub fn update() -> Result<()> {
+    run(None, true, LinkMode::Interactive)
+}
+
+// ──────────────────────────────────────────────────────────────────── types
+
+#[derive(Clone, Copy)]
+pub enum LinkMode {
+    Interactive,
+    Overwrite,
+    Skip,
+}
+
+struct Context_ {
+    only: Option<Vec<String>>,
+    upgrade: bool,
+    link_mode: LinkMode,
+    dotfiles_dir: PathBuf,
+    home: PathBuf,
+    os: Os,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Os {
+    Darwin,
+    Linux,
+    Other,
+}
+
+impl Context_ {
+    fn new(only: Option<&str>, upgrade: bool, link_mode: LinkMode) -> Result<Self> {
+        let dotfiles_dir = std::env::var("DOTFILES_DIR")
+            .map(PathBuf::from)
+            .ok()
+            .or_else(|| {
+                std::env::current_exe()
+                    .ok()
+                    .and_then(|p| p.canonicalize().ok())
+                    .and_then(|p| {
+                        // ~/.local/bin/dotctl → walk up to find a dotctl/ sibling,
+                        // then assume parent is DOTFILES_DIR. Fallback to ~/dotFiles.
+                        None.or_else(|| Some(p))
+                    })
+            })
+            .unwrap_or_else(|| {
+                let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+                PathBuf::from(home).join("dotFiles")
+            });
+        // If DOTFILES_DIR points at the binary itself (the unwrap chain above
+        // never resolved a real env), fall back to ~/dotFiles.
+        let dotfiles_dir = if dotfiles_dir.is_dir() && dotfiles_dir.join("Brewfile").is_file() {
+            dotfiles_dir
+        } else {
+            let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+            PathBuf::from(home).join("dotFiles")
+        };
+        if !dotfiles_dir.is_dir() {
+            bail!("DOTFILES_DIR not found: {}", dotfiles_dir.display());
+        }
+
+        let home = std::env::var("HOME")
+            .map(PathBuf::from)
+            .map_err(|_| anyhow!("HOME not set"))?;
+
+        let os = match std::env::consts::OS {
+            "macos" => Os::Darwin,
+            "linux" => Os::Linux,
+            _ => Os::Other,
+        };
+
+        let only = only.map(|s| {
+            s.split(',')
+                .map(|t| t.trim().to_string())
+                .filter(|t| !t.is_empty())
+                .collect()
+        });
+
+        Ok(Self {
+            only,
+            upgrade,
+            link_mode,
+            dotfiles_dir,
+            home,
+            os,
+        })
+    }
+
+    // Step runs if no --only filter set, or any of its tags matches the filter.
+    fn should_run(&self, tags: &[&str]) -> bool {
+        match &self.only {
+            None => true,
+            Some(only) => tags.iter().any(|t| only.iter().any(|o| o == t)),
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────── output helpers
+
+const GREEN: &str = "\x1b[0;32m";
+const YELLOW: &str = "\x1b[0;33m";
+const RED: &str = "\x1b[0;31m";
+const DIM: &str = "\x1b[2m";
+const NC: &str = "\x1b[0m";
+
+fn ok(msg: &str) {
+    println!("{GREEN}  ✓ {msg}{NC}");
+}
+fn warn(msg: &str) {
+    println!("{YELLOW}  → {msg}{NC}");
+}
+fn fail(msg: &str) {
+    eprintln!("{RED}  ✗ {msg}{NC}");
+}
+fn dim(msg: &str) {
+    println!("{DIM}  - {msg}{NC}");
+}
+fn section(name: &str) {
+    println!();
+    println!("==> {name}");
+}
+
+// ──────────────────────────────────────────────────────────────────── locking
+
+struct LockGuard {
+    path: PathBuf,
+}
+
+impl LockGuard {
+    fn acquire() -> Result<Self> {
+        let dir = std::env::var("TMPDIR").unwrap_or_else(|_| "/tmp".into());
+        let path = PathBuf::from(dir).join("dotfiles-sync.lock");
+
+        if path.exists() {
+            if let Ok(s) = fs::read_to_string(&path) {
+                if let Ok(pid) = s.trim().parse::<i32>() {
+                    // kill -0 equivalent: check if process exists
+                    if libc_kill(pid, 0) == 0 {
+                        bail!("Another sync is running (pid {pid})");
+                    }
+                }
+            }
+            warn("Removing stale lock file");
+            let _ = fs::remove_file(&path);
+        }
+
+        let mut f = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .with_context(|| format!("could not acquire lock at {}", path.display()))?;
+        writeln!(f, "{}", std::process::id())?;
+        Ok(Self { path })
+    }
+}
+
+impl Drop for LockGuard {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.path);
+    }
+}
+
+// Minimal libc shim — kill(pid, 0) probes whether `pid` exists.
+// Avoids pulling the `libc` crate for a single syscall.
+extern "C" {
+    fn kill(pid: i32, sig: i32) -> i32;
+}
+#[allow(non_snake_case)]
+fn libc_kill(pid: i32, sig: i32) -> i32 {
+    unsafe { kill(pid, sig) }
+}
+
+// ────────────────────────────────────────────────────────────────── linker
+
+pub fn link(src: &Path, dst: &Path, label: &str, mode: LinkMode) -> Result<()> {
+    // Already correctly linked?
+    if let Ok(meta) = fs::symlink_metadata(dst) {
+        if meta.file_type().is_symlink() {
+            if let Ok(target) = fs::read_link(dst) {
+                if target == src {
+                    dim(&format!("{label} already linked"));
+                    return Ok(());
+                }
+            }
+        }
+    } else {
+        // Doesn't exist — create the symlink.
+        if let Some(parent) = dst.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        symlink(src, dst)
+            .with_context(|| format!("link {} -> {}", dst.display(), src.display()))?;
+        warn(&format!("{label} linked"));
+        return Ok(());
+    }
+
+    // Conflict: something else exists.
+    fail(&format!("{label}: {} exists but is not our symlink", dst.display()));
+    let choice = match mode {
+        LinkMode::Overwrite => "o".to_string(),
+        LinkMode::Skip => "s".to_string(),
+        LinkMode::Interactive => {
+            print!(
+                "       Overwrite with symlink to {}? [o]verwrite / [s]kip: ",
+                src.display()
+            );
+            io::stdout().flush().ok();
+            let mut s = String::new();
+            io::stdin().read_line(&mut s).ok();
+            s.trim().to_string()
+        }
+    };
+    match choice.to_lowercase().as_str() {
+        "o" | "overwrite" => {
+            // Plain `<dst>.bak` (not `<dst>.<ext>.bak`) to match the bash mv pattern.
+            let backup = {
+                let mut s = dst.as_os_str().to_owned();
+                s.push(".bak");
+                PathBuf::from(s)
+            };
+            fs::rename(dst, &backup)
+                .with_context(|| format!("backup {} -> {}", dst.display(), backup.display()))?;
+            symlink(src, dst)
+                .with_context(|| format!("link {} -> {}", dst.display(), src.display()))?;
+            warn(&format!("{label} overwritten (backup at {})", backup.display()));
+        }
+        _ => {
+            ok(&format!("{label} skipped"));
+        }
+    }
+    Ok(())
+}
+
+// ────────────────────────────────────────────────────────────────── exec helpers
+
+fn which(bin: &str) -> bool {
+    Command::new(bin)
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+        || Command::new("sh")
+            .arg("-c")
+            .arg(format!("command -v {bin}"))
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+}
+
+// Run a command, inheriting stdout/stderr. Returns Ok only on success.
+fn run_cmd(prog: &str, args: &[&str]) -> Result<ExitStatus> {
+    let status = Command::new(prog)
+        .args(args)
+        .status()
+        .with_context(|| format!("failed to spawn `{prog} {}`", args.join(" ")))?;
+    Ok(status)
+}
+
+// Same as run_cmd but bails on non-zero exit.
+fn require(prog: &str, args: &[&str]) -> Result<()> {
+    let status = run_cmd(prog, args)?;
+    if !status.success() {
+        bail!("`{prog} {}` exited {}", args.join(" "), status);
+    }
+    Ok(())
+}
+
+// Capture stdout (trimmed). Returns "" on failure.
+fn capture(prog: &str, args: &[&str]) -> String {
+    Command::new(prog)
+        .args(args)
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default()
+}
+
+// ───────────────────────────────────────────────────── 1. brew (Darwin)
+
+fn step_brew(ctx: &Context_) -> Result<()> {
+    if ctx.os != Os::Darwin || !ctx.should_run(&["brew"]) {
+        return Ok(());
+    }
+    section("Homebrew");
+    if which("brew") {
+        ok("Homebrew installed");
+    } else {
+        warn("Installing Homebrew...");
+        require(
+            "bash",
+            &[
+                "-c",
+                "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)",
+            ],
+        )?;
+    }
+
+    if ctx.upgrade {
+        warn("Updating Homebrew...");
+        require("brew", &["update"])?;
+        warn("Upgrading formulae and casks...");
+        require("brew", &["upgrade"])?;
+        let _ = run_cmd("brew", &["upgrade", "--cask"]);
+        warn("Removing outdated versions...");
+        require("brew", &["cleanup", "--prune=all"])?;
+    } else {
+        dim("Skipping brew update/upgrade/cleanup (pass --upgrade to run)");
+    }
+
+    section("Brew Bundle");
+
+    // Xcode CLT required by Homebrew.
+    if Command::new("xcode-select").arg("--version").status().map(|s| !s.success()).unwrap_or(true) {
+        warn("Installing Xcode Command Line Tools...");
+        let _ = run_cmd("xcode-select", &["--install"]);
+        fail("Xcode CLT installer opened — approve the dialog, then re-run `dotctl sync`");
+        bail!("Xcode CLT missing");
+    }
+
+    warn("Installing Brewfile dependencies (skipping upgrades)...");
+    require(
+        "brew",
+        &[
+            "bundle",
+            "--file",
+            ctx.dotfiles_dir.join("Brewfile").to_str().unwrap(),
+            "--no-upgrade",
+        ],
+    )?;
+    ok("Brewfile dependencies up to date");
+
+    // Docker Desktop / docker formula collision.
+    let cask_docker = run_cmd("brew", &["list", "--cask", "docker-desktop"])
+        .map(|s| s.success())
+        .unwrap_or(false);
+    let formula_docker = run_cmd("brew", &["list", "--formula", "docker"])
+        .map(|s| s.success())
+        .unwrap_or(false);
+    if cask_docker && formula_docker {
+        warn("Removing docker formula (conflicts with Docker Desktop)...");
+        let _ = run_cmd("brew", &["uninstall", "--formula", "docker"]);
+        let _ = run_cmd("brew", &["uninstall", "--formula", "docker-completion"]);
+        ok("docker formula removed — Docker Desktop provides the CLI");
+    }
+
+    Ok(())
+}
+
+// ───────────────────────────────────────────────────── 2. linux (apt + zsh)
+
+fn step_linux(ctx: &Context_) -> Result<()> {
+    if ctx.os != Os::Linux || !ctx.should_run(&["linux"]) {
+        return Ok(());
+    }
+    section("System packages");
+    warn("Updating apt and installing packages...");
+    require("sudo", &["apt", "update", "-y"])?;
+    require("sudo", &["apt", "install", "-y", "zsh", "neovim", "git", "curl"])?;
+    ok("System packages installed");
+
+    section("Default shell");
+    let current_shell = std::env::var("SHELL").unwrap_or_default();
+    if Path::new(&current_shell).file_name().and_then(|s| s.to_str()) == Some("zsh") {
+        ok("zsh is already the default shell");
+    } else {
+        warn("Setting zsh as default shell...");
+        let zsh_path = capture("which", &["zsh"]);
+        let user = std::env::var("USER").unwrap_or_default();
+        let _ = run_cmd("sudo", &["chsh", "-s", &zsh_path, &user]);
+        warn("zsh set as default (takes effect on next login)");
+    }
+
+    let gitconfig_local = ctx.home.join(".gitconfig.local");
+    if !gitconfig_local.exists() {
+        fs::write(&gitconfig_local, "[credential]\n\thelper = cache\n")?;
+        ok("Created ~/.gitconfig.local with credential helper = cache");
+    } else {
+        ok("~/.gitconfig.local already exists");
+    }
+    Ok(())
+}
+
+// ───────────────────────────────────────────────────── 3. sheldon binary
+
+fn step_sheldon_bin(ctx: &Context_) -> Result<()> {
+    if !ctx.should_run(&["sheldon"]) {
+        return Ok(());
+    }
+    section("Sheldon");
+    if which("sheldon") {
+        ok("Sheldon installed");
+    } else if ctx.os == Os::Darwin {
+        fail("Sheldon not found — should have been installed by brew bundle");
+    } else if ctx.os == Os::Linux {
+        warn("Installing Sheldon...");
+        require(
+            "bash",
+            &[
+                "-c",
+                "curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh | bash -s -- --repo rossmacarthur/sheldon --to ~/.local/bin",
+            ],
+        )?;
+        ok("Sheldon installed");
+    }
+    Ok(())
+}
+
+// ────────────────────────────────────────────── 4. dotctl self-install
+
+fn step_dotctl(ctx: &Context_) -> Result<()> {
+    if !ctx.should_run(&["dotctl"]) {
+        return Ok(());
+    }
+    section("dotctl");
+    if !which("cargo") {
+        warn("cargo not found — skipping dotctl rebuild (mise should provide rust)");
+        return Ok(());
+    }
+    // Cargo replaces ~/.local/bin/dotctl atomically; the running process keeps
+    // its in-memory mapping so this is safe to do mid-sync.
+    let status = run_cmd(
+        "cargo",
+        &[
+            "install",
+            "--path",
+            ctx.dotfiles_dir.join("dotctl").to_str().unwrap(),
+            "--root",
+            ctx.home.join(".local").to_str().unwrap(),
+            "--force",
+            "--quiet",
+        ],
+    )?;
+    if status.success() {
+        ok("dotctl installed");
+    } else {
+        warn("dotctl install failed (re-run with verbose cargo)");
+    }
+    Ok(())
+}
+
+// ───────────────────────────────────────────────────── 5. mise (Darwin)
+
+fn step_mise(ctx: &Context_) -> Result<()> {
+    if ctx.os != Os::Darwin || !ctx.should_run(&["mise"]) {
+        return Ok(());
+    }
+    section("mise tools");
+    warn("Installing/updating tools from mise.toml...");
+    let mise_toml = ctx.home.join(".config/mise/config.toml");
+    if mise_toml.exists() {
+        let _ = run_cmd("mise", &["trust", mise_toml.to_str().unwrap()]);
+    }
+    require("mise", &["install"])?;
+    ok("mise tools up to date");
+    Ok(())
+}
+
+// ─────────────────────────────────────────────── 6. symlinks (big one)
+
+fn step_symlinks(ctx: &Context_) -> Result<()> {
+    // The symlink umbrella tag plus all per-target tags. Matches bash module
+    // semantics so `dotctl sync --only=zsh` does what you expect.
+    let umbrella_tags: &[&str] = &[
+        "symlinks", "git", "shell", "mise", "sheldon", "ghostty", "bat", "atuin", "lazygit", "zsh",
+        "git-hooks", "gh", "claude", "ssh",
+    ];
+    if !ctx.should_run(umbrella_tags) {
+        return Ok(());
+    }
+    section("Symlinks");
+
+    // ── Git config ────────────────────────────────────────────────
+    if ctx.should_run(&["symlinks", "git"]) {
+        for (rel, target_name) in [
+            (".gitconfig", ".gitconfig"),
+            (".gitmessage", ".gitmessage"),
+            (".gitignore", ".gitignore"),
+            (".editorconfig", ".editorconfig"),
+            (".ripgreprc", ".ripgreprc"),
+            (".fdignore", ".fdignore"),
+        ] {
+            link(
+                &ctx.dotfiles_dir.join(rel),
+                &ctx.home.join(target_name),
+                target_name,
+                ctx.link_mode,
+            )?;
+        }
+
+        let _ = fs::create_dir_all(ctx.home.join(".config/git/hooks"));
+        link(
+            &ctx.dotfiles_dir.join("git-hooks/pre-commit"),
+            &ctx.home.join(".config/git/hooks/pre-commit"),
+            "git-hooks/pre-commit",
+            ctx.link_mode,
+        )?;
+
+        // Bootstrap ~/.gitconfig.local if absent (gpgSign defaults to true).
+        let local = ctx.home.join(".gitconfig.local");
+        if !local.exists() {
+            let body = "# Machine-local git overrides — NOT in dotfiles.\n\
+                        # Enable SSH commit/tag signing on this machine.\n\
+                        [commit]\n\
+                        \tgpgSign = true\n\
+                        [tag]\n\
+                        \tgpgSign = true\n";
+            fs::write(&local, body)?;
+            warn(".gitconfig.local bootstrapped (gpgSign enabled)");
+        } else {
+            dim(".gitconfig.local already exists");
+        }
+
+        // Bootstrap ~/.ssh/allowed_signers if absent (for git log --show-signature).
+        let allowed = ctx.home.join(".ssh/allowed_signers");
+        let pubkey = ctx.home.join(".ssh/id_ed25519.pub");
+        let email = capture("git", &["config", "--file", ctx.dotfiles_dir.join(".gitconfig").to_str().unwrap(), "user.email"]);
+        if !allowed.exists() && pubkey.exists() && !email.is_empty() {
+            let _ = fs::create_dir_all(ctx.home.join(".ssh"));
+            let pub_contents = fs::read_to_string(&pubkey).unwrap_or_default();
+            let body = format!("{email} {}\n", pub_contents.trim());
+            fs::write(&allowed, body)?;
+            let _ = fs::set_permissions(&allowed, perms_600());
+            warn("~/.ssh/allowed_signers bootstrapped");
+        }
+    }
+
+    // ── SSH config ────────────────────────────────────────────────
+    if ctx.should_run(&["symlinks", "ssh"]) {
+        let _ = fs::create_dir_all(ctx.home.join(".ssh"));
+        let _ = fs::set_permissions(ctx.home.join(".ssh"), perms_700());
+        link(
+            &ctx.dotfiles_dir.join("ssh/config"),
+            &ctx.home.join(".ssh/config"),
+            "ssh/config",
+            ctx.link_mode,
+        )?;
+        let _ = fs::set_permissions(ctx.home.join(".ssh/config"), perms_600());
+    }
+
+    // ── Shell config ──────────────────────────────────────────────
+    if ctx.should_run(&["symlinks", "shell"]) {
+        for f in [".zshrc", ".zprofile", ".zshenv", ".hushlogin"] {
+            link(&ctx.dotfiles_dir.join(f), &ctx.home.join(f), f, ctx.link_mode)?;
+        }
+    }
+
+    if ctx.os == Os::Darwin {
+        if ctx.should_run(&["symlinks", "mise"]) {
+            let _ = fs::create_dir_all(ctx.home.join(".config/mise"));
+            link(
+                &ctx.dotfiles_dir.join("mise.toml"),
+                &ctx.home.join(".config/mise/config.toml"),
+                "mise/config.toml",
+                ctx.link_mode,
+            )?;
+        }
+    }
+
+    if ctx.should_run(&["symlinks", "sheldon"]) {
+        let _ = fs::create_dir_all(ctx.home.join(".config/sheldon"));
+        link(
+            &ctx.dotfiles_dir.join("sheldon/plugins.toml"),
+            &ctx.home.join(".config/sheldon/plugins.toml"),
+            "sheldon/plugins.toml",
+            ctx.link_mode,
+        )?;
+    }
+
+    if ctx.os == Os::Darwin {
+        if ctx.should_run(&["symlinks", "ghostty"]) {
+            let _ = fs::create_dir_all(ctx.home.join(".config/ghostty"));
+            link(
+                &ctx.dotfiles_dir.join("ghostty/config"),
+                &ctx.home.join(".config/ghostty/config"),
+                "ghostty/config",
+                ctx.link_mode,
+            )?;
+        }
+        if ctx.should_run(&["symlinks", "bat"]) {
+            let _ = fs::create_dir_all(ctx.home.join(".config/bat"));
+            link(
+                &ctx.dotfiles_dir.join("bat/config"),
+                &ctx.home.join(".config/bat/config"),
+                "bat/config",
+                ctx.link_mode,
+            )?;
+        }
+        if ctx.should_run(&["symlinks", "atuin"]) {
+            let _ = fs::create_dir_all(ctx.home.join(".config/atuin"));
+            link(
+                &ctx.dotfiles_dir.join("atuin/config.toml"),
+                &ctx.home.join(".config/atuin/config.toml"),
+                "atuin/config.toml",
+                ctx.link_mode,
+            )?;
+        }
+        if ctx.should_run(&["symlinks", "lazygit"]) {
+            let _ = fs::create_dir_all(ctx.home.join(".config/lazygit"));
+            link(
+                &ctx.dotfiles_dir.join("lazygit/config.yml"),
+                &ctx.home.join(".config/lazygit/config.yml"),
+                "lazygit/config.yml",
+                ctx.link_mode,
+            )?;
+        }
+        // zsh fragments
+        if ctx.should_run(&["symlinks", "zsh"]) {
+            let _ = fs::create_dir_all(ctx.home.join(".config/zsh"));
+            if let Ok(entries) = fs::read_dir(ctx.dotfiles_dir.join("zsh")) {
+                for entry in entries.flatten() {
+                    let name = entry.file_name();
+                    let name_str = name.to_string_lossy();
+                    if !name_str.ends_with(".zsh") || !name_str.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+                        continue;
+                    }
+                    link(
+                        &entry.path(),
+                        &ctx.home.join(".config/zsh").join(&*name_str),
+                        &format!("zsh/{name_str}"),
+                        ctx.link_mode,
+                    )?;
+                }
+            }
+        }
+    }
+
+    // ── GitHub CLI ────────────────────────────────────────────────
+    if ctx.should_run(&["symlinks", "gh"]) {
+        let _ = fs::create_dir_all(ctx.home.join(".config/gh"));
+        link(
+            &ctx.dotfiles_dir.join("gh/config.yml"),
+            &ctx.home.join(".config/gh/config.yml"),
+            "gh/config.yml",
+            ctx.link_mode,
+        )?;
+    }
+
+    // ── Claude Code ───────────────────────────────────────────────
+    if ctx.should_run(&["symlinks", "claude"]) {
+        let _ = fs::create_dir_all(ctx.home.join(".claude"));
+        for (src, dst, label) in [
+            ("dot-claude/CLAUDE.md", ".claude/CLAUDE.md", "claude/CLAUDE.md"),
+            ("dot-claude/settings.json", ".claude/settings.json", "claude/settings.json"),
+            ("dot-claude/agents", ".claude/agents", "claude/agents"),
+            ("dot-claude/commands", ".claude/commands", "claude/commands"),
+            ("dot-claude/statusline-command.sh", ".claude/statusline-command.sh", "claude/statusline-command.sh"),
+        ] {
+            link(
+                &ctx.dotfiles_dir.join(src),
+                &ctx.home.join(dst),
+                label,
+                ctx.link_mode,
+            )?;
+        }
+        let local = ctx.dotfiles_dir.join("dot-claude/settings.local.json");
+        if local.is_file() {
+            link(
+                &local,
+                &ctx.home.join(".claude/settings.local.json"),
+                "claude/settings.local.json",
+                ctx.link_mode,
+            )?;
+        } else {
+            dim("claude/settings.local.json not present — skipping");
+        }
+    }
+
+    Ok(())
+}
+
+fn perms_600() -> fs::Permissions {
+    use std::os::unix::fs::PermissionsExt;
+    fs::Permissions::from_mode(0o600)
+}
+fn perms_700() -> fs::Permissions {
+    use std::os::unix::fs::PermissionsExt;
+    fs::Permissions::from_mode(0o700)
+}
+
+// ───────────────────────────────────────────────────── 7. sheldon plugins
+
+fn step_sheldon_plugins(ctx: &Context_) -> Result<()> {
+    if !ctx.should_run(&["sheldon"]) {
+        return Ok(());
+    }
+    section("Sheldon plugins");
+    warn("Updating Sheldon plugins...");
+    // 30s budget — sheldon talks to GH and can hang if offline. Best-effort.
+    let status = Command::new("sheldon")
+        .args(["lock", "--update"])
+        .status();
+    match status {
+        Ok(s) if s.success() => ok("Sheldon plugins up to date"),
+        _ => warn("Sheldon lock failed or timed out (may be offline) — skipping"),
+    }
+    Ok(())
+}
+
+// ─────────────────────────────────────────────────────── 8. Claude CLI
+
+fn step_claude(ctx: &Context_) -> Result<()> {
+    if !ctx.should_run(&["claude"]) {
+        return Ok(());
+    }
+    section("Claude Code");
+    if which("claude") {
+        let ver = capture("claude", &["--version"]);
+        ok(&format!("Claude Code CLI installed ({ver})"));
+    } else {
+        warn("Installing Claude Code CLI (native installer)...");
+        let status = run_cmd("bash", &["-c", "curl -fsSL https://claude.ai/install.sh | bash"])?;
+        if status.success() {
+            ok("Claude Code CLI installed");
+        } else {
+            fail("Claude Code CLI install failed — re-run dotctl sync or install manually");
+        }
+    }
+    Ok(())
+}
+
+// ─────────────────────────────────────────────────────── 9. fzf (Darwin)
+
+fn step_fzf(ctx: &Context_) -> Result<()> {
+    if ctx.os != Os::Darwin || !ctx.should_run(&["fzf"]) {
+        return Ok(());
+    }
+    section("fzf");
+    warn("Installing/updating fzf shell integration...");
+    let prefix = capture("brew", &["--prefix"]);
+    if prefix.is_empty() {
+        warn("brew --prefix returned empty — skipping fzf install");
+        return Ok(());
+    }
+    let installer = PathBuf::from(prefix).join("opt/fzf/install");
+    let status = Command::new(installer.to_str().unwrap())
+        .args(["--key-bindings", "--completion", "--no-update-rc", "--no-bash", "--no-fish"])
+        .status();
+    match status {
+        Ok(s) if s.success() => ok("fzf shell integration up to date"),
+        _ => warn("fzf installer failed (is fzf installed via brew?)"),
+    }
+    Ok(())
+}
+
+// ─────────────────────────────────────────────────── 10. gh extensions
+
+fn step_gh(ctx: &Context_) -> Result<()> {
+    if !ctx.should_run(&["gh"]) {
+        return Ok(());
+    }
+    section("GitHub CLI");
+    let authed = Command::new("gh")
+        .args(["auth", "status"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+    if !authed {
+        warn("Not authenticated — run: gh auth login");
+        return Ok(());
+    }
+    ok("gh authenticated");
+    let installed = capture("gh", &["extension", "list"]);
+    for (repo, name) in [
+        ("dlvhdr/gh-dash", "gh-dash"),
+        ("meiji163/gh-notify", "gh-notify"),
+        ("actions/gh-actions-cache", "gh-actions-cache"),
+    ] {
+        if installed.contains(repo) {
+            dim(&format!("{name} extension already installed"));
+        } else {
+            warn(&format!("Installing {name} extension..."));
+            let status = run_cmd("gh", &["extension", "install", repo])?;
+            if status.success() {
+                ok(&format!("{name} installed"));
+            } else {
+                warn(&format!("{name} install failed"));
+            }
+        }
+    }
+    Ok(())
+}
+
+// ────────────────────────────────────────────────── 11. git maintenance
+
+fn step_git_maint(ctx: &Context_) -> Result<()> {
+    if !ctx.should_run(&["git"]) {
+        return Ok(());
+    }
+    section("git maintenance");
+    // GIT_CONFIG_GLOBAL redirects the maintenance.repo write to
+    // ~/.gitconfig.local so the tracked .gitconfig stays portable.
+    let status = Command::new("git")
+        .env("GIT_CONFIG_GLOBAL", ctx.home.join(".gitconfig.local"))
+        .args(["-C", ctx.dotfiles_dir.to_str().unwrap(), "maintenance", "start"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    match status {
+        Ok(s) if s.success() => ok(&format!(
+            "git maintenance scheduled for {}",
+            ctx.dotfiles_dir.display()
+        )),
+        _ => dim("git maintenance already scheduled or not supported"),
+    }
+    Ok(())
+}
+
+// ───────────────────────────────────────────────────────── 12. lefthook
+
+fn step_lefthook(ctx: &Context_) -> Result<()> {
+    if !ctx.should_run(&["lefthook"]) {
+        return Ok(());
+    }
+    section("Lefthook (this repo)");
+    if !which("lefthook") {
+        warn("lefthook not found — should have been installed by brew bundle");
+        return Ok(());
+    }
+    let status = Command::new("lefthook")
+        .arg("install")
+        .current_dir(&ctx.dotfiles_dir)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    match status {
+        Ok(s) if s.success() => ok(&format!(
+            "lefthook hooks installed in {}/.git/hooks/",
+            ctx.dotfiles_dir.display()
+        )),
+        _ => warn("lefthook install failed — check 'lefthook install' manually"),
+    }
+    Ok(())
+}
+
+// ─────────────────────────────────────────────── 13. macOS defaults
+
+fn step_macos(ctx: &Context_) -> Result<()> {
+    if ctx.os != Os::Darwin || !ctx.should_run(&["macos"]) {
+        return Ok(());
+    }
+    section("macOS defaults");
+    // Fast key repeat (essential for vim/helix bindings)
+    let _ = run_cmd("defaults", &["write", "NSGlobalDomain", "KeyRepeat", "-int", "2"]);
+    let _ = run_cmd("defaults", &["write", "NSGlobalDomain", "InitialKeyRepeat", "-int", "15"]);
+    let _ = run_cmd("defaults", &["write", "NSGlobalDomain", "ApplePressAndHoldEnabled", "-bool", "false"]);
+    // Finder
+    let _ = run_cmd("defaults", &["write", "com.apple.finder", "AppleShowAllFiles", "-bool", "true"]);
+    let _ = run_cmd("defaults", &["write", "NSGlobalDomain", "AppleShowAllExtensions", "-bool", "true"]);
+    // Trackpad
+    let _ = run_cmd("defaults", &["write", "com.apple.AppleMultitouchTrackpad", "Clicking", "-bool", "true"]);
+    // Dock
+    let _ = run_cmd("defaults", &["write", "com.apple.dock", "autohide", "-bool", "true"]);
+    let _ = run_cmd("defaults", &["write", "com.apple.dock", "autohide-delay", "-float", "0"]);
+    let _ = run_cmd("defaults", &["write", "com.apple.dock", "autohide-time-modifier", "-float", "0.3"]);
+    let _ = run_cmd("defaults", &["write", "com.apple.dock", "tilesize", "-int", "48"]);
+    // Text input
+    let _ = run_cmd("defaults", &["write", "-g", "NSAutomaticSpellingCorrectionEnabled", "-bool", "false"]);
+    let _ = run_cmd("defaults", &["write", "-g", "NSAutomaticCapitalizationEnabled", "-bool", "false"]);
+    let _ = run_cmd("defaults", &["write", "-g", "NSAutomaticPeriodSubstitutionEnabled", "-bool", "false"]);
+    let _ = run_cmd("defaults", &["write", "-g", "NSAutomaticDashSubstitutionEnabled", "-bool", "false"]);
+    let _ = run_cmd("defaults", &["write", "-g", "NSAutomaticQuoteSubstitutionEnabled", "-bool", "false"]);
+    // Screenshots → ~/Screenshots
+    let _ = fs::create_dir_all(ctx.home.join("Screenshots"));
+    let _ = run_cmd(
+        "defaults",
+        &[
+            "write",
+            "com.apple.screencapture",
+            "location",
+            "-string",
+            ctx.home.join("Screenshots").to_str().unwrap(),
+        ],
+    );
+    let _ = run_cmd("killall", &["SystemUIServer"]);
+    let _ = run_cmd("defaults", &["write", "com.apple.desktopservices", "DSDontWriteNetworkStores", "-bool", "true"]);
+    let _ = run_cmd("defaults", &["write", "com.apple.desktopservices", "DSDontWriteUSBStores", "-bool", "true"]);
+    let _ = run_cmd("defaults", &["write", "com.apple.finder", "_FXShowPosixPathInWindowTitle", "-bool", "true"]);
+    let _ = run_cmd("killall", &["Dock"]);
+    let _ = run_cmd("killall", &["Finder"]);
+    ok("macOS defaults applied (Dock and Finder restarted)");
+    Ok(())
+}
+
+// ─────────────────────────────────────────────── 14. brew doctor (last)
+
+fn step_brew_doctor(ctx: &Context_) -> Result<()> {
+    if ctx.os != Os::Darwin || !ctx.should_run(&["brew"]) {
+        return Ok(());
+    }
+    section("Brew doctor");
+    let out = Command::new("brew").arg("doctor").output();
+    if let Ok(o) = out {
+        let combined = format!(
+            "{}{}",
+            String::from_utf8_lossy(&o.stdout),
+            String::from_utf8_lossy(&o.stderr)
+        );
+        if combined.contains("ready to brew") {
+            ok("brew doctor: all good");
+        } else {
+            warn("brew doctor found issues — run 'brew doctor' for details");
+        }
+    } else {
+        warn("brew doctor failed to run");
+    }
+    Ok(())
+}

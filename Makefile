@@ -1,28 +1,28 @@
 # Files we lint by default. dot-claude/* is owned separately - lint-all sweeps it.
-SHELL_FILES := sync.sh install/lib.sh $(wildcard install/[0-9][0-9]-*.sh) scripts/git-data.sh scripts/theme.sh git-hooks/pre-commit
+SHELL_FILES := bootstrap.sh scripts/theme.sh git-hooks/pre-commit
 
-DOT_CLAUDE_SHELL := $(wildcard dot-claude/hooks/*.sh) dot-claude/statusline-command.sh
+DOT_CLAUDE_SHELL := dot-claude/statusline-command.sh
 
-.PHONY: help sync upgrade doctor lint lint-all fmt
+.PHONY: help sync update doctor lint lint-all fmt
 .DEFAULT_GOAL := help
 
 help:
 	@echo "Targets:"
-	@echo "  sync       Run ./sync.sh (config + symlinks, no brew upgrade)"
-	@echo "  upgrade    Run ./sync.sh --upgrade (brew update + upgrade + cleanup)"
-	@echo "  doctor     Run ./sync.sh --only=health"
+	@echo "  sync       dotctl sync (idempotent install/resync, no brew upgrade)"
+	@echo "  update     dotctl update (brew update + upgrade + cleanup + resync)"
+	@echo "  doctor     dotctl doctor (read-only health check)"
 	@echo "  lint       shellcheck on tracked shell scripts (excludes dot-claude/)"
 	@echo "  lint-all   shellcheck on everything including dot-claude/"
 	@echo "  fmt        shfmt -w on tracked shell scripts (2-space indent)"
 
 sync:
-	./sync.sh
+	dotctl sync
 
-upgrade:
-	./sync.sh --upgrade
+update:
+	dotctl update
 
 doctor:
-	./sync.sh --only=health
+	dotctl doctor
 
 lint:
 	shellcheck -x $(SHELL_FILES)
