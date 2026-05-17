@@ -1,5 +1,5 @@
-# supabase moved to mise (aqua:supabase/cli) — the supabase/tap formula breaks
-# on Tier 3 (Tahoe / Apple Silicon) due to missing top-level URL resolution.
+# CLI tools without reliable Tier 3 bottles live in mise.toml instead
+# (supabase, carapace, watchexec, pueue, bottom, git-absorb).
 brew "mise"
 brew "atuin"
 brew "fzf"
@@ -30,16 +30,6 @@ brew "uv"
 brew "luarocks"        # Lua package manager — required by lazy.nvim for plugins that need luarocks deps
 brew "tree-sitter-cli" # `tree-sitter` CLI parser-generator — needed by nvim-treesitter for :TSInstallFromGrammar
 brew "gdu"             # interactive disk usage analyzer; installs as `gdu-go` to avoid coreutils conflict
-# NOTE: Tier 3 systems (macOS Tahoe / Apple Silicon) lack pre-built bottles
-# for these. sync.sh's "Tier 3 fallback installs" section auto-installs them
-# via cargo (watchexec/pueue/bottom/git-absorb) and GitHub releases (carapace).
-# These brew entries are kept so the canonical install lights up when
-# upstream bottles eventually arrive.
-brew "carapace"      # multi-shell completions for ~600 tools (gh, mise, op, kubectl, ...)
-brew "watchexec"     # fast file-change watcher (run cmds on edits, smart restart)
-brew "pueue"         # persistent task queue daemon for long-running/background jobs
-brew "btop"          # modern resource monitor (top / htop replacement)
-brew "git-absorb"    # auto-fixup staged hunks to the right history commit
 cask "1password-cli"
 cask "1password"
 cask "claude"
