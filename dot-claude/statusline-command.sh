@@ -9,7 +9,7 @@
 input=$(cat)
 
 # -- Git data cache ------------------------------------------------------------
-bash "$HOME/dotFiles/scripts/git-data.sh"
+dotctl git-data
 _git_key=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
 _git_hash=$(printf '%s' "$_git_key" | shasum -a 256 | cut -c1-12)
 _git_cache="${XDG_CACHE_HOME:-$HOME/.cache}/git-data/${_git_hash}.sh"

@@ -1,18 +1,21 @@
-// git-data subcommand — Rust port of scripts/git-data.sh.
+// git-data subcommand — Rust port of scripts/git-data.sh, with PR status.
 //
 // Gathers git state in a single pass and writes a shell-sourceable cache
 // file at $XDG_CACHE_HOME/git-data/<repo-hash>.sh (mode 600, dir 700).
 // Cache key is the repo toplevel (or cwd if outside a repo).
 //
-// Output format matches scripts/git-data.sh exactly so existing zsh
-// consumers (`source $cache_file`) work unchanged.
+// Output format extends scripts/git-data.sh with PR-status fields. Existing
+// zsh consumers (`source $cache_file`) work unchanged; the prompt's PR
+// color cascade in zsh/50-prompt.zsh now lights up against real data.
 //
 // Variables emitted:
 //   GIT_IS_REPO, GIT_IS_WORKTREE, GIT_WORKTREE_NAME, GIT_DIR,
 //   GIT_TOPLEVEL, GIT_BRANCH, GIT_REMOTE_URL, GIT_REPO_NAME,
 //   GIT_REPO_HTTPS, GIT_PORCELAIN, GIT_CONFLICT_COUNT, GIT_STAGED_COUNT,
 //   GIT_UNSTAGED_COUNT, GIT_UNTRACKED_COUNT, GIT_STASH_COUNT,
-//   GIT_AHEAD, GIT_BEHIND, GIT_CACHE_TIME
+//   GIT_AHEAD, GIT_BEHIND, GIT_CACHE_TIME,
+//   GIT_PR_STATUS (pass|pending|fail|""), GIT_PR_URL, GIT_PR_NUMBER,
+//   GIT_PR_CHECKED_AT
 
 use anyhow::Result;
 use sha2::{Digest, Sha256};
@@ -42,13 +45,121 @@ struct GitData {
     stash_count: u32,
     ahead: u32,
     behind: u32,
+    pr_status: String,
+    pr_url: String,
+    pr_number: u32,
+    pr_checked_at: u64,
 }
 
+// PR status freshness — gh costs ~1s per call. With 60s TTL we hit gh once
+// per minute per repo, and the prompt/statusline pick up cached values
+// instantly the rest of the time.
+const PR_TTL_SECS: u64 = 60;
+
 pub fn run() -> Result<()> {
-    let data = gather();
+    let mut data = gather();
     let cache_file = cache_path(&data.toplevel)?;
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    // PR-status freshness: reuse cached values if checked within TTL.
+    // Skipped entirely when not in a repo (gh would error anyway).
+    if data.is_repo {
+        match read_existing_pr_data(&cache_file).filter(|p| now.saturating_sub(p.3) < PR_TTL_SECS) {
+            Some((status, url, number, checked_at)) => {
+                data.pr_status = status;
+                data.pr_url = url;
+                data.pr_number = number;
+                data.pr_checked_at = checked_at;
+            }
+            None => {
+                let (status, url, number) = query_pr_status();
+                data.pr_status = status;
+                data.pr_url = url;
+                data.pr_number = number;
+                data.pr_checked_at = now;
+            }
+        }
+    }
+
     write_cache(&cache_file, &data)?;
     Ok(())
+}
+
+// Read just the PR-status fields from a prior cache file, if present.
+// Returns (status, url, number, checked_at). Returns None if the file
+// is missing, unparsable, or doesn't carry PR fields yet (e.g. legacy
+// bash-written caches from before PR support).
+fn read_existing_pr_data(cache_file: &PathBuf) -> Option<(String, String, u32, u64)> {
+    let content = fs::read_to_string(cache_file).ok()?;
+    let mut status = None;
+    let mut url = None;
+    let mut number = None;
+    let mut checked_at = None;
+    for line in content.lines() {
+        if let Some(v) = single_quoted_value(line, "GIT_PR_STATUS=") {
+            status = Some(v.to_string());
+        } else if let Some(v) = single_quoted_value(line, "GIT_PR_URL=") {
+            url = Some(v.to_string());
+        } else if let Some(v) = single_quoted_value(line, "GIT_PR_NUMBER=") {
+            number = v.parse().ok();
+        } else if let Some(v) = single_quoted_value(line, "GIT_PR_CHECKED_AT=") {
+            checked_at = v.parse().ok();
+        }
+    }
+    Some((status?, url?, number?, checked_at?))
+}
+
+// Extract the single-quoted value from a `KEY='value'` line. Inverse of the
+// write-cache emission. Returns None if the prefix doesn't match or quotes
+// are malformed.
+fn single_quoted_value<'a>(line: &'a str, prefix: &str) -> Option<&'a str> {
+    let rest = line.strip_prefix(prefix)?;
+    let inner = rest.strip_prefix('\'')?.strip_suffix('\'')?;
+    Some(inner)
+}
+
+// Query gh for the current branch's PR status. Returns ("", "", 0) when
+// no PR exists, gh is missing, or gh is unauthenticated. All gracefully
+// degrades — the prompt cascade treats empty status as "no PR cell".
+//
+// We aggregate statusCheckRollup in jq to keep this binary dep-free:
+//   - any check FAILURE                  → fail
+//   - any check still running / no checks → pending
+//   - all SUCCESS                        → pass
+fn query_pr_status() -> (String, String, u32) {
+    const JQ: &str = r#"
+        if .currentBranch == null then "" else
+            (.currentBranch.statusCheckRollup // []) as $checks |
+            (if   ($checks | any(.conclusion == "FAILURE")) then "fail"
+             elif ($checks | length == 0) then "pending"
+             elif ($checks | any(.conclusion == null or .conclusion == "")) then "pending"
+             else "pass" end) as $s |
+            $s + "\t" + (.currentBranch.url // "") + "\t" + ((.currentBranch.number // 0) | tostring)
+        end
+    "#;
+    let out = match Command::new("gh")
+        .args(["pr", "status", "--json", "statusCheckRollup,number,url", "--jq", JQ])
+        .output()
+    {
+        Ok(o) if o.status.success() => o.stdout,
+        _ => return (String::new(), String::new(), 0),
+    };
+    let s = String::from_utf8_lossy(&out).trim().to_string();
+    if s.is_empty() {
+        return (String::new(), String::new(), 0);
+    }
+    let parts: Vec<&str> = s.split('\t').collect();
+    if parts.len() != 3 {
+        return (String::new(), String::new(), 0);
+    }
+    (
+        parts[0].to_string(),
+        parts[1].to_string(),
+        parts[2].parse().unwrap_or(0),
+    )
 }
 
 fn gather() -> GitData {
@@ -279,7 +390,11 @@ fn write_cache(path: &PathBuf, d: &GitData) -> Result<()> {
          GIT_UNTRACKED_COUNT='{untracked_count}'\n\
          GIT_STASH_COUNT='{stash_count}'\n\
          GIT_AHEAD='{ahead}'\n\
-         GIT_BEHIND='{behind}'\n",
+         GIT_BEHIND='{behind}'\n\
+         GIT_PR_STATUS='{pr_status}'\n\
+         GIT_PR_URL='{pr_url}'\n\
+         GIT_PR_NUMBER='{pr_number}'\n\
+         GIT_PR_CHECKED_AT='{pr_checked_at}'\n",
         is_repo = bool01(d.is_repo),
         is_worktree = bool01(d.is_worktree),
         worktree_name = esc(&d.worktree_name),
@@ -297,6 +412,10 @@ fn write_cache(path: &PathBuf, d: &GitData) -> Result<()> {
         stash_count = d.stash_count,
         ahead = d.ahead,
         behind = d.behind,
+        pr_status = esc(&d.pr_status),
+        pr_url = esc(&d.pr_url),
+        pr_number = d.pr_number,
+        pr_checked_at = d.pr_checked_at,
     );
 
     // Atomic write: tempfile in same dir, then rename. umask-equivalent: write

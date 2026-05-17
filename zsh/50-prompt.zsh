@@ -193,13 +193,13 @@ _render_prompt() {
   fi
 
   if (( _need_sync )); then
-    bash "$DOTFILES_DIR/scripts/git-data.sh"
+    dotctl git-data
     PROMPT="$(_build_prompt "$_cache")"
     _prompt_last_pwd="$PWD"
     _prompt_last_head_mtime="$_head_mtime"
     _prompt_last_index_mtime="$_index_mtime"
   else
-    (bash "$DOTFILES_DIR/scripts/git-data.sh" &) 2>/dev/null
+    (dotctl git-data &) 2>/dev/null
   fi
   # Stash the cache path for _transient_accept_line so it doesn't recompute.
   _prompt_last_cache="$_cache"

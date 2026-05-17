@@ -16,7 +16,7 @@ age_max=60
 
 # Kick off a background git refresh if stale (next turn gets fresh data)
 if [[ ! -f "$git_cache" ]] || [[ $(($(date +%s) - $(stat -f %m "$git_cache" 2>/dev/null || echo 0))) -gt $age_max ]]; then
-  (sh "$HOME/dotFiles/scripts/git-data.sh" >/dev/null 2>&1 &) 2>/dev/null || true
+  (dotctl git-data >/dev/null 2>&1 &) 2>/dev/null || true
 fi
 
 # --- git line (only when non-trivial) ---
