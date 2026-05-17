@@ -30,8 +30,8 @@ macOS dotfiles for [alxjrvs](https://github.com/alxjrvs).
 | `dot-claude/` | Claude Code: `CLAUDE.md`, `settings.json`, `hooks/`, `agents/`, `commands/`, `statusline-command.sh` |
 | `scripts/theme.sh` | Nova color palette (Nord-derived); hex is canonical, decimals auto-derived |
 | `scripts/git-data.sh` | Git-state cache feeding the prompt and statusline |
-| `Brewfile` | Homebrew packages |
-| `mise.toml` | Language version pinning (node, python, deno, rust, bun) |
+| `Brewfile` | Homebrew packages (casks + system libs only) |
+| `mise.toml` | Language toolchains + CLI tools that lack Tier 3 bottles (uses mise's `cargo:`/`aqua:` backends) |
 | `sheldon/plugins.toml` | Zsh plugin config |
 | `Makefile` | `make sync` / `upgrade` / `doctor` / `lint` / `fmt` |
 
@@ -79,11 +79,20 @@ Wired as a git difftool. Run with `git dft` (alias for `git difftool`) — uses 
 
 `carapace` provides multi-shell completions for ~600 CLIs (gh, mise, op, kubectl, …). Loaded via `_zsh_cached_load` in `zsh/40-completions.zsh`, integrated with `fzf-tab` for preview windows. First shell after install regenerates the cache automatically.
 
-## Tier 3 fallback installs
+## Tier 3 tools via mise
 
-Apple Silicon Tahoe is a Tier 3 Homebrew configuration — several formulas have no pre-built bottles. `sync.sh` handles this automatically: after `brew bundle`, it installs `watchexec` / `pueue` / `bottom` via `cargo install` (rust toolchain comes from mise) and pulls `carapace` from its GitHub releases into `~/.local/bin/`. Each step is idempotent and short-circuits when the binary is already present. The Brewfile entries stay in place so the canonical install lights up automatically when upstream bottles arrive.
+Apple Silicon Tahoe is a Tier 3 Homebrew configuration — several CLIs have no pre-built bottles. These now install via mise's `cargo:`/`aqua:` backends instead of brew:
 
-Note: `bottom` (binary `btm`) is used in place of `btop` since `btop` is C++ and lacks a Tier 3 build path via cargo.
+| Tool | mise resolves to | Notes |
+|------|------------------|-------|
+| `supabase` | `aqua:supabase/cli` | Tap formula broke on Tier 3 |
+| `carapace` | `aqua:carapace-sh/carapace-bin` | Multi-shell completions |
+| `watchexec` | `cargo:watchexec-cli` | File-change watcher |
+| `pueue` | `cargo:pueue` | Persistent task queue daemon |
+| `bottom` | `cargo:bottom` | top/htop replacement (binary: `btm`) |
+| `git-absorb` | `cargo:git-absorb` | Auto-fixup staged hunks |
+
+The `alias btop="btm"` (`zsh/70-aliases.zsh`) covers the muscle-memory for top/htop. Run `mise install` to materialize everything.
 
 ## Caps Lock → Escape
 
@@ -101,6 +110,7 @@ Commit signing piggybacks on the same SSH key via `gpg.format = ssh` in `.gitcon
 - **Rectangle → Raycast**: `rectangle` is removed in favor of `raycast`. Hotkeys do not transfer; rebind window-snap commands in Raycast preferences.
 - **`bun` → mise**: `bun` is removed from Brewfile and pinned in `mise.toml` instead. Run `mise install` after pulling.
 - **`supabase` → mise**: `supabase/tap/supabase` is removed from Brewfile (the tap's formula breaks on Tier 3 — missing top-level URL). Now installed via mise's aqua backend (`aqua:supabase/cli`); pinned in `mise.toml`. Run `mise install` after pulling.
+- **Tier 3 cargo/curl dance → mise**: `carapace` / `watchexec` / `pueue` / `bottom` / `git-absorb` moved to `mise.toml` (mise's `cargo:`/`aqua:` backends). The old `install/00-brew.sh` Tier 3 fallback section (cargo install loop + `curl | jq` for carapace) is deleted. `btop` brew formula dropped — `alias btop="btm"` covers the slot.
 
 ## Notes
 
