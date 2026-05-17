@@ -1,0 +1,21 @@
+[package]
+name = "dotctl"
+version = "0.1.0"
+edition = "2021"
+description = "Hot-path utility binary for alxjrvs/dotFiles — git-data + statusline + Claude Code hook dispatcher."
+license = "MIT"
+repository = "https://github.com/alxjrvs/dotFiles"
+
+[[bin]]
+name = "dotctl"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+sha2 = "0.10"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

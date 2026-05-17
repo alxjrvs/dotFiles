@@ -36,5 +36,9 @@ Brewfile.lock.json
 # Machine-specific overrides
 dot-claude/settings.local.json
 **/.claude/settings.local.json
+
+# Rust build artifacts (dotctl)
+dotctl/target/
+dotctl/Cargo.lock
 # Added by code-review-graph
 .code-review-graph/
