@@ -21,7 +21,7 @@ macOS dotfiles for [alxjrvs](https://github.com/alxjrvs).
 | `.zprofile`, `.zshenv` | Login env, including `DOTFILES_DIR` export |
 | `.gitconfig`, `.gitmessage` | Git identity, commit template, signing (gpgSign overrides live in `~/.gitconfig.local`) |
 | `git-hooks/pre-commit` | Global pre-commit hook (gitleaks; referenced by `core.hooksPath`) |
-| `nvim/` | AstroNvim v5 config |
+| `nvim/` | AstroNvim v5 in **viewer mode** — treesitter + Snacks + neo-tree; LSP/Mason/formatters disabled (Claude owns editing) |
 | `ghostty/config` | Ghostty terminal config |
 | `atuin/config.toml` | Atuin (shell history) config |
 | `lazygit/config.yml` | Lazygit config (Nord theme) |

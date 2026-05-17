@@ -36,7 +36,7 @@ There are no build, test, or lint commands for this repo.
 | `mise.toml` | `~/.config/mise/config.toml` |
 | `sheldon/plugins.toml` | `~/.config/sheldon/plugins.toml` |
 | `ghostty/config` | `~/.config/ghostty/config` |
-| `nvim/` | `~/.config/nvim` (AstroNvim v5) |
+| `nvim/` | `~/.config/nvim` (AstroNvim v5 in viewer mode — see `nvim/lua/plugins/disable.lua`) |
 | `gh/config.yml` | `~/.config/gh/config.yml` |
 | `ssh/config` | `~/.ssh/config` |
 | `dot-claude/{CLAUDE.md, settings.json, hooks/, statusline-command.sh}` | `~/.claude/` (individually symlinked) |
