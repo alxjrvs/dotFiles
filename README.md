@@ -23,7 +23,6 @@ macOS dotfiles for [alxjrvs](https://github.com/alxjrvs).
 | `git-hooks/pre-commit` | Global pre-commit hook (gitleaks; referenced by `core.hooksPath`) |
 | `nvim/` | AstroNvim v5 config |
 | `ghostty/config` | Ghostty terminal config |
-| `gnar-term/gnar-term.json` | gnar-term config (sideproject; see *Sideprojects* below) |
 | `atuin/config.toml` | Atuin (shell history) config |
 | `lazygit/config.yml` | Lazygit config (Nord theme) |
 | `bat/config` | Bat config |
@@ -102,10 +101,6 @@ Commit signing piggybacks on the same SSH key via `gpg.format = ssh` in `.gitcon
 - **Rectangle → Raycast**: `rectangle` is removed in favor of `raycast`. Hotkeys do not transfer; rebind window-snap commands in Raycast preferences.
 - **`bun` → mise**: `bun` is removed from Brewfile and pinned in `mise.toml` instead. Run `mise install` after pulling.
 - **`supabase` → mise**: `supabase/tap/supabase` is removed from Brewfile (the tap's formula breaks on Tier 3 — missing top-level URL). Now installed via mise's aqua backend (`aqua:supabase/cli`); pinned in `mise.toml`. Run `mise install` after pulling.
-
-## Sideprojects
-
-`gnar-term/` and `.gnar-term/` are dogfooding artifacts for a sideproject — not part of the daily-driver terminal stack. The active terminal is Ghostty + Claude Code agent view. The gnar-term config is here so the sideproject's own dev environment stays in sync; the dotfiles do **not** depend on gnar-term being installed.
 
 ## Notes
 
