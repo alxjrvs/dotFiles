@@ -2,7 +2,7 @@
 # Cross-OS symlinks. Tags inside should_run() determine which subsections
 # run under --only=. The umbrella `symlinks` tag selects everything below.
 
-if should_run symlinks git shell mise sheldon ghostty bat gnar-term atuin lazygit zsh git-hooks nvim gh claude ssh; then
+if should_run symlinks git shell mise sheldon ghostty bat atuin lazygit zsh git-hooks nvim gh claude ssh; then
   echo ""
   echo "==> Symlinks"
 fi
@@ -90,15 +90,6 @@ if [ "$OS" = "Darwin" ]; then
   if should_run symlinks bat; then
     mkdir -p "$HOME/.config/bat"
     link "$DOTFILES_DIR/bat/config" "$HOME/.config/bat/config" "bat/config"
-  fi
-
-  # gnar-term config (sideproject dogfooding — NOT part of daily-driver
-  # terminal stack; the active terminal is Ghostty + Claude Code agent view).
-  # This section exists so the sideproject's dev environment stays in sync.
-  # The rest of the dotfiles do not depend on gnar-term being installed.
-  if should_run symlinks gnar-term; then
-    mkdir -p "$HOME/.config/gnar-term"
-    link "$DOTFILES_DIR/gnar-term/gnar-term.json" "$HOME/.config/gnar-term/gnar-term.json" "gnar-term/gnar-term.json"
   fi
 
   # atuin config

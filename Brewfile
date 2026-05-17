@@ -40,8 +40,6 @@ brew "watchexec"     # fast file-change watcher (run cmds on edits, smart restar
 brew "pueue"         # persistent task queue daemon for long-running/background jobs
 brew "btop"          # modern resource monitor (top / htop replacement)
 brew "git-absorb"    # auto-fixup staged hunks to the right history commit
-tap "manaflow-ai/cmux"
-cask "cmux"
 cask "1password-cli"
 cask "1password"
 cask "claude"
