@@ -696,7 +696,6 @@ fn step_symlinks(ctx: &Context_) -> Result<()> {
             ("dot-claude/settings.json", ".claude/settings.json", "claude/settings.json"),
             ("dot-claude/agents", ".claude/agents", "claude/agents"),
             ("dot-claude/commands", ".claude/commands", "claude/commands"),
-            ("dot-claude/statusline-command.sh", ".claude/statusline-command.sh", "claude/statusline-command.sh"),
         ] {
             link(
                 &ctx.dotfiles_dir.join(src),

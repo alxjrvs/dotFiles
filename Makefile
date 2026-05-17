@@ -1,7 +1,7 @@
 # Files we lint by default. dot-claude/* is owned separately - lint-all sweeps it.
-SHELL_FILES := bootstrap.sh scripts/theme.sh git-hooks/pre-commit
+SHELL_FILES := bootstrap.sh git-hooks/pre-commit
 
-DOT_CLAUDE_SHELL := dot-claude/statusline-command.sh
+DOT_CLAUDE_SHELL :=
 
 .PHONY: help sync update doctor lint lint-all fmt
 .DEFAULT_GOAL := help

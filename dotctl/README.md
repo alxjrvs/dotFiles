@@ -1,80 +1,66 @@
 # dotctl
 
-Hot-path utility binary for [alxjrvs/dotFiles](https://github.com/alxjrvs/dotFiles). Consolidates bash scripts that fire on every prompt redraw / Claude Code tool call / statusline refresh into a single static Rust binary.
+The one-stop dotfiles manager for [alxjrvs/dotFiles](https://github.com/alxjrvs/dotFiles). Single Rust binary that:
 
-## Why
+- installs base dependencies (Homebrew, mise, sheldon, lefthook, gh, fzf, claude CLI)
+- creates symlinks (with interactive conflict resolution)
+- applies macOS defaults
+- powers the zsh prompt + Claude Code statusline + 9 Claude Code hooks
 
-The dotfiles repo's bash hot-path runs *constantly*:
+## Why one binary
 
-| Bash file | Forks per |
-|-----------|----------|
-| `scripts/git-data.sh` (187 lines) | every prompt redraw + every Claude UserPromptSubmit |
-| `dot-claude/statusline-command.sh` (302 lines) | every Claude statusline refresh (~every 10s) |
-| `dot-claude/hooks/*.sh` (9 files) | every Claude tool call (PreToolUse/PostToolUse fire many per turn) |
+The shell hot path runs constantly:
 
-Per-fork bash cold start is ~30-80ms on macOS. At Claude's tool-call rate that compounds visibly. Rust binary: ~5ms cold start, single allocator, no `sed`/`grep`/`jq` subprocesses inside hot loops.
+| Bash file (now deleted) | Forks per |
+|-------------------------|-----------|
+| `scripts/git-data.sh` | every prompt redraw + every UserPromptSubmit |
+| `dot-claude/statusline-command.sh` | every Claude statusline refresh (~every 10s) |
+| `dot-claude/hooks/*.sh` (9 files) | every Claude tool call |
+| `sync.sh` + `install/*.sh` | every fresh-machine setup / `make sync` |
 
-Other wins:
-- Kills the bash 3.2 portability gotchas (macOS `/bin/sh` is bash 3.2) that already bit `scripts/git-data.sh` once.
-- Testable. `cargo test` instead of "looks fine."
-- Removes the "Write/Edit tool strips unicode" hazard from prompt code — Rust string literals don't care about powerline glyphs (U+E0B0 etc.).
+Per-fork bash cold-start on macOS is ~30-80ms. At Claude's tool-call rate, that compounds visibly. A single Rust binary: ~5ms cold start, no `sed`/`grep`/`jq` subprocesses inside hot loops, `cargo test` instead of "looks fine", and no bash 3.2 portability gotchas (macOS `/bin/sh` is bash 3.2).
 
-## Status
+## Subcommands
 
-| Subcommand | Replaces | Status |
-|------------|----------|--------|
-| `dotctl git-data` | `scripts/git-data.sh` | **✓ implemented** (this PR) |
-| `dotctl prompt-render` | inline render in `zsh/50-prompt.zsh` | TODO |
-| `dotctl statusline` | `dot-claude/statusline-command.sh` | TODO |
-| `dotctl hook <event>` | `dot-claude/hooks/*.sh` (9 hooks) | TODO |
+| Verb | Job |
+|------|-----|
+| `dotctl sync` | Idempotent install/resync. Installs missing tools, recreates broken symlinks, applies Brewfile/mise.toml/macOS defaults. Safe anytime; fast on no-op. |
+| `dotctl sync --upgrade` | Same + brew update/upgrade/cleanup. |
+| `dotctl sync --only=brew,mise` | Only listed sections. |
+| `dotctl update` | Equivalent to `dotctl sync --upgrade`. |
+| `dotctl doctor` | Read-only diagnostics: tool presence, symlink integrity, drift. Non-zero exit on missing tools. |
+| `dotctl git-data` | Hot path. Refreshes `$XDG_CACHE_HOME/git-data/<hash>.sh` with git state + PR status. |
+| `dotctl prompt-render` | Hot path. Renders the zsh powerline prompt from the git cache. |
+| `dotctl statusline` | Hot path. Renders the Claude Code 3-5 line statusline. Reads JSON from stdin. |
+| `dotctl hook <event>` | Hot path. Dispatches a Claude Code hook event. Event = kebab-case bash filename (e.g. `lock-file-guard`, `format-on-save`). |
 
-Output format for `dotctl git-data` matches the bash script byte-for-byte so existing consumers (`source $cache_file` in zsh) work unchanged.
+## Install (fresh machine)
 
-## Roadmap
+From a bare macOS:
 
-**Phase 1 — `git-data` (this PR).**
-Scaffold the crate + port the highest-frequency call. No integration yet: `scripts/git-data.sh` stays in place; nothing in zsh/Claude switches over. The Rust binary sits alongside, callable but unused. Lets you review the design before commitment.
-
-**Phase 2 — wire `git-data` in.**
-Update `zsh/50-prompt.zsh` to call `dotctl git-data` instead of `bash $DOTFILES_DIR/scripts/git-data.sh`. Add `install/15-dotctl.sh` to build + install the binary via `cargo install --path dotctl`. `scripts/git-data.sh` deleted.
-
-**Phase 3 — `hook` dispatcher.**
-Single binary handles all 9 hook events. `dot-claude/settings.json` hook commands change from `bash ~/.claude/hooks/X.sh` to `dotctl hook X`. Bash hook files deleted.
-
-**Phase 4 — `statusline` + `prompt-render`.**
-Port the powerline rendering. These are the trickiest — lots of ANSI escape coordination, OSC8 hyperlinks, Nord theme color triplets. Once done, `dot-claude/statusline-command.sh` and most of `zsh/50-prompt.zsh` collapse to glue.
-
-## Install
-
-When phase 2 lands, `sync.sh` builds and installs `dotctl` automatically:
-
-```bash
-cd dotctl && cargo install --path .
+```
+git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
+~/dotFiles/bootstrap.sh
 ```
 
-Until then: `cargo build --release -p dotctl` from `~/dotFiles/` for manual testing.
+`bootstrap.sh` installs rust via rustup, builds + installs `dotctl` to `~/.local/bin/`, then `exec`s `dotctl sync`. The rest happens through `dotctl`.
 
 ## Design
 
 - **Shell out to `git`** rather than link `libgit2`. Slightly slower per call but always matches the user's installed git version and config.
-- **No `tokio`.** All subcommands are synchronous; the bash they replace is synchronous too.
+- **Shell out to `gh`** for PR status (with `--jq` for aggregation). Cached 60s — `gh` is called at most once per minute per repo.
+- **No `tokio`.** All subcommands are synchronous; the bash they replaced was synchronous too.
 - **`anyhow` for errors.** This is a binary, not a library; structured error types aren't worth their weight.
-- **`clap` derive.** CLI shape lives in `src/main.rs` next to the dispatcher.
-- **Per-subcommand module.** `src/git_data.rs`, eventually `src/hook.rs`, `src/statusline.rs`, `src/prompt.rs`.
+- **`clap` derive.** CLI shape lives in `src/main.rs`.
+- **`serde_json`** for hook event payloads (replaces multiple `jq` forks per hook).
+- **`sha2`** for the git cache filename hash (matches the bash `shasum -a 256` exactly).
+- **No regex crate.** A single `grep -qE` shim in `hook::regex_match` keeps binary size down.
 
 ## Test
 
-```bash
-cargo build --release
-./target/release/dotctl git-data
-cat ~/.cache/git-data/*.sh  # confirm output matches scripts/git-data.sh
 ```
-
-Diff against the bash script to confirm format parity:
-
-```bash
-bash ~/dotFiles/scripts/git-data.sh
-mv ~/.cache/git-data/*.sh /tmp/bash-output
-./target/release/dotctl git-data
-diff /tmp/bash-output ~/.cache/git-data/*.sh  # should differ only in the `Generated: <date>` line and the cache header comment
+cargo build --release
+./target/release/dotctl --help
+./target/release/dotctl doctor
+./target/release/dotctl git-data && head ~/.cache/git-data/*.sh
 ```

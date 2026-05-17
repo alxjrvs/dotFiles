@@ -10,6 +10,8 @@ use clap::{Parser, Subcommand};
 mod doctor;
 mod git_data;
 mod hook;
+mod prompt;
+mod statusline;
 mod sync;
 
 #[derive(Parser)]
@@ -57,14 +59,13 @@ enum Command {
     /// UserPromptSubmit hook.
     GitData,
 
-    /// Render the zsh prompt from cached git data.
-    /// NOT YET IMPLEMENTED — port of zsh/50-prompt.zsh. Tracking: see
-    /// dotctl/README.md roadmap (Phase 4).
+    /// Render the zsh prompt from GIT_* env vars (caller sources the
+    /// git-data cache first). Emits zsh PROMPT-syntax with %{...%} escapes.
     PromptRender,
 
-    /// Render the Claude Code statusline from JSON on stdin.
-    /// NOT YET IMPLEMENTED — port of dot-claude/statusline-command.sh.
-    /// Tracking: see dotctl/README.md roadmap (Phase 4).
+    /// Render the Claude Code statusline from JSON on stdin. Refreshes
+    /// the git cache, then emits 3–5 lines with progress bars for context
+    /// + Pro/Max rate-limit windows.
     Statusline,
 
     /// Dispatch a Claude Code hook event. Event name maps 1:1 to the
@@ -88,14 +89,8 @@ fn main() -> anyhow::Result<()> {
         Command::Update => sync::update(),
         Command::Doctor => doctor::run(),
         Command::GitData => git_data::run(),
-        Command::PromptRender => {
-            eprintln!("dotctl prompt-render: not yet implemented — see dotctl/README.md roadmap");
-            std::process::exit(2);
-        }
-        Command::Statusline => {
-            eprintln!("dotctl statusline: not yet implemented — see dotctl/README.md roadmap");
-            std::process::exit(2);
-        }
+        Command::PromptRender => prompt::run(),
+        Command::Statusline => statusline::run(),
         Command::Hook { event } => hook::run(&event),
     }
 }

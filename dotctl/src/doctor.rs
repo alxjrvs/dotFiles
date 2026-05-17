@@ -63,7 +63,6 @@ pub fn run() -> Result<()> {
         (".claude/settings.json", "dot-claude/settings.json"),
         (".claude/agents", "dot-claude/agents"),
         (".claude/commands", "dot-claude/commands"),
-        (".claude/statusline-command.sh", "dot-claude/statusline-command.sh"),
         (".config/sheldon/plugins.toml", "sheldon/plugins.toml"),
         (".config/mise/config.toml", "mise.toml"),
         (".config/gh/config.yml", "gh/config.yml"),

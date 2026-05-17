@@ -338,6 +338,45 @@ pub fn cache_path_for(toplevel: &str) -> Result<PathBuf> {
     cache_path(toplevel)
 }
 
+// Load the cache file into a plain HashMap<KEY, value>. Returns an empty
+// map on any error (missing file, parse failure). Strips the `'...'`
+// quoting from values. Skips comment lines.
+pub fn load_cache() -> std::collections::HashMap<String, String> {
+    use std::collections::HashMap;
+    let toplevel = Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default();
+    let cache_file = match cache_path_for(&toplevel) {
+        Ok(p) => p,
+        Err(_) => return HashMap::new(),
+    };
+    let content = match fs::read_to_string(&cache_file) {
+        Ok(s) => s,
+        Err(_) => return HashMap::new(),
+    };
+    let mut out = HashMap::new();
+    for line in content.lines() {
+        if line.starts_with('#') {
+            continue;
+        }
+        if let Some(eq) = line.find('=') {
+            let key = line[..eq].to_string();
+            let rest = &line[eq + 1..];
+            let val = rest
+                .strip_prefix('\'')
+                .and_then(|s| s.strip_suffix('\''))
+                .unwrap_or(rest)
+                .to_string();
+            out.insert(key, val);
+        }
+    }
+    out
+}
+
 fn cache_path(toplevel: &str) -> Result<PathBuf> {
     let key = if toplevel.is_empty() {
         std::env::current_dir()?.to_string_lossy().into_owned()

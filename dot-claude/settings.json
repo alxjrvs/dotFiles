@@ -220,7 +220,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash /Users/jarvis/.claude/statusline-command.sh",
+    "command": "dotctl statusline",
     "padding": 0,
     "refreshInterval": 10
   },
