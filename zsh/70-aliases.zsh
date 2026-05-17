@@ -33,9 +33,10 @@ alias b="bat --style=plain"
 alias btop="btm"  # bottom (rust) covers the top/htop slot via mise (cargo:bottom)
 
 # Editor
-alias v="nvim"
-alias vi="nvim"
-alias vim="nvim"
+alias v="hx"
+alias vi="hx"
+alias vim="hx"
+alias nvim="hx"
 
 # System
 alias env-sync='"$DOTFILES_DIR/sync.sh"'

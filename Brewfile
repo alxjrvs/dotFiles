@@ -16,7 +16,6 @@ brew "glow"
 brew "fd"
 brew "jq"
 brew "yq"
-brew "neovim"
 brew "gnupg"
 brew "direnv"
 brew "ripgrep"
@@ -27,8 +26,6 @@ brew "shfmt"
 brew "shellcheck"
 brew "lefthook"        # repo-local git hook runner (pre-commit shellcheck/shfmt for this repo; see lefthook.yml)
 brew "uv"
-brew "luarocks"        # Lua package manager — required by lazy.nvim for plugins that need luarocks deps
-brew "tree-sitter-cli" # `tree-sitter` CLI parser-generator — needed by nvim-treesitter for :TSInstallFromGrammar
 brew "gdu"             # interactive disk usage analyzer; installs as `gdu-go` to avoid coreutils conflict
 cask "1password-cli"
 cask "1password"

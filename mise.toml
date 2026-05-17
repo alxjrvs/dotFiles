@@ -16,6 +16,7 @@ watchexec = "latest"                   # file-change watcher
 bottom = "latest"                      # top/htop replacement (binary: btm)
 "aqua:Nukesor/pueue/pueue" = "latest"  # persistent task queue daemon
 "aqua:tummychow/git-absorb" = "latest" # auto-fixup staged hunks
+"github:helix-editor/helix" = { version = "latest", exe = "hx" } # modal editor (Tier 3, no brew bottle; github backend handles release tarball layout)
 
 [settings]
 trusted_config_paths = ["~/**/.worktrees"]

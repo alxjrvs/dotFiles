@@ -2,7 +2,7 @@
 # Cross-OS symlinks. Tags inside should_run() determine which subsections
 # run under --only=. The umbrella `symlinks` tag selects everything below.
 
-if should_run symlinks git shell mise sheldon ghostty bat atuin lazygit zsh git-hooks nvim gh claude ssh; then
+if should_run symlinks git shell mise sheldon ghostty bat atuin lazygit zsh git-hooks gh claude ssh; then
   echo ""
   echo "==> Symlinks"
 fi
@@ -114,17 +114,6 @@ if [ "$OS" = "Darwin" ]; then
     done
   fi
 fi # Darwin
-
-# Neovim config (AstroNvim — symlink entire directory)
-if should_run symlinks nvim; then
-  # Migration: remove old single-file symlink if present
-  if [ -L "$HOME/.config/nvim/init.lua" ] && [ ! -L "$HOME/.config/nvim" ]; then
-    warn "Removing old nvim/init.lua symlink (migrating to AstroNvim)"
-    rm "$HOME/.config/nvim/init.lua"
-    rmdir "$HOME/.config/nvim" 2> /dev/null || true
-  fi
-  link "$DOTFILES_DIR/nvim" "$HOME/.config/nvim" "nvim (AstroNvim)"
-fi
 
 # GitHub CLI config
 if should_run symlinks gh; then
