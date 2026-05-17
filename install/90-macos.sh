@@ -1,5 +1,6 @@
 # shellcheck shell=bash
-# Darwin: macOS defaults, Caps→Esc LaunchAgent, brew doctor.
+# Darwin: macOS defaults + brew doctor.
+# Caps→Esc is handled by Karabiner-Elements (Brewfile cask), not hidutil.
 # Brew doctor lives here (not 00-brew.sh) so it runs at the very end —
 # preserves the original sync.sh ordering where doctor was last.
 
@@ -43,21 +44,6 @@ if should_run macos; then
   killall Dock 2> /dev/null || true
   killall Finder 2> /dev/null || true
   ok "macOS defaults applied (Dock and Finder restarted)"
-
-  # Caps Lock → Escape via hidutil. LaunchAgent re-applies at every login;
-  # the inline hidutil call below applies it for the current session.
-  mkdir -p "$HOME/Library/LaunchAgents"
-  link "$DOTFILES_DIR/macos/LaunchAgents/com.alxjrvs.capsescape.plist" \
-    "$HOME/Library/LaunchAgents/com.alxjrvs.capsescape.plist" \
-    "LaunchAgents/capsescape.plist"
-  if ! launchctl list 2> /dev/null | grep -q com.alxjrvs.capsescape; then
-    launchctl load -w "$HOME/Library/LaunchAgents/com.alxjrvs.capsescape.plist" 2> /dev/null || true
-  fi
-  if hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x700000039,"HIDKeyboardModifierMappingDst":0x700000029}]}' > /dev/null 2>&1; then
-    ok "Caps Lock → Escape remap active"
-  else
-    warn "hidutil failed — Caps→Esc not active this session"
-  fi
 fi # should_run macos
 
 # ── Brew doctor ────────────────────────────────────────────────

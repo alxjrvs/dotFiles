@@ -39,7 +39,6 @@ There are no build, test, or lint commands for this repo.
 | `nvim/` | `~/.config/nvim` (AstroNvim v5) |
 | `gh/config.yml` | `~/.config/gh/config.yml` |
 | `ssh/config` | `~/.ssh/config` |
-| `macos/LaunchAgents/*.plist` | `~/Library/LaunchAgents/` (per-file; Caps→Esc lives here) |
 | `dot-claude/{CLAUDE.md, settings.json, hooks/, statusline-command.sh}` | `~/.claude/` (individually symlinked) |
 
 ### Read-in-place (no symlink)
@@ -59,7 +58,7 @@ Each entry below is symlinked individually into `~/.claude/` by `sync.sh`. It co
 
 ## Secrets management
 
-1Password CLI (`op`) is the source of truth. `.secrets` exists only as a fallback for the narrow case where a subprocess must inherit a value at fork time. Use the patterns below in priority order — drop down a tier only when the one above doesn't apply.
+1Password CLI (`op`) is the source of truth. There is no `.secrets` file — it was decommissioned. Use the patterns below in priority order; drop down a tier only when the one above doesn't apply.
 
 ### Patterns
 
@@ -79,12 +78,17 @@ Pair with `op-run` (pattern 1) — the wrapper resolves the references just for 
 **3. `gh auth token` keychain fallback — GitHub specifically**
 `zsh/00-exports.zsh` derives `GITHUB_PERSONAL_ACCESS_TOKEN` from `gh auth token` at shell start; the token lives in the macOS keychain (managed by `gh auth login`), never on disk. This is the right pattern for any GH-token consumer (Claude MCP, scripts, etc.) because it inherits at fork time without writing the token anywhere.
 
-**4. Eager `.secrets` export — last resort**
-Only justified when a subprocess must inherit the value at fork time AND no keychain-backed CLI exists for that service. Today `.secrets` is empty of secrets; if you add one back, document inline why patterns 1–3 don't apply.
+**4. `direnv` + `op read` — project-local inheritance**
+For values a project's subprocesses must inherit at fork time, use a per-project `.envrc` that resolves through `op read`:
+```sh
+# .envrc
+export STRIPE_KEY="$(op read 'op://Personal/stripe/credential')"
+```
+`direnv` (already hooked in `zsh/30-plugins.zsh`) resolves on `cd`. Pair with a checked-in `.envrc.template` so collaborators / future you can reproduce the env without plaintext on disk.
 
 ### Rules
 
-- **Never commit a plaintext token** to any file, including `.secrets` (which is gitignored but lives on disk as plaintext). Use an `op://` reference or `op-run` instead.
+- **Never commit a plaintext token** to any file. Use `op://` references or `op-run` instead.
 - **Never add a token to a config file as plaintext.** If `.npmrc`-shape tools need credentials, use `op://` refs + `op-run`.
 - **If you find a plaintext token anywhere**, revoke first, then migrate to `op` or a keychain CLI.
 - `gitleaks` runs as a global pre-commit hook (`git-hooks/pre-commit`); known token shapes that hit a commit block it. Don't rely on this catching everything — it's a backstop, not the policy.
@@ -108,42 +112,3 @@ Pause and confirm with the user before doing any of these:
 - **Sheldon plugin order matters**: `zsh-syntax-highlighting` must be last in `sheldon/plugins.toml`.
 - **Hardcoded `$HOME/dotFiles` path**: Scripts in `scripts/` are read via absolute path. If the repo is cloned somewhere else, those consumers break.
 - **settings.json allow + excludedCommands**: When adding a new command binary to `permissions.allow`, you must also add it to `sandbox.excludedCommands` — omitting it means the sandbox blocks the command regardless of the allow rule. The reverse also applies: an `excludedCommands` entry without a matching allow rule signals intent but has no effect on prompting.
-
-<!-- code-review-graph MCP tools -->
-## MCP Tools: code-review-graph
-
-**IMPORTANT: This project has a knowledge graph. ALWAYS use the
-code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
-the codebase.** The graph is faster, cheaper (fewer tokens), and gives
-you structural context (callers, dependents, test coverage) that file
-scanning cannot.
-
-### When to use graph tools FIRST
-
-- **Exploring code**: `semantic_search_nodes` or `query_graph` instead of Grep
-- **Understanding impact**: `get_impact_radius` instead of manually tracing imports
-- **Code review**: `detect_changes` + `get_review_context` instead of reading entire files
-- **Finding relationships**: `query_graph` with callers_of/callees_of/imports_of/tests_for
-- **Architecture questions**: `get_architecture_overview` + `list_communities`
-
-Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
-
-### Key Tools
-
-| Tool | Use when |
-|------|----------|
-| `detect_changes` | Reviewing code changes — gives risk-scored analysis |
-| `get_review_context` | Need source snippets for review — token-efficient |
-| `get_impact_radius` | Understanding blast radius of a change |
-| `get_affected_flows` | Finding which execution paths are impacted |
-| `query_graph` | Tracing callers, callees, imports, tests, dependencies |
-| `semantic_search_nodes` | Finding functions/classes by name or keyword |
-| `get_architecture_overview` | Understanding high-level codebase structure |
-| `refactor_tool` | Planning renames, finding dead code |
-
-### Workflow
-
-1. The graph auto-updates on file changes (via hooks).
-2. Use `detect_changes` for code review.
-3. Use `get_affected_flows` to understand impact.
-4. Use `query_graph` pattern="tests_for" to check coverage.

@@ -15,7 +15,7 @@
 - When a term is ambiguous, ask for clarification rather than assuming a meaning
 - No audio output from Claude or its hooks — no `say`, no notification sounds. Silent desktop notifications are fine. Voice input (me talking to Claude) is fine.
 - **Meaningful-benefit filter**: for every proposed change, ask *does this provide real payoff?* Skip nice-to-haves, redundant additions, and belts-and-suspenders safety without a real risk. "Do them all" means "do the ones worth doing" — say what you're skipping and why. Completeness is not a virtue.
-- **Secrets handling**: 1Password CLI (`op`) is the source of truth. NEVER propose adding a plaintext token to `.secrets`, `.env`, `.npmrc`, or any config file. Default to an `op://` reference + the `op-run` wrapper. The only exception is fork-time inheritance where no keychain-backed CLI exists (e.g., the `gh auth token` fallback handles GitHub) — document inline why the standard patterns don't apply. If you find an existing plaintext token in any repo, flag it before doing anything else: revoke first, then migrate.
+- **Secrets handling**: 1Password CLI (`op`) is the source of truth. NEVER propose adding a plaintext token to `.env`, `.npmrc`, or any config file. Default to an `op://` reference + the `op-run` wrapper, or `direnv` + `op read` in a per-project `.envrc` for fork-time inheritance. The only exception is keychain-backed CLIs (e.g., the `gh auth token` fallback handles GitHub) — document inline why the standard patterns don't apply. If you find an existing plaintext token in any repo, flag it before doing anything else: revoke first, then migrate.
 
 ## Coding Style
 

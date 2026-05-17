@@ -19,3 +19,11 @@ pre-commit:
       glob: "{*.sh,git-hooks/*,dot-claude/statusline-command.sh,dot-claude/hooks/*}"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}
+
+# pre-push: sanity check that the box itself is healthy before pushing
+# dotfiles changes. Catches things like a broken mise/node/bun install,
+# missing git identity — i.e. drift between this repo and the machine.
+pre-push:
+  commands:
+    sync-health:
+      run: ./sync.sh --only=health

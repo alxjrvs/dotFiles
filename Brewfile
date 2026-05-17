@@ -21,7 +21,6 @@ brew "gnupg"
 brew "direnv"
 brew "ripgrep"
 brew "tealdeer"
-brew "tmux"         # multiplexer for SSH sessions where cmux isn't available
 brew "zoxide"
 brew "sheldon"
 brew "shfmt"
@@ -54,7 +53,7 @@ cask "orbstack"
 cask "font-fira-code-nerd-font"
 cask "ghostty"
 cask "google-chrome"
-# Caps Lock → Escape via Karabiner; hidutil LaunchAgent stays as belt-and-suspenders fallback.
+# Caps Lock → Escape via Karabiner.
 cask "karabiner-elements"
 cask "ngrok"
 cask "notunes"
