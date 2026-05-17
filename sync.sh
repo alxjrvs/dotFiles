@@ -19,7 +19,7 @@
 #   install/65-git-maint.sh
 #   install/70-lefthook.sh
 #   install/80-health.sh
-#   install/90-macos.sh — Darwin defaults + Caps→Esc + brew doctor
+#   install/90-macos.sh — Darwin defaults + brew doctor
 
 # Globals — read by glob-sourced install/*.sh modules below. SC2034 is
 # silenced file-wide because shellcheck only sees sync.sh in isolation.
@@ -56,18 +56,16 @@ for arg in "$@"; do
       echo "  gh        GitHub CLI + config"
       echo "  nvim      Neovim config"
       echo "  ghostty   Ghostty config"
-      echo "  gnar-term gnar-term config (sideproject)"
       echo "  bat       Bat config"
       echo "  atuin     Atuin config"
       echo "  lazygit   Lazygit config"
-      echo "  tmux      tmux config"
       echo "  zsh       Zsh fragments (~/.config/zsh/*.zsh)"
       echo "  git       Git config files + maintenance schedule"
       echo "  shell     Shell config (.zshrc, .zprofile)"
       echo "  ssh       ~/.ssh/config symlink"
       echo "  lefthook  Install lefthook hooks for THIS repo"
       echo "  health    Health checks"
-      echo "  macos     macOS defaults + Caps→Esc LaunchAgent"
+      echo "  macos     macOS defaults"
       echo "  linux     Linux system setup"
       exit 0
       ;;
@@ -96,7 +94,13 @@ if [ -f "$LOCK_FILE" ]; then
     rm -f "$LOCK_FILE"
   fi
 fi
-( set -C; echo $$ > "$LOCK_FILE" ) 2> /dev/null || { printf '\033[0;31m  ✗ %s\033[0m\n' "Could not acquire lock" >&2; exit 1; }
+(
+  set -C
+  echo $$ > "$LOCK_FILE"
+) 2> /dev/null || {
+  printf '\033[0;31m  ✗ %s\033[0m\n' "Could not acquire lock" >&2
+  exit 1
+}
 trap 'rm -f "$LOCK_FILE"' EXIT
 trap 'echo ""; printf "\033[0;31m  ✗ %s\033[0m\n" "Cancelled — stopping install." >&2; exit 1' INT TERM
 
