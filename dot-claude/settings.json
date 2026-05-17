@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "cleanupPeriodDays": 14,
   "env": {
-    "EDITOR": "nvim",
+    "EDITOR": "hx",
     "NODE_ENV": "development",
     "ENABLE_PROMPT_CACHING_1H": "1",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80",
@@ -24,7 +24,6 @@
       "Skill(frontend-design:*)",
       "Skill(update-config)",
       "mcp__plugin_context7_context7",
-      "mcp__code-review-graph",
       "Bash(npm *)",
       "Bash(npx *)",
       "Bash(node *)",

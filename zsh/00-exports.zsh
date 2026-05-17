@@ -1,13 +1,10 @@
 # Editor / pager / locale
-export EDITOR="nvim"
+export EDITOR="hx"
 export VISUAL="$EDITOR"
-export MANPAGER="nvim +Man!"
+export MANPAGER="less -R"
 export LANG=en_US.UTF-8
 export LESS='-RFX'
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
-
-# JDK (Android SDK paths live in .zprofile so login env owns them once)
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
 
 # GitHub MCP server (plugin:github:github) reads this; sourced lazily from gh CLI keychain.
 export GITHUB_PERSONAL_ACCESS_TOKEN="${GITHUB_PERSONAL_ACCESS_TOKEN:-$(gh auth token 2>/dev/null)}"

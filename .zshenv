@@ -4,7 +4,3 @@ export DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotFiles}"
 
 # mise shims — available in all shell contexts (hooks, editors, subprocesses)
 export PATH="$HOME/.local/share/mise/shims:$PATH"
-
-# Cargo env (Rust toolchain installed by rustup) — present even though mise
-# pins a rust version, since rustup-installed cargo lives at ~/.cargo/bin.
-[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
