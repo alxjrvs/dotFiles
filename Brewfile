@@ -26,6 +26,7 @@ brew "zoxide"
 brew "sheldon"
 brew "shfmt"
 brew "shellcheck"
+brew "lefthook"        # repo-local git hook runner (pre-commit shellcheck/shfmt for this repo; see lefthook.yml)
 brew "uv"
 brew "luarocks"        # Lua package manager — required by lazy.nvim for plugins that need luarocks deps
 brew "tree-sitter-cli" # `tree-sitter` CLI parser-generator — needed by nvim-treesitter for :TSInstallFromGrammar
@@ -59,6 +60,5 @@ cask "ngrok"
 cask "notunes"
 # Window mgmt + launcher + clipboard (replaces Rectangle + Spotlight).
 cask "raycast"
-cask "rowanj-gitx"   # GitX (Rowanj fork) — keep alongside lazygit for visual history dives
 cask "slack"
 cask "tuple"

@@ -19,9 +19,13 @@ There are no build, test, or lint commands for this repo.
 
 ## Architecture
 
+### Driver + module layout
+
+`sync.sh` is a thin driver (≈120 lines) that handles arg parsing, the lock file, and `set -eo pipefail`, then sources `install/lib.sh` (shared helpers) followed by every `install/[0-9][0-9]-*.sh` module in numbered order. Each module gates itself on `$OS` and `should_run` so sourcing an inert module is a cheap no-op. To modify a single section, edit its module; to add a new section, drop a `NN-name.sh` in `install/` and pick a number that places it in the right execution order (00 brew → 90 macos).
+
 ### Symlink Model
 
-`sync.sh` uses a `link()` function that creates idempotent symlinks with interactive conflict resolution. Source files in this repo map to their destinations:
+`sync.sh` (via `install/lib.sh`) defines a `link()` function that creates idempotent symlinks with interactive conflict resolution. Source files in this repo map to their destinations:
 
 | Source | Destination |
 |--------|-------------|
@@ -94,6 +98,7 @@ Pause and confirm with the user before doing any of these:
 - **`sync.sh` symlink semantics**: the `link()` function prompts on conflict and is interactive. Do not refactor it to auto-overwrite or skip prompts.
 - **Hardcoded `$HOME/dotFiles` paths**: `scripts/*.sh` assumes this absolute path. Do not refactor them to use `$PWD` or relative paths.
 - **Starship references**: the user replaced Starship with a hand-rolled prompt. If you see `starship` in files, treat it as historical — do not reintroduce Starship code or dependencies.
+- **gnar-term is a sideproject, not load-bearing**: `gnar-term/`, `.gnar-term/`, and the `gnar-term` section in `sync.sh` are sideproject dogfooding. The active terminal stack is Ghostty + Claude Code agent view. Do NOT pitch gnar-term as primary, recommend "use both with Ghostty," or extend the dotfiles to depend on it being installed.
 
 ## Important Gotchas
 

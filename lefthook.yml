@@ -1,0 +1,21 @@
+# Lefthook config for this repo (dotfiles itself).
+#
+# Wires shellcheck + shfmt as a pre-commit gate on staged shell files.
+# Composes with the global `git-hooks/pre-commit` (gitleaks): the global
+# hook explicitly chain-calls the repo-local .git/hooks/pre-commit that
+# `lefthook install` writes — so both run on commit here, gitleaks-only
+# elsewhere.
+#
+# Install (idempotent; sync.sh runs this automatically):
+#   lefthook install
+
+pre-commit:
+  parallel: true
+  commands:
+    shellcheck:
+      glob: "{*.sh,git-hooks/*,dot-claude/statusline-command.sh,dot-claude/hooks/*}"
+      run: shellcheck -x {staged_files}
+    shfmt-check:
+      glob: "{*.sh,git-hooks/*,dot-claude/statusline-command.sh,dot-claude/hooks/*}"
+      # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
+      run: shfmt -d -i 2 -ci -sr {staged_files}

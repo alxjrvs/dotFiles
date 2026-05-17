@@ -1,5 +1,5 @@
 # Files we lint by default. dot-claude/* is owned separately - lint-all sweeps it.
-SHELL_FILES := sync.sh scripts/git-data.sh scripts/theme.sh git-hooks/pre-commit
+SHELL_FILES := sync.sh install/lib.sh $(wildcard install/[0-9][0-9]-*.sh) scripts/git-data.sh scripts/theme.sh git-hooks/pre-commit
 
 DOT_CLAUDE_SHELL := $(wildcard dot-claude/hooks/*.sh) dot-claude/statusline-command.sh
 
