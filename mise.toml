@@ -1,10 +1,21 @@
 [tools]
+# Language toolchains
 node = "25"
 python = "3.13"
 deno = "2"
 rust = "1.94"
 bun = "latest"
-supabase = "latest"
+
+# CLI tools — moved here from Brewfile so Apple Silicon Tahoe (Tier 3, no
+# pre-built bottles) gets a consistent install path via mise. Short names
+# resolve through mise's registry; pueue and git-absorb need the explicit
+# aqua: path because the registry doesn't alias them.
+supabase = "latest"                    # aqua:supabase/cli — tap formula broke on Tier 3
+carapace = "latest"                    # multi-shell completions (~600 CLIs)
+watchexec = "latest"                   # file-change watcher
+bottom = "latest"                      # top/htop replacement (binary: btm)
+"aqua:Nukesor/pueue/pueue" = "latest"  # persistent task queue daemon
+"aqua:tummychow/git-absorb" = "latest" # auto-fixup staged hunks
 
 [settings]
 trusted_config_paths = ["~/**/.worktrees"]

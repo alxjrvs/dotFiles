@@ -7,7 +7,7 @@
 #
 # Layout:
 #   install/lib.sh     — helpers (ok/warn/fail/dim, link(), should_run())
-#   install/00-brew.sh — Darwin Homebrew + bundle + Tier 3 fallbacks
+#   install/00-brew.sh — Darwin Homebrew + bundle (Tier 3 tools moved to mise.toml)
 #   install/05-linux.sh
 #   install/10-sheldon-bin.sh
 #   install/20-mise.sh — Darwin mise
