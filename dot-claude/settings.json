@@ -214,10 +214,10 @@
     ]
   },
   "worktree": {
-    "baseRef": "head",
     "symlinkDirectories": [
       "node_modules"
     ],
+    "baseRef": "head",
     "bgIsolation": "none"
   },
   "statusLine": {
@@ -246,7 +246,8 @@
     "audit@gnar-next": true,
     "ignite@gnar-next": true,
     "implement@gnar-next": true,
-    "meta@gnar-next": true
+    "meta@gnar-next": true,
+    "rust-analyzer-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -328,14 +329,6 @@
         "~/.gnupg",
         "~/.netrc",
         "~/.config/op"
-      ],
-      "denyWithinAllow": [
-        "~/.claude/settings.json",
-        "~/dotFiles/.claude/settings.json",
-        "~/dotFiles/.claude/settings.local.json",
-        "/Library/Application Support/ClaudeCode/managed-settings.json",
-        "/Library/Application Support/ClaudeCode/managed-settings.d",
-        "~/dotFiles/.claude/skills"
       ]
     },
     "excludedCommands": [
@@ -364,6 +357,10 @@
   "remoteControlAtStartup": true,
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
+  "preferredNotifChannel": "iterm2",
+  "isolatePeerMachines": true,
+  "daemonColdStart": "ask",
+  "tui": "fullscreen",
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true,
   "bypassPermissionsModeAccepted": true

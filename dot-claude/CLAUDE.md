@@ -46,7 +46,6 @@
 - When dispatching an `Agent` that edits code, pass `isolation: "worktree"`.
 - When dispatching an `Agent`, default to `model: "sonnet"`. Use `"haiku"` for pure lookups (file reads, greps, one-shot searches). Reserve the default (opus) for architecture, debugging, code review, or tasks that explicitly need heavy reasoning.
 - Default to `/effort medium` for most prompts. Use `/effort high` for architecture, debugging, and review. Avoid `/effort max` — diminishing returns past high.
-- When the `mcp__gnar-term` MCP is available, lean on it as a first-class tool — use its full feature surface naturally (spawning windows/panes for worktrees and parallel work, sending input to other panes, querying terminal state, etc.). Don't fall back to less capable alternatives just out of habit.
 
 ## Worktrees
 
