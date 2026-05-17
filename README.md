@@ -81,16 +81,16 @@ Wired as a git difftool. Run with `git dft` (alias for `git difftool`) — uses 
 
 ## Tier 3 tools via mise
 
-Apple Silicon Tahoe is a Tier 3 Homebrew configuration — several CLIs have no pre-built bottles. These now install via mise's `cargo:`/`aqua:` backends instead of brew:
+Apple Silicon Tahoe is a Tier 3 Homebrew configuration — several CLIs have no pre-built bottles. These live in `mise.toml` instead, resolved through mise's registry (short names) or via explicit `aqua:` paths where the registry doesn't have an alias:
 
-| Tool | mise resolves to | Notes |
-|------|------------------|-------|
-| `supabase` | `aqua:supabase/cli` | Tap formula broke on Tier 3 |
-| `carapace` | `aqua:carapace-sh/carapace-bin` | Multi-shell completions |
-| `watchexec` | `cargo:watchexec-cli` | File-change watcher |
-| `pueue` | `cargo:pueue` | Persistent task queue daemon |
-| `bottom` | `cargo:bottom` | top/htop replacement (binary: `btm`) |
-| `git-absorb` | `cargo:git-absorb` | Auto-fixup staged hunks |
+| Tool | Entry in `mise.toml` |
+|------|----------------------|
+| supabase | `supabase = "latest"` |
+| carapace | `carapace = "latest"` |
+| watchexec | `watchexec = "latest"` |
+| bottom (binary: `btm`) | `bottom = "latest"` |
+| pueue | `"aqua:Nukesor/pueue/pueue" = "latest"` |
+| git-absorb | `"aqua:tummychow/git-absorb" = "latest"` |
 
 The `alias btop="btm"` (`zsh/70-aliases.zsh`) covers the muscle-memory for top/htop. Run `mise install` to materialize everything.
 

@@ -7,15 +7,15 @@ rust = "1.94"
 bun = "latest"
 
 # CLI tools — moved here from Brewfile so Apple Silicon Tahoe (Tier 3, no
-# pre-built bottles) gets a consistent install path via mise's cargo:/aqua:
-# backends. The short names below are mise registry aliases; mise resolves
-# them to cargo:<crate> or aqua:<org>/<repo> automatically.
-supabase = "latest"      # aqua:supabase/cli — tap formula broke on Tier 3
-carapace = "latest"      # aqua:carapace-sh/carapace-bin — multi-shell completions
-watchexec = "latest"     # cargo:watchexec-cli — file-change watcher
-pueue = "latest"         # cargo:pueue — persistent task queue daemon
-bottom = "latest"        # cargo:bottom — top/htop replacement (binary: btm)
-git-absorb = "latest"    # cargo:git-absorb — auto-fixup staged hunks
+# pre-built bottles) gets a consistent install path via mise. Short names
+# resolve through mise's registry; pueue and git-absorb need the explicit
+# aqua: path because the registry doesn't alias them.
+supabase = "latest"                    # aqua:supabase/cli — tap formula broke on Tier 3
+carapace = "latest"                    # multi-shell completions (~600 CLIs)
+watchexec = "latest"                   # file-change watcher
+bottom = "latest"                      # top/htop replacement (binary: btm)
+"aqua:Nukesor/pueue/pueue" = "latest"  # persistent task queue daemon
+"aqua:tummychow/git-absorb" = "latest" # auto-fixup staged hunks
 
 [settings]
 trusted_config_paths = ["~/**/.worktrees"]
