@@ -8,6 +8,7 @@
 use clap::{Parser, Subcommand};
 
 mod git_data;
+mod hook;
 
 #[derive(Parser)]
 #[command(name = "dotctl", version, about = "alxjrvs/dotFiles hot-path utility")]
@@ -34,11 +35,11 @@ enum Command {
     Statusline,
 
     /// Dispatch a Claude Code hook event.
-    /// NOT YET IMPLEMENTED — port of dot-claude/hooks/*.sh. Tracking:
-    /// see dotctl/README.md roadmap.
+    /// Event name maps 1:1 to the bash hook file it replaces (kebab-case,
+    /// without `.sh`): lock-file-guard, policy-guard, format-on-save,
+    /// trim-bash-output, session-start, user-prompt-submit, cwd-changed,
+    /// pre-compact, permission-denied.
     Hook {
-        /// Hook event name: PreToolUse, PostToolUse, UserPromptSubmit,
-        /// SessionStart, CwdChanged, PreCompact, PermissionDenied, Stop.
         event: String,
     },
 }
@@ -55,9 +56,6 @@ fn main() -> anyhow::Result<()> {
             eprintln!("dotctl statusline: not yet implemented — see dotctl/README.md roadmap");
             std::process::exit(2);
         }
-        Command::Hook { event } => {
-            eprintln!("dotctl hook {event}: not yet implemented — see dotctl/README.md roadmap");
-            std::process::exit(2);
-        }
+        Command::Hook { event } => hook::run(&event),
     }
 }

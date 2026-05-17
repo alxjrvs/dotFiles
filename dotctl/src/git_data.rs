@@ -332,6 +332,12 @@ fn git(args: &[&str]) -> Result<String> {
     Ok(String::from_utf8_lossy(&out.stdout).to_string())
 }
 
+// Public for hook::user_prompt_submit which needs to read the same cache
+// file without re-running gather.
+pub fn cache_path_for(toplevel: &str) -> Result<PathBuf> {
+    cache_path(toplevel)
+}
+
 fn cache_path(toplevel: &str) -> Result<PathBuf> {
     let key = if toplevel.is_empty() {
         std::env::current_dir()?.to_string_lossy().into_owned()
