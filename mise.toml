@@ -19,6 +19,8 @@ bun = "latest"
 
 # ── Shell-init-time tools (need PATH presence before zsh fragments load) ─
 sheldon = "latest"      # zsh plugin manager — loaded in zsh/30-plugins.zsh
+                        # NOTE: links against /opt/homebrew/opt/openssl@3/lib —
+                        # ensure `openssl@3` is in Brewfile or the binary segfaults.
 atuin = "latest"        # shell history sync — loaded in zsh/30-plugins.zsh
 direnv = "latest"       # per-dir env hook — loaded in zsh/30-plugins.zsh
 fzf = "latest"          # `fzf --zsh` integration loaded in zsh/60-tools.zsh
@@ -52,7 +54,7 @@ shellcheck = "latest"
 "npm:bash-language-server" = "latest"
 "npm:typescript-language-server" = "latest"
 "aqua:artempyanykh/marksman" = "latest"   # markdown LSP
-"aqua:tamasfe/taplo-cli" = "latest"       # TOML LSP + formatter (`taplo lsp stdio`)
+taplo = "latest"                          # TOML LSP + formatter (`taplo lsp stdio`); registry alias → aqua:tamasfe/taplo (no -cli suffix)
 
 # ── Misc ──────────────────────────────────────────────────────────────
 uv = "latest"           # Python project / venv manager

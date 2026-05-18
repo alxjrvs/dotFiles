@@ -6,9 +6,17 @@
 # fonts) stay because mise doesn't manage them.
 #
 # Rule: if you're about to add a `brew "..."` line here, stop. Put it in
-# mise.toml. The exceptions are mise itself and casks.
+# mise.toml. The exceptions are mise itself, casks, and system libraries
+# (no mise equivalent) that pre-built CLIs link against at runtime.
 
 brew "mise"
+
+# openssl@3 is a system library, not a CLI — `aqua:rossmacarthur/sheldon`
+# dyld-links against /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib and
+# segfaults without it. Cargo-built sheldon also needs openssl-sys
+# (transitively via git2). Keeping it explicit guarantees fresh-machine
+# installs don't ship a broken sheldon binary.
+brew "openssl@3"
 
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"
@@ -31,7 +39,8 @@ cask "ghostty"
 
 cask "google-chrome"
 
-# Caps Lock → Escape via Karabiner.
+# Caps Lock → Control via Karabiner (rule lives in karabiner/karabiner.json,
+# symlinked by dotctl sync).
 cask "karabiner-elements"
 
 cask "ngrok"

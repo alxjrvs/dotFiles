@@ -12,6 +12,7 @@ mod git_data;
 mod hook;
 mod macos_defaults;
 mod prompt;
+mod prune;
 mod statusline;
 mod sync;
 mod util;
@@ -36,7 +37,7 @@ enum Command {
         /// Comma-separated section tag(s) to run. Default = everything.
         /// Tags: brew mise sheldon symlinks claude gh dotctl git
         ///       shell ssh ghostty bat atuin lazygit zsh git-hooks
-        ///       helix lefthook health macos linux
+        ///       helix karabiner lefthook macos linux
         #[arg(long)]
         only: Option<String>,
         /// Auto-overwrite symlink conflicts (mv existing to .bak, then link).
@@ -55,6 +56,18 @@ enum Command {
     /// Read-only health check: tool presence, symlink integrity, drift.
     /// Exits non-zero on missing tools (warnings on symlink drift).
     Doctor,
+
+    /// Find and delete .bak files left behind by `dotctl sync` link
+    /// conflicts and harness-tuneup-style `.bak-<ISO>` snapshots.
+    /// Default prompts; `-y` deletes without prompting, `-n` lists only.
+    Prune {
+        /// Delete without prompting.
+        #[arg(short = 'y', long = "yes")]
+        yes: bool,
+        /// List only; never delete.
+        #[arg(short = 'n', long = "dry-run")]
+        dry_run: bool,
+    },
 
     /// Gather git state and write the shell-sourceable cache file.
     /// Hot-path: called from the zsh prompt, Claude statusline, and
@@ -90,6 +103,16 @@ fn main() -> anyhow::Result<()> {
         }
         Command::Update => sync::update(),
         Command::Doctor => doctor::run(),
+        Command::Prune { yes, dry_run } => {
+            let mode = if dry_run {
+                prune::PromptMode::DryRun
+            } else if yes {
+                prune::PromptMode::AutoYes
+            } else {
+                prune::PromptMode::AskDefaultYes
+            };
+            prune::run(mode)
+        }
         Command::GitData => git_data::run(),
         Command::PromptRender => prompt::run(),
         Command::Statusline => statusline::run(),

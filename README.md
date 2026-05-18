@@ -17,7 +17,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 |---------|-----|
 | `dotctl sync` | Idempotent re-sync. Installs missing tools, recreates broken symlinks. Fast on no-op. |
 | `dotctl sync --upgrade` | Same + brew update/upgrade/cleanup. |
-| `dotctl sync --only=brew,mise` | Only the listed sections (tags: `brew mise sheldon symlinks claude fzf gh dotctl git shell ssh ghostty bat atuin lazygit zsh git-hooks lefthook macos linux`). |
+| `dotctl sync --only=brew,mise` | Only the listed sections (tags: `brew mise sheldon symlinks claude gh dotctl git shell ssh ghostty bat atuin lazygit zsh git-hooks helix karabiner lefthook macos linux`). |
 | `dotctl update` | Bump everything to current — equivalent to `dotctl sync --upgrade`. |
 | `dotctl doctor` | Read-only diagnostics: tool presence, symlink integrity, drift. Exits non-zero on failures. |
 
@@ -37,12 +37,12 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `lazygit/config.yml` | Lazygit config (Nord theme) |
 | `bat/config` | Bat config |
 | `ssh/config` | SSH client config (1Password agent, ControlMaster, Augment include) |
+| `karabiner/karabiner.json` | Karabiner-Elements rules (Caps Lock → Control) |
 | `dot-claude/` | Claude Code: `CLAUDE.md`, `settings.json`, `agents/`, `commands/`, `statusline-command.sh` (hooks dispatch via `dotctl hook <event>`) |
 | `Brewfile` | `brew "mise"` + casks (GUI apps, fonts). All dev CLIs live in mise.toml. |
 | `mise.toml` | Language toolchains + every dev CLI. Single update path via `mise upgrade`. |
 | `sheldon/plugins.toml` | Zsh plugin config |
 | `lefthook.yml` | Pre-commit gate (shellcheck + shfmt) for this repo |
-| `Makefile` | `make sync` / `update` / `doctor` / `lint` / `fmt` (thin shims over `dotctl`) |
 
 ## Claude Code integration
 
@@ -115,9 +115,9 @@ Rule: if you're about to add `brew "..."` to the Brewfile, stop. Put it in mise.
 
 Replaced AstroNvim viewer-mode. `alias v=hx`, `alias vim=hx`, `alias nvim=hx`. Zero plugins to maintain; one binary install via mise.
 
-## Caps Lock → Escape
+## Caps Lock → Control
 
-Via Karabiner-Elements (Brewfile cask). On first launch grant Input Monitoring + Accessibility, then enable "caps_lock → escape" in Simple Modifications. Survives sleep cycles and external keyboards.
+Via Karabiner-Elements (Brewfile cask). Config is tracked at `karabiner/karabiner.json` and symlinked by `dotctl sync` to `~/.config/karabiner/karabiner.json`. On first launch grant Input Monitoring + Accessibility; the rebind (`caps_lock → left_control`, both device-scoped and profile-scoped) is then live. Survives sleep cycles and external keyboards.
 
 ## 1Password SSH agent
 

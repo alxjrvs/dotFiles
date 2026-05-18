@@ -21,6 +21,20 @@ use crate::util::which;
 // ─────────────────────────────────────────────────────────────── public API
 
 pub fn run(only: Option<&str>, upgrade: bool, link_mode: LinkMode) -> Result<()> {
+    // Prepend mise shims to PATH so `which("lefthook")` / `which("sheldon")`
+    // and all the Command::new(tool) probes below resolve regardless of the
+    // caller's PATH (sync is often invoked from bash subprocesses, CI, or
+    // git hooks that don't source .zshenv).
+    if let Ok(home) = std::env::var("HOME") {
+        let shims = format!("{home}/.local/share/mise/shims");
+        if Path::new(&shims).is_dir() {
+            let current = std::env::var("PATH").unwrap_or_default();
+            if !current.split(':').any(|p| p == shims) {
+                std::env::set_var("PATH", format!("{shims}:{current}"));
+            }
+        }
+    }
+
     let ctx = Context_::new(only, upgrade, link_mode)?;
     let _lock = LockGuard::acquire()?;
 
@@ -39,6 +53,16 @@ pub fn run(only: Option<&str>, upgrade: bool, link_mode: LinkMode) -> Result<()>
     step_lefthook(&ctx)?;
     step_macos(&ctx)?;
     step_brew_doctor(&ctx)?;
+
+    // Sync owns the lifecycle of the `.bak` files its link() function
+    // produces — prompt to clean them at the end so the manager closes
+    // the loop. Interactive mode prompts (default yes); non-interactive
+    // modes (-f/-s) auto-delete to match the caller's silence intent.
+    let prune_mode = match ctx.link_mode {
+        LinkMode::Interactive => crate::prune::PromptMode::AskDefaultYes,
+        LinkMode::Overwrite | LinkMode::Skip => crate::prune::PromptMode::AutoYes,
+    };
+    let _ = crate::prune::run(prune_mode);
 
     println!();
     println!("==> Done!");
@@ -481,11 +505,18 @@ fn step_mise(ctx: &Context_) -> Result<()> {
         return Ok(());
     }
     section("mise tools");
-    warn("Installing/updating tools from mise.toml...");
     let mise_toml = ctx.home.join(".config/mise/config.toml");
     if mise_toml.exists() {
         let _ = run_cmd("mise", &["trust", mise_toml.to_str().unwrap()]);
     }
+    // `mise install` only installs declared versions — for tools pinned to
+    // `latest` it does not advance the resolved version on subsequent runs.
+    // On --upgrade, run `mise upgrade` to actually bump.
+    if ctx.upgrade {
+        warn("Upgrading mise tools (mise upgrade)...");
+        let _ = run_cmd("mise", &["upgrade"]);
+    }
+    warn("Installing tools from mise.toml...");
     require("mise", &["install"])?;
     ok("mise tools up to date");
     Ok(())
@@ -498,7 +529,7 @@ fn step_symlinks(ctx: &Context_) -> Result<()> {
     // semantics so `dotctl sync --only=zsh` does what you expect.
     let umbrella_tags: &[&str] = &[
         "symlinks", "git", "shell", "mise", "sheldon", "ghostty", "bat", "atuin", "lazygit", "zsh",
-        "git-hooks", "gh", "claude", "ssh", "helix",
+        "git-hooks", "gh", "claude", "ssh", "helix", "karabiner",
     ];
     if !ctx.should_run(umbrella_tags) {
         return Ok(());
@@ -645,6 +676,19 @@ fn step_symlinks(ctx: &Context_) -> Result<()> {
                 &ctx.dotfiles_dir.join("helix/languages.toml"),
                 &ctx.home.join(".config/helix/languages.toml"),
                 "helix/languages.toml",
+                ctx.link_mode,
+            )?;
+        }
+        if ctx.should_run(&["symlinks", "karabiner"]) {
+            // Karabiner-Elements writes to karabiner.json from its GUI; the
+            // symlink means GUI rebinds round-trip back into the tracked file.
+            // Verified safe on v15+; older versions occasionally replaced the
+            // symlink with a regular file (fixed upstream).
+            let _ = fs::create_dir_all(ctx.home.join(".config/karabiner"));
+            link(
+                &ctx.dotfiles_dir.join("karabiner/karabiner.json"),
+                &ctx.home.join(".config/karabiner/karabiner.json"),
+                "karabiner/karabiner.json",
                 ctx.link_mode,
             )?;
         }
@@ -838,8 +882,11 @@ fn step_lefthook(ctx: &Context_) -> Result<()> {
         warn("lefthook not found — should have been installed by brew bundle");
         return Ok(());
     }
+    // --force: bypass the core.hooksPath conflict warning. By design the
+    // global hooksPath points at git-hooks/pre-commit (gitleaks), which
+    // chain-calls .git/hooks/pre-commit — that's what lefthook owns here.
     let status = Command::new("lefthook")
-        .arg("install")
+        .args(["install", "--force"])
         .current_dir(&ctx.dotfiles_dir)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -849,7 +896,7 @@ fn step_lefthook(ctx: &Context_) -> Result<()> {
             "lefthook hooks installed in {}/.git/hooks/",
             ctx.dotfiles_dir.display()
         )),
-        _ => warn("lefthook install failed — check 'lefthook install' manually"),
+        _ => warn("lefthook install failed — check 'lefthook install --force' manually"),
     }
     Ok(())
 }

@@ -19,6 +19,20 @@ pub fn run() -> Result<()> {
     let mut fails = 0u32;
     let mut warns = 0u32;
 
+    // Prepend mise shims to PATH so tool-presence checks work when doctor
+    // is invoked from non-zsh contexts (CI, bash subshells, pre-push hooks).
+    // .zshenv does this for zsh; dotctl must do its own equivalent so the
+    // `Command::new(tool)` probes below don't spuriously fail.
+    if let Ok(home) = std::env::var("HOME") {
+        let shims = format!("{home}/.local/share/mise/shims");
+        if Path::new(&shims).is_dir() {
+            let current = std::env::var("PATH").unwrap_or_default();
+            if !current.split(':').any(|p| p == shims) {
+                std::env::set_var("PATH", format!("{shims}:{current}"));
+            }
+        }
+    }
+
     println!("==> Doctor");
 
     // ── Git config ───────────────────────────────────────────────────
@@ -77,6 +91,7 @@ pub fn run() -> Result<()> {
         (".config/atuin/config.toml", "atuin/config.toml"),
         (".config/lazygit/config.yml", "lazygit/config.yml"),
         (".config/helix/languages.toml", "helix/languages.toml"),
+        (".config/karabiner/karabiner.json", "karabiner/karabiner.json"),
         (".ssh/config", "ssh/config"),
     ];
     for (link_rel, target_rel) in expected {
@@ -129,6 +144,11 @@ pub fn run() -> Result<()> {
     // ── brew bundle drift (Darwin) ───────────────────────────────────
     // Brewfile holds `brew "mise"` + casks under Lean A. `brew bundle check`
     // exits nonzero when any declared formula/cask is missing.
+    //
+    // --no-upgrade matches `step_brew`'s install flag in sync.rs — without
+    // it, `check` flags packages with available updates as "drift," which
+    // misaligns with sync (which only upgrades on --upgrade). The user
+    // upgrades via `dotctl update`.
     #[cfg(target_os = "macos")]
     {
         let brewfile = dotfiles.join("Brewfile");
@@ -136,6 +156,7 @@ pub fn run() -> Result<()> {
             let status = Command::new("brew")
                 .arg("bundle")
                 .arg("check")
+                .arg("--no-upgrade")
                 .arg("--file")
                 .arg(&brewfile)
                 .stdout(Stdio::null())

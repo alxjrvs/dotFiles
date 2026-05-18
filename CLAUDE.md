@@ -11,14 +11,14 @@ Source of truth for setup behavior is `dotctl/src/sync.rs`. Source of truth for 
 ## Key Commands
 
 ```bash
-dotctl sync             # Idempotent install/resync. Fast on no-op.
-dotctl sync --upgrade   # Same + brew update/upgrade/cleanup.
+dotctl sync             # Idempotent install/resync. Fast on no-op. Prompts to clean .bak files at the end (default yes).
+dotctl sync --upgrade   # Same + brew update/upgrade/cleanup + mise upgrade.
 dotctl sync --only=brew,mise   # Only the listed section tags.
 dotctl update           # Bump everything (equivalent to sync --upgrade).
 dotctl doctor           # Read-only health check; exits non-zero on failures.
+dotctl prune            # Find + delete .bak files left by sync conflicts and harness-tuneup.
 cargo test --manifest-path=dotctl/Cargo.toml   # Run dotctl's test suite.
-make lint               # shellcheck on tracked shell scripts.
-make fmt                # shfmt -w on tracked shell scripts.
+lefthook run pre-commit # shellcheck + shfmt over staged shell files.
 ```
 
 Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (installs rustup, builds dotctl, execs `dotctl sync`).
@@ -57,6 +57,7 @@ Sync steps are gated on `should_run(&[tags])` and on `Os::Darwin` / `Os::Linux`.
 | `ghostty/config` | `~/.config/ghostty/config` |
 | `lazygit/config.yml` | `~/.config/lazygit/config.yml` |
 | `helix/languages.toml` | `~/.config/helix/languages.toml` |
+| `karabiner/karabiner.json` | `~/.config/karabiner/karabiner.json` |
 | `atuin/config.toml` | `~/.config/atuin/config.toml` |
 | `gh/config.yml` | `~/.config/gh/config.yml` |
 | `ssh/config` | `~/.ssh/config` (mode 600) |
