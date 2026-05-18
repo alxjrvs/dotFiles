@@ -37,5 +37,15 @@ scrollback-limit = 10000
 
 shell-integration = zsh
 
+# Quick terminal — drop-down visor toggled by a global hotkey. Pairs with
+# Raycast for zero-latency context switching; no app launch needed for a
+# 10-second command. `global:` makes the keybind work even when Ghostty
+# isn't focused.
+quick-terminal-position = top
+quick-terminal-screen = mouse
+quick-terminal-autohide = true
+quick-terminal-animation-duration = 0.15
+
 # Keybindings
 keybind = ctrl+shift+w=close_surface
+keybind = global:ctrl+grave_accent=toggle_quick_terminal
