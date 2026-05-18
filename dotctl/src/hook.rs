@@ -13,6 +13,7 @@
 // handler is responsible for its own exit code.
 
 use anyhow::Result;
+use chrono::Utc;
 use regex::Regex;
 use serde_json::{json, Value};
 use std::io::{self, Read, Write};
@@ -22,6 +23,7 @@ use std::sync::LazyLock;
 use std::time::SystemTime;
 
 use crate::git_data;
+use crate::util::which;
 
 pub fn run(event: &str) -> Result<()> {
     match event {
@@ -74,14 +76,7 @@ fn bool_at(v: &Value, path: &[&str]) -> bool {
 }
 
 fn iso_utc_now() -> String {
-    // RFC3339 in UTC without a chrono dep — shell out to date once per hook.
-    Command::new("date")
-        .args(["-u", "+%Y-%m-%dT%H:%M:%SZ"])
-        .output()
-        .ok()
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .map(|s| s.trim().to_string())
-        .unwrap_or_default()
+    Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
 }
 
 fn append_jsonl(path: &Path, entry: &Value) {
@@ -252,23 +247,6 @@ fn format_on_save() -> Result<()> {
         _ => {}
     }
     Ok(())
-}
-
-fn which(bin: &str) -> bool {
-    Command::new("command")
-        .args(["-v", bin])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
-        || Command::new(bin)
-            .arg("--version")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false)
 }
 
 // ---------------------------------------------- 4. trim-bash-output (PostToolUse)

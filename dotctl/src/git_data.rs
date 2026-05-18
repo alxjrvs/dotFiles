@@ -18,6 +18,7 @@
 //   GIT_PR_CHECKED_AT
 
 use anyhow::Result;
+use chrono::{DateTime, Local};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::Write;
@@ -482,18 +483,13 @@ fn write_cache(path: &PathBuf, d: &GitData) -> Result<()> {
     Ok(())
 }
 
-// Cheap RFC-1123-ish timestamp without bringing in chrono. The bash script
-// uses `date` which produces system-local "Sat May 17 14:30:12 PDT 2026"
-// style output — but the cache header is informational only and consumers
-// don't parse it. Just emit something readable.
+// Local-time human stamp for the cache header. Informational only; consumers
+// don't parse it. Mirrors `date`'s default macOS format
+// ("Sat May 17 14:30:12 PDT 2026") so existing cache-file readability is
+// preserved across the chrono swap.
 fn format_human_time(epoch_secs: u64) -> String {
-    // Use the system `date` command to match the bash output style exactly.
-    // Cheap one-time fork; happens once per cache write (low frequency).
-    Command::new("date")
-        .output()
-        .ok()
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .map(|s| s.trim().to_string())
+    DateTime::from_timestamp(epoch_secs as i64, 0)
+        .map(|dt| dt.with_timezone(&Local).format("%a %b %e %H:%M:%S %Z %Y").to_string())
         .unwrap_or_else(|| epoch_secs.to_string())
 }
 

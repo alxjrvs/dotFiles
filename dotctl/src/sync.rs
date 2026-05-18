@@ -16,6 +16,8 @@ use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 
+use crate::util::which;
+
 // ─────────────────────────────────────────────────────────────── public API
 
 pub fn run(only: Option<&str>, upgrade: bool, link_mode: LinkMode) -> Result<()> {
@@ -279,24 +281,6 @@ pub fn link(src: &Path, dst: &Path, label: &str, mode: LinkMode) -> Result<()> {
 }
 
 // ────────────────────────────────────────────────────────────────── exec helpers
-
-fn which(bin: &str) -> bool {
-    Command::new(bin)
-        .arg("--version")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
-        || Command::new("sh")
-            .arg("-c")
-            .arg(format!("command -v {bin}"))
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false)
-}
 
 // Run a command, inheriting stdout/stderr. Returns Ok only on success.
 fn run_cmd(prog: &str, args: &[&str]) -> Result<ExitStatus> {

@@ -20,6 +20,10 @@ serde_json = "1"
 # Default features keep unicode handling — our patterns are ASCII but
 # stripping unicode costs little binary size at the cohesion expense.
 regex = "1"
+# chrono: eliminates `/usr/bin/date` forks in hook::iso_utc_now and
+# git_data::format_human_time. Default features keep tz support; the
+# binary-size cost is dwarfed by the per-hook subprocess savings.
+chrono = "0.4"
 
 [dev-dependencies]
 tempfile = "3"

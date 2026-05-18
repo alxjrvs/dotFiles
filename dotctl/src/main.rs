@@ -13,6 +13,7 @@ mod hook;
 mod prompt;
 mod statusline;
 mod sync;
+mod util;
 
 #[derive(Parser)]
 #[command(name = "dotctl", version, about = "alxjrvs/dotFiles installer + hot-path utility")]
