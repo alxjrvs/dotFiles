@@ -10,8 +10,8 @@ Check what's outdated in `~/dotFiles/` and draft an update PR.
 
 1. **brew** — `brew update` then `brew outdated --formula` and `brew outdated --cask`. Cross-reference against `Brewfile` to filter out non-managed packages.
 2. **mise** — `mise outdated`. Note tools whose declared `"latest"` version drifted from installed.
-3. **lazy-lock.json** (nvim) — Check `nvim/lazy-lock.json` last-update time. If >30 days, suggest `nvim --headless "+Lazy! sync" +qa` to refresh.
-4. **sheldon** — Check `sheldon/plugins.toml` against latest commits on each repo (skip if rate-limited).
+3. **sheldon** — Check `sheldon/plugins.toml` against latest commits on each repo (skip if rate-limited).
+4. **Cargo** — `cargo update --dry-run --manifest-path=~/dotFiles/dotctl/Cargo.toml` to surface stale dotctl deps.
 
 ## Output
 
@@ -20,7 +20,7 @@ Group by category. For each outdated item:
 ```
 brew formula: <name>  <current>  →  <latest>     # one-line changelog if interesting
 mise tool:    <name>  <current>  →  <latest>
-nvim plugins: <N> plugins drifted past 30d, suggest :Lazy sync
+cargo crate:  <name>  <current>  →  <latest>
 ```
 
 ## PR draft

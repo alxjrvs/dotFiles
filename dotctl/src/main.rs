@@ -25,16 +25,16 @@ struct Cli {
 enum Command {
     /// Install/sync the dotfiles environment to the current machine.
     /// Idempotent — safe to run anytime. Installs Homebrew, mise tools,
-    /// sheldon, gh extensions, fzf, lefthook, claude CLI; applies macOS
+    /// sheldon, gh extensions, lefthook, claude CLI; applies macOS
     /// defaults; creates symlinks.
     Sync {
         /// Run brew update + upgrade + cleanup (slow).
         #[arg(long)]
         upgrade: bool,
         /// Comma-separated section tag(s) to run. Default = everything.
-        /// Tags: brew mise sheldon symlinks claude fzf gh dotctl git
+        /// Tags: brew mise sheldon symlinks claude gh dotctl git
         ///       shell ssh ghostty bat atuin lazygit zsh git-hooks
-        ///       lefthook health macos linux
+        ///       helix lefthook health macos linux
         #[arg(long)]
         only: Option<String>,
         /// Auto-overwrite symlink conflicts (mv existing to .bak, then link).

@@ -352,7 +352,6 @@
   "skipDangerousModePermissionPrompt": false,
   "editorMode": "normal",
   "verbose": true,
-  "preferredNotifChannel": "iterm2",
   "teammateMode": "auto",
   "remoteControlAtStartup": true,
   "isolatePeerMachines": true,

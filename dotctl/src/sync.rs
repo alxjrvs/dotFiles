@@ -2,7 +2,7 @@
 //
 // `dotctl sync` is the one-stop installer/syncer. It takes a bare machine
 // (with rust + git already present from bootstrap.sh) to a fully configured
-// one: installs Homebrew, mise toolchains, sheldon, gh extensions, fzf,
+// one: installs Homebrew, mise toolchains, sheldon, gh extensions,
 // lefthook, claude CLI, applies macOS defaults, creates symlinks.
 //
 // Idempotent: re-running is safe and fast when nothing changed.
@@ -32,7 +32,6 @@ pub fn run(only: Option<&str>, upgrade: bool, link_mode: LinkMode) -> Result<()>
     step_symlinks(&ctx)?;
     step_sheldon_plugins(&ctx)?;
     step_claude(&ctx)?;
-    step_fzf(&ctx)?;
     step_gh(&ctx)?;
     step_git_maint(&ctx)?;
     step_lefthook(&ctx)?;
@@ -408,7 +407,7 @@ fn step_linux(ctx: &Context_) -> Result<()> {
     section("System packages");
     warn("Updating apt and installing packages...");
     require("sudo", &["apt", "update", "-y"])?;
-    require("sudo", &["apt", "install", "-y", "zsh", "neovim", "git", "curl"])?;
+    require("sudo", &["apt", "install", "-y", "zsh", "git", "curl"])?;
     ok("System packages installed");
 
     section("Default shell");
@@ -770,31 +769,7 @@ fn step_claude(ctx: &Context_) -> Result<()> {
     Ok(())
 }
 
-// ─────────────────────────────────────────────────────── 9. fzf (Darwin)
-
-fn step_fzf(ctx: &Context_) -> Result<()> {
-    if ctx.os != Os::Darwin || !ctx.should_run(&["fzf"]) {
-        return Ok(());
-    }
-    section("fzf");
-    warn("Installing/updating fzf shell integration...");
-    let prefix = capture("brew", &["--prefix"]);
-    if prefix.is_empty() {
-        warn("brew --prefix returned empty — skipping fzf install");
-        return Ok(());
-    }
-    let installer = PathBuf::from(prefix).join("opt/fzf/install");
-    let status = Command::new(installer.to_str().unwrap())
-        .args(["--key-bindings", "--completion", "--no-update-rc", "--no-bash", "--no-fish"])
-        .status();
-    match status {
-        Ok(s) if s.success() => ok("fzf shell integration up to date"),
-        _ => warn("fzf installer failed (is fzf installed via brew?)"),
-    }
-    Ok(())
-}
-
-// ─────────────────────────────────────────────────── 10. gh extensions
+// ─────────────────────────────────────────────────── 9. gh extensions
 
 fn step_gh(ctx: &Context_) -> Result<()> {
     if !ctx.should_run(&["gh"]) {
