@@ -58,6 +58,10 @@ shellcheck = "latest"
 uv = "latest"           # Python project / venv manager
 "cargo:tealdeer" = "latest"  # `tldr` pager; not in mise registry. Aqua dropped binary releases (only completions remain), so we build from crates.io.
 
+# ── Rust dev loop (dotctl is actively developed) ──────────────────────
+"cargo:bacon" = "latest"           # persistent error-panel test runner
+"cargo:cargo-nextest" = "latest"   # faster `cargo test` replacement; used by lefthook pre-push
+
 # ── Pre-existing entries: Tier 3 escapees from Brewfile (kept) ────────
 supabase = "latest"                    # aqua:supabase/cli — tap formula broke on Tier 3
 carapace = "latest"                    # multi-shell completions (~600 CLIs)

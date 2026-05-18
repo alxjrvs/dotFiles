@@ -31,4 +31,7 @@ pre-push:
       run: dotctl doctor
     cargo-test:
       glob: "dotctl/**/*.rs"
-      run: cargo test --manifest-path=dotctl/Cargo.toml --quiet
+      # cargo-nextest is ~2x faster than `cargo test`; falls back to `cargo
+      # test` automatically if nextest isn't installed yet (fresh machine
+      # mid-bootstrap before mise has materialized the binary).
+      run: cargo nextest run --manifest-path=dotctl/Cargo.toml --no-fail-fast 2>/dev/null || cargo test --manifest-path=dotctl/Cargo.toml --quiet
