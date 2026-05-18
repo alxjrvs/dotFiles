@@ -47,6 +47,13 @@ gdu = "latest"
 shfmt = "latest"
 shellcheck = "latest"
 
+# ── Helix language servers (helix/languages.toml wires these in) ──────
+# rust-analyzer ships with the `rust` toolchain above; the rest are below.
+"npm:bash-language-server" = "latest"
+"npm:typescript-language-server" = "latest"
+"aqua:artempyanykh/marksman" = "latest"   # markdown LSP
+"aqua:tamasfe/taplo-cli" = "latest"       # TOML LSP + formatter (`taplo lsp stdio`)
+
 # ── Misc ──────────────────────────────────────────────────────────────
 uv = "latest"           # Python project / venv manager
 "cargo:tealdeer" = "latest"  # `tldr` pager; not in mise registry. Aqua dropped binary releases (only completions remain), so we build from crates.io.

@@ -514,7 +514,7 @@ fn step_symlinks(ctx: &Context_) -> Result<()> {
     // semantics so `dotctl sync --only=zsh` does what you expect.
     let umbrella_tags: &[&str] = &[
         "symlinks", "git", "shell", "mise", "sheldon", "ghostty", "bat", "atuin", "lazygit", "zsh",
-        "git-hooks", "gh", "claude", "ssh",
+        "git-hooks", "gh", "claude", "ssh", "helix",
     ];
     if !ctx.should_run(umbrella_tags) {
         return Ok(());
@@ -652,6 +652,15 @@ fn step_symlinks(ctx: &Context_) -> Result<()> {
                 &ctx.dotfiles_dir.join("lazygit/config.yml"),
                 &ctx.home.join(".config/lazygit/config.yml"),
                 "lazygit/config.yml",
+                ctx.link_mode,
+            )?;
+        }
+        if ctx.should_run(&["symlinks", "helix"]) {
+            let _ = fs::create_dir_all(ctx.home.join(".config/helix"));
+            link(
+                &ctx.dotfiles_dir.join("helix/languages.toml"),
+                &ctx.home.join(".config/helix/languages.toml"),
+                "helix/languages.toml",
                 ctx.link_mode,
             )?;
         }

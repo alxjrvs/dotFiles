@@ -56,6 +56,7 @@ Sync steps are gated on `should_run(&[tags])` and on `Os::Darwin` / `Os::Linux`.
 | `sheldon/plugins.toml` | `~/.config/sheldon/plugins.toml` |
 | `ghostty/config` | `~/.config/ghostty/config` |
 | `lazygit/config.yml` | `~/.config/lazygit/config.yml` |
+| `helix/languages.toml` | `~/.config/helix/languages.toml` |
 | `atuin/config.toml` | `~/.config/atuin/config.toml` |
 | `gh/config.yml` | `~/.config/gh/config.yml` |
 | `ssh/config` | `~/.ssh/config` (mode 600) |

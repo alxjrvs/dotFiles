@@ -76,6 +76,7 @@ pub fn run() -> Result<()> {
         (".config/bat/config", "bat/config"),
         (".config/atuin/config.toml", "atuin/config.toml"),
         (".config/lazygit/config.yml", "lazygit/config.yml"),
+        (".config/helix/languages.toml", "helix/languages.toml"),
         (".ssh/config", "ssh/config"),
     ];
     for (link_rel, target_rel) in expected {

@@ -1,0 +1,72 @@
+# helix/languages.toml — LSPs and language-specific overrides.
+#
+# Synced to ~/.config/helix/languages.toml by `dotctl sync --only=helix`.
+# All LSP binaries live in mise.toml so they're on PATH in every shell.
+# Verify a single language with `hx --health <language>` (e.g. `hx --health rust`).
+
+# ── Language servers ───────────────────────────────────────────────────
+
+[language-server.rust-analyzer]
+command = "rust-analyzer"
+
+[language-server.bash-language-server]
+command = "bash-language-server"
+args = ["start"]
+
+[language-server.typescript-language-server]
+command = "typescript-language-server"
+args = ["--stdio"]
+
+[language-server.marksman]
+command = "marksman"
+args = ["server"]
+
+[language-server.taplo]
+command = "taplo"
+args = ["lsp", "stdio"]
+
+# ── Language overrides ─────────────────────────────────────────────────
+
+[[language]]
+name = "rust"
+language-servers = ["rust-analyzer"]
+
+[[language]]
+name = "bash"
+language-servers = ["bash-language-server"]
+formatter = { command = "shfmt", args = ["-i", "2", "-ci", "-sr"] }
+auto-format = true
+
+[[language]]
+name = "typescript"
+language-servers = ["typescript-language-server"]
+formatter = { command = "prettier", args = ["--parser", "typescript"] }
+auto-format = true
+
+[[language]]
+name = "tsx"
+language-servers = ["typescript-language-server"]
+formatter = { command = "prettier", args = ["--parser", "typescript"] }
+auto-format = true
+
+[[language]]
+name = "javascript"
+language-servers = ["typescript-language-server"]
+formatter = { command = "prettier", args = ["--parser", "babel"] }
+auto-format = true
+
+[[language]]
+name = "jsx"
+language-servers = ["typescript-language-server"]
+formatter = { command = "prettier", args = ["--parser", "babel"] }
+auto-format = true
+
+[[language]]
+name = "markdown"
+language-servers = ["marksman"]
+
+[[language]]
+name = "toml"
+language-servers = ["taplo"]
+formatter = { command = "taplo", args = ["fmt", "-"] }
+auto-format = true
