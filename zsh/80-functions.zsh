@@ -31,3 +31,12 @@ alias pqs='pueue status'
 alias pqa='pueue add'
 alias pql='pueue log'
 alias pqf='pueue follow'
+
+# Start pueued on first interactive shell if it isn't already running.
+# The aliases above all silently fail with "no connection to daemon"
+# otherwise — this used to require manual `pueued -d`. Detached, so
+# shell startup pays at most ~50ms on the cold-start path and zero
+# when the daemon is up.
+if [[ -o interactive ]] && command -v pueued &>/dev/null; then
+  pueue status &>/dev/null || pueued -d &>/dev/null &!
+fi
