@@ -126,6 +126,124 @@ pub fn run() -> Result<()> {
         warns += drift_warns;
     }
 
+    // ── brew bundle drift (Darwin) ───────────────────────────────────
+    // Brewfile holds `brew "mise"` + casks under Lean A. `brew bundle check`
+    // exits nonzero when any declared formula/cask is missing.
+    #[cfg(target_os = "macos")]
+    {
+        let brewfile = dotfiles.join("Brewfile");
+        if brewfile.is_file() {
+            let status = Command::new("brew")
+                .arg("bundle")
+                .arg("check")
+                .arg("--file")
+                .arg(&brewfile)
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status();
+            match status {
+                Ok(s) if s.success() => ok("brew bundle: all dependencies satisfied"),
+                Ok(_) => {
+                    warn_msg("brew bundle: drift — run `brew bundle --file=~/dotFiles/Brewfile`");
+                    warns += 1;
+                }
+                Err(_) => {} // brew missing — already flagged by tool-presence section
+            }
+        }
+    }
+
+    // ── gh auth status ───────────────────────────────────────────────
+    // Several integrations depend on the keychain-stored token:
+    // GITHUB_PERSONAL_ACCESS_TOKEN (zsh/00-exports.zsh), git_data PR
+    // status (gh pr status). Surface unauth here so it doesn't manifest
+    // as silent prompt degradation.
+    {
+        let status = Command::new("gh")
+            .args(["auth", "status"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+        match status {
+            Ok(s) if s.success() => ok("gh: authenticated"),
+            _ => {
+                warn_msg("gh: not authenticated — run `gh auth login`");
+                warns += 1;
+            }
+        }
+    }
+
+    // ── mise tools installed ────────────────────────────────────────
+    // `mise ls --missing` lists declared tools that aren't installed.
+    // Empty = all good; any output = drift.
+    {
+        let out = Command::new("mise").args(["ls", "--missing"]).output();
+        if let Ok(o) = out {
+            if o.status.success() {
+                let s = String::from_utf8_lossy(&o.stdout);
+                let missing: Vec<&str> = s.lines().filter(|l| !l.trim().is_empty()).collect();
+                if missing.is_empty() {
+                    ok("mise: all declared tools installed");
+                } else {
+                    warn_msg(&format!(
+                        "mise: {} tool(s) missing — run `mise install`",
+                        missing.len()
+                    ));
+                    for line in missing.iter().take(5) {
+                        warn_msg(&format!("  {line}"));
+                    }
+                    warns += missing.len() as u32;
+                }
+            }
+        }
+    }
+
+    // ── lefthook hook installed in this repo ─────────────────────────
+    // dotctl sync runs `lefthook install`, but if a user runs commands in
+    // a fresh worktree without syncing, the .git/hooks/pre-commit may not
+    // exist. Catches that drift.
+    {
+        let lefthook_hook = dotfiles.join(".git/hooks/pre-commit");
+        if !lefthook_hook.is_file() {
+            warn_msg("lefthook: pre-commit hook not installed in dotfiles repo — run `lefthook install`");
+            warns += 1;
+        } else if let Ok(content) = fs::read_to_string(&lefthook_hook) {
+            if content.contains("lefthook") {
+                ok("lefthook: pre-commit hook installed");
+            } else {
+                warn_msg("lefthook: pre-commit hook present but not authored by lefthook — run `lefthook install`");
+                warns += 1;
+            }
+        }
+    }
+
+    // ── pueued daemon liveness ───────────────────────────────────────
+    // 80-functions.zsh auto-starts the daemon, but only on interactive
+    // shells. A long-lived ssh session or a tmux pane spawned before the
+    // auto-start was added can still have a stopped daemon.
+    {
+        let pueued_present = Command::new("pueued")
+            .arg("--version")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        if pueued_present {
+            let status = Command::new("pueue")
+                .arg("status")
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status();
+            match status {
+                Ok(s) if s.success() => ok("pueued: daemon responding"),
+                _ => {
+                    warn_msg("pueued: daemon not running — start with `pueued -d`");
+                    warns += 1;
+                }
+            }
+        }
+    }
+
     // ── macOS defaults drift ─────────────────────────────────────────
     // Only runs on Darwin. Audits each MANAGED default via `defaults read`
     // and flags drift (the user changed it via System Settings) or missing
