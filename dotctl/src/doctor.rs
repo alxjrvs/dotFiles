@@ -265,6 +265,87 @@ pub fn run() -> Result<()> {
         }
     }
 
+    // ── brew doctor (Darwin) ─────────────────────────────────────────
+    // Absorbs `brew doctor` so users get a single audit entrypoint.
+    // brew doctor exits 0 even with warnings; the heuristic for "clean"
+    // is the "ready to brew" string in stdout/stderr.
+    #[cfg(target_os = "macos")]
+    {
+        let out = Command::new("brew").arg("doctor").output();
+        if let Ok(o) = out {
+            let combined = format!(
+                "{}{}",
+                String::from_utf8_lossy(&o.stdout),
+                String::from_utf8_lossy(&o.stderr)
+            );
+            if combined.contains("ready to brew") {
+                ok("brew doctor: ready to brew");
+            } else {
+                let warning_lines: Vec<&str> = combined
+                    .lines()
+                    .filter(|l| l.trim_start().starts_with("Warning:"))
+                    .collect();
+                let n = warning_lines.len().max(1) as u32;
+                warn_msg(&format!(
+                    "brew doctor: {n} warning(s) — run `brew doctor` for details"
+                ));
+                for line in warning_lines.iter().take(3) {
+                    warn_msg(&format!("  {}", line.trim()));
+                }
+                warns += n;
+            }
+        }
+    }
+
+    // ── mise doctor ──────────────────────────────────────────────────
+    // mise doctor exits 0 even with warnings; "No problems found" is the
+    // clean signal. Common warnings: version-upgrade-available (resolved
+    // by `dotctl update`), untrusted config paths.
+    //
+    // We temporarily strip the shims-prepend from PATH for this single
+    // subprocess. Otherwise mise raises "mise tool paths are not first in
+    // PATH" — which is true (we put shims first deliberately for our own
+    // tool probes earlier) but irrelevant to whether the user's *shell*
+    // setup is healthy. Stripping just for this call lets mise audit the
+    // shell-equivalent PATH.
+    {
+        let saved_path = std::env::var("PATH").ok();
+        if let (Ok(home), Some(path)) = (std::env::var("HOME"), saved_path.as_ref()) {
+            let shims_prefix = format!("{home}/.local/share/mise/shims:");
+            if let Some(stripped) = path.strip_prefix(&shims_prefix) {
+                std::env::set_var("PATH", stripped);
+            }
+        }
+
+        let out = Command::new("mise").arg("doctor").output();
+
+        if let Some(p) = saved_path {
+            std::env::set_var("PATH", p);
+        }
+
+        if let Ok(o) = out {
+            let combined = format!(
+                "{}{}",
+                String::from_utf8_lossy(&o.stdout),
+                String::from_utf8_lossy(&o.stderr)
+            );
+            let n = parse_mise_warnings(&combined);
+            if n == 0 && combined.contains("No problems found") {
+                ok("mise doctor: no problems found");
+            } else if n > 0 {
+                warn_msg(&format!(
+                    "mise doctor: {n} warning(s) — run `mise doctor` for details"
+                ));
+                warns += n;
+            } else {
+                // Couldn't parse — surface as a single warning rather than
+                // silently swallowing.
+                warn_msg("mise doctor: output unparseable — run `mise doctor` manually");
+                warns += 1;
+            }
+        }
+    }
+
     // ── macOS defaults drift ─────────────────────────────────────────
     // Only runs on Darwin. Audits each MANAGED default via `defaults read`
     // and flags drift (the user changed it via System Settings) or missing
@@ -317,6 +398,25 @@ pub fn run() -> Result<()> {
 
 fn target_exists(p: &Path) -> bool {
     std::fs::symlink_metadata(p).is_ok()
+}
+
+// Parse `mise doctor` output for the leading number in "<n> warning(s)
+// found". Returns 0 when not present (clean output or unrecognized form).
+fn parse_mise_warnings(text: &str) -> u32 {
+    for line in text.lines() {
+        let trimmed = line.trim();
+        // Match shapes like "1 warning found:" / "5 warnings found:".
+        if let Some(rest) = trimmed.strip_suffix(":") {
+            if let Some(num) = rest.strip_suffix(" warnings found")
+                .or_else(|| rest.strip_suffix(" warning found"))
+            {
+                if let Ok(n) = num.trim().parse::<u32>() {
+                    return n;
+                }
+            }
+        }
+    }
+    0
 }
 
 // Dead-string scanner. Returns warning count. Each finding is printed with
@@ -416,6 +516,30 @@ mod tests {
             fs::create_dir_all(parent).unwrap();
         }
         fs::write(p, body).unwrap();
+    }
+
+    #[test]
+    fn parse_mise_warnings_zero_on_clean() {
+        assert_eq!(parse_mise_warnings("No problems found"), 0);
+        assert_eq!(parse_mise_warnings(""), 0);
+    }
+
+    #[test]
+    fn parse_mise_warnings_singular() {
+        let s = "settings: ...\nmise WARN  mise version 2026.5.11 available\n\n1 warning found:\n\n1. new mise version available\n";
+        assert_eq!(parse_mise_warnings(s), 1);
+    }
+
+    #[test]
+    fn parse_mise_warnings_plural() {
+        let s = "5 warnings found:\n\n1. foo\n2. bar\n";
+        assert_eq!(parse_mise_warnings(s), 5);
+    }
+
+    #[test]
+    fn parse_mise_warnings_ignores_unrelated_colons() {
+        let s = "settings:\n  trusted_config_paths: ~\n";
+        assert_eq!(parse_mise_warnings(s), 0);
     }
 
     #[test]

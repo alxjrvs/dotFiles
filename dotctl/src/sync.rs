@@ -52,7 +52,6 @@ pub fn run(only: Option<&str>, upgrade: bool, link_mode: LinkMode) -> Result<()>
     step_git_maint(&ctx)?;
     step_lefthook(&ctx)?;
     step_macos(&ctx)?;
-    step_brew_doctor(&ctx)?;
 
     // Sync owns the lifecycle of the `.bak` files its link() function
     // produces — prompt to clean them at the end so the manager closes
@@ -1062,27 +1061,5 @@ mod tests {
     }
 }
 
-// ─────────────────────────────────────────────── 14. brew doctor (last)
-
-fn step_brew_doctor(ctx: &Context_) -> Result<()> {
-    if ctx.os != Os::Darwin || !ctx.should_run(&["brew"]) {
-        return Ok(());
-    }
-    section("Brew doctor");
-    let out = Command::new("brew").arg("doctor").output();
-    if let Ok(o) = out {
-        let combined = format!(
-            "{}{}",
-            String::from_utf8_lossy(&o.stdout),
-            String::from_utf8_lossy(&o.stderr)
-        );
-        if combined.contains("ready to brew") {
-            ok("brew doctor: all good");
-        } else {
-            warn("brew doctor found issues — run 'brew doctor' for details");
-        }
-    } else {
-        warn("brew doctor failed to run");
-    }
-    Ok(())
-}
+// `step_brew_doctor` was retired here — `dotctl doctor` absorbs both
+// `brew doctor` and `mise doctor` so audits have a single entrypoint.
