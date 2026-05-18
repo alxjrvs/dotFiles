@@ -1,21 +1,64 @@
+# mise.toml — language toolchains + ALL dev CLIs.
+#
+# Policy (Lean A): the Brewfile holds `brew "mise"` + casks only. Every
+# dev CLI lives here. Single update path: `mise upgrade`. PATH includes
+# `~/.local/share/mise/shims` via `.zshenv` so tools resolve in every
+# shell context (interactive, non-interactive, git hooks, editor
+# subprocesses) without waiting for `mise activate`.
+#
+# Resolution order: registry short-name first (verified with `mise
+# registry <name>`); fall back to `aqua:owner/repo` then `github:`/`cargo:`
+# when the registry doesn't cover or the registry alias is broken.
+
 [tools]
-# Language toolchains
+# ── Language toolchains ───────────────────────────────────────────────
 node = "25"
 python = "3.13"
 rust = "1.94"
 bun = "latest"
 
-# CLI tools — moved here from Brewfile so Apple Silicon Tahoe (Tier 3, no
-# pre-built bottles) gets a consistent install path via mise. Short names
-# resolve through mise's registry; pueue and git-absorb need the explicit
-# aqua: path because the registry doesn't alias them.
+# ── Shell-init-time tools (need PATH presence before zsh fragments load) ─
+sheldon = "latest"      # zsh plugin manager — loaded in zsh/30-plugins.zsh
+atuin = "latest"        # shell history sync — loaded in zsh/30-plugins.zsh
+direnv = "latest"       # per-dir env hook — loaded in zsh/30-plugins.zsh
+fzf = "latest"          # `fzf --zsh` integration loaded in zsh/60-tools.zsh
+zoxide = "latest"       # `zoxide init zsh` loaded in zsh/60-tools.zsh
+
+# ── Git surface (used by prompt, lefthook, difftool, pre-commit) ──────
+gh = "latest"           # GH CLI; also feeds GITHUB_PERSONAL_ACCESS_TOKEN
+delta = "latest"        # syntax-aware git pager (was brew "git-delta")
+difftastic = "latest"   # git difftool, syntax-aware diffs
+lazygit = "latest"
+gitleaks = "latest"     # gitleaks protect — global pre-commit hook
+lefthook = "latest"     # repo-local pre-commit/pre-push runner
+
+# ── File / text / data tools ──────────────────────────────────────────
+bat = "latest"
+fd = "latest"
+ripgrep = "latest"
+jq = "latest"
+yq = "latest"
+eza = "latest"
+dust = "latest"
+glow = "latest"
+gdu = "latest"
+
+# ── Linters / formatters ──────────────────────────────────────────────
+shfmt = "latest"
+shellcheck = "latest"
+
+# ── Misc ──────────────────────────────────────────────────────────────
+uv = "latest"           # Python project / venv manager
+"cargo:tealdeer" = "latest"  # `tldr` pager; not in mise registry. Aqua dropped binary releases (only completions remain), so we build from crates.io.
+
+# ── Pre-existing entries: Tier 3 escapees from Brewfile (kept) ────────
 supabase = "latest"                    # aqua:supabase/cli — tap formula broke on Tier 3
 carapace = "latest"                    # multi-shell completions (~600 CLIs)
 watchexec = "latest"                   # file-change watcher
 bottom = "latest"                      # top/htop replacement (binary: btm)
 "aqua:Nukesor/pueue/pueue" = "latest"  # persistent task queue daemon
 "aqua:tummychow/git-absorb" = "latest" # auto-fixup staged hunks
-"github:helix-editor/helix" = { version = "latest", exe = "hx" } # modal editor (Tier 3, no brew bottle; github backend handles release tarball layout)
+"github:helix-editor/helix" = { version = "latest", exe = "hx" } # modal editor
 
 [settings]
 trusted_config_paths = ["~/**/.worktrees"]

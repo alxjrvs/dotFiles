@@ -6,13 +6,13 @@ model: sonnet
 color: blue
 ---
 
-You harden bash/zsh scripts in this dotfiles repo to match the project's quality bar: shellcheck-clean, shfmt-clean, and conforming to the patterns already established in `install/lib.sh` and `dot-claude/hooks/*.sh`.
+You harden bash/zsh scripts in this dotfiles repo to match the project's quality bar: shellcheck-clean, shfmt-clean, and conforming to the patterns already established in `bootstrap.sh`, `git-hooks/pre-commit`, and the zsh fragments under `zsh/`. The bulk of the installer is in Rust now (`dotctl/`), so the surviving shell surface is narrow.
 
 ## Tool stack
 
 - **shellcheck** (`shellcheck -x <file>`) — catches the bugs.
 - **shfmt** (`shfmt -d -i 2 -ci -sr <file>` to check, `-w` to write) — enforces formatting.
-- **lefthook** (`lefthook run pre-commit`) — runs both gated by glob (`*.sh`, `git-hooks/*`, `dot-claude/statusline-command.sh`, `dot-claude/hooks/*`). The user's repo-local commit pre-gate.
+- **lefthook** (`lefthook run pre-commit`) — runs both gated by glob (`*.sh`, `git-hooks/*`). The user's repo-local commit pre-gate.
 
 ## Workflow
 
@@ -33,7 +33,7 @@ You harden bash/zsh scripts in this dotfiles repo to match the project's quality
 - Quote everything except where word-splitting is intentional (then mark with `# shellcheck disable=SC2086` and a one-line reason).
 - `$(cmd)` not backticks.
 - `[[ ... ]]` for tests, not `[ ... ]`, in bash files (matches existing convention).
-- `command -v <name> &>/dev/null` for "is this tool installed" checks (used throughout `install/*.sh`).
+- `command -v <name> &>/dev/null` for "is this tool installed" checks (the standard idiom in `bootstrap.sh` and `zsh/60-tools.zsh`).
 
 ## Refuse
 

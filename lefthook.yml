@@ -6,7 +6,7 @@
 # `lefthook install` writes — so both run on commit here, gitleaks-only
 # elsewhere.
 #
-# Install (idempotent; sync.sh runs this automatically):
+# Install (idempotent; dotctl sync runs this automatically):
 #   lefthook install
 
 pre-commit:
@@ -22,8 +22,13 @@ pre-commit:
 
 # pre-push: sanity check that the box itself is healthy before pushing
 # dotfiles changes. Catches things like a broken mise/node/bun install,
-# missing git identity — i.e. drift between this repo and the machine.
+# missing git identity, drift between this repo and the machine. Also runs
+# `cargo test` if any dotctl source files are staged — keeps the hot-path
+# binary regression-protected.
 pre-push:
   commands:
-    sync-health:
-      run: ./sync.sh --only=health
+    doctor:
+      run: dotctl doctor
+    cargo-test:
+      glob: "dotctl/**/*.rs"
+      run: cargo test --manifest-path=dotctl/Cargo.toml --quiet

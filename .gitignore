@@ -38,7 +38,8 @@ dot-claude/settings.local.json
 **/.claude/settings.local.json
 
 # Rust build artifacts (dotctl)
+# Cargo.lock IS committed for the dotctl binary crate — pins transitive
+# dep versions across `cargo install` on fresh machines.
 dotctl/target/
-dotctl/Cargo.lock
 # Added by code-review-graph
 .code-review-graph/

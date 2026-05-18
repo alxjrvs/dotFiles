@@ -38,9 +38,8 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `bat/config` | Bat config |
 | `ssh/config` | SSH client config (1Password agent, ControlMaster, Augment include) |
 | `dot-claude/` | Claude Code: `CLAUDE.md`, `settings.json`, `agents/`, `commands/`, `statusline-command.sh` (hooks dispatch via `dotctl hook <event>`) |
-| `scripts/theme.sh` | Nova color palette (Nord-derived); hex is canonical, decimals auto-derived. Will be absorbed into `dotctl prompt-render` in Phase 6. |
-| `Brewfile` | Homebrew packages (casks + system libs only) |
-| `mise.toml` | Language toolchains + CLI tools that lack Tier 3 bottles (uses mise's `github:`/`aqua:` backends) |
+| `Brewfile` | `brew "mise"` + casks (GUI apps, fonts). All dev CLIs live in mise.toml. |
+| `mise.toml` | Language toolchains + every dev CLI. Single update path via `mise upgrade`. |
 | `sheldon/plugins.toml` | Zsh plugin config |
 | `lefthook.yml` | Pre-commit gate (shellcheck + shfmt) for this repo |
 | `Makefile` | `make sync` / `update` / `doctor` / `lint` / `fmt` (thin shims over `dotctl`) |
@@ -102,21 +101,15 @@ Wired as a git difftool. Run with `git dft` (alias for `git difftool`) — uses 
 
 `carapace` provides multi-shell completions for ~600 CLIs (gh, mise, op, kubectl, …). Loaded via `_zsh_cached_load` in `zsh/40-completions.zsh`, integrated with `fzf-tab` for preview windows. First shell after install regenerates the cache automatically.
 
-## Tier 3 tools via mise
+## Packaging: Lean A (brew = casks, mise = dev CLIs)
 
-Apple Silicon Tahoe is a Tier 3 Homebrew configuration — several CLIs have no pre-built bottles. These live in `mise.toml` instead, resolved through mise's registry (short names), `github:` backend (release tarballs), or explicit `aqua:` paths:
+The Brewfile holds **only** `brew "mise"` + casks (GUI apps, fonts, the 1Password CLI cask, the Claude desktop cask). Every dev CLI — language toolchains, git surface (gh, delta, lazygit, gitleaks, lefthook), file/text tools (bat, fd, ripgrep, jq, yq, eza, dust, glow, gdu), linters (shfmt, shellcheck), shell-init-time tools (sheldon, atuin, direnv, fzf, zoxide), and the Tier 3 escapees (supabase, carapace, watchexec, bottom, pueue, git-absorb, helix) — lives in `mise.toml`.
 
-| Tool | Entry in `mise.toml` |
-|------|----------------------|
-| supabase | `supabase = "latest"` |
-| carapace | `carapace = "latest"` |
-| watchexec | `watchexec = "latest"` |
-| bottom (binary: `btm`) | `bottom = "latest"` |
-| pueue | `"aqua:Nukesor/pueue/pueue" = "latest"` |
-| git-absorb | `"aqua:tummychow/git-absorb" = "latest"` |
-| helix (binary: `hx`) | `"github:helix-editor/helix" = { version = "latest", exe = "hx" }` |
+The PATH wiring in `.zshenv` puts `~/.local/share/mise/shims` first so every mise-managed tool resolves in every shell context (interactive, non-interactive, git hooks, editor subprocesses) without waiting for `mise activate`. This makes it safe to ship shell-init dependencies (sheldon, atuin, direnv) from mise — they're on PATH before `.zshrc` fragments load.
 
-The `alias btop="btm"` (`zsh/70-aliases.zsh`) covers the muscle-memory for top/htop. Run `dotctl sync --only=mise` to materialize.
+Update path: `mise upgrade` (or `dotctl update`).
+
+Rule: if you're about to add `brew "..."` to the Brewfile, stop. Put it in mise.toml unless it's mise itself or it's a cask. CLAUDE.md "Packaging policy" section restates this for tools.
 
 ## Editor: helix
 

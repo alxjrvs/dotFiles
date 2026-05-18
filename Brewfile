@@ -1,46 +1,44 @@
-# CLI tools without reliable Tier 3 bottles live in mise.toml instead
-# (supabase, carapace, watchexec, pueue, bottom, git-absorb).
+# Brewfile — casks + mise bootstrap only.
+#
+# Policy (Lean A): every dev CLI lives in mise.toml — single update path
+# via `mise upgrade`. The only formula here is `mise` itself, which would
+# otherwise be a chicken-and-egg bootstrap problem. Casks (GUI apps,
+# fonts) stay because mise doesn't manage them.
+#
+# Rule: if you're about to add a `brew "..."` line here, stop. Put it in
+# mise.toml. The exceptions are mise itself and casks.
+
 brew "mise"
-brew "atuin"
-brew "fzf"
-brew "gh"
-brew "git-delta"
-brew "lazygit"
-brew "bat"
-brew "difftastic"
-brew "gitleaks"
-brew "dust"
-brew "eza"
-brew "glow"
-brew "fd"
-brew "jq"
-brew "yq"
-brew "direnv"
-brew "ripgrep"
-brew "tealdeer"
-brew "zoxide"
-brew "sheldon"
-brew "shfmt"
-brew "shellcheck"
-brew "lefthook"        # repo-local git hook runner (pre-commit shellcheck/shfmt for this repo; see lefthook.yml)
-brew "uv"
-brew "gdu"             # interactive disk usage analyzer; installs as `gdu-go` to avoid coreutils conflict
+
+# ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"
 cask "1password"
+
+# ── Apps ──────────────────────────────────────────────────────────────
 cask "claude"
 cask "devutils"
 cask "discord"
-# OrbStack provides docker CLI; faster + lighter than Docker Desktop.
+
+# OrbStack provides the docker CLI; faster + lighter than Docker Desktop.
 # Migration: export needed images/volumes from Docker Desktop before switching.
 cask "orbstack"
+
+# ── Fonts ─────────────────────────────────────────────────────────────
 cask "font-fira-code-nerd-font"
+
+# ── Terminal ──────────────────────────────────────────────────────────
 cask "ghostty"
+
 cask "google-chrome"
+
 # Caps Lock → Escape via Karabiner.
 cask "karabiner-elements"
+
 cask "ngrok"
 cask "notunes"
+
 # Window mgmt + launcher + clipboard (replaces Rectangle + Spotlight).
 cask "raycast"
+
 cask "slack"
 cask "tuple"

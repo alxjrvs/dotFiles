@@ -39,4 +39,5 @@ alias vim="hx"
 alias nvim="hx"
 
 # System
-alias env-sync='"$DOTFILES_DIR/sync.sh"'
+alias env-sync='dotctl sync'
+alias env-doctor='dotctl doctor'

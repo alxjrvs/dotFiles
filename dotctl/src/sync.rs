@@ -935,6 +935,153 @@ fn step_macos(ctx: &Context_) -> Result<()> {
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+    use tempfile::TempDir;
+
+    // Env-mutating tests serialize on a process-wide mutex (Context_::new
+    // reads HOME + DOTFILES_DIR; tests can't run in parallel without
+    // clobbering each other's env).
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn fake_dotfiles_dir() -> TempDir {
+        let tmp = TempDir::new().unwrap();
+        // Context_::new requires a Brewfile in DOTFILES_DIR to accept the
+        // env var; otherwise it falls back to ~/dotFiles.
+        std::fs::write(tmp.path().join("Brewfile"), "# fake\n").unwrap();
+        tmp
+    }
+
+    #[test]
+    fn link_mode_variants_exist() {
+        let _ = LinkMode::Interactive;
+        let _ = LinkMode::Overwrite;
+        let _ = LinkMode::Skip;
+    }
+
+    #[test]
+    fn context_should_run_with_no_filter_matches_everything() {
+        let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let tmp = fake_dotfiles_dir();
+        std::env::set_var("HOME", tmp.path());
+        std::env::set_var("DOTFILES_DIR", tmp.path());
+        let ctx = Context_::new(None, false, LinkMode::Skip).unwrap();
+        assert!(ctx.should_run(&["brew"]));
+        assert!(ctx.should_run(&["unknown-tag"]));
+        assert!(ctx.should_run(&[])); // empty list still passes when no filter
+    }
+
+    #[test]
+    fn context_should_run_with_filter_matches_only_listed_tags() {
+        let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let tmp = fake_dotfiles_dir();
+        std::env::set_var("HOME", tmp.path());
+        std::env::set_var("DOTFILES_DIR", tmp.path());
+        let ctx = Context_::new(Some("brew,mise"), false, LinkMode::Skip).unwrap();
+        assert!(ctx.should_run(&["brew"]));
+        assert!(ctx.should_run(&["mise"]));
+        assert!(ctx.should_run(&["brew", "other"]));
+        assert!(!ctx.should_run(&["symlinks"]));
+        assert!(!ctx.should_run(&[]));
+    }
+
+    #[test]
+    fn context_should_run_filter_trims_whitespace() {
+        let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let tmp = fake_dotfiles_dir();
+        std::env::set_var("HOME", tmp.path());
+        std::env::set_var("DOTFILES_DIR", tmp.path());
+        let ctx = Context_::new(Some("  brew  ,  mise "), false, LinkMode::Skip).unwrap();
+        assert!(ctx.should_run(&["brew"]));
+        assert!(ctx.should_run(&["mise"]));
+    }
+
+    #[test]
+    fn context_new_falls_back_to_home_dotfiles_when_env_missing() {
+        let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        // Without a valid DOTFILES_DIR pointing at a Brewfile, falls back to
+        // ~/dotFiles. We point HOME at a tmp that DOES have a Brewfile under
+        // ./dotFiles so the fallback succeeds.
+        let tmp = TempDir::new().unwrap();
+        let nested = tmp.path().join("dotFiles");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(nested.join("Brewfile"), "# fake\n").unwrap();
+        std::env::set_var("HOME", tmp.path());
+        std::env::remove_var("DOTFILES_DIR");
+        let ctx = Context_::new(None, false, LinkMode::Skip).unwrap();
+        assert_eq!(ctx.dotfiles_dir, nested);
+    }
+
+    #[test]
+    fn context_new_errors_when_no_dotfiles_dir_anywhere() {
+        let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let tmp = TempDir::new().unwrap();
+        std::env::set_var("HOME", tmp.path());
+        std::env::remove_var("DOTFILES_DIR");
+        // Neither $DOTFILES_DIR nor ~/dotFiles is a directory.
+        let r = Context_::new(None, false, LinkMode::Skip);
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn link_creates_new_symlink_when_destination_missing() {
+        let tmp = TempDir::new().unwrap();
+        let src = tmp.path().join("source.txt");
+        std::fs::write(&src, "x").unwrap();
+        let dst = tmp.path().join("nested/link.txt");
+        link(&src, &dst, "test", LinkMode::Skip).unwrap();
+        let meta = std::fs::symlink_metadata(&dst).unwrap();
+        assert!(meta.file_type().is_symlink());
+        assert_eq!(std::fs::read_link(&dst).unwrap(), src);
+    }
+
+    #[test]
+    fn link_is_idempotent_when_already_pointing_to_source() {
+        let tmp = TempDir::new().unwrap();
+        let src = tmp.path().join("source.txt");
+        std::fs::write(&src, "x").unwrap();
+        let dst = tmp.path().join("link.txt");
+        link(&src, &dst, "test", LinkMode::Skip).unwrap();
+        // Second call should not error and should preserve the link.
+        link(&src, &dst, "test", LinkMode::Skip).unwrap();
+        assert_eq!(std::fs::read_link(&dst).unwrap(), src);
+    }
+
+    #[test]
+    fn link_skip_mode_leaves_existing_file_untouched() {
+        let tmp = TempDir::new().unwrap();
+        let src = tmp.path().join("source.txt");
+        std::fs::write(&src, "new").unwrap();
+        let dst = tmp.path().join("dst.txt");
+        std::fs::write(&dst, "existing").unwrap();
+        link(&src, &dst, "test", LinkMode::Skip).unwrap();
+        // dst should still be a regular file with the original content.
+        let meta = std::fs::symlink_metadata(&dst).unwrap();
+        assert!(!meta.file_type().is_symlink());
+        assert_eq!(std::fs::read_to_string(&dst).unwrap(), "existing");
+    }
+
+    #[test]
+    fn link_overwrite_mode_backs_up_existing_then_links() {
+        let tmp = TempDir::new().unwrap();
+        let src = tmp.path().join("source.txt");
+        std::fs::write(&src, "new").unwrap();
+        let dst = tmp.path().join("dst.txt");
+        std::fs::write(&dst, "old").unwrap();
+        link(&src, &dst, "test", LinkMode::Overwrite).unwrap();
+        // dst is now a symlink to src.
+        let meta = std::fs::symlink_metadata(&dst).unwrap();
+        assert!(meta.file_type().is_symlink());
+        assert_eq!(std::fs::read_link(&dst).unwrap(), src);
+        // The backup carries the previous content.
+        let backup = tmp.path().join("dst.txt.bak");
+        assert!(backup.exists());
+        assert_eq!(std::fs::read_to_string(&backup).unwrap(), "old");
+    }
+}
+
 // ─────────────────────────────────────────────── 14. brew doctor (last)
 
 fn step_brew_doctor(ctx: &Context_) -> Result<()> {

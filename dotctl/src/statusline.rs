@@ -375,3 +375,110 @@ fn read_advisor_name() -> String {
     };
     v.get("advisorModel").and_then(|x| x.as_str()).map(String::from).unwrap_or_default()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn parse_int_prefix_strips_decimals() {
+        assert_eq!(parse_int_prefix("42.7"), 42);
+        assert_eq!(parse_int_prefix("100"), 100);
+        assert_eq!(parse_int_prefix("0.0"), 0);
+    }
+
+    #[test]
+    fn parse_int_prefix_returns_zero_on_garbage() {
+        assert_eq!(parse_int_prefix(""), 0);
+        assert_eq!(parse_int_prefix("abc"), 0);
+        assert_eq!(parse_int_prefix("abc.7"), 0);
+    }
+
+    #[test]
+    fn str_at_handles_string_and_number_values() {
+        // statusline::str_at coerces numbers to strings (distinct from hook::str_at).
+        let v = json!({"a": {"b": "text", "c": 42}});
+        assert_eq!(str_at(&v, &["a", "b"]), "text");
+        assert_eq!(str_at(&v, &["a", "c"]), "42");
+    }
+
+    #[test]
+    fn str_at_returns_empty_on_missing_or_object_leaf() {
+        let v = json!({"a": {"b": "text"}});
+        assert_eq!(str_at(&v, &["x"]), "");
+        // Object leaf returns "" — statusline never wants the whole subtree.
+        assert_eq!(str_at(&v, &["a"]), "");
+    }
+
+    #[test]
+    fn last_two_components_with_home_substitutes_tilde() {
+        let prior = std::env::var("HOME").ok();
+        std::env::set_var("HOME", "/Users/jarvis");
+        assert_eq!(last_two_components_with_home("/Users/jarvis/dotFiles"), "~/dotFiles");
+        if let Some(v) = prior {
+            std::env::set_var("HOME", v);
+        }
+    }
+
+    #[test]
+    fn last_two_components_truncates_deep_paths() {
+        let prior = std::env::var("HOME").ok();
+        std::env::set_var("HOME", "/Users/jarvis");
+        assert_eq!(
+            last_two_components_with_home("/Users/jarvis/code/work/proj"),
+            "work/proj"
+        );
+        if let Some(v) = prior {
+            std::env::set_var("HOME", v);
+        }
+    }
+
+    #[test]
+    fn last_two_components_handles_root() {
+        std::env::set_var("HOME", "/nonexistent");
+        // Two components: "tmp" + "x"
+        assert_eq!(last_two_components_with_home("/tmp/x"), "tmp/x");
+    }
+
+    #[test]
+    fn render_bar_zero_pct_emits_pip_count_chars() {
+        let s = render_bar(0, None, None);
+        // 30 pips of any color; render produces escape-prefixed chars per pip.
+        // Easier check: count fill chars + empty chars.
+        let fill = s.matches(PIP_FILL).count();
+        let empty = s.matches(PIP_EMPTY).count();
+        assert_eq!(fill + empty, PIP_COUNT);
+        assert_eq!(fill, 0);
+    }
+
+    #[test]
+    fn render_bar_full_pct_fills_all_pips() {
+        let s = render_bar(100, None, None);
+        let fill = s.matches(PIP_FILL).count();
+        let empty = s.matches(PIP_EMPTY).count();
+        assert_eq!(fill + empty, PIP_COUNT);
+        assert_eq!(empty, 0);
+    }
+
+    #[test]
+    fn render_bar_pct_one_lights_at_least_one_pip() {
+        let s = render_bar(1, None, None);
+        assert!(s.contains(PIP_FILL));
+    }
+
+    #[test]
+    fn render_bar_negative_pct_clamps_to_zero() {
+        let s = render_bar(-50, None, None);
+        assert_eq!(s.matches(PIP_FILL).count(), 0);
+    }
+
+    #[test]
+    fn gradient_at_endpoints_are_distinct() {
+        let cold = gradient_at(0);
+        let hot = gradient_at(10_000);
+        assert_ne!(cold, hot);
+        // Hot end should be brighter overall (warmer).
+        assert!(hot.0 as u32 + hot.1 as u32 + hot.2 as u32 > cold.0 as u32 + cold.1 as u32 + cold.2 as u32);
+    }
+}

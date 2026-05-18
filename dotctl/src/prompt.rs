@@ -34,7 +34,7 @@ const ARROW_R: &str = "\u{e0b0}"; // right triangle separator
 const WEDGE_O: &str = "\u{e0ba}"; // opening wedge (concave)
 const GH_ICON: &str = "\u{f09b}"; // GitHub mark
 
-// ── Nord-derived RGB triples (canonical: scripts/theme.sh) ───────────────
+// ── Nord-derived RGB triples (canonical: this file, since Phase 6) ──────
 type Rgb = (u8, u8, u8);
 const TERM_BG: Rgb = (46, 52, 64); // #2E3440 — Nord 0 terminal bg
 const SS1: Rgb = (216, 222, 233); // #D8DEE9 — Snow Storm 1 (identity bg, branch pill bg)
@@ -268,6 +268,8 @@ fn render_git_seg(o: &mut String, cache: &HashMap<String, String>) {
     o.push_str(RST);
 }
 
+// Test seam: cwd_display reads PWD/HOME from env; tests inject via env::set_var.
+//
 // Last 2 path components of PWD with ~ for $HOME.
 fn cwd_display() -> String {
     let pwd = env::var("PWD").unwrap_or_else(|_| ".".into());
@@ -294,5 +296,114 @@ fn cwd_display() -> String {
         format!("{}/{}", parts[parts.len() - 2], parts[parts.len() - 1])
     } else {
         shown
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn cache_with(entries: &[(&str, &str)]) -> HashMap<String, String> {
+        entries
+            .iter()
+            .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
+            .collect()
+    }
+
+    #[test]
+    fn fg_emits_24bit_escape_wrapped_for_zsh() {
+        let s = fg((255, 128, 0));
+        assert_eq!(s, "%{\x1b[38;2;255;128;0m%}");
+    }
+
+    #[test]
+    fn bg_emits_24bit_escape_wrapped_for_zsh() {
+        let s = bg((10, 20, 30));
+        assert_eq!(s, "%{\x1b[48;2;10;20;30m%}");
+    }
+
+    #[test]
+    fn osc8_open_wraps_url_for_zsh() {
+        assert_eq!(
+            osc8_open("https://example.com"),
+            "%{\x1b]8;;https://example.com\x07%}"
+        );
+        assert_eq!(osc8_close(), "%{\x1b]8;;\x07%}");
+    }
+
+    #[test]
+    fn get_returns_value_or_empty() {
+        let c = cache_with(&[("GIT_BRANCH", "main")]);
+        assert_eq!(get(&c, "GIT_BRANCH"), "main");
+        assert_eq!(get(&c, "MISSING"), "");
+    }
+
+    #[test]
+    fn get_u32_parses_value_or_zero() {
+        let c = cache_with(&[("GIT_AHEAD", "7"), ("GIT_BAD", "xx")]);
+        assert_eq!(get_u32(&c, "GIT_AHEAD"), 7);
+        assert_eq!(get_u32(&c, "GIT_BAD"), 0);
+        assert_eq!(get_u32(&c, "MISSING"), 0);
+    }
+
+    #[test]
+    fn render_repo_dir_uses_repo_name_when_present() {
+        let c = cache_with(&[
+            ("GIT_REPO_NAME", "dotFiles"),
+            ("GIT_REPO_HTTPS", "https://github.com/alxjrvs/dotFiles"),
+            ("GIT_IS_REPO", "1"),
+            ("GIT_PR_STATUS", "pass"),
+        ]);
+        let mut out = String::new();
+        render_repo_dir(&mut out, &c);
+        assert!(out.contains("dotFiles"));
+        // OSC8 link emitted around the name.
+        assert!(out.contains("https://github.com/alxjrvs/dotFiles"));
+        // GH icon present.
+        assert!(out.contains(GH_ICON));
+    }
+
+    #[test]
+    fn render_repo_dir_falls_back_to_cwd_outside_repo() {
+        let c = cache_with(&[("GIT_IS_REPO", "0")]);
+        let mut out = String::new();
+        render_repo_dir(&mut out, &c);
+        // No GH icon when there's no repo.
+        assert!(!out.contains(GH_ICON));
+    }
+
+    #[test]
+    fn render_git_seg_emits_nothing_when_not_in_repo() {
+        let c = cache_with(&[("GIT_IS_REPO", "0")]);
+        let mut out = String::new();
+        render_git_seg(&mut out, &c);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn render_git_seg_emits_clean_pip_when_no_changes() {
+        let c = cache_with(&[("GIT_IS_REPO", "1"), ("GIT_BRANCH", "main")]);
+        let mut out = String::new();
+        render_git_seg(&mut out, &c);
+        // \u{2713} is the ✓ pip emitted when all counts are zero.
+        assert!(out.contains('\u{2713}'));
+    }
+
+    #[test]
+    fn render_git_seg_emits_status_pips_when_dirty() {
+        let c = cache_with(&[
+            ("GIT_IS_REPO", "1"),
+            ("GIT_BRANCH", "feat/x"),
+            ("GIT_STAGED_COUNT", "3"),
+            ("GIT_UNSTAGED_COUNT", "1"),
+            ("GIT_AHEAD", "2"),
+        ]);
+        let mut out = String::new();
+        render_git_seg(&mut out, &c);
+        assert!(out.contains("+3")); // staged
+        assert!(out.contains("~1")); // unstaged
+        assert!(out.contains("\u{2191}2")); // ahead arrow
+        // No clean check.
+        assert!(!out.contains('\u{2713}'));
     }
 }

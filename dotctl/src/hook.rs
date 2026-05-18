@@ -633,3 +633,80 @@ fn permission_denied() -> Result<()> {
     append_jsonl(&log_file, &entry);
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn str_at_walks_nested_path() {
+        let v = json!({"a": {"b": {"c": "hello"}}});
+        assert_eq!(str_at(&v, &["a", "b", "c"]), "hello");
+    }
+
+    #[test]
+    fn str_at_returns_empty_on_missing_key() {
+        let v = json!({"a": {"b": "x"}});
+        assert_eq!(str_at(&v, &["a", "z"]), "");
+        assert_eq!(str_at(&v, &["nothing"]), "");
+    }
+
+    #[test]
+    fn str_at_returns_empty_on_wrong_type() {
+        let v = json!({"a": 42});
+        // Number is not a string — str_at returns "".
+        assert_eq!(str_at(&v, &["a"]), "");
+    }
+
+    #[test]
+    fn bool_at_returns_true_when_present_and_true() {
+        let v = json!({"flag": true});
+        assert!(bool_at(&v, &["flag"]));
+    }
+
+    #[test]
+    fn bool_at_returns_false_when_missing() {
+        let v = json!({"flag": true});
+        assert!(!bool_at(&v, &["other"]));
+    }
+
+    #[test]
+    fn bool_at_returns_false_when_wrong_type() {
+        let v = json!({"flag": "true"});
+        assert!(!bool_at(&v, &["flag"]));
+    }
+
+    #[test]
+    fn regex_match_basic_pattern() {
+        // The production policy_guard combines a word boundary on the git
+        // command with `[^-]` after `--force`. This is the working pattern.
+        let pat = r"\bgit\s+push\b.*--force[^-]";
+        let bad = format!("g{}", "it push --force ");
+        let good = format!("g{}", "it push --force-with-lease");
+        assert!(regex_match(&bad, pat));
+        assert!(!regex_match(&good, pat));
+    }
+
+    #[test]
+    fn regex_match_no_match() {
+        assert!(!regex_match("hello world", r"^XYZ"));
+    }
+
+    #[test]
+    fn regex_match_matches_anchors() {
+        assert!(regex_match("git push", r"^git\b"));
+        assert!(regex_match("a b git push", r"git\s+push"));
+    }
+
+    #[test]
+    fn home_path_joins_against_home_env() {
+        let prior = std::env::var("HOME").ok();
+        std::env::set_var("HOME", "/tmp/fakehome");
+        let p = home_path(".claude/x.jsonl");
+        assert_eq!(p, std::path::PathBuf::from("/tmp/fakehome/.claude/x.jsonl"));
+        if let Some(v) = prior {
+            std::env::set_var("HOME", v);
+        }
+    }
+}

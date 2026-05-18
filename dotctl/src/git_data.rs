@@ -496,3 +496,193 @@ fn format_human_time(epoch_secs: u64) -> String {
         .map(|s| s.trim().to_string())
         .unwrap_or_else(|| epoch_secs.to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn single_quoted_value_extracts_simple_string() {
+        assert_eq!(
+            single_quoted_value("GIT_BRANCH='main'", "GIT_BRANCH="),
+            Some("main")
+        );
+    }
+
+    #[test]
+    fn single_quoted_value_returns_none_on_wrong_prefix() {
+        assert_eq!(
+            single_quoted_value("GIT_BRANCH='main'", "GIT_OTHER="),
+            None
+        );
+    }
+
+    #[test]
+    fn single_quoted_value_returns_none_when_quotes_missing() {
+        assert_eq!(single_quoted_value("GIT_BRANCH=main", "GIT_BRANCH="), None);
+    }
+
+    #[test]
+    fn single_quoted_value_handles_empty_value() {
+        assert_eq!(
+            single_quoted_value("GIT_PR_STATUS=''", "GIT_PR_STATUS="),
+            Some("")
+        );
+    }
+
+    #[test]
+    fn extract_path_after_fields_returns_rest_after_n_whitespace() {
+        // After 2 whitespace splits, path starts at "foo bar".
+        assert_eq!(
+            extract_path_after_fields("a b c foo bar", 3),
+            Some("foo bar".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_path_after_fields_handles_path_with_spaces() {
+        // Porcelain v2 "1 <XY> <sub> <mH> <mI> <mW> <hH> <hI> <path>" → 8
+        // whitespace skips reach the path. Path keeps its internal spaces.
+        assert_eq!(
+            extract_path_after_fields(
+                "1 .M N... 100644 100644 100644 hashH hashI path with spaces",
+                8
+            ),
+            Some("path with spaces".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_path_after_fields_returns_none_when_too_few_fields() {
+        assert_eq!(extract_path_after_fields("a b", 5), None);
+    }
+
+    #[test]
+    fn tally_increments_staged_on_index_change() {
+        let mut d = GitData::default();
+        tally(&mut d, "M.");
+        assert_eq!(d.staged_count, 1);
+        assert_eq!(d.unstaged_count, 0);
+        assert_eq!(d.conflict_count, 0);
+    }
+
+    #[test]
+    fn tally_increments_unstaged_on_worktree_change() {
+        let mut d = GitData::default();
+        tally(&mut d, ".M");
+        assert_eq!(d.unstaged_count, 1);
+        assert_eq!(d.staged_count, 0);
+    }
+
+    #[test]
+    fn tally_increments_both_on_staged_and_unstaged() {
+        let mut d = GitData::default();
+        tally(&mut d, "MM");
+        assert_eq!(d.staged_count, 1);
+        assert_eq!(d.unstaged_count, 1);
+    }
+
+    #[test]
+    fn tally_detects_conflict_patterns() {
+        for xy in ["UU", "AA", "DD", "AU", "UA", "DU", "UD"] {
+            let mut d = GitData::default();
+            tally(&mut d, xy);
+            assert_eq!(d.conflict_count, 1, "expected conflict for {xy}");
+            // Conflicts short-circuit; staged/unstaged stay zero.
+            assert_eq!(d.staged_count, 0);
+            assert_eq!(d.unstaged_count, 0);
+        }
+    }
+
+    // Env-mutating tests share a process-wide mutex so they don't race against
+    // each other when `cargo test` runs them in parallel. We can't simply
+    // serialize via `--test-threads=1` because the user wants the suite fast.
+    use std::sync::Mutex;
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn with_xdg_cache<F: FnOnce(&std::path::Path) -> R, R>(f: F) -> R {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let prior = std::env::var("XDG_CACHE_HOME").ok();
+        let tmp = tempfile::TempDir::new().unwrap();
+        std::env::set_var("XDG_CACHE_HOME", tmp.path());
+        let r = f(tmp.path());
+        if let Some(v) = prior {
+            std::env::set_var("XDG_CACHE_HOME", v);
+        } else {
+            std::env::remove_var("XDG_CACHE_HOME");
+        }
+        r
+    }
+
+    #[test]
+    fn cache_path_is_deterministic_for_same_input() {
+        with_xdg_cache(|_| {
+            let p1 = cache_path("/Users/jarvis/dotFiles").unwrap();
+            let p2 = cache_path("/Users/jarvis/dotFiles").unwrap();
+            assert_eq!(p1, p2);
+            let name = p1.file_name().unwrap().to_str().unwrap();
+            assert!(name.ends_with(".sh"));
+            assert_eq!(name.len(), 15); // 12 hex chars + ".sh"
+        });
+    }
+
+    #[test]
+    fn cache_path_differs_for_different_repos() {
+        with_xdg_cache(|_| {
+            let p1 = cache_path("/path/one").unwrap();
+            let p2 = cache_path("/path/two").unwrap();
+            assert_ne!(p1, p2);
+        });
+    }
+
+    #[test]
+    fn cache_path_uses_xdg_cache_home_when_set() {
+        with_xdg_cache(|root| {
+            let p = cache_path("/x").unwrap();
+            assert!(p.starts_with(root));
+            assert!(p.parent().unwrap().ends_with("git-data"));
+        });
+    }
+
+    #[test]
+    fn write_cache_round_trip_persists_fields_with_mode_600() {
+        with_xdg_cache(|_| {
+            let mut d = GitData::default();
+            d.is_repo = true;
+            d.branch = "main".to_string();
+            d.repo_name = "dotFiles".to_string();
+            d.staged_count = 3;
+            d.pr_status = "pass".to_string();
+            d.pr_url = "https://github.com/x/y/pull/1".to_string();
+            d.pr_number = 1;
+
+            let path = cache_path("/test/repo").unwrap();
+            write_cache(&path, &d).unwrap();
+
+            let meta = std::fs::metadata(&path).unwrap();
+            let mode = meta.permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600);
+
+            let content = std::fs::read_to_string(&path).unwrap();
+            assert!(content.contains("GIT_IS_REPO='1'"));
+            assert!(content.contains("GIT_BRANCH='main'"));
+            assert!(content.contains("GIT_REPO_NAME='dotFiles'"));
+            assert!(content.contains("GIT_STAGED_COUNT='3'"));
+            assert!(content.contains("GIT_PR_STATUS='pass'"));
+
+            // read_existing_pr_data should round-trip the PR fields.
+            let pr = read_existing_pr_data(&path).unwrap();
+            assert_eq!(pr.0, "pass");
+            assert_eq!(pr.1, "https://github.com/x/y/pull/1");
+            assert_eq!(pr.2, 1);
+        });
+    }
+
+    #[test]
+    fn read_existing_pr_data_returns_none_on_missing_file() {
+        with_xdg_cache(|_| {
+            let path = cache_path("/no/such/repo").unwrap();
+            assert!(read_existing_pr_data(&path).is_none());
+        });
+    }
+}
