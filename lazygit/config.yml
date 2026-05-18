@@ -33,3 +33,18 @@ keybinding:
   universal:
     quit: "q"
     return: "<esc>"
+
+# Custom commands wire shell-installed tools into the lazygit UI where
+# they're most ergonomic. Worktree management is built into lazygit since
+# v0.40 (`w` in the branches panel) — no custom binding needed.
+customCommands:
+  # git absorb is in mise (aqua:tummychow/git-absorb) and aliased as `gab`
+  # in zsh; this surfaces it in the files panel where staged hunks are
+  # visible. Auto-fixups staged changes against the right history commit
+  # then squash-rebases.
+  - key: "A"
+    context: "files"
+    description: "git absorb --and-rebase"
+    command: "git absorb --and-rebase"
+    loadingText: "Absorbing staged hunks..."
+    output: "popup"
