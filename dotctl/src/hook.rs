@@ -203,8 +203,21 @@ fn policy_guard() -> Result<()> {
 
 // ------------------------------------------------- 3. format-on-save (PostToolUse)
 
-// Auto-format edited files. Routes on extension; missing formatters are no-ops.
-// eslint emits its findings as additionalContext when it has output.
+// Map a file extension to the formatters that should run, in order.
+// Pure routing logic — pulled out so we can unit test the dispatch table
+// without invoking the actual formatters.
+fn formatters_for(ext: &str) -> &'static [&'static str] {
+    match ext {
+        "sh" => &["shfmt"],
+        "ts" | "tsx" | "js" | "jsx" => &["prettier", "eslint"],
+        "css" => &["prettier"],
+        _ => &[],
+    }
+}
+
+// Auto-format edited files. Routes on extension via `formatters_for`;
+// missing formatters are no-ops. eslint emits its findings as
+// additionalContext when it has output.
 fn format_on_save() -> Result<()> {
     let input = read_stdin_json();
     let file_path = str_at(&input, &["file_path"]);
@@ -216,17 +229,18 @@ fn format_on_save() -> Result<()> {
         .and_then(|s| s.to_str())
         .unwrap_or("");
 
-    match ext {
-        "sh" => {
-            if which("shfmt") {
+    for tool in formatters_for(ext) {
+        if !which(tool) {
+            continue;
+        }
+        match *tool {
+            "shfmt" => {
                 let _ = Command::new("shfmt").args(["-w", "-i", "2", &file_path]).status();
             }
-        }
-        "ts" | "tsx" | "js" | "jsx" => {
-            if which("prettier") {
+            "prettier" => {
                 let _ = Command::new("prettier").args(["--write", &file_path]).status();
             }
-            if which("eslint") {
+            "eslint" => {
                 let out = Command::new("eslint")
                     .args(["--fix", "--format=compact", &file_path])
                     .output();
@@ -239,13 +253,8 @@ fn format_on_save() -> Result<()> {
                     }
                 }
             }
+            _ => {}
         }
-        "css" => {
-            if which("prettier") {
-                let _ = Command::new("prettier").args(["--write", &file_path]).status();
-            }
-        }
-        _ => {}
     }
     Ok(())
 }
@@ -317,6 +326,18 @@ fn trim_bash_output() -> Result<()> {
 
 // -------------------------------------------------- 5. session-start (SessionStart)
 
+// Predicate: filename matches the Claude Code stale-state shape we prune.
+fn is_stale_state_filename(name: &str) -> bool {
+    name.starts_with("security_warnings_state_") && name.ends_with(".json")
+}
+
+// Predicate: a `modified` mtime is older than `max_age_secs` relative to `now`.
+fn is_older_than(now: SystemTime, modified: SystemTime, max_age_secs: u64) -> bool {
+    now.duration_since(modified)
+        .map(|d| d.as_secs() > max_age_secs)
+        .unwrap_or(false)
+}
+
 // Quick health check at session start: prune stale state files, spot-check
 // key symlinks, warn on drift. Informational only; never blocks.
 fn session_start() -> Result<()> {
@@ -327,16 +348,12 @@ fn session_start() -> Result<()> {
         for entry in entries.flatten() {
             let name = entry.file_name();
             let name_str = name.to_string_lossy();
-            if !name_str.starts_with("security_warnings_state_") || !name_str.ends_with(".json") {
+            if !is_stale_state_filename(&name_str) {
                 continue;
             }
             if let Ok(meta) = entry.metadata() {
                 if let Ok(modified) = meta.modified() {
-                    if now
-                        .duration_since(modified)
-                        .map(|d| d.as_secs() > 7 * 86_400)
-                        .unwrap_or(false)
-                    {
+                    if is_older_than(now, modified, 7 * 86_400) {
                         let _ = std::fs::remove_file(entry.path());
                     }
                 }
@@ -531,17 +548,24 @@ fn cwd_changed() -> Result<()> {
     if Path::new(&new_cwd).join("CLAUDE.md").is_file() {
         signals.push("CLAUDE.md present".into());
     }
-    if signals.is_empty() {
-        return Ok(());
+    if let Some(ctx) = format_cwd_context(&new_cwd, &signals) {
+        println!("{}", json!({ "additionalContext": ctx }));
     }
+    Ok(())
+}
 
-    let mut ctx = format!("cwd: {new_cwd}");
-    for s in &signals {
+// Build the "cwd: <path>; <signal>; <signal>" context line. Returns None
+// when there are no signals — the empty case is "don't emit anything".
+fn format_cwd_context(cwd: &str, signals: &[String]) -> Option<String> {
+    if signals.is_empty() {
+        return None;
+    }
+    let mut ctx = format!("cwd: {cwd}");
+    for s in signals {
         ctx.push_str("; ");
         ctx.push_str(s);
     }
-    println!("{}", json!({ "additionalContext": ctx }));
-    Ok(())
+    Some(ctx)
 }
 
 // ----------------------------------------------------- 8. pre-compact (PreCompact)
@@ -769,6 +793,90 @@ mod tests {
         if let Some(v) = prior {
             std::env::set_var("META_TELEMETRY_ENABLE", v);
         }
+    }
+
+    #[test]
+    fn is_stale_state_filename_matches_expected_shape() {
+        assert!(is_stale_state_filename(
+            "security_warnings_state_abc.json"
+        ));
+        assert!(is_stale_state_filename("security_warnings_state_.json"));
+    }
+
+    #[test]
+    fn is_stale_state_filename_rejects_other_shapes() {
+        assert!(!is_stale_state_filename("settings.json"));
+        assert!(!is_stale_state_filename("security_warnings.txt"));
+        assert!(!is_stale_state_filename("security_warnings_state_x.txt"));
+    }
+
+    #[test]
+    fn is_older_than_returns_true_when_age_exceeds_threshold() {
+        let now = SystemTime::now();
+        let one_hour_ago = now - std::time::Duration::from_secs(3600);
+        assert!(is_older_than(now, one_hour_ago, 60)); // 3600 > 60
+    }
+
+    #[test]
+    fn is_older_than_returns_false_when_younger_than_threshold() {
+        let now = SystemTime::now();
+        let just_now = now - std::time::Duration::from_secs(5);
+        assert!(!is_older_than(now, just_now, 60));
+    }
+
+    #[test]
+    fn is_older_than_returns_false_on_future_mtime() {
+        // duration_since fails when modified > now; treat as "not stale".
+        let now = SystemTime::now();
+        let future = now + std::time::Duration::from_secs(3600);
+        assert!(!is_older_than(now, future, 60));
+    }
+
+    #[test]
+    fn formatters_for_routes_shell_to_shfmt() {
+        assert_eq!(formatters_for("sh"), &["shfmt"]);
+    }
+
+    #[test]
+    fn formatters_for_routes_ts_family_to_prettier_then_eslint() {
+        for ext in ["ts", "tsx", "js", "jsx"] {
+            assert_eq!(formatters_for(ext), &["prettier", "eslint"], "ext={ext}");
+        }
+    }
+
+    #[test]
+    fn formatters_for_routes_css_to_prettier_only() {
+        assert_eq!(formatters_for("css"), &["prettier"]);
+    }
+
+    #[test]
+    fn formatters_for_unknown_ext_returns_empty() {
+        assert!(formatters_for("py").is_empty());
+        assert!(formatters_for("").is_empty());
+        assert!(formatters_for("rs").is_empty()); // rustfmt is project-local, not hook-driven
+    }
+
+    #[test]
+    fn format_cwd_context_returns_none_on_empty_signals() {
+        assert_eq!(format_cwd_context("/tmp", &[]), None);
+    }
+
+    #[test]
+    fn format_cwd_context_emits_cwd_plus_semicolon_joined_signals() {
+        let signals = vec!["git: main, 0 uncommitted".to_string(), "CLAUDE.md present".to_string()];
+        assert_eq!(
+            format_cwd_context("/tmp/x", &signals).as_deref(),
+            Some("cwd: /tmp/x; git: main, 0 uncommitted; CLAUDE.md present")
+        );
+    }
+
+    #[test]
+    fn format_cwd_context_handles_single_signal() {
+        let signals = vec!["CLAUDE.md present".to_string()];
+        assert_eq!(
+            format_cwd_context("/x", &signals).as_deref(),
+            Some("cwd: /x; CLAUDE.md present")
+        );
     }
 
     #[test]
