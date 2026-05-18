@@ -126,6 +126,43 @@ pub fn run() -> Result<()> {
         warns += drift_warns;
     }
 
+    // ── macOS defaults drift ─────────────────────────────────────────
+    // Only runs on Darwin. Audits each MANAGED default via `defaults read`
+    // and flags drift (the user changed it via System Settings) or missing
+    // (never been applied — likely a fresh machine that hasn't synced yet).
+    #[cfg(target_os = "macos")]
+    {
+        use crate::macos_defaults::{audit, AuditResult};
+        let results = audit();
+        let mut matches = 0usize;
+        let mut drifted = 0usize;
+        let mut missing = 0usize;
+        for (d, result) in &results {
+            match result {
+                AuditResult::Match => matches += 1,
+                AuditResult::Drift { expected, actual } => {
+                    warn_msg(&format!(
+                        "macos: {}.{} = {} (expected {})",
+                        d.domain, d.key, actual, expected
+                    ));
+                    drifted += 1;
+                    warns += 1;
+                }
+                AuditResult::Missing => {
+                    warn_msg(&format!(
+                        "macos: {}.{} unset (run `dotctl sync --only=macos`)",
+                        d.domain, d.key
+                    ));
+                    missing += 1;
+                    warns += 1;
+                }
+            }
+        }
+        ok(&format!(
+            "macos defaults: {matches} matched, {drifted} drifted, {missing} missing"
+        ));
+    }
+
     // ── Summary ──────────────────────────────────────────────────────
     println!();
     if fails == 0 && warns == 0 {

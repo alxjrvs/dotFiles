@@ -10,6 +10,7 @@ use clap::{Parser, Subcommand};
 mod doctor;
 mod git_data;
 mod hook;
+mod macos_defaults;
 mod prompt;
 mod statusline;
 mod sync;

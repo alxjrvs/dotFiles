@@ -861,45 +861,10 @@ fn step_macos(ctx: &Context_) -> Result<()> {
         return Ok(());
     }
     section("macOS defaults");
-    // Fast key repeat (essential for vim/helix bindings)
-    let _ = run_cmd("defaults", &["write", "NSGlobalDomain", "KeyRepeat", "-int", "2"]);
-    let _ = run_cmd("defaults", &["write", "NSGlobalDomain", "InitialKeyRepeat", "-int", "15"]);
-    let _ = run_cmd("defaults", &["write", "NSGlobalDomain", "ApplePressAndHoldEnabled", "-bool", "false"]);
-    // Finder
-    let _ = run_cmd("defaults", &["write", "com.apple.finder", "AppleShowAllFiles", "-bool", "true"]);
-    let _ = run_cmd("defaults", &["write", "NSGlobalDomain", "AppleShowAllExtensions", "-bool", "true"]);
-    // Trackpad
-    let _ = run_cmd("defaults", &["write", "com.apple.AppleMultitouchTrackpad", "Clicking", "-bool", "true"]);
-    // Dock
-    let _ = run_cmd("defaults", &["write", "com.apple.dock", "autohide", "-bool", "true"]);
-    let _ = run_cmd("defaults", &["write", "com.apple.dock", "autohide-delay", "-float", "0"]);
-    let _ = run_cmd("defaults", &["write", "com.apple.dock", "autohide-time-modifier", "-float", "0.3"]);
-    let _ = run_cmd("defaults", &["write", "com.apple.dock", "tilesize", "-int", "48"]);
-    // Text input
-    let _ = run_cmd("defaults", &["write", "-g", "NSAutomaticSpellingCorrectionEnabled", "-bool", "false"]);
-    let _ = run_cmd("defaults", &["write", "-g", "NSAutomaticCapitalizationEnabled", "-bool", "false"]);
-    let _ = run_cmd("defaults", &["write", "-g", "NSAutomaticPeriodSubstitutionEnabled", "-bool", "false"]);
-    let _ = run_cmd("defaults", &["write", "-g", "NSAutomaticDashSubstitutionEnabled", "-bool", "false"]);
-    let _ = run_cmd("defaults", &["write", "-g", "NSAutomaticQuoteSubstitutionEnabled", "-bool", "false"]);
-    // Screenshots → ~/Screenshots
-    let _ = fs::create_dir_all(ctx.home.join("Screenshots"));
-    let _ = run_cmd(
-        "defaults",
-        &[
-            "write",
-            "com.apple.screencapture",
-            "location",
-            "-string",
-            ctx.home.join("Screenshots").to_str().unwrap(),
-        ],
-    );
-    let _ = run_cmd("killall", &["SystemUIServer"]);
-    let _ = run_cmd("defaults", &["write", "com.apple.desktopservices", "DSDontWriteNetworkStores", "-bool", "true"]);
-    let _ = run_cmd("defaults", &["write", "com.apple.desktopservices", "DSDontWriteUSBStores", "-bool", "true"]);
-    let _ = run_cmd("defaults", &["write", "com.apple.finder", "_FXShowPosixPathInWindowTitle", "-bool", "true"]);
-    let _ = run_cmd("killall", &["Dock"]);
-    let _ = run_cmd("killall", &["Finder"]);
-    ok("macOS defaults applied (Dock and Finder restarted)");
+    let applied = crate::macos_defaults::apply(&ctx.home);
+    ok(&format!(
+        "macOS defaults applied ({applied} keys; Dock + Finder restarted)"
+    ));
     Ok(())
 }
 
