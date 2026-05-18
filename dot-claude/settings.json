@@ -209,6 +209,18 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dotctl hook stop",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   },
   "worktree": {

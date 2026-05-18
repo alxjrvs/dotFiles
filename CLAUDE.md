@@ -88,6 +88,7 @@ Each entry is symlinked individually into `~/.claude/` by `dotctl sync` (claude 
 | CwdChanged | `dotctl hook cwd-changed` |
 | PreCompact | `dotctl hook pre-compact` |
 | PermissionDenied | `dotctl hook permission-denied` |
+| Stop | `dotctl hook stop` |
 
 ## Packaging policy: Lean A (brew = casks, mise = dev CLIs)
 

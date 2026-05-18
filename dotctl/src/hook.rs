@@ -36,6 +36,7 @@ pub fn run(event: &str) -> Result<()> {
         "cwd-changed" => cwd_changed(),
         "pre-compact" => pre_compact(),
         "permission-denied" => permission_denied(),
+        "stop" => stop(),
         other => {
             eprintln!("dotctl hook: unknown event '{other}'");
             std::process::exit(2);
@@ -599,6 +600,32 @@ fn permission_denied() -> Result<()> {
     Ok(())
 }
 
+// ----------------------------------------------------- 10. stop (Stop)
+
+// Log session-end metadata for visibility (parity with pre-compact /
+// permission-denied logging arms). The gnar `meta` plugin owns its own
+// adoption-telemetry payload via a separate Stop hook gated on
+// META_TELEMETRY_ENABLE; we record that flag's state here for after-the-
+// fact correlation but do not invoke any worker ourselves.
+fn stop() -> Result<()> {
+    let input = read_stdin_json();
+    append_jsonl(&home_path(".claude/stop-log.jsonl"), &stop_payload(&input));
+    Ok(())
+}
+
+fn stop_payload(input: &Value) -> Value {
+    json!({
+        "ts": iso_utc_now(),
+        "session": str_at(input, &["session_id"]),
+        "cwd": str_at(input, &["cwd"]),
+        "transcript": str_at(input, &["transcript_path"]),
+        "stop_hook_active": bool_at(input, &["stop_hook_active"]),
+        "telemetry_enabled": std::env::var("META_TELEMETRY_ENABLE")
+            .map(|v| v == "1")
+            .unwrap_or(false),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -693,6 +720,55 @@ mod tests {
     fn re_branch_delete_does_not_match_innocuous_branch_listing() {
         assert!(!RE_BRANCH_DELETE.is_match("git branch -a"));
         assert!(!RE_BRANCH_DELETE.is_match("git branch --list"));
+    }
+
+    #[test]
+    fn stop_payload_captures_session_and_cwd_from_input() {
+        let v = json!({
+            "session_id": "abc",
+            "cwd": "/tmp",
+            "transcript_path": "/tmp/t.json",
+            "stop_hook_active": true,
+        });
+        let p = stop_payload(&v);
+        assert_eq!(p.get("session").and_then(|x| x.as_str()), Some("abc"));
+        assert_eq!(p.get("cwd").and_then(|x| x.as_str()), Some("/tmp"));
+        assert_eq!(
+            p.get("transcript").and_then(|x| x.as_str()),
+            Some("/tmp/t.json")
+        );
+        assert_eq!(
+            p.get("stop_hook_active").and_then(|x| x.as_bool()),
+            Some(true)
+        );
+        // Timestamp is always emitted.
+        assert!(p.get("ts").and_then(|x| x.as_str()).is_some());
+    }
+
+    #[test]
+    fn stop_payload_reflects_telemetry_env_flag() {
+        let prior = std::env::var("META_TELEMETRY_ENABLE").ok();
+        std::env::set_var("META_TELEMETRY_ENABLE", "1");
+        let p_on = stop_payload(&json!({}));
+        assert_eq!(
+            p_on.get("telemetry_enabled").and_then(|x| x.as_bool()),
+            Some(true)
+        );
+        std::env::set_var("META_TELEMETRY_ENABLE", "0");
+        let p_off = stop_payload(&json!({}));
+        assert_eq!(
+            p_off.get("telemetry_enabled").and_then(|x| x.as_bool()),
+            Some(false)
+        );
+        std::env::remove_var("META_TELEMETRY_ENABLE");
+        let p_missing = stop_payload(&json!({}));
+        assert_eq!(
+            p_missing.get("telemetry_enabled").and_then(|x| x.as_bool()),
+            Some(false)
+        );
+        if let Some(v) = prior {
+            std::env::set_var("META_TELEMETRY_ENABLE", v);
+        }
     }
 
     #[test]
