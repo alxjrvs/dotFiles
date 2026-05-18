@@ -25,7 +25,11 @@ yarn-error.log*
 .claude/*.local.json
 .claude/worktrees/
 
-# Secrets (never commit) — .secrets was decommissioned in favor of op-run / op://
+# `.secrets` was decommissioned in favor of op-run / op:// (see CLAUDE.md).
+# `.npmrc` is gitignored at the user-config level because per-project
+# `.npmrc`s belong to those projects' repos (with op:// refs if they need
+# credentials). A user-level `.npmrc` would mostly hold registry-auth
+# state we don't want bleeding across projects.
 .npmrc
 
 # Transient/generated
