@@ -15,6 +15,11 @@ anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 sha2 = "0.10"
 serde_json = "1"
+# regex: precompiled patterns for hook::policy_guard. Eliminates 3–4
+# `grep -E` subprocess forks per Bash tool-use event (~15ms → ~1µs).
+# Default features keep unicode handling — our patterns are ASCII but
+# stripping unicode costs little binary size at the cohesion expense.
+regex = "1"
 
 [dev-dependencies]
 tempfile = "3"

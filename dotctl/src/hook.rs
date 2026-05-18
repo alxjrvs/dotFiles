@@ -13,10 +13,12 @@
 // handler is responsible for its own exit code.
 
 use anyhow::Result;
+use regex::Regex;
 use serde_json::{json, Value};
 use std::io::{self, Read, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::LazyLock;
 use std::time::SystemTime;
 
 use crate::git_data;
@@ -142,6 +144,21 @@ fn lock_file_guard() -> Result<()> {
 
 // --------------------------------------------------- 2. policy-guard (PreToolUse)
 
+// Compiled regexes for policy-guard. policy_guard fires on every Bash
+// tool-use; precompiling here eliminates 3–4 `grep -E` subprocess forks
+// per invocation (~15ms → ~1µs).
+static RE_NO_VERIFY: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\bgit\s+(commit|push|merge|rebase|cherry-pick|am|notes)\b.*--no-verify\b").unwrap()
+});
+static RE_NO_GPG_SIGN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\bgit\s+\S+.*--no-gpg-sign\b").unwrap());
+static RE_FORCE_PUSH: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\bgit\s+push\b.*(--force[^-]|-f\b)").unwrap());
+static RE_FORCE_WITH_LEASE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"--force-with-lease\b").unwrap());
+static RE_BRANCH_DELETE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\bgit\s+(branch|push)\b.*(-D|--delete|:[a-z])").unwrap());
+
 // Block Bash commands that bypass policy. Currently catches:
 //   - git ... --no-verify (forbidden hook bypass)
 //   - git ... --no-gpg-sign (signing bypass)
@@ -158,64 +175,34 @@ fn policy_guard() -> Result<()> {
         return Ok(());
     }
 
-    // --no-verify on hookable git ops (commit/push/merge/rebase/cherry-pick/am/notes)
-    let no_verify = regex_match(
-        &cmd,
-        r"\bgit\s+(commit|push|merge|rebase|cherry-pick|am|notes)\b.*--no-verify\b",
-    );
-    if no_verify {
+    if RE_NO_VERIFY.is_match(&cmd) {
         eprintln!(
             "BLOCKED by policy-guard: --no-verify bypasses pre-commit/pre-push hooks (forbidden by user policy)."
         );
         std::process::exit(2);
     }
 
-    // --no-gpg-sign on any git subcommand
-    if regex_match(&cmd, r"\bgit\s+\S+.*--no-gpg-sign\b") {
+    if RE_NO_GPG_SIGN.is_match(&cmd) {
         eprintln!(
             "BLOCKED by policy-guard: --no-gpg-sign disables commit signing without authorization."
         );
         std::process::exit(2);
     }
 
-    // git push --force / -f without --force-with-lease
-    let force_push = regex_match(&cmd, r"\bgit\s+push\b.*(--force[^-]|-f\b)")
-        && !regex_match(&cmd, r"--force-with-lease\b");
-    if force_push {
+    if RE_FORCE_PUSH.is_match(&cmd) && !RE_FORCE_WITH_LEASE.is_match(&cmd) {
         eprintln!(
             "BLOCKED by policy-guard: 'git push --force' is forbidden; use --force-with-lease."
         );
         std::process::exit(2);
     }
 
-    // Branch-deletion: emit advisory additionalContext (allow).
-    if regex_match(&cmd, r"\bgit\s+(branch|push)\b.*(-D|--delete|:[a-z])") {
+    if RE_BRANCH_DELETE.is_match(&cmd) {
         let payload = json!({
             "additionalContext": "policy-guard: branch-deletion command detected. Verify no open PRs depend on this branch (use `gh pr list --base <branch>`) before proceeding."
         });
         println!("{payload}");
     }
     Ok(())
-}
-
-// Minimal regex shim: shell out to grep -E so we don't pull a regex crate.
-// Hooks fire on every tool call; the per-call grep fork is cheaper than the
-// extra binary size of the regex crate (~300 KB).
-fn regex_match(haystack: &str, pattern: &str) -> bool {
-    let mut child = match Command::new("grep")
-        .args(["-qE", pattern])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-    {
-        Ok(c) => c,
-        Err(_) => return false,
-    };
-    if let Some(mut stdin) = child.stdin.take() {
-        let _ = stdin.write_all(haystack.as_bytes());
-    }
-    child.wait().map(|s| s.success()).unwrap_or(false)
 }
 
 // ------------------------------------------------- 3. format-on-save (PostToolUse)
@@ -678,25 +665,56 @@ mod tests {
     }
 
     #[test]
-    fn regex_match_basic_pattern() {
-        // The production policy_guard combines a word boundary on the git
-        // command with `[^-]` after `--force`. This is the working pattern.
-        let pat = r"\bgit\s+push\b.*--force[^-]";
+    fn re_force_push_matches_force_flag_alone() {
         let bad = format!("g{}", "it push --force ");
+        assert!(RE_FORCE_PUSH.is_match(&bad));
+    }
+
+    #[test]
+    fn re_force_push_does_not_match_force_with_lease() {
         let good = format!("g{}", "it push --force-with-lease");
-        assert!(regex_match(&bad, pat));
-        assert!(!regex_match(&good, pat));
+        // RE_FORCE_PUSH alone matches the `--force` prefix via lookbehind-free
+        // `[^-]` — policy_guard combines this with !RE_FORCE_WITH_LEASE to gate.
+        assert!(!RE_FORCE_PUSH.is_match(&good));
+        assert!(RE_FORCE_WITH_LEASE.is_match(&good));
     }
 
     #[test]
-    fn regex_match_no_match() {
-        assert!(!regex_match("hello world", r"^XYZ"));
+    fn re_force_push_matches_short_f_flag() {
+        assert!(RE_FORCE_PUSH.is_match("git push -f origin main"));
     }
 
     #[test]
-    fn regex_match_matches_anchors() {
-        assert!(regex_match("git push", r"^git\b"));
-        assert!(regex_match("a b git push", r"git\s+push"));
+    fn re_no_verify_matches_commit_and_push() {
+        assert!(RE_NO_VERIFY.is_match("git commit --no-verify -m wip"));
+        assert!(RE_NO_VERIFY.is_match("git push --no-verify"));
+        assert!(RE_NO_VERIFY.is_match("git rebase --no-verify HEAD~3"));
+    }
+
+    #[test]
+    fn re_no_verify_ignores_unrelated_subcommands() {
+        // `git status --no-verify` isn't a hookable op; the regex anchors on
+        // the hookable verbs only.
+        assert!(!RE_NO_VERIFY.is_match("git status --no-verify"));
+    }
+
+    #[test]
+    fn re_no_gpg_sign_matches_any_git_subcommand() {
+        assert!(RE_NO_GPG_SIGN.is_match("git commit --no-gpg-sign -m x"));
+        assert!(RE_NO_GPG_SIGN.is_match("git tag --no-gpg-sign v1"));
+    }
+
+    #[test]
+    fn re_branch_delete_matches_capital_d_and_long_form() {
+        assert!(RE_BRANCH_DELETE.is_match("git branch -D feature/foo"));
+        assert!(RE_BRANCH_DELETE.is_match("git branch --delete feature/foo"));
+        assert!(RE_BRANCH_DELETE.is_match("git push origin :feature/foo"));
+    }
+
+    #[test]
+    fn re_branch_delete_does_not_match_innocuous_branch_listing() {
+        assert!(!RE_BRANCH_DELETE.is_match("git branch -a"));
+        assert!(!RE_BRANCH_DELETE.is_match("git branch --list"));
     }
 
     #[test]
