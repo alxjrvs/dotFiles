@@ -359,7 +359,7 @@
   },
   "feedbackSurveyRate": 0,
   "tui": "fullscreen",
-  "skipDangerousModePermissionPrompt": false,
+  "skipDangerousModePermissionPrompt": true,
   "editorMode": "vi",
   "verbose": true,
   "teammateMode": "auto",
