@@ -170,6 +170,7 @@ Pause and confirm with the user before doing any of these:
 - **Hot-path subcommands** (`git-data`, `prompt-render`, `statusline`): these run on every prompt/refresh. Don't add subprocess spawns, network calls, or unbounded loops. Read the cache, render, exit.
 - **Starship references**: the user replaced Starship with the `dotctl prompt-render` Rust binary. If you see `starship` anywhere, treat it as historical — do not reintroduce.
 - **AstroNvim / nvim references**: the user replaced AstroNvim viewer-mode with helix. There is no `nvim/` directory; do not propose re-adding one.
+- **`worktree.bgIsolation` stays `"none"`**: setting it to `"worktree"` looks tempting (parallel-agent file-collision protection) but it's a trap on this machine. With `bgIsolation: "worktree"`, BG sessions are forced into `<repo>/.git/worktrees/<name>/`, but the harness ALSO injects per-CWD `denyWithinAllow` entries (`<repo>/HEAD`, `<repo>/objects`, `<repo>/refs`) that block `git add` / `git commit` inside that worktree. Net effect: BG sessions can edit but never commit. Settings cannot override harness-injected denies, so the fix is to keep bgIsolation off. Parallel-agent isolation belongs at the per-dispatch level (`Agent({isolation: "worktree"})`) instead.
 
 ## Important Gotchas
 

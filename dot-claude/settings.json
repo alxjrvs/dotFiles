@@ -223,7 +223,7 @@
       "node_modules"
     ],
     "baseRef": "head",
-    "bgIsolation": "worktree"
+    "bgIsolation": "none"
   },
   "statusLine": {
     "type": "command",
