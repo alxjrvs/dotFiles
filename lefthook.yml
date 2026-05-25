@@ -19,6 +19,13 @@ pre-commit:
       glob: "{*.sh,git-hooks/*,dot-claude/statusline-command.sh,dot-claude/hooks/*}"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}
+    settings-json-validity:
+      # Backstop against committing a broken settings.json. Full
+      # JSON-schema validation against $schema would need ajv/check-
+      # jsonschema in mise.toml; this catches the common case (broken
+      # syntax) without a new dep.
+      glob: "dot-claude/settings*.json"
+      run: jq -e . {staged_files} >/dev/null
 
 # pre-push: sanity check that the box itself is healthy before pushing
 # dotfiles changes. Catches things like a broken mise/node/bun install,

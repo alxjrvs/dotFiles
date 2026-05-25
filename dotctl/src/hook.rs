@@ -26,6 +26,17 @@ use crate::git_data;
 use crate::util::which;
 
 pub fn run(event: &str) -> Result<()> {
+    // Hot-path timing instrumentation. Every Claude Code turn fires
+    // session-start/user-prompt-submit/policy-guard at minimum; with 10
+    // arms wired, attribution of p95 latency was opaque before this.
+    // Cost: one Instant + one JSONL append per dispatch.
+    let start = std::time::Instant::now();
+    let result = dispatch(event);
+    log_timing(event, start.elapsed().as_millis(), result.is_ok());
+    result
+}
+
+fn dispatch(event: &str) -> Result<()> {
     match event {
         "lock-file-guard" => lock_file_guard(),
         "policy-guard" => policy_guard(),
@@ -37,11 +48,22 @@ pub fn run(event: &str) -> Result<()> {
         "pre-compact" => pre_compact(),
         "permission-denied" => permission_denied(),
         "stop" => stop(),
+        "subagent-stop" => subagent_stop(),
         other => {
             eprintln!("dotctl hook: unknown event '{other}'");
             std::process::exit(2);
         }
     }
+}
+
+fn log_timing(event: &str, elapsed_ms: u128, ok: bool) {
+    let entry = json!({
+        "ts": iso_utc_now(),
+        "event": event,
+        "elapsed_ms": elapsed_ms,
+        "ok": ok,
+    });
+    append_jsonl(&home_path(".claude/state/hook-timings.jsonl"), &entry);
 }
 
 // ---------------------------------------------------------------- shared
@@ -263,6 +285,23 @@ fn format_on_save() -> Result<()> {
 
 // Trim oversized Bash stdout to save context tokens. User still sees full
 // output in the UI; this only changes what Claude sees via updatedToolOutput.
+// Spill the full Bash stdout to a per-session file under /tmp/claude/spills/
+// so the model can `Read` it on demand without re-running the command.
+// Returns the spill path on success, None on any IO failure (trimming
+// still proceeds — spill is best-effort enrichment, not a correctness gate).
+fn spill_bash_output(session: &str, stdout: &str) -> Option<std::path::PathBuf> {
+    let session_dir = if session.is_empty() { "no-session".to_string() } else { session.to_string() };
+    let dir = Path::new("/tmp/claude/spills").join(session_dir);
+    std::fs::create_dir_all(&dir).ok()?;
+    let ts_ms = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .ok()?
+        .as_millis();
+    let path = dir.join(format!("{ts_ms}.txt"));
+    std::fs::write(&path, stdout).ok()?;
+    Some(path)
+}
+
 fn trim_bash_output() -> Result<()> {
     let input = read_stdin_json();
     let tool = str_at(&input, &["tool_name"]);
@@ -278,6 +317,12 @@ fn trim_bash_output() -> Result<()> {
     let stderr = str_at(&input, &["tool_response", "stderr"]);
     let interrupted = bool_at(&input, &["tool_response", "interrupted"]);
     let is_image = bool_at(&input, &["tool_response", "isImage"]);
+    let session = str_at(&input, &["session_id"]);
+    let spill_path = spill_bash_output(&session, &stdout);
+    let spill_hint = spill_path
+        .as_ref()
+        .map(|p| format!(" — full output spilled to {}", p.display()))
+        .unwrap_or_default();
 
     const HEAD_LINES: usize = 200;
     const TAIL_LINES: usize = 100;
@@ -288,7 +333,7 @@ fn trim_bash_output() -> Result<()> {
         let tail = lines[lines.len() - TAIL_LINES..].join("\n");
         let elided = lines.len() - HEAD_LINES - TAIL_LINES;
         format!(
-            "{head}\n... [trim-bash-output: elided {elided} lines / ~{kb}KB to save context — full output visible to user] ...\n{tail}",
+            "{head}\n... [trim-bash-output: elided {elided} lines / ~{kb}KB to save context{spill_hint}] ...\n{tail}",
             kb = stdout.len() / 1024,
         )
     } else {
@@ -305,7 +350,7 @@ fn trim_bash_output() -> Result<()> {
         let tail_part = &stdout[tail_start..];
         let elided = stdout.len().saturating_sub(head_end).saturating_sub(stdout.len() - tail_start);
         format!(
-            "{head_part}\n... [trim-bash-output: elided {elided} chars (single huge line) — full output visible to user] ...\n{tail_part}",
+            "{head_part}\n... [trim-bash-output: elided {elided} chars (single huge line){spill_hint}] ...\n{tail_part}",
         )
     };
 
@@ -650,6 +695,38 @@ fn stop_payload(input: &Value) -> Value {
     })
 }
 
+// ----------------------------------------- 11. subagent-stop (SubagentStop)
+
+// Log per-subagent completion so parallel-agent stalls and edits to hot
+// files (mod.rs etc.) become attributable post-mortem. Pairs with the
+// hot-path timing log: timings show *which arm* is slow; this shows
+// *which dispatched agent* hung. last_assistant_message is truncated to
+// keep the log scannable; the full transcript path is preserved.
+fn subagent_stop() -> Result<()> {
+    let input = read_stdin_json();
+    append_jsonl(
+        &home_path(".claude/state/subagent-stop-log.jsonl"),
+        &subagent_stop_payload(&input),
+    );
+    Ok(())
+}
+
+fn subagent_stop_payload(input: &Value) -> Value {
+    let last_msg: String = str_at(input, &["last_assistant_message"])
+        .chars()
+        .take(240)
+        .collect();
+    json!({
+        "ts": iso_utc_now(),
+        "session": str_at(input, &["session_id"]),
+        "agent_id": str_at(input, &["agent_id"]),
+        "agent_type": str_at(input, &["agent_type"]),
+        "transcript": str_at(input, &["agent_transcript_path"]),
+        "stop_hook_active": bool_at(input, &["stop_hook_active"]),
+        "last_msg_preview": last_msg,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -793,6 +870,34 @@ mod tests {
         if let Some(v) = prior {
             std::env::set_var("META_TELEMETRY_ENABLE", v);
         }
+    }
+
+    #[test]
+    fn subagent_stop_payload_captures_agent_fields() {
+        let v = json!({
+            "session_id": "sess-1",
+            "agent_id": "agent-xyz",
+            "agent_type": "general-purpose",
+            "agent_transcript_path": "/tmp/t.json",
+            "last_assistant_message": "result: ok",
+            "stop_hook_active": false,
+        });
+        let p = subagent_stop_payload(&v);
+        assert_eq!(p.get("session").and_then(|x| x.as_str()), Some("sess-1"));
+        assert_eq!(p.get("agent_id").and_then(|x| x.as_str()), Some("agent-xyz"));
+        assert_eq!(p.get("agent_type").and_then(|x| x.as_str()), Some("general-purpose"));
+        assert_eq!(p.get("transcript").and_then(|x| x.as_str()), Some("/tmp/t.json"));
+        assert_eq!(p.get("last_msg_preview").and_then(|x| x.as_str()), Some("result: ok"));
+        assert!(p.get("ts").and_then(|x| x.as_str()).is_some());
+    }
+
+    #[test]
+    fn subagent_stop_payload_truncates_long_messages() {
+        let long = "x".repeat(500);
+        let v = json!({ "last_assistant_message": long });
+        let p = subagent_stop_payload(&v);
+        let preview = p.get("last_msg_preview").and_then(|x| x.as_str()).unwrap();
+        assert_eq!(preview.chars().count(), 240);
     }
 
     #[test]
