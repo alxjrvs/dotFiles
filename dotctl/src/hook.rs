@@ -49,6 +49,8 @@ fn dispatch(event: &str) -> Result<()> {
         "permission-denied" => permission_denied(),
         "stop" => stop(),
         "subagent-stop" => subagent_stop(),
+        "worktree-create" => worktree_create(),
+        "worktree-remove" => worktree_remove(),
         other => {
             eprintln!("dotctl hook: unknown event '{other}'");
             std::process::exit(2);
@@ -727,6 +729,92 @@ fn subagent_stop_payload(input: &Value) -> Value {
     })
 }
 
+// --------------------------------- 12. worktree-create (WorktreeCreate)
+
+// Replaces CC's default `git worktree add <cwd>/.claude/worktrees/<n>`
+// path with `~/.local/share/cc-worktrees/<repo-basename>/<n>`. This
+// sidesteps the harness-injected `denyWithinAllow` patterns on
+// `<cwd>/HEAD` / `<cwd>/objects` / `<cwd>/refs` that block `git commit`
+// inside the default worktree path under CC v2.1.150 (see upstream
+// issues #25896, #17374, #61909).
+//
+// Stdin JSON: {name, session_id, cwd, ...}. Stdout: absolute path of
+// the created worktree (CC reads this verbatim). Non-zero exit aborts
+// session creation in CC.
+//
+// Override the base via DOTCTL_WORKTREE_DIR env var.
+fn worktree_create() -> Result<()> {
+    use anyhow::Context;
+    let input = read_stdin_json();
+    let name = str_at(&input, &["name"]);
+    let cwd = str_at(&input, &["cwd"]);
+    if name.is_empty() {
+        anyhow::bail!("worktree-create: missing `name` in stdin JSON");
+    }
+    if cwd.is_empty() {
+        anyhow::bail!("worktree-create: missing `cwd` in stdin JSON");
+    }
+    let path = worktree_path(&cwd, &name);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("create_dir_all {}", parent.display()))?;
+    }
+    let branch = format!("claude/{name}");
+    let base_ref = std::env::var("CLAUDE_CODE_BASE_REF").unwrap_or_else(|_| "HEAD".to_string());
+    let status = Command::new("git")
+        .current_dir(&cwd)
+        .args([
+            "worktree",
+            "add",
+            "-b",
+            &branch,
+            path.to_str().unwrap(),
+            &base_ref,
+        ])
+        .status()
+        .context("spawn `git worktree add`")?;
+    if !status.success() {
+        anyhow::bail!(
+            "git worktree add failed: exit {}",
+            status.code().unwrap_or(-1)
+        );
+    }
+    println!("{}", path.display());
+    Ok(())
+}
+
+// Compute the relocated worktree path. Default base is
+// `~/.local/share/cc-worktrees/<repo-basename>` so multiple repos with
+// the same basename collide only on the basename (acceptable for one
+// user). Override via DOTCTL_WORKTREE_DIR.
+fn worktree_path(cwd: &str, name: &str) -> std::path::PathBuf {
+    let repo_basename = Path::new(cwd)
+        .file_name()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "unknown-repo".to_string());
+    let base = std::env::var("DOTCTL_WORKTREE_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| home_path(".local/share/cc-worktrees"));
+    base.join(repo_basename).join(name)
+}
+
+// --------------------------------- 13. worktree-remove (WorktreeRemove)
+
+// Paired cleanup hook. CC calls this when a session exits or a
+// subagent finishes. Best-effort: errors logged to stderr but the
+// hook returns Ok so CC's cleanup path doesn't stall.
+fn worktree_remove() -> Result<()> {
+    let input = read_stdin_json();
+    let path = str_at(&input, &["path"]);
+    if path.is_empty() {
+        return Ok(());
+    }
+    let _ = Command::new("git")
+        .args(["worktree", "remove", "--force", &path])
+        .status();
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -889,6 +977,44 @@ mod tests {
         assert_eq!(p.get("transcript").and_then(|x| x.as_str()), Some("/tmp/t.json"));
         assert_eq!(p.get("last_msg_preview").and_then(|x| x.as_str()), Some("result: ok"));
         assert!(p.get("ts").and_then(|x| x.as_str()).is_some());
+    }
+
+    #[test]
+    fn worktree_path_uses_repo_basename_and_default_base() {
+        let prior = std::env::var("DOTCTL_WORKTREE_DIR").ok();
+        std::env::remove_var("DOTCTL_WORKTREE_DIR");
+        let p = worktree_path("/Users/jarvis/Code/gnar-term", "feature-x");
+        let s = p.to_string_lossy();
+        assert!(s.ends_with("/cc-worktrees/gnar-term/feature-x"), "got: {s}");
+        assert!(s.contains(".local/share/"), "got: {s}");
+        if let Some(v) = prior {
+            std::env::set_var("DOTCTL_WORKTREE_DIR", v);
+        }
+    }
+
+    #[test]
+    fn worktree_path_respects_env_override() {
+        let prior = std::env::var("DOTCTL_WORKTREE_DIR").ok();
+        std::env::set_var("DOTCTL_WORKTREE_DIR", "/tmp/my-trees");
+        let p = worktree_path("/whatever/repo", "branch-name");
+        assert_eq!(p, std::path::PathBuf::from("/tmp/my-trees/repo/branch-name"));
+        match prior {
+            Some(v) => std::env::set_var("DOTCTL_WORKTREE_DIR", v),
+            None => std::env::remove_var("DOTCTL_WORKTREE_DIR"),
+        }
+    }
+
+    #[test]
+    fn worktree_path_falls_back_for_root_cwd() {
+        let prior = std::env::var("DOTCTL_WORKTREE_DIR").ok();
+        std::env::set_var("DOTCTL_WORKTREE_DIR", "/tmp/x");
+        // file_name() returns None for "/" — should not panic.
+        let p = worktree_path("/", "n");
+        assert!(p.to_string_lossy().contains("unknown-repo"));
+        match prior {
+            Some(v) => std::env::set_var("DOTCTL_WORKTREE_DIR", v),
+            None => std::env::remove_var("DOTCTL_WORKTREE_DIR"),
+        }
     }
 
     #[test]

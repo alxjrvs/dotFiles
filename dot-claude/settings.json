@@ -216,6 +216,30 @@
           }
         ]
       }
+    ],
+    "WorktreeCreate": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dotctl hook worktree-create",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dotctl hook worktree-remove",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   },
   "worktree": {
