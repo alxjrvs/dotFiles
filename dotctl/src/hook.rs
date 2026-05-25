@@ -761,7 +761,12 @@ fn worktree_create() -> Result<()> {
     }
     let branch = format!("claude/{name}");
     let base_ref = std::env::var("CLAUDE_CODE_BASE_REF").unwrap_or_else(|_| "HEAD".to_string());
-    let status = Command::new("git")
+    // Capture git's output. `git worktree add` emits "Preparing
+    // worktree..." and "HEAD is now at..." to stdout; CC parses
+    // OUR ENTIRE hook stdout as the worktree path, so any git stdout
+    // contamination corrupts the parse and CC fails with "hook
+    // returned a path that is not a directory".
+    let output = Command::new("git")
         .current_dir(&cwd)
         .args([
             "worktree",
@@ -771,14 +776,17 @@ fn worktree_create() -> Result<()> {
             path.to_str().unwrap(),
             &base_ref,
         ])
-        .status()
+        .output()
         .context("spawn `git worktree add`")?;
-    if !status.success() {
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        eprintln!("git worktree add failed: {stderr}");
         anyhow::bail!(
             "git worktree add failed: exit {}",
-            status.code().unwrap_or(-1)
+            output.status.code().unwrap_or(-1)
         );
     }
+    // ONLY our path on stdout — CC reads this verbatim.
     println!("{}", path.display());
     Ok(())
 }

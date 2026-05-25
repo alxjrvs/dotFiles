@@ -247,7 +247,7 @@
       "node_modules"
     ],
     "baseRef": "head",
-    "bgIsolation": "none"
+    "bgIsolation": "worktree"
   },
   "statusLine": {
     "type": "command",
@@ -342,6 +342,7 @@
         "~/.bun/install/cache",
         "~/.cargo/**",
         "~/.local/share/mise/**",
+        "~/.local/share/cc-worktrees/**",
         "~/.cache",
         "/tmp/claude",
         "/private/tmp/claude",
