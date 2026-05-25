@@ -18,6 +18,16 @@ brew "mise"
 # installs don't ship a broken sheldon binary.
 brew "openssl@3"
 
+# moreutils + coreutils: GNU userland exceptions to the Lean A policy.
+# - moreutils ships `sponge` (idempotent `jq ... | sponge file`), `ts`,
+#   `chronic`, `parallel`, etc. NO mise registry entry exists.
+# - coreutils ships GNU `date`, `timeout`/`gtimeout`, `realpath`, etc.
+#   under `g`-prefixed names so macOS BSD defaults stay default.
+#   mise has `aqua:uutils/coreutils` but it ships unprefixed names that
+#   would shadow BSD utilities for scripts that expect BSD semantics.
+brew "moreutils"
+brew "coreutils"
+
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"
 cask "1password"
