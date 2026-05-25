@@ -65,7 +65,9 @@ enum Command {
     Doctor,
 
     /// Find and delete .bak files left behind by `dotctl sync` link
-    /// conflicts and harness-tuneup-style `.bak-<ISO>` snapshots.
+    /// conflicts and harness-tuneup-style `.bak-<ISO>` snapshots,
+    /// plus stale cc-worktrees under `~/.local/share/cc-worktrees/`
+    /// that aren't tracked by their parent repo any more.
     /// Default prompts; `-y` deletes without prompting, `-n` lists only.
     Prune {
         /// Delete without prompting.

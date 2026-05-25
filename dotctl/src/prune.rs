@@ -10,6 +10,7 @@ use anyhow::Result;
 use std::fs;
 use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 const GREEN: &str = "\x1b[0;32m";
 const YELLOW: &str = "\x1b[0;33m";
@@ -29,9 +30,15 @@ pub enum PromptMode {
 
 pub fn run(mode: PromptMode) -> Result<()> {
     let (home, dotfiles) = resolve_roots();
+    prune_backups(&home, &dotfiles, mode)?;
+    prune_stale_worktrees(&home, mode)?;
+    Ok(())
+}
+
+fn prune_backups(home: &Path, dotfiles: &Path, mode: PromptMode) -> Result<()> {
     section();
 
-    let backups = find_backups(&home, &dotfiles);
+    let backups = find_backups(home, dotfiles);
     if backups.is_empty() {
         println!("{GREEN}  ✓ No backups found{NC}");
         return Ok(());
@@ -39,7 +46,7 @@ pub fn run(mode: PromptMode) -> Result<()> {
 
     println!("{YELLOW}  Found {} backup file(s):{NC}", backups.len());
     for b in &backups {
-        println!("{DIM}    - {}{NC}", display_for(&home, b));
+        println!("{DIM}    - {}{NC}", display_for(home, b));
     }
 
     let do_delete = match mode {
@@ -70,6 +77,263 @@ pub fn run(mode: PromptMode) -> Result<()> {
         println!("{YELLOW}  → Deleted {deleted}, {failed} failed{NC}");
     }
     Ok(())
+}
+
+// ─────────────────────────────────────────────── stale worktrees
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StaleReason {
+    /// Parent repo's `.git` is gone — orphaned worktree.
+    ParentGone,
+    /// Parent repo exists but doesn't list this worktree (WorktreeRemove
+    /// hook didn't fire, or parent's bookkeeping was force-cleaned).
+    NotInParentList,
+}
+
+#[derive(Debug, Clone)]
+pub struct StaleWorktree {
+    pub path: PathBuf,
+    pub parent_repo: Option<PathBuf>,
+    pub reason: StaleReason,
+    pub dirty: bool,
+}
+
+fn prune_stale_worktrees(home: &Path, mode: PromptMode) -> Result<()> {
+    println!();
+    println!("==> Stale worktree cleanup");
+
+    let stale = find_stale_worktrees(home);
+    if stale.is_empty() {
+        println!("{GREEN}  ✓ No stale worktrees{NC}");
+        return Ok(());
+    }
+
+    let removable: Vec<&StaleWorktree> = stale.iter().filter(|s| !s.dirty).collect();
+    let dirty: Vec<&StaleWorktree> = stale.iter().filter(|s| s.dirty).collect();
+
+    if !removable.is_empty() {
+        println!(
+            "{YELLOW}  Found {} stale worktree(s) safe to remove:{NC}",
+            removable.len()
+        );
+        for s in &removable {
+            let reason = match s.reason {
+                StaleReason::ParentGone => "parent gone",
+                StaleReason::NotInParentList => "not in parent list",
+            };
+            println!(
+                "{DIM}    - {}  [{}]{NC}",
+                display_for(home, &s.path),
+                reason
+            );
+        }
+    }
+
+    if !dirty.is_empty() {
+        println!(
+            "{YELLOW}  Found {} stale worktree(s) with UNCOMMITTED changes (skipping):{NC}",
+            dirty.len()
+        );
+        for s in &dirty {
+            println!(
+                "{DIM}    - {}  [DIRTY — inspect manually]{NC}",
+                display_for(home, &s.path)
+            );
+        }
+    }
+
+    if removable.is_empty() {
+        return Ok(());
+    }
+
+    let do_delete = match mode {
+        PromptMode::AutoYes => true,
+        PromptMode::DryRun => false,
+        PromptMode::AskDefaultYes => prompt_worktrees_default_yes(),
+    };
+    if !do_delete {
+        println!("{DIM}  - Skipped (no worktrees removed){NC}");
+        return Ok(());
+    }
+
+    let mut removed = 0usize;
+    let mut failed = 0usize;
+    for s in &removable {
+        match remove_stale_worktree(s) {
+            Ok(()) => removed += 1,
+            Err(e) => {
+                eprintln!(
+                    "{YELLOW}  → failed to remove {}: {e}{NC}",
+                    s.path.display()
+                );
+                failed += 1;
+            }
+        }
+    }
+    if failed == 0 {
+        println!("{GREEN}  ✓ Removed {removed} stale worktree(s){NC}");
+    } else {
+        println!("{YELLOW}  → Removed {removed}, {failed} failed{NC}");
+    }
+    Ok(())
+}
+
+pub fn find_stale_worktrees(home: &Path) -> Vec<StaleWorktree> {
+    let root = home.join(".local/share/cc-worktrees");
+    if !root.is_dir() {
+        return vec![];
+    }
+    let mut out = Vec::new();
+    let Ok(repos) = fs::read_dir(&root) else { return out };
+    for repo_entry in repos.flatten() {
+        let repo_dir = repo_entry.path();
+        if !repo_dir.is_dir() {
+            continue;
+        }
+        let Ok(wts) = fs::read_dir(&repo_dir) else { continue };
+        for wt_entry in wts.flatten() {
+            let wt_path = wt_entry.path();
+            if !wt_path.is_dir() {
+                continue;
+            }
+            if let Some(stale) = classify_worktree(&wt_path) {
+                out.push(stale);
+            }
+        }
+    }
+    out.sort_by(|a, b| a.path.cmp(&b.path));
+    out
+}
+
+// Returns Some(StaleWorktree) if the dir at wt_path is a worktree that's
+// detached from any active parent, None if it's still actively tracked.
+fn classify_worktree(wt_path: &Path) -> Option<StaleWorktree> {
+    // Resolve parent's .git common-dir.
+    let common_out = Command::new("git")
+        .args(["-C", wt_path.to_str()?, "rev-parse", "--git-common-dir"])
+        .output()
+        .ok()?;
+    let dirty = is_worktree_dirty(wt_path);
+    if !common_out.status.success() {
+        return Some(StaleWorktree {
+            path: wt_path.to_path_buf(),
+            parent_repo: None,
+            reason: StaleReason::ParentGone,
+            dirty,
+        });
+    }
+    let common_dir =
+        PathBuf::from(String::from_utf8_lossy(&common_out.stdout).trim());
+    // common_dir is <parent-repo>/.git ; parent dir is one up.
+    let Some(parent_repo) = common_dir.parent().map(|p| p.to_path_buf()) else {
+        return Some(StaleWorktree {
+            path: wt_path.to_path_buf(),
+            parent_repo: None,
+            reason: StaleReason::ParentGone,
+            dirty,
+        });
+    };
+    if !parent_repo.is_dir() {
+        return Some(StaleWorktree {
+            path: wt_path.to_path_buf(),
+            parent_repo: None,
+            reason: StaleReason::ParentGone,
+            dirty,
+        });
+    }
+    // Ask parent whether it knows about this worktree.
+    let list_out = Command::new("git")
+        .args([
+            "-C",
+            parent_repo.to_str()?,
+            "worktree",
+            "list",
+            "--porcelain",
+        ])
+        .output()
+        .ok()?;
+    let wt_real = fs::canonicalize(wt_path).ok()?;
+    let mut found = false;
+    if list_out.status.success() {
+        let listed = String::from_utf8_lossy(&list_out.stdout);
+        for line in listed.lines() {
+            if let Some(p) = line.strip_prefix("worktree ") {
+                if let Ok(p_real) = fs::canonicalize(p) {
+                    if p_real == wt_real {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    if found {
+        return None;
+    }
+    Some(StaleWorktree {
+        path: wt_path.to_path_buf(),
+        parent_repo: Some(parent_repo),
+        reason: StaleReason::NotInParentList,
+        dirty,
+    })
+}
+
+fn is_worktree_dirty(wt_path: &Path) -> bool {
+    let Some(s) = wt_path.to_str() else { return false };
+    let out = match Command::new("git")
+        .args(["-C", s, "status", "--porcelain"])
+        .output()
+    {
+        Ok(o) if o.status.success() => o,
+        // If git status fails, fall back to assuming clean — the parent
+        // path checks have already classified this as stale.
+        _ => return false,
+    };
+    !out.stdout.is_empty()
+}
+
+fn remove_stale_worktree(s: &StaleWorktree) -> Result<()> {
+    if let Some(parent) = &s.parent_repo {
+        // Best-effort git removal first (cleans parent bookkeeping).
+        let _ = Command::new("git")
+            .args([
+                "-C",
+                parent.to_str().ok_or_else(|| anyhow::anyhow!("non-utf8 parent path"))?,
+                "worktree",
+                "remove",
+                "--force",
+                s.path.to_str().ok_or_else(|| anyhow::anyhow!("non-utf8 wt path"))?,
+            ])
+            .output();
+        let _ = Command::new("git")
+            .args([
+                "-C",
+                parent.to_str().unwrap(),
+                "worktree",
+                "prune",
+            ])
+            .output();
+    }
+    // If the dir is still present (git refused or no parent), nuke it.
+    if s.path.exists() {
+        fs::remove_dir_all(&s.path)?;
+    }
+    Ok(())
+}
+
+fn prompt_worktrees_default_yes() -> bool {
+    if !io::stdin().is_terminal() {
+        println!("{DIM}  - Non-interactive; removing (default yes){NC}");
+        return true;
+    }
+    print!("       Remove these worktrees? [Y/n]: ");
+    let _ = io::stdout().flush();
+    let mut s = String::new();
+    if io::stdin().read_line(&mut s).is_err() {
+        return false;
+    }
+    let answer = s.trim().to_lowercase();
+    answer.is_empty() || answer == "y" || answer == "yes"
 }
 
 fn section() {
