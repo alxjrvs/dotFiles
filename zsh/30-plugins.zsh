@@ -9,9 +9,17 @@ autoload -Uz add-zsh-hook
 _zsh_cached_load() {
   local name="$1" cmd="$2" bin="$3"
   local cache="${XDG_CACHE_HOME:-$HOME/.cache}/zsh-init/${name}.zsh"
-  if [[ ! -f "$cache" || "$bin" -nt "$cache" ]]; then
+  # -s also rejects zero-byte caches left behind by a failed init command —
+  # otherwise an empty cache "newer than" the binary sticks forever.
+  if [[ ! -s "$cache" || "$bin" -nt "$cache" ]]; then
     mkdir -p "${cache:h}"
-    command ${=cmd} > "$cache"
+    local tmp="${cache}.tmp.$$"
+    if command ${=cmd} > "$tmp" 2>/dev/null && [[ -s "$tmp" ]]; then
+      mv "$tmp" "$cache"
+    else
+      rm -f "$tmp"
+      return 0
+    fi
   fi
   source "$cache"
 }
