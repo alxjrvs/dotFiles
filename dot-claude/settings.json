@@ -88,14 +88,6 @@
       "/private/tmp/claude"
     ]
   },
-  "skillOverrides": {
-    "commit-commands:commit": "user-invocable-only",
-    "commit-commands:commit-push-pr": "user-invocable-only",
-    "commit-commands:clean_gone": "user-invocable-only",
-    "review": "user-invocable-only",
-    "security-review": "user-invocable-only",
-    "init": "user-invocable-only"
-  },
   "hooks": {
     "PreToolUse": [
       {

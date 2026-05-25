@@ -25,12 +25,10 @@
 
 ## Git Workflow
 
-- Default branch: main
-- Rebase, squash, linear history. Avoid merge commits.
-- `git push` and `git push --force-with-lease` are acceptable; NEVER run `git push --force`
-- NEVER use `--no-verify` on commit/push. Pre-commit and pre-push hooks are mandatory; if a hook fails, fix the underlying issue.
-- NEVER delete the base branch of an open PR — it permanently closes dependent PRs. Run `gh pr list --base <branch>` before any branch deletion.
-- Do not delete tracked files during working-tree cleanup without explicit confirmation. `git clean -fd` is destructive; prefer `git status` first.
+- Default branch `main`; rebase, squash, linear history.
+- Hard rules (`--no-verify`, `--no-gpg-sign`, `git push --force` without `--force-with-lease`, force branch deletion) are blocked by `dotctl hook policy-guard` + `permissions.deny` in `dot-claude/settings.json` — don't try to work around them.
+- NEVER delete the base branch of an open PR; this isn't hook-enforced. Run `gh pr list --base <branch>` first.
+- For working-tree cleanup, prefer `git status` over `git clean -fd`; confirm before deleting tracked files.
 
 ## Investigation Discipline
 
