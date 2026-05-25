@@ -353,7 +353,8 @@ pub fn run() -> Result<()> {
     #[cfg(target_os = "macos")]
     {
         use crate::macos_defaults::{audit, AuditResult};
-        let results = audit();
+        let host = crate::host::current();
+        let results = audit(host);
         let mut matches = 0usize;
         let mut drifted = 0usize;
         let mut missing = 0usize;

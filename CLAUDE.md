@@ -99,6 +99,30 @@ Brewfile holds **only**: `mise` (chicken-and-egg bootstrap), casks (GUI apps, fo
 
 If you're about to add a CLI to `Brewfile`, stop — put it in `mise.toml` unless it's `mise` itself or it's a cask.
 
+## Multi-host overlays
+
+Two machines (M3 Air + M2 Pro). Host detection lives in
+`dotctl/src/host.rs`: `scutil --get LocalHostName` substring match →
+`HostId::{Air, Pro, Unknown}`, with `DOTCTL_HOST=air|pro` env override
+(also exposed as `dotctl sync --host=<name>` for dry-running the
+other host's config locally).
+
+Per-host surfaces today:
+
+- **macOS defaults** — `macos_defaults::SHARED` is the baseline;
+  `AIR_OVERLAY` / `PRO_OVERLAY` add or override entries by
+  `(domain, key)`. `managed_for(host)` returns the merged Vec.
+  `dotctl doctor` audits against the current host's effective list.
+- **Brewfile** — shared `Brewfile` installs everywhere; if
+  `Brewfile.<host>` exists, it installs AFTER the shared file (purely
+  additive, brew bundle is idempotent). Use for formulae/casks only
+  one host needs.
+
+Symlinks, mise.toml, sheldon, and zsh fragments are intentionally
+shared — divergence there isn't worth the overlay surface today.
+Add overlay support to a new surface only when a real per-host need
+appears.
+
 ## Secrets management
 
 1Password CLI (`op`) is the source of truth. There is no `.secrets` file — it was decommissioned. Use the patterns below in priority order; drop down a tier only when the one above doesn't apply.

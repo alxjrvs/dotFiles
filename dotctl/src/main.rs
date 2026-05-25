@@ -10,6 +10,7 @@ use clap::{Parser, Subcommand};
 mod doctor;
 mod git_data;
 mod hook;
+mod host;
 mod macos_defaults;
 mod prompt;
 mod prune;
@@ -41,6 +42,11 @@ enum Command {
         ///       helix karabiner lefthook macos linux
         #[arg(long)]
         only: Option<String>,
+        /// Override host detection (air|pro). Useful for dry-running the
+        /// OTHER host's Brewfile/macos overlay locally before pushing.
+        /// Equivalent to setting DOTCTL_HOST=<value>.
+        #[arg(long)]
+        host: Option<String>,
         /// Auto-overwrite symlink conflicts (mv existing to .bak, then link).
         #[arg(short = 'f')]
         force: bool,
@@ -99,7 +105,12 @@ enum Command {
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Command::Sync { upgrade, only, force, skip } => {
+        Command::Sync { upgrade, only, host, force, skip } => {
+            if let Some(h) = host {
+                // Set BEFORE any host::current() call so the OnceLock
+                // picks up the override. Sync prints what it detects.
+                std::env::set_var("DOTCTL_HOST", h);
+            }
             let mode = if force {
                 sync::LinkMode::Overwrite
             } else if skip {

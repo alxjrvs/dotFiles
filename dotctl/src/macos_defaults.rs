@@ -10,7 +10,8 @@
 //      managed key. A change made via System Settings now shows up as
 //      a warning instead of silently disagreeing with the repo.
 //
-// Adding a new default: append to MANAGED. Decide kind (Bool/Int/Float/
+// Adding a new default: append to SHARED, or to AIR_OVERLAY / PRO_OVERLAY
+// if it's host-specific. Decide kind (Bool/Int/Float/
 // String), domain, key, raw write-arg. The expected_read() helper
 // normalizes that value back to the string `defaults read` would emit
 // (notably: bool "true" → "1") for comparison.
@@ -23,7 +24,7 @@ pub enum DefaultKind {
     Bool,
     Int,
     Float,
-    // No MANAGED entry uses String today (screencapture-location is
+    // No SHARED entry uses String today (screencapture-location is
     // dynamic and handled inline in `apply`). Kept so the typed model
     // covers the full `defaults write` surface for future entries.
     #[allow(dead_code)]
@@ -63,7 +64,9 @@ impl MacosDefault {
     }
 }
 
-pub const MANAGED: &[MacosDefault] = &[
+// Shared baseline that applies to every host. Per-host overlays below
+// either ADD entries or OVERRIDE existing ones (matching domain+key).
+pub const SHARED: &[MacosDefault] = &[
     // Fast key repeat (essential for vi/helix bindings)
     MacosDefault { domain: "NSGlobalDomain", key: "KeyRepeat", kind: DefaultKind::Int, raw: "2" },
     MacosDefault { domain: "NSGlobalDomain", key: "InitialKeyRepeat", kind: DefaultKind::Int, raw: "15" },
@@ -90,13 +93,47 @@ pub const MANAGED: &[MacosDefault] = &[
     MacosDefault { domain: "com.apple.desktopservices", key: "DSDontWriteUSBStores", kind: DefaultKind::Bool, raw: "true" },
 ];
 
-/// Apply every MANAGED default plus the dynamic screencapture-location
+// Per-host overlays. EMPTY by default — populate as you find genuinely
+// per-host knobs. Examples: dock tilesize might be 48 on a 13" Air and
+// 64 on a Pro; the trackpad doesn't exist on the Mac Pro; Hot Corner
+// preferences vary by form factor. When an overlay entry's (domain, key)
+// matches a SHARED entry, the overlay value wins.
+pub const AIR_OVERLAY: &[MacosDefault] = &[];
+
+pub const PRO_OVERLAY: &[MacosDefault] = &[];
+
+/// Build the effective managed list for a given host by merging SHARED
+/// with the per-host overlay. Overlay entries with the same (domain,
+/// key) as SHARED overwrite the SHARED value; new (domain, key) pairs
+/// are appended.
+pub fn managed_for(host: crate::host::HostId) -> Vec<MacosDefault> {
+    use crate::host::HostId;
+    let overlay: &[MacosDefault] = match host {
+        HostId::Air => AIR_OVERLAY,
+        HostId::Pro => PRO_OVERLAY,
+        HostId::Unknown => &[],
+    };
+    let mut merged: Vec<MacosDefault> = SHARED.to_vec();
+    for o in overlay {
+        if let Some(slot) = merged
+            .iter_mut()
+            .find(|d| d.domain == o.domain && d.key == o.key)
+        {
+            *slot = o.clone();
+        } else {
+            merged.push(o.clone());
+        }
+    }
+    merged
+}
+
+/// Apply every managed default for the given host plus the dynamic screencapture-location
 /// write (depends on $HOME, can't be a static entry). Restarts
 /// SystemUIServer, Dock, Finder at the end. Returns the count of
 /// defaults that wrote successfully.
-pub fn apply(home: &Path) -> u32 {
+pub fn apply(home: &Path, host: crate::host::HostId) -> u32 {
     let mut applied = 0u32;
-    for d in MANAGED {
+    for d in managed_for(host).iter() {
         let status = Command::new("defaults")
             .args(["write", d.domain, d.key, d.kind_flag(), d.raw])
             .stdout(Stdio::null())
@@ -150,13 +187,15 @@ pub enum AuditResult {
     Missing,
 }
 
-/// Audit every MANAGED default. Returns a Vec parallel to MANAGED with
-/// the categorization for each. Caller decides how to surface findings.
-pub fn audit() -> Vec<(&'static MacosDefault, AuditResult)> {
-    MANAGED
-        .iter()
+/// Audit every managed default for the given host. Returns a Vec
+/// pairing each effective entry with its categorization. NB: returns
+/// owned MacosDefault rather than &'static because the overlay merge
+/// produces a Vec, not a static slice.
+pub fn audit(host: crate::host::HostId) -> Vec<(MacosDefault, AuditResult)> {
+    managed_for(host)
+        .into_iter()
         .map(|d| {
-            let result = match read(d) {
+            let result = match read(&d) {
                 None => AuditResult::Missing,
                 Some(actual) => {
                     let expected = d.expected_read();
@@ -233,12 +272,49 @@ mod tests {
     }
 
     #[test]
-    fn managed_table_is_nonempty_and_keys_unique() {
-        assert!(!MANAGED.is_empty());
-        let mut keys: Vec<(&str, &str)> = MANAGED.iter().map(|d| (d.domain, d.key)).collect();
+    fn shared_table_is_nonempty_and_keys_unique() {
+        assert!(!SHARED.is_empty());
+        let mut keys: Vec<(&str, &str)> = SHARED.iter().map(|d| (d.domain, d.key)).collect();
         keys.sort();
         let before = keys.len();
         keys.dedup();
-        assert_eq!(keys.len(), before, "duplicate (domain, key) in MANAGED");
+        assert_eq!(keys.len(), before, "duplicate (domain, key) in SHARED");
+    }
+
+    #[test]
+    fn managed_for_unknown_host_is_shared() {
+        let m = managed_for(crate::host::HostId::Unknown);
+        assert_eq!(m.len(), SHARED.len());
+        for (a, b) in m.iter().zip(SHARED.iter()) {
+            assert_eq!(a.domain, b.domain);
+            assert_eq!(a.key, b.key);
+            assert_eq!(a.raw, b.raw);
+        }
+    }
+
+    #[test]
+    fn overlay_merge_overrides_in_place_and_appends_new() {
+        // Real AIR_OVERLAY/PRO_OVERLAY are empty today; this synthetic
+        // exercise pins the merge semantics so future entries behave.
+        let base = vec![
+            MacosDefault { domain: "x", key: "k1", kind: DefaultKind::Int, raw: "1" },
+            MacosDefault { domain: "x", key: "k2", kind: DefaultKind::Int, raw: "2" },
+        ];
+        let overlay = &[
+            MacosDefault { domain: "x", key: "k1", kind: DefaultKind::Int, raw: "99" },
+            MacosDefault { domain: "y", key: "k3", kind: DefaultKind::Int, raw: "3" },
+        ];
+        let mut merged = base.clone();
+        for o in overlay {
+            if let Some(s) = merged.iter_mut().find(|d| d.domain == o.domain && d.key == o.key) {
+                *s = o.clone();
+            } else {
+                merged.push(o.clone());
+            }
+        }
+        assert_eq!(merged.len(), 3);
+        assert_eq!(merged[0].raw, "99");
+        assert_eq!(merged[1].raw, "2");
+        assert_eq!(merged[2].domain, "y");
     }
 }

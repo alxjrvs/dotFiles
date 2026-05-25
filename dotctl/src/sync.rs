@@ -388,6 +388,27 @@ fn step_brew(ctx: &Context_) -> Result<()> {
     )?;
     ok("Brewfile dependencies up to date");
 
+    // Per-host overlay: Brewfile.air / Brewfile.pro install on top of
+    // the shared Brewfile. Skip silently if no overlay file exists
+    // (Unknown host class, or host with no extras today).
+    let host = crate::host::current();
+    if host != crate::host::HostId::Unknown {
+        let overlay = ctx.dotfiles_dir.join(format!("Brewfile.{}", host.as_str()));
+        if overlay.is_file() {
+            warn(&format!("Installing host overlay (Brewfile.{})...", host.as_str()));
+            require(
+                "brew",
+                &[
+                    "bundle",
+                    "--file",
+                    overlay.to_str().unwrap(),
+                    "--no-upgrade",
+                ],
+            )?;
+            ok(&format!("Brewfile.{} dependencies up to date", host.as_str()));
+        }
+    }
+
     // Docker Desktop / docker formula collision.
     let cask_docker = run_cmd("brew", &["list", "--cask", "docker-desktop"])
         .map(|s| s.success())
@@ -907,7 +928,7 @@ fn step_macos(ctx: &Context_) -> Result<()> {
         return Ok(());
     }
     section("macOS defaults");
-    let applied = crate::macos_defaults::apply(&ctx.home);
+    let applied = crate::macos_defaults::apply(&ctx.home, crate::host::current());
     ok(&format!(
         "macOS defaults applied ({applied} keys; Dock + Finder restarted)"
     ));

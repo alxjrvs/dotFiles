@@ -315,6 +315,7 @@
         "~/.npm",
         "~/.bun/install/cache",
         "~/.cargo/**",
+        "~/.local/share/mise/**",
         "~/.cache",
         "/tmp/claude",
         "/private/tmp/claude",
