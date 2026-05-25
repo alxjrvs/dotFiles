@@ -13,6 +13,7 @@ mod hook;
 mod macos_defaults;
 mod prompt;
 mod prune;
+mod render;
 mod statusline;
 mod sync;
 mod util;
@@ -83,6 +84,13 @@ enum Command {
     /// + Pro/Max rate-limit windows.
     Statusline,
 
+    /// Render a template file: substitute `{{ op "op://Vault/Item/field" }}`
+    /// placeholders with values from 1Password via `op read`, writing the
+    /// result to stdout. Compose with shell redirection
+    /// (`dotctl render foo.tmpl > foo`). Fails loudly on the first missing
+    /// reference — never produces a partially-rendered output.
+    Render { path: std::path::PathBuf },
+
     /// Dispatch a Claude Code hook event. Event name maps 1:1 to the
     /// bash hook file it replaces (kebab-case, without `.sh`).
     Hook { event: String },
@@ -116,6 +124,7 @@ fn main() -> anyhow::Result<()> {
         Command::GitData => git_data::run(),
         Command::PromptRender => prompt::run(),
         Command::Statusline => statusline::run(),
+        Command::Render { path } => render::run(&path),
         Command::Hook { event } => hook::run(&event),
     }
 }
