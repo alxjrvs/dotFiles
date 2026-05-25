@@ -321,7 +321,9 @@
         "com.apple.securityd.systemkeychain",
         "com.apple.security.KeychainStasher",
         "com.apple.security.XPCKeychainSandboxCheck",
-        "com.apple.trustd.agent"
+        "com.apple.trustd.agent",
+        "com.apple.pboard",
+        "com.apple.pasteboard.*"
       ]
     },
     "filesystem": {
