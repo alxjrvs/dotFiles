@@ -317,5 +317,7 @@
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": false,
   "skipAutoPermissionPrompt": true,
-  "voiceEnabled": true
+  "voiceEnabled": true,
+  "defaultToAgentsView": true,
+  "leftArrowOpensAgents": true
 }
