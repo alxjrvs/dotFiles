@@ -15,6 +15,7 @@ mod macos_defaults;
 mod prompt;
 mod prune;
 mod render;
+mod subagent_statusline;
 mod statusline;
 mod sync;
 mod util;
@@ -92,6 +93,13 @@ enum Command {
     /// + Pro/Max rate-limit windows.
     Statusline,
 
+    /// Render the per-subagent JSON status line emitted to CC's
+    /// `subagentStatusLine` hook. Receives per-tick row context on stdin
+    /// (tasks array with token counts, samples, status); emits the
+    /// JSON the agent panel uses to render each row. Empirically
+    /// schema-inferred; iterate via probes/subagent-statusline-probe.sh.
+    SubagentStatusline,
+
     /// Render a template file: substitute `{{ op "op://Vault/Item/field" }}`
     /// placeholders with values from 1Password via `op read`, writing the
     /// result to stdout. Compose with shell redirection
@@ -137,6 +145,7 @@ fn main() -> anyhow::Result<()> {
         Command::GitData => git_data::run(),
         Command::PromptRender => prompt::run(),
         Command::Statusline => statusline::run(),
+        Command::SubagentStatusline => subagent_statusline::run(),
         Command::Render { path } => render::run(&path),
         Command::Hook { event } => hook::run(&event),
     }

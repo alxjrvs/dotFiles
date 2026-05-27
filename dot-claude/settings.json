@@ -319,5 +319,9 @@
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true,
   "defaultToAgentsView": true,
-  "leftArrowOpensAgents": true
+  "leftArrowOpensAgents": true,
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "dotctl subagent-statusline"
+  }
 }
