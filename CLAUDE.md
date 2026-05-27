@@ -99,6 +99,20 @@ Brewfile holds **only**: `mise` (chicken-and-egg bootstrap), casks (GUI apps, fo
 
 If you're about to add a CLI to `Brewfile`, stop — put it in `mise.toml` unless it's `mise` itself or it's a cask.
 
+## Terminal: Ghostty
+
+Ghostty is the chosen terminal emulator. The cask installs the .app;
+`step_ghostty` in `sync.rs` lays down a `~/.local/bin/ghostty` shim
+pointing at `/Applications/Ghostty.app/Contents/MacOS/ghostty` so the
+CLI is uniform with every other managed tool. `dotctl doctor` runs
+`ghostty --version` like git/mise/lefthook, and validates
+`ghostty/config` indirectly via the symlink integrity check.
+
+No other terminal emulators (iTerm2, WezTerm, Kitty, Alacritty, Warp)
+are managed by this repo. If you find yourself adding one, stop —
+Ghostty is the answer in this stack; revisit only if Mitchell Hashimoto
+abandons it.
+
 ## Multi-host overlays
 
 Two machines (M3 Air + M2 Pro). Host detection lives in

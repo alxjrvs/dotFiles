@@ -46,6 +46,7 @@ pub fn run(only: Option<&str>, upgrade: bool, link_mode: LinkMode) -> Result<()>
     step_dotctl(&ctx)?;
     step_mise(&ctx)?;
     step_symlinks(&ctx)?;
+    step_ghostty(&ctx)?;
     step_sheldon_plugins(&ctx)?;
     step_claude(&ctx)?;
     step_gh(&ctx)?;
@@ -786,6 +787,50 @@ fn perms_700() -> fs::Permissions {
 }
 
 // ───────────────────────────────────────────────────── 7. sheldon plugins
+
+// ──────────────────────────────────────────── Ghostty CLI shim (Darwin)
+//
+// `brew install --cask ghostty` lays down `/Applications/Ghostty.app/` but
+// doesn't expose a `ghostty` binary on PATH. The .app bundle's executable
+// at `Contents/MacOS/ghostty` is a fully functional CLI (`--version`,
+// `+validate-config`, `+list-actions`, etc). Symlinking it into
+// `~/.local/bin/ghostty` makes the CLI uniform with every other managed
+// tool (git, gh, mise, lefthook) — so doctor can version-check it and
+// scripts can call it without bundle-path hard-coding.
+//
+// Idempotent: if the symlink already points at the right target, no-op.
+// Skipped silently on non-Darwin and when Ghostty.app isn't installed yet
+// (brew bundle in the prior step is responsible for installing it).
+fn step_ghostty(ctx: &Context_) -> Result<()> {
+    if ctx.os != Os::Darwin || !ctx.should_run(&["ghostty"]) {
+        return Ok(());
+    }
+    section("Ghostty CLI shim");
+    let app_bin = Path::new("/Applications/Ghostty.app/Contents/MacOS/ghostty");
+    if !app_bin.exists() {
+        warn("Ghostty.app not found — `brew bundle` should install it. Skipping shim.");
+        return Ok(());
+    }
+    let shim_dir = ctx.home.join(".local/bin");
+    let shim = shim_dir.join("ghostty");
+    fs::create_dir_all(&shim_dir).ok();
+    // If a symlink already exists and points to the right place, no-op.
+    if let Ok(existing) = fs::read_link(&shim) {
+        if existing == app_bin {
+            ok("ghostty CLI shim already in place");
+            return Ok(());
+        }
+        fs::remove_file(&shim).ok();
+    } else if shim.exists() {
+        // Plain file or directory at the shim path — preserve via .bak.
+        let bak = shim.with_extension("bak");
+        fs::rename(&shim, &bak).ok();
+        warn(&format!("existing non-symlink at {} backed up to {}", shim.display(), bak.display()));
+    }
+    std::os::unix::fs::symlink(app_bin, &shim)?;
+    ok(&format!("ghostty shim → {}", shim.display()));
+    Ok(())
+}
 
 fn step_sheldon_plugins(ctx: &Context_) -> Result<()> {
     if !ctx.should_run(&["sheldon"]) {

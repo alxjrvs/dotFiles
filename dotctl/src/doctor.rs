@@ -49,7 +49,7 @@ pub fn run() -> Result<()> {
     let os = std::env::consts::OS;
     let mut tools: Vec<&str> = vec!["dotctl", "git", "gh", "mise"];
     if os == "macos" {
-        tools.extend(["brew", "node", "bun", "sheldon", "lefthook", "hx"]);
+        tools.extend(["brew", "node", "bun", "sheldon", "lefthook", "hx", "ghostty"]);
     }
     for tool in tools {
         let ver = capture(tool, &["--version"]);
