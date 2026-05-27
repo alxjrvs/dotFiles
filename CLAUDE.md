@@ -76,20 +76,17 @@ Each entry is symlinked individually into `~/.claude/` by `dotctl sync` (claude 
 - `agents/` — custom subagent definitions.
 - `commands/` — custom slash commands.
 
-**Hook dispatch:** all nine Claude Code hook events route through `dotctl hook <event>`. The match arms live in `dotctl/src/hook.rs`. To add or modify a hook, edit `hook.rs` — `settings.json` should not gain new shell-command hooks.
+**Hook dispatch:** Claude Code hook events route through `dotctl hook <event>`. The match arms live in `dotctl/src/hook.rs`. To add or modify a hook, edit `hook.rs` — `settings.json` should not gain new shell-command hooks. The wired set is intentionally minimal (defenders + cache + worktree relocator); log-only arms with no consumer were removed in the v2 audit (commit `<see git log>`).
 
-| Event | Subcommand |
-|-------|-----------|
-| PreToolUse (Edit\|Write) | `dotctl hook lock-file-guard` |
-| PreToolUse (Bash) | `dotctl hook policy-guard` |
-| PostToolUse (Edit\|Write) | `dotctl hook format-on-save` |
-| PostToolUse (Bash) | `dotctl hook trim-bash-output` |
-| SessionStart | `dotctl hook session-start` |
-| UserPromptSubmit | `dotctl hook user-prompt-submit` |
-| CwdChanged | `dotctl hook cwd-changed` |
-| PreCompact | `dotctl hook pre-compact` |
-| PermissionDenied | `dotctl hook permission-denied` |
-| Stop | `dotctl hook stop` |
+| Event | Subcommand | Role |
+|-------|-----------|------|
+| PreToolUse (Edit\|Write) | `dotctl hook lock-file-guard` | defender |
+| PreToolUse (Bash) | `dotctl hook policy-guard` | defender |
+| PostToolUse (Edit\|Write) | `dotctl hook format-on-save` | formatter |
+| PostToolUse (Bash) | `dotctl hook trim-bash-output` | output spill |
+| UserPromptSubmit | `dotctl hook user-prompt-submit` | git cache pre-warm |
+| WorktreeCreate | `dotctl hook worktree-create` | Fix B relocator |
+| WorktreeRemove | `dotctl hook worktree-remove` | Fix B paired cleanup |
 
 ## Packaging policy: Lean A (brew = casks, mise = dev CLIs)
 

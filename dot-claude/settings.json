@@ -25,6 +25,7 @@
       "Bash(mise *)"
     ],
     "deny": [
+      "$defaults",
       "Bash(git push --force)",
       "Bash(git push --force *)",
       "Bash(git push -f)",
@@ -33,11 +34,6 @@
       "Bash(git clean *)",
       "Bash(git rebase -i*)",
       "Bash(git commit --amend*)",
-      "Bash(git filter-branch*)",
-      "Bash(git filter-repo*)",
-      "Bash(git update-ref -d*)",
-      "Bash(git reflog delete*)",
-      "Bash(git reflog expire*)",
       "Bash(rm -rf /)",
       "Bash(rm -rf /*)",
       "Bash(rm -rf ~)",
@@ -132,18 +128,6 @@
         ]
       }
     ],
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "dotctl hook session-start",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
     "UserPromptSubmit": [
       {
         "matcher": "",
@@ -151,66 +135,6 @@
           {
             "type": "command",
             "command": "dotctl hook user-prompt-submit",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "CwdChanged": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "dotctl hook cwd-changed",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "dotctl hook pre-compact",
-            "timeout": 3
-          }
-        ]
-      }
-    ],
-    "PermissionDenied": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "dotctl hook permission-denied",
-            "timeout": 3
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "dotctl hook stop",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "dotctl hook subagent-stop",
             "timeout": 5
           }
         ]
@@ -255,7 +179,7 @@
     "refreshInterval": 10
   },
   "enabledPlugins": {
-    "frontend-design@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": false,
     "context7@claude-plugins-official": true,
     "github@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": false,
@@ -266,7 +190,7 @@
     "hookify@claude-plugins-official": false,
     "playground@claude-plugins-official": false,
     "typescript-lsp@claude-plugins-official": true,
-    "playwright@claude-plugins-official": true,
+    "playwright@claude-plugins-official": false,
     "feature-dev@claude-plugins-official": false,
     "spacebase@gnar-next": true,
     "superpowers@claude-plugins-official": true,
@@ -360,7 +284,9 @@
         "~/.aws",
         "~/.gnupg",
         "~/.netrc",
-        "~/.config/op"
+        "~/.config/op",
+        "**/.envrc",
+        "~/Library/Group Containers/2BUA8C4S2C.com.1password"
       ]
     },
     "excludedCommands": [

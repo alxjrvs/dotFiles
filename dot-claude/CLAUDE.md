@@ -6,22 +6,13 @@
 - Editor: helix (`hx`)
 - Shell: zsh with vi keybindings
 - Package managers: bun (preferred for JS), brew (system)
-- Power user of Claude Code: hand-rolls dotfiles, hooks, statusline. Assume familiarity with the feature surface. Don't soften recommendations or default to basic workflows — pitch the advanced option directly.
+- Power user of Claude Code: hand-rolls dotfiles, hooks, statusline. Assume familiarity with the feature surface.
 
 ## Preferences
 
 - Use bun over npm/yarn unless a project requires otherwise
 - Use conventional commit style (feat:, fix:, chore:, etc.)
-- When a term is ambiguous, ask for clarification rather than assuming a meaning
-- No audio output from Claude or its hooks — no `say`, no notification sounds. Silent desktop notifications are fine. Voice input (me talking to Claude) is fine.
-- **Meaningful-benefit filter**: for every proposed change, ask *does this provide real payoff?* Skip nice-to-haves, redundant additions, and belts-and-suspenders safety without a real risk. "Do them all" means "do the ones worth doing" — say what you're skipping and why. Completeness is not a virtue.
 - **Secrets handling**: 1Password CLI (`op`) is the source of truth. NEVER propose adding a plaintext token to `.env`, `.npmrc`, or any config file. Default to an `op://` reference + the `op-run` wrapper, or `direnv` + `op read` in a per-project `.envrc` for fork-time inheritance. The only exception is keychain-backed CLIs (e.g., the `gh auth token` fallback handles GitHub) — document inline why the standard patterns don't apply. If you find an existing plaintext token in any repo, flag it before doing anything else: revoke first, then migrate.
-
-## Coding Style
-
-- TypeScript by default for JS projects
-- Prefer functional patterns over class-based
-- Keep functions small and focused
 
 ## Git Workflow
 
@@ -44,10 +35,9 @@
 - When dispatching an `Agent` that edits code, pass `isolation: "worktree"`.
 - When dispatching an `Agent`, default to `model: "sonnet"`. Use `"haiku"` for pure lookups (file reads, greps, one-shot searches). Reserve the default (opus) for architecture, debugging, code review, or tasks that explicitly need heavy reasoning.
 - Default to `/effort medium` for most prompts. Use `/effort high` for architecture, debugging, and review. Avoid `/effort max` — diminishing returns past high.
-
-## Worktrees
-
-- Worktree directory: `.worktrees`
+- For 2+ truly-independent investigation paths, prefer agent teams over sequential `Agent()` dispatches.
+- For polling/maintenance work that should outlive a session, propose a routine via `/schedule` instead of leaving sessions open.
+- For feature boundaries, prefer explicit `/compact` over autocompact firing mid-next-feature.
 
 ## Skill Usage
 
