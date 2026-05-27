@@ -65,7 +65,7 @@
     ],
     "ask": [
       "Bash(rm *)",
-      "Bash(git config*)",
+      "Bash(git config --global*)",
       "Bash(git restore*)",
       "Bash(git push --delete*)",
       "Bash(git push origin :*)",
