@@ -32,6 +32,7 @@ pub fn run(mode: PromptMode) -> Result<()> {
     let (home, dotfiles) = resolve_roots();
     prune_backups(&home, &dotfiles, mode)?;
     prune_stale_worktrees(&home, mode)?;
+    prune_orphan_workers(mode)?;
     Ok(())
 }
 
@@ -450,6 +451,167 @@ fn prompt_default_yes() -> bool {
         return true;
     }
     print!("       Delete these backups? [Y/n]: ");
+    let _ = io::stdout().flush();
+    let mut s = String::new();
+    if io::stdin().read_line(&mut s).is_err() {
+        return false;
+    }
+    let answer = s.trim().to_lowercase();
+    answer.is_empty() || answer == "y" || answer == "yes"
+}
+
+// ───────────────────────────────────────────── orphan bg-spare workers
+//
+// CC's daemon pre-warms `--bg-spare` worker processes. When a relocated
+// worktree is removed (e.g. via WorktreeRemove or `git worktree
+// remove`), an in-flight spare that had been chdir'd into that path
+// occasionally holds the (now-deleted) inode forever. Symptoms: `ls`
+// can't find the dir, but `lsof -p <pid> -d cwd` shows it.
+//
+// This pass detects those and SIGTERM's them. Daemon respawns spares
+// as needed, so killing them is free.
+
+#[derive(Debug, Clone)]
+pub struct OrphanWorker {
+    pub pid: u32,
+    pub dead_cwd: PathBuf,
+}
+
+fn prune_orphan_workers(mode: PromptMode) -> Result<()> {
+    println!();
+    println!("==> Orphan worker cleanup");
+
+    let orphans = find_orphan_workers();
+    if orphans.is_empty() {
+        println!("{GREEN}  ✓ No orphan workers{NC}");
+        return Ok(());
+    }
+
+    println!(
+        "{YELLOW}  Found {} orphan bg-spare worker(s) holding deleted cwds:{NC}",
+        orphans.len()
+    );
+    for o in &orphans {
+        println!(
+            "{DIM}    - PID {} → {}{NC}",
+            o.pid,
+            o.dead_cwd.display()
+        );
+    }
+
+    let do_kill = match mode {
+        PromptMode::AutoYes => true,
+        PromptMode::DryRun => false,
+        PromptMode::AskDefaultYes => prompt_workers_default_yes(),
+    };
+    if !do_kill {
+        println!("{DIM}  - Skipped (no workers killed){NC}");
+        return Ok(());
+    }
+
+    let mut killed = 0usize;
+    let mut failed = 0usize;
+    for o in &orphans {
+        match Command::new("kill").arg(o.pid.to_string()).status() {
+            Ok(s) if s.success() => killed += 1,
+            _ => failed += 1,
+        }
+    }
+    if failed == 0 {
+        println!("{GREEN}  ✓ Killed {killed} orphan worker(s){NC}");
+    } else {
+        println!("{YELLOW}  → Killed {killed}, {failed} failed{NC}");
+    }
+    Ok(())
+}
+
+pub fn find_orphan_workers() -> Vec<OrphanWorker> {
+    let mut out = Vec::new();
+    let pids = bg_spare_pids();
+    let self_pid = std::process::id();
+    // Get our parent and grandparent so we don't suicide via a spare
+    // we descended from.
+    let ancestors = ancestor_pids(self_pid);
+    for pid in pids {
+        if pid == self_pid || ancestors.contains(&pid) {
+            continue;
+        }
+        if let Some(cwd) = process_cwd(pid) {
+            if !cwd.exists() {
+                out.push(OrphanWorker { pid, dead_cwd: cwd });
+            }
+        }
+    }
+    out.sort_by_key(|o| o.pid);
+    out
+}
+
+// `pgrep -f "claude.*--bg-spare"` — anchors on the literal --bg-spare
+// flag so we never match a session process or the daemon itself.
+fn bg_spare_pids() -> Vec<u32> {
+    let out = match Command::new("pgrep")
+        .args(["-f", "claude.*--bg-spare"])
+        .output()
+    {
+        Ok(o) if o.status.success() => o,
+        _ => return vec![],
+    };
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .filter_map(|l| l.trim().parse::<u32>().ok())
+        .collect()
+}
+
+// `lsof -p <pid> -d cwd -F n` emits `n<path>` lines. Parse the first.
+fn process_cwd(pid: u32) -> Option<PathBuf> {
+    let out = Command::new("lsof")
+        .args(["-a", "-p", &pid.to_string(), "-d", "cwd", "-F", "n"])
+        .output()
+        .ok()?;
+    // -F can return success even when process is gone; just check
+    // for an n-prefixed line.
+    let raw = String::from_utf8_lossy(&out.stdout);
+    for line in raw.lines() {
+        if let Some(rest) = line.strip_prefix('n') {
+            return Some(PathBuf::from(rest));
+        }
+    }
+    None
+}
+
+// Walk up the process tree by repeatedly calling `ps -o ppid= -p <pid>`.
+// Bounded to 16 levels to defend against pathological loops.
+fn ancestor_pids(start: u32) -> Vec<u32> {
+    let mut out = Vec::new();
+    let mut cur = start;
+    for _ in 0..16 {
+        let ppid = match Command::new("ps")
+            .args(["-o", "ppid=", "-p", &cur.to_string()])
+            .output()
+        {
+            Ok(o) if o.status.success() => {
+                let raw = String::from_utf8_lossy(&o.stdout);
+                raw.trim().parse::<u32>().ok()
+            }
+            _ => None,
+        };
+        match ppid {
+            Some(p) if p > 1 => {
+                out.push(p);
+                cur = p;
+            }
+            _ => break,
+        }
+    }
+    out
+}
+
+fn prompt_workers_default_yes() -> bool {
+    if !io::stdin().is_terminal() {
+        println!("{DIM}  - Non-interactive; killing (default yes){NC}");
+        return true;
+    }
+    print!("       Kill these orphan workers? [Y/n]: ");
     let _ = io::stdout().flush();
     let mut s = String::new();
     if io::stdin().read_line(&mut s).is_err() {
