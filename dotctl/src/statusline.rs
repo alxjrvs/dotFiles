@@ -5,7 +5,7 @@
 // bars for context window + Pro/Max rate-limit windows.
 //
 // Layout:
-//   Line 1: repo/dir [branch] [wt:name] [counters]
+//   Line 1: repo/dir [B: branch] [W: name] [C: counters]
 //   Line 2: [M: model] [A: advisor] [E: effort]   (optional)
 //   Line 3: Ctx [bar] N%
 //   Line 4: 5h  [bar] N% [time left] [delta]
@@ -93,7 +93,7 @@ pub fn run() -> Result<()> {
     let is_repo = git.get("GIT_IS_REPO").map(|s| s == "1").unwrap_or(false);
     if is_repo || !branch.is_empty() {
         let b = if branch.is_empty() { "-".to_string() } else { branch.clone() };
-        line1.push_str(&format!(" {MUTED}[{RST}{BLUE}{b}{MUTED}]{RST}"));
+        line1.push_str(&format!(" {MUTED}[{RST}{BLUE}B: {b}{MUTED}]{RST}"));
     }
 
     let wt = if !worktree_name_input.is_empty() {
@@ -102,7 +102,7 @@ pub fn run() -> Result<()> {
         git.get("GIT_WORKTREE_NAME").cloned().unwrap_or_default()
     };
     if !wt.is_empty() {
-        line1.push_str(&format!(" {MUTED}[{RST}{MAGENTA}{wt}{MUTED}]{RST}"));
+        line1.push_str(&format!(" {MUTED}[{RST}{MAGENTA}W: {wt}{MUTED}]{RST}"));
     }
 
     // Counters
@@ -136,7 +136,7 @@ pub fn run() -> Result<()> {
     }
     if !counters.is_empty() {
         line1.push_str(&format!(
-            " {MUTED}[{RST}{}{MUTED}]{RST}",
+            " {MUTED}[C: {RST}{}{MUTED}]{RST}",
             counters.join(&format!("{MUTED}, {RST}"))
         ));
     }
