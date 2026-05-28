@@ -32,10 +32,17 @@
 	pager = delta
 	fsmonitor = false
 	untrackedCache = true
-	hooksPath = ~/.config/git/hooks
 
+# init.templateDir is the replacement for the previous core.hooksPath
+# global-hook approach. New repos copy template/hooks/pre-commit into
+# their own .git/hooks/ at `git init` time → gitleaks runs per-repo
+# without conflicting with lefthook (which manages .git/hooks/pre-commit
+# directly in lefthook-equipped repos). Older repos initialized before
+# this change need a manual one-shot:
+#   cp ~/.config/git/template/hooks/pre-commit <repo>/.git/hooks/pre-commit
 [init]
 	defaultBranch = main
+	templateDir = ~/.config/git/template
 [commit]
 	template = ~/.gitmessage
 	verbose = true

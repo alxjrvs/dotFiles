@@ -550,7 +550,7 @@ fn step_symlinks(ctx: &Context_) -> Result<()> {
     // semantics so `dotctl sync --only=zsh` does what you expect.
     let umbrella_tags: &[&str] = &[
         "symlinks", "git", "shell", "mise", "sheldon", "ghostty", "bat", "atuin", "lazygit", "zsh",
-        "git-hooks", "gh", "claude", "ssh", "helix", "karabiner",
+        "git-template", "gh", "claude", "ssh", "helix", "karabiner",
     ];
     if !ctx.should_run(umbrella_tags) {
         return Ok(());
@@ -575,13 +575,28 @@ fn step_symlinks(ctx: &Context_) -> Result<()> {
             )?;
         }
 
-        let _ = fs::create_dir_all(ctx.home.join(".config/git/hooks"));
+        // Template hooks for `init.templateDir`. `git init` copies these
+        // into each new repo's .git/hooks/. lefthook-managed repos
+        // overwrite .git/hooks/pre-commit on `lefthook install` — fine,
+        // lefthook calls gitleaks as one of its commands in those repos.
+        let _ = fs::create_dir_all(ctx.home.join(".config/git/template/hooks"));
         link(
-            &ctx.dotfiles_dir.join("git-hooks/pre-commit"),
-            &ctx.home.join(".config/git/hooks/pre-commit"),
-            "git-hooks/pre-commit",
+            &ctx.dotfiles_dir.join("git-template/hooks/pre-commit"),
+            &ctx.home.join(".config/git/template/hooks/pre-commit"),
+            "git-template/hooks/pre-commit",
             ctx.link_mode,
         )?;
+
+        // Stale leftover: the previous design symlinked git-hooks/ into
+        // ~/.config/git/hooks/ and pointed core.hooksPath at it globally.
+        // That conflicted with lefthook; we removed core.hooksPath and
+        // moved to init.templateDir. Clean up the dead symlink and the
+        // (now-empty) parent if it exists.
+        let dead_hook = ctx.home.join(".config/git/hooks/pre-commit");
+        if dead_hook.exists() || dead_hook.is_symlink() {
+            let _ = fs::remove_file(&dead_hook);
+            let _ = fs::remove_dir(ctx.home.join(".config/git/hooks"));
+        }
 
         // Bootstrap ~/.gitconfig.local if absent (gpgSign defaults to true).
         let local = ctx.home.join(".gitconfig.local");
@@ -947,11 +962,11 @@ fn step_lefthook(ctx: &Context_) -> Result<()> {
         warn("lefthook not found — should have been installed by brew bundle");
         return Ok(());
     }
-    // --force: bypass the core.hooksPath conflict warning. By design the
-    // global hooksPath points at git-hooks/pre-commit (gitleaks), which
-    // chain-calls .git/hooks/pre-commit — that's what lefthook owns here.
+    // Plain install — no --force needed now that the global core.hooksPath
+    // conflict was removed (gitleaks moved into lefthook.yml; new repos
+    // get gitleaks via init.templateDir).
     let status = Command::new("lefthook")
-        .args(["install", "--force"])
+        .args(["install"])
         .current_dir(&ctx.dotfiles_dir)
         .stdout(Stdio::null())
         .stderr(Stdio::null())

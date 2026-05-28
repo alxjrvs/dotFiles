@@ -467,7 +467,7 @@ fn scan_drift(dotfiles: &Path) -> u32 {
             files.push(p);
         }
     }
-    for dir in ["zsh", "dot-claude/agents", "dot-claude/commands", "git-hooks"] {
+    for dir in ["zsh", "dot-claude/agents", "dot-claude/commands", "git-template/hooks"] {
         if let Ok(entries) = fs::read_dir(dotfiles.join(dir)) {
             for entry in entries.flatten() {
                 let p = entry.path();

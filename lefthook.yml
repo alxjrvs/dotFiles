@@ -1,10 +1,12 @@
 # Lefthook config for this repo (dotfiles itself).
 #
-# Wires shellcheck + shfmt as a pre-commit gate on staged shell files.
-# Composes with the global `git-hooks/pre-commit` (gitleaks): the global
-# hook explicitly chain-calls the repo-local .git/hooks/pre-commit that
-# `lefthook install` writes — so both run on commit here, gitleaks-only
-# elsewhere.
+# Owns the pre-commit gate end-to-end: shellcheck + shfmt + JSON validity
+# + gitleaks. Previously gitleaks ran via a global `core.hooksPath` hook,
+# but that conflicted with lefthook ("Skipping hook sync" warning every
+# run). Restructure: removed global core.hooksPath, moved gitleaks into
+# this file. New repos get gitleaks via `init.templateDir`; existing
+# non-lefthook repos need a one-shot
+# `cp ~/.config/git/template/hooks/pre-commit <repo>/.git/hooks/pre-commit`.
 #
 # Install (idempotent; dotctl sync runs this automatically):
 #   lefthook install
@@ -13,12 +15,17 @@ pre-commit:
   parallel: true
   commands:
     shellcheck:
-      glob: "{*.sh,git-hooks/*,dot-claude/statusline-command.sh,dot-claude/hooks/*}"
+      glob: "{*.sh,git-template/hooks/*,dot-claude/statusline-command.sh,dot-claude/hooks/*,probes/*.sh}"
       run: shellcheck -x {staged_files}
     shfmt-check:
-      glob: "{*.sh,git-hooks/*,dot-claude/statusline-command.sh,dot-claude/hooks/*}"
+      glob: "{*.sh,git-template/hooks/*,dot-claude/statusline-command.sh,dot-claude/hooks/*,probes/*.sh}"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}
+    gitleaks:
+      # Replaces the former global-hook gitleaks. `protect --staged` only
+      # scans what's about to be committed. `--no-banner --redact` keeps
+      # output tight + safe to share.
+      run: gitleaks protect --staged --redact -v --no-banner
     settings-json-validity:
       # Backstop against committing a broken settings.json. Full
       # JSON-schema validation against $schema would need ajv/check-

@@ -1,0 +1,18 @@
+#!/bin/sh
+# Template pre-commit hook — copied into each new repo's .git/hooks/ at
+# `git init` time via the `init.templateDir = ~/.config/git/template`
+# setting in ~/.gitconfig.
+#
+# Role: run gitleaks on staged changes for repos that DON'T have their
+# own pre-commit (e.g., lefthook-managed repos overwrite this file with
+# lefthook's own pre-commit; that's fine — those repos run gitleaks
+# via lefthook directly).
+#
+# Bypass for a single commit:
+#   git commit --no-verify  (only when you really need to)
+
+set -e
+
+if command -v gitleaks > /dev/null 2>&1; then
+  gitleaks protect --staged --redact -v --no-banner
+fi
