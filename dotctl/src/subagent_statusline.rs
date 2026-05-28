@@ -56,6 +56,12 @@ pub fn run() -> Result<()> {
     let _ = io::stdin().read_to_string(&mut buf);
     let input: Value = serde_json::from_str(&buf).unwrap_or(Value::Null);
 
+    let cols: Option<usize> = input
+        .get("columns")
+        .and_then(|v| v.as_u64())
+        .map(|n| n as usize);
+    let compact = matches!(cols, Some(c) if c < 100);
+
     let tasks_in = input
         .get("tasks")
         .and_then(|v| v.as_array())
@@ -95,8 +101,8 @@ pub fn run() -> Result<()> {
         };
 
         let elapsed_secs = now_ms.saturating_sub(start_time) / 1000;
-        let elapsed = format_elapsed(elapsed_secs);
-        let token_text = format_token_count(token_count);
+        let elapsed = format_elapsed(elapsed_secs, compact);
+        let token_text = format_token_count(token_count, compact);
 
         tasks_out.push(json!({
             "id": id,
@@ -116,8 +122,18 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
-fn format_token_count(n: u64) -> String {
-    if n < 1_000 {
+fn format_token_count(n: u64, compact: bool) -> String {
+    if compact {
+        // Always-abbreviated: "42" / "1k" / "1M". Trade a digit of
+        // precision for a guaranteed-narrow column when panels are tight.
+        if n < 1_000 {
+            n.to_string()
+        } else if n < 1_000_000 {
+            format!("{}k", n / 1_000)
+        } else {
+            format!("{}M", n / 1_000_000)
+        }
+    } else if n < 1_000 {
         n.to_string()
     } else if n < 1_000_000 {
         format!("{:.1}k", (n as f64) / 1_000.0)
@@ -126,8 +142,17 @@ fn format_token_count(n: u64) -> String {
     }
 }
 
-fn format_elapsed(secs: u64) -> String {
-    if secs < 60 {
+fn format_elapsed(secs: u64, compact: bool) -> String {
+    if compact {
+        // Single largest-unit only: "2m" / "1h" / "30s".
+        if secs < 60 {
+            format!("{secs}s")
+        } else if secs < 3600 {
+            format!("{}m", secs / 60)
+        } else {
+            format!("{}h", secs / 3600)
+        }
+    } else if secs < 60 {
         format!("{secs}s")
     } else if secs < 3600 {
         let m = secs / 60;
@@ -146,40 +171,40 @@ mod tests {
 
     #[test]
     fn format_token_count_under_thousand_is_plain() {
-        assert_eq!(format_token_count(0), "0");
-        assert_eq!(format_token_count(42), "42");
-        assert_eq!(format_token_count(999), "999");
+        assert_eq!(format_token_count(0, false), "0");
+        assert_eq!(format_token_count(42, false), "42");
+        assert_eq!(format_token_count(999, false), "999");
     }
 
     #[test]
     fn format_token_count_thousands_compact() {
-        assert_eq!(format_token_count(1_000), "1.0k");
-        assert_eq!(format_token_count(12_345), "12.3k");
-        assert_eq!(format_token_count(999_999), "1000.0k");
+        assert_eq!(format_token_count(1_000, false), "1.0k");
+        assert_eq!(format_token_count(12_345, false), "12.3k");
+        assert_eq!(format_token_count(999_999, false), "1000.0k");
     }
 
     #[test]
     fn format_token_count_millions_compact() {
-        assert_eq!(format_token_count(1_000_000), "1.0M");
-        assert_eq!(format_token_count(2_500_000), "2.5M");
+        assert_eq!(format_token_count(1_000_000, false), "1.0M");
+        assert_eq!(format_token_count(2_500_000, false), "2.5M");
     }
 
     #[test]
     fn format_elapsed_seconds() {
-        assert_eq!(format_elapsed(0), "0s");
-        assert_eq!(format_elapsed(59), "59s");
+        assert_eq!(format_elapsed(0, false), "0s");
+        assert_eq!(format_elapsed(59, false), "59s");
     }
 
     #[test]
     fn format_elapsed_minutes_with_zero_padding() {
-        assert_eq!(format_elapsed(60), "1m00s");
-        assert_eq!(format_elapsed(125), "2m05s");
-        assert_eq!(format_elapsed(3599), "59m59s");
+        assert_eq!(format_elapsed(60, false), "1m00s");
+        assert_eq!(format_elapsed(125, false), "2m05s");
+        assert_eq!(format_elapsed(3599, false), "59m59s");
     }
 
     #[test]
     fn format_elapsed_hours() {
-        assert_eq!(format_elapsed(3600), "1h00m");
-        assert_eq!(format_elapsed(7325), "2h02m");
+        assert_eq!(format_elapsed(3600, false), "1h00m");
+        assert_eq!(format_elapsed(7325, false), "2h02m");
     }
 }

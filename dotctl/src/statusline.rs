@@ -35,7 +35,9 @@ const NEAR_WHITE: &str = "\x1b[38;2;235;235;235m";
 const MARKER: &str = "\x1b[38;2;96;200;255m";
 const PROJ: &str = "\x1b[38;2;255;210;80m";
 
-const PIP_COUNT: usize = 30;
+/// Default pip count when terminal columns are unknown (pre-CC-v2.1.153
+/// payloads don't include `columns`). Used as the cap for `pip_count_for_width`.
+const DEFAULT_PIP_COUNT: usize = 30;
 const PIP_FILL: char = '\u{25B0}'; // ▰
 const PIP_EMPTY: char = '\u{25B1}'; // ▱
 
@@ -58,6 +60,16 @@ pub fn run() -> Result<()> {
     let five_resets_at = str_at(&payload, &["rate_limits", "five_hour", "resets_at"]);
     let seven_pct = str_at(&payload, &["rate_limits", "seven_day", "used_percentage"]);
     let seven_resets_at = str_at(&payload, &["rate_limits", "seven_day", "resets_at"]);
+
+    // Terminal width — CC v2.1.153+ pipes `columns` at top level (matches
+    // the field subagentStatusLine has always received). Also check
+    // `terminal.columns` per the proposal in issue #22115. None on older
+    // versions; render_bar falls back to DEFAULT_PIP_COUNT.
+    let cols: Option<usize> = payload
+        .get("columns")
+        .and_then(|v| v.as_u64())
+        .or_else(|| payload.get("terminal").and_then(|t| t.get("columns")).and_then(|v| v.as_u64()))
+        .map(|n| n as usize);
 
     // Advisor name comes from ~/.claude/settings.json (.advisorModel).
     let advisor_name = read_advisor_name();
@@ -165,20 +177,20 @@ pub fn run() -> Result<()> {
 
     // ── Line 3: Ctx bar ───────────────────────────────────────────────
     let used_int = parse_int_prefix(&used_pct);
-    let ctx_bar = render_bar(used_int, None, None);
+    let ctx_bar = render_bar(used_int, None, None, cols);
     println!(
         "{MUTED}{:<3}{RST} {ctx_bar} {MUTED}{:3}%{RST}",
         "Ctx", used_int
     );
 
     // ── Lines 4-5: rate-limit windows ─────────────────────────────────
-    print_window(&five_pct, &five_resets_at, 300, "5h");
-    print_window(&seven_pct, &seven_resets_at, 10_080, "7d");
+    print_window(&five_pct, &five_resets_at, 300, "5h", cols);
+    print_window(&seven_pct, &seven_resets_at, 10_080, "7d", cols);
 
     Ok(())
 }
 
-fn print_window(pct_str: &str, resets_at_str: &str, window_min: u64, label: &str) {
+fn print_window(pct_str: &str, resets_at_str: &str, window_min: u64, label: &str, cols: Option<usize>) {
     if pct_str.is_empty() || resets_at_str.is_empty() {
         if label == "5h" {
             println!(
@@ -223,7 +235,7 @@ fn print_window(pct_str: &str, resets_at_str: &str, window_min: u64, label: &str
         format!("{remain_min}m left")
     };
 
-    let bar = render_bar(pct, Some(clock_pct), proj_pct);
+    let bar = render_bar(pct, Some(clock_pct), proj_pct, cols);
     println!(
         "{MUTED}{:<3}{RST} {bar} {MUTED}{:3}%{RST} [{MARKER}{time_label}{MUTED}] [{}{MUTED}]{RST}",
         label, pct, delta_str
@@ -260,40 +272,58 @@ fn gradient_at(t: i32) -> (u8, u8, u8) {
     (r as u8, g as u8, b as u8)
 }
 
-fn render_bar(pct: i32, marker_pct: Option<i32>, proj_pct: Option<i32>) -> String {
+/// Discrete piecewise scale of bar width based on terminal columns.
+/// Returns DEFAULT_PIP_COUNT when columns are unknown (pre-v2.1.153 CC,
+/// or pipe context where the field wasn't populated).
+///
+/// Calibration: bar lines have ~20 chars of label+pct+brackets overhead.
+/// We aim for the bar to consume roughly half the terminal width, capped.
+fn pip_count_for_width(cols: Option<usize>) -> usize {
+    match cols {
+        None => DEFAULT_PIP_COUNT,
+        Some(c) if c < 60 => 15,
+        Some(c) if c < 90 => 20,
+        Some(c) if c < 120 => 30,
+        Some(c) if c < 160 => 40,
+        Some(_) => 50,
+    }
+}
+
+fn render_bar(pct: i32, marker_pct: Option<i32>, proj_pct: Option<i32>, cols: Option<usize>) -> String {
+    let pip_count = pip_count_for_width(cols);
     let pct = pct.max(0);
-    let mut filled = (pct as usize) * PIP_COUNT / 100;
-    if filled > PIP_COUNT {
-        filled = PIP_COUNT;
+    let mut filled = (pct as usize) * pip_count / 100;
+    if filled > pip_count {
+        filled = pip_count;
     }
     if pct > 0 && filled == 0 {
         filled = 1;
     }
 
     let (marker_idx, marker_expired): (Option<usize>, bool) = match marker_pct {
-        Some(m) if m >= 100 => (Some(PIP_COUNT - 1), true),
+        Some(m) if m >= 100 => (Some(pip_count - 1), true),
         Some(m) => {
-            let idx = (m.max(0) as usize) * PIP_COUNT / 100;
-            (Some(idx.min(PIP_COUNT - 1)), false)
+            let idx = (m.max(0) as usize) * pip_count / 100;
+            (Some(idx.min(pip_count - 1)), false)
         }
         None => (None, false),
     };
     let proj_idx: Option<usize> = match proj_pct {
         Some(p) if (0..=100).contains(&p) => {
-            let idx = (p as usize) * PIP_COUNT / 100;
-            Some(idx.min(PIP_COUNT - 1))
+            let idx = (p as usize) * pip_count / 100;
+            Some(idx.min(pip_count - 1))
         }
         _ => None,
     };
 
     // Pre-compute per-pip gradient color.
-    let mut pip_colors: Vec<(u8, u8, u8)> = Vec::with_capacity(PIP_COUNT);
-    for k in 0..PIP_COUNT {
-        pip_colors.push(gradient_at((k as i32) * 10_000 / (PIP_COUNT as i32 - 1)));
+    let mut pip_colors: Vec<(u8, u8, u8)> = Vec::with_capacity(pip_count);
+    for k in 0..pip_count {
+        pip_colors.push(gradient_at((k as i32) * 10_000 / (pip_count as i32 - 1)));
     }
 
     let mut out = String::new();
-    for i in 0..PIP_COUNT {
+    for i in 0..pip_count {
         let pip = if i < filled { PIP_FILL } else { PIP_EMPTY };
         if Some(i) == marker_idx {
             if marker_expired {
@@ -443,33 +473,33 @@ mod tests {
 
     #[test]
     fn render_bar_zero_pct_emits_pip_count_chars() {
-        let s = render_bar(0, None, None);
+        let s = render_bar(0, None, None, None);
         // 30 pips of any color; render produces escape-prefixed chars per pip.
         // Easier check: count fill chars + empty chars.
         let fill = s.matches(PIP_FILL).count();
         let empty = s.matches(PIP_EMPTY).count();
-        assert_eq!(fill + empty, PIP_COUNT);
+        assert_eq!(fill + empty, DEFAULT_PIP_COUNT);
         assert_eq!(fill, 0);
     }
 
     #[test]
     fn render_bar_full_pct_fills_all_pips() {
-        let s = render_bar(100, None, None);
+        let s = render_bar(100, None, None, None);
         let fill = s.matches(PIP_FILL).count();
         let empty = s.matches(PIP_EMPTY).count();
-        assert_eq!(fill + empty, PIP_COUNT);
+        assert_eq!(fill + empty, DEFAULT_PIP_COUNT);
         assert_eq!(empty, 0);
     }
 
     #[test]
     fn render_bar_pct_one_lights_at_least_one_pip() {
-        let s = render_bar(1, None, None);
+        let s = render_bar(1, None, None, None);
         assert!(s.contains(PIP_FILL));
     }
 
     #[test]
     fn render_bar_negative_pct_clamps_to_zero() {
-        let s = render_bar(-50, None, None);
+        let s = render_bar(-50, None, None, None);
         assert_eq!(s.matches(PIP_FILL).count(), 0);
     }
 
