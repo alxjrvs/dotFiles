@@ -5,19 +5,19 @@
     "EDITOR": "hx",
     "ENABLE_PROMPT_CACHING_1H": "1",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80",
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-    "META_TELEMETRY_ENABLE": "1"
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
     "allow": [
       "Bash(git *)",
       "Bash(gh *)",
+      "Bash(git push --force-with-lease*)",
+      "Bash(gitleaks *)",
       "WebSearch",
       "Bash(cargo *)",
       "Bash(lefthook *)",
       "Skill(superpowers:*)",
       "Skill(implement:*)",
-      "Skill(frontend-design:*)",
       "mcp__plugin_context7_context7__*",
       "Bash(node *)",
       "Bash(bun *)",
@@ -140,26 +140,14 @@
         ]
       }
     ],
-    "WorktreeCreate": [
+    "Stop": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "dotctl hook worktree-create",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "WorktreeRemove": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "dotctl hook worktree-remove",
-            "timeout": 10
+            "command": "dotctl hook stop",
+            "timeout": 5
           }
         ]
       }
@@ -199,7 +187,8 @@
     "ignite@gnar-next": true,
     "implement@gnar-next": true,
     "meta@gnar-next": true,
-    "rust-analyzer-lsp@claude-plugins-official": true
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "expo@expo-plugins": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -214,7 +203,13 @@
         "repo": "thegnarco/agent-skills",
         "ref": "next"
       },
-      "autoUpdate": true
+      "autoUpdate": false
+    },
+    "expo-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "expo/skills"
+      }
     }
   },
   "forceLoginMethod": "claudeai",
@@ -265,7 +260,6 @@
         "~/.bun/install/cache",
         "~/.cargo/**",
         "~/.local/share/mise/**",
-        "~/.local/share/cc-worktrees/**",
         "~/.cache",
         "/tmp/claude",
         "/private/tmp/claude",
@@ -285,6 +279,7 @@
         "~/.gnupg",
         "~/.netrc",
         "~/.config/op",
+        "~/.ssh/id_*",
         "**/.envrc",
         "~/Library/Group Containers/2BUA8C4S2C.com.1password"
       ]
@@ -300,9 +295,10 @@
       "bun",
       "bunx",
       "mise",
+      "gitleaks",
+      "dotctl",
       "sh",
-      "bash",
-      "gitleaks"
+      "bash"
     ]
   },
   "feedbackSurveyRate": 0,
@@ -311,13 +307,11 @@
   "editorMode": "vi",
   "verbose": true,
   "teammateMode": "auto",
-  "remoteControlAtStartup": true,
-  "isolatePeerMachines": true,
-  "daemonColdStart": "ask",
+  "isolatePeerMachines": false,
+  "daemonColdStart": "transient",
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": false,
   "skipAutoPermissionPrompt": true,
-  "voiceEnabled": true,
   "defaultToAgentsView": true,
   "leftArrowOpensAgents": true,
   "subagentStatusLine": {

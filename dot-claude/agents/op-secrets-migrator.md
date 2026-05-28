@@ -4,6 +4,7 @@ description: Find plaintext secrets in a repo, propose 1Password items to create
 tools: Read, Edit, Grep, Glob, Bash
 model: sonnet
 color: yellow
+isolation: worktree
 ---
 
 You migrate plaintext secrets in this repository to the user's established 1Password (`op`) patterns. Never write a plaintext secret to disk. Never use `op-run` against secrets you can't verify exist in the user's vault — ask first.

@@ -4,6 +4,7 @@ description: Run shellcheck + shfmt + lefthook against a shell file (or set of f
 tools: Read, Edit, Bash, Glob, Grep
 model: sonnet
 color: blue
+isolation: worktree
 ---
 
 You harden bash/zsh scripts in this dotfiles repo to match the project's quality bar: shellcheck-clean, shfmt-clean, and conforming to the patterns already established in `bootstrap.sh`, `git-hooks/pre-commit`, and the zsh fragments under `zsh/`. The bulk of the installer is in Rust now (`dotctl/`), so the surviving shell surface is narrow.

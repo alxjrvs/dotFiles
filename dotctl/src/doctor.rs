@@ -346,6 +346,40 @@ pub fn run() -> Result<()> {
         }
     }
 
+    // ── claude doctor ────────────────────────────────────────────────
+    // Surfaces Claude Code's own health check (auto-updater + MCP server
+    // probes). claude doctor spawns the stdio MCP servers declared in
+    // .mcp.json to probe them; if any block, this step hangs. No timeout
+    // by design — a hang here means an MCP server is broken and should
+    // be diagnosed, not hidden.
+    if !capture("claude", &["--version"]).is_empty() {
+        let out = Command::new("claude").arg("doctor").output();
+        match out {
+            Ok(o) if o.status.success() => {
+                ok("claude doctor: healthy");
+            }
+            Ok(o) => {
+                let combined = format!(
+                    "{}{}",
+                    String::from_utf8_lossy(&o.stdout),
+                    String::from_utf8_lossy(&o.stderr)
+                );
+                fail(&format!(
+                    "claude doctor: exit {} — output below",
+                    o.status.code().unwrap_or(-1)
+                ));
+                for line in combined.lines().take(20) {
+                    eprintln!("  {line}");
+                }
+                fails += 1;
+            }
+            Err(e) => {
+                fail(&format!("claude doctor: spawn failed: {e}"));
+                fails += 1;
+            }
+        }
+    }
+
     // ── macOS defaults drift ─────────────────────────────────────────
     // Only runs on Darwin. Audits each MANAGED default via `defaults read`
     // and flags drift (the user changed it via System Settings) or missing

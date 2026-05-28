@@ -21,9 +21,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Claude
-.claude/*.local.json
-.claude/worktrees/
+# Claude — `.claude/` at the repo root is for machine-local Claude state.
+# Project-level config (settings.json, skills, agents) belongs in `dot-claude/`
+# and is symlinked into ~/.claude/ by `dotctl sync`. Everything in `.claude/`
+# is gitignored to avoid drift.
+.claude/
 
 # `.secrets` was decommissioned in favor of op-run / op:// (see CLAUDE.md).
 # `.npmrc` is gitignored at the user-config level because per-project

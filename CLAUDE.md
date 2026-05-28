@@ -85,8 +85,7 @@ Each entry is symlinked individually into `~/.claude/` by `dotctl sync` (claude 
 | PostToolUse (Edit\|Write) | `dotctl hook format-on-save` | formatter |
 | PostToolUse (Bash) | `dotctl hook trim-bash-output` | output spill |
 | UserPromptSubmit | `dotctl hook user-prompt-submit` | git cache pre-warm |
-| WorktreeCreate | `dotctl hook worktree-create` | Fix B relocator |
-| WorktreeRemove | `dotctl hook worktree-remove` | Fix B paired cleanup |
+| Stop | `dotctl hook stop` | session JSONL journal |
 
 ## Packaging policy: Lean A (brew = casks, mise = dev CLIs)
 
@@ -181,7 +180,7 @@ Pause and confirm with the user before doing any of these:
 - **Hot-path subcommands** (`git-data`, `prompt-render`, `statusline`): these run on every prompt/refresh. Don't add subprocess spawns, network calls, or unbounded loops. Read the cache, render, exit.
 - **Starship references**: the user replaced Starship with the `dotctl prompt-render` Rust binary. If you see `starship` anywhere, treat it as historical — do not reintroduce.
 - **AstroNvim / nvim references**: the user replaced AstroNvim viewer-mode with helix. There is no `nvim/` directory; do not propose re-adding one.
-- **`worktree.bgIsolation` defaults to `"none"`, but Fix B is available as opt-in** — vanilla CC v2.1.150 with `bgIsolation: "worktree"` triggers a commit-lockout (harness injects per-CWD `denyWithinAllow` on `<cwd>/HEAD`/`objects`/`refs` matching the auto-created `.git/worktrees/<n>/` paths; tracked upstream by #25896 #17374 #61909 #56331). Fix B sidesteps this: `WorktreeCreate` hook (`dotctl hook worktree-create`) relocates worktrees to `~/.local/share/cc-worktrees/<repo>/<n>` (outside the cwd-deny radius), and `~/.local/share/cc-worktrees/**` is in `sandbox.allowWrite` so the relocated working tree is writable. Validated end-to-end. The user-global default is `"none"` (BG sessions edit in place) because the user prefers explicit per-repo opt-in; project-level `.claude/settings.json` with `worktree.bgIsolation: "worktree"` flips a single repo back ON, and Fix B's hook will fire correctly. Do NOT remove `~/.local/share/cc-worktrees/**` from allowWrite or unwire the `WorktreeCreate`/`WorktreeRemove` hooks — they're load-bearing for any repo that opts in.
+- **`worktree.bgIsolation`** — user-global is `"none"` so BG sessions edit in place; per-repo project-level `.claude/settings.json` can flip individual repos to `"worktree"`. CC v2.1.150+ places worktrees at `<repo>/.claude/worktrees/<n>/` (NOT the legacy `.git/worktrees/<n>/`), which is outside the cwd-deny radius — so commits work without the old "Fix B" relocation hook. The relocation hooks were removed in May 2026 after verification confirmed CC's new default sidesteps the original lockout. If a future CC version reintroduces the lockout, the `WorktreeCreate` hook event is still available to wire back up.
 
 ## Important Gotchas
 
