@@ -42,7 +42,13 @@ pre-commit:
 pre-push:
   commands:
     doctor:
-      run: dotctl doctor
+      # SKIP_EXTERNAL: a push gate wants the fast structural checks (tool
+      # presence, git identity, symlinks, drift) — NOT the heavy/flaky brew
+      # bundle+doctor / gh / network audit, which is ~minute-scale and can
+      # wedge on Homebrew's global update lock (esp. alongside cargo-test's
+      # parallel doctor runs). The full audit stays available via interactive
+      # `dotctl doctor`.
+      run: DOTCTL_DOCTOR_SKIP_EXTERNAL=1 dotctl doctor
     cargo-test:
       glob: "dotctl/**/*.rs"
       # cargo-nextest is ~2x faster than `cargo test`; falls back to `cargo

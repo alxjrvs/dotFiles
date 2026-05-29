@@ -33,6 +33,17 @@ pub fn run() -> Result<()> {
         }
     }
 
+    // External-service checks (brew bundle/doctor, gh auth, mise doctor,
+    // claude doctor) shell out to network- and lock-bound tools that are slow
+    // (brew bundle alone is ~15s) and can hang (Homebrew's global update lock,
+    // MCP probes). Valuable in an interactive audit, but they make `doctor`
+    // non-hermetic — unfit for the drift integration tests and far too heavy /
+    // flaky for a per-push gate. DOTCTL_DOCTOR_SKIP_EXTERNAL=1 skips them; the
+    // fast structural checks (git identity, tool presence, symlinks, drift,
+    // mise ls, pueue) still run. Set by the doctor_drift tests and the
+    // lefthook pre-push `doctor` command; unset for interactive `dotctl doctor`.
+    let skip_external = std::env::var_os("DOTCTL_DOCTOR_SKIP_EXTERNAL").is_some();
+
     println!("==> Doctor");
 
     // ── Git config ───────────────────────────────────────────────────
@@ -150,7 +161,7 @@ pub fn run() -> Result<()> {
     // misaligns with sync (which only upgrades on --upgrade). The user
     // upgrades via `dotctl update`.
     #[cfg(target_os = "macos")]
-    {
+    if !skip_external {
         let brewfile = dotfiles.join("Brewfile");
         if brewfile.is_file() {
             let status = Command::new("brew")
@@ -178,7 +189,7 @@ pub fn run() -> Result<()> {
     // GITHUB_PERSONAL_ACCESS_TOKEN (zsh/00-exports.zsh), git_data PR
     // status (gh pr status). Surface unauth here so it doesn't manifest
     // as silent prompt degradation.
-    {
+    if !skip_external {
         let status = Command::new("gh")
             .args(["auth", "status"])
             .stdout(Stdio::null())
@@ -270,7 +281,7 @@ pub fn run() -> Result<()> {
     // brew doctor exits 0 even with warnings; the heuristic for "clean"
     // is the "ready to brew" string in stdout/stderr.
     #[cfg(target_os = "macos")]
-    {
+    if !skip_external {
         let out = Command::new("brew").arg("doctor").output();
         if let Ok(o) = out {
             let combined = format!(
@@ -308,7 +319,7 @@ pub fn run() -> Result<()> {
     // tool probes earlier) but irrelevant to whether the user's *shell*
     // setup is healthy. Stripping just for this call lets mise audit the
     // shell-equivalent PATH.
-    {
+    if !skip_external {
         let saved_path = std::env::var("PATH").ok();
         if let (Ok(home), Some(path)) = (std::env::var("HOME"), saved_path.as_ref()) {
             let shims_prefix = format!("{home}/.local/share/mise/shims:");
@@ -352,7 +363,7 @@ pub fn run() -> Result<()> {
     // .mcp.json to probe them; if any block, this step hangs. No timeout
     // by design — a hang here means an MCP server is broken and should
     // be diagnosed, not hidden.
-    if !capture("claude", &["--version"]).is_empty() {
+    if !skip_external && !capture("claude", &["--version"]).is_empty() {
         let out = Command::new("claude").arg("doctor").output();
         match out {
             Ok(o) if o.status.success() => {

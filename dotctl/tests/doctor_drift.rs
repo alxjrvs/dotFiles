@@ -51,6 +51,9 @@ fn doctor_clean_fixture_reports_no_drift() {
         .arg("doctor")
         .env("DOTFILES_DIR", tmp.path())
         .env("HOME", tmp.path())
+        // Hermetic: skip brew/gh/network checks so the drift scan is tested in
+        // isolation (otherwise they block on Homebrew's global update lock).
+        .env("DOTCTL_DOCTOR_SKIP_EXTERNAL", "1")
         .output()
         .unwrap();
     let stdout = String::from_utf8_lossy(&out.stdout);
@@ -75,6 +78,9 @@ fn doctor_detects_sync_sh_in_lefthook() {
         .arg("doctor")
         .env("DOTFILES_DIR", tmp.path())
         .env("HOME", tmp.path())
+        // Hermetic: skip brew/gh/network checks so the drift scan is tested in
+        // isolation (otherwise they block on Homebrew's global update lock).
+        .env("DOTCTL_DOCTOR_SKIP_EXTERNAL", "1")
         .output()
         .unwrap();
     let stdout = String::from_utf8_lossy(&out.stdout);
@@ -98,6 +104,9 @@ fn doctor_drift_allow_marker_silences_warning() {
         .arg("doctor")
         .env("DOTFILES_DIR", tmp.path())
         .env("HOME", tmp.path())
+        // Hermetic: skip brew/gh/network checks so the drift scan is tested in
+        // isolation (otherwise they block on Homebrew's global update lock).
+        .env("DOTCTL_DOCTOR_SKIP_EXTERNAL", "1")
         .output()
         .unwrap();
     let stdout = String::from_utf8_lossy(&out.stdout);
@@ -107,4 +116,38 @@ fn doctor_drift_allow_marker_silences_warning() {
         combined.contains("doc drift: no dead references"),
         "expected drift-allow marker to silence; got:\n{combined}"
     );
+}
+
+// Regression guard for the deadlock that hung pre-push: with
+// DOTCTL_DOCTOR_SKIP_EXTERNAL set, the network/lock-bound checks must NOT run,
+// so doctor stays hermetic and fast. The drift scan still runs (asserted by
+// the tests above, which all set the flag). If someone later forgets to gate a
+// new external check, this catches it.
+#[test]
+fn doctor_skip_external_omits_brew_and_network_checks() {
+    let tmp = fixture_dotfiles();
+    let out = Command::new(bin())
+        .arg("doctor")
+        .env("DOTFILES_DIR", tmp.path())
+        .env("HOME", tmp.path())
+        .env("DOTCTL_DOCTOR_SKIP_EXTERNAL", "1")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    let combined = format!("{stdout}{stderr}");
+    // Structural checks still ran...
+    assert!(
+        combined.contains("doc drift"),
+        "drift scan should still run when external is skipped; got:\n{combined}"
+    );
+    // ...but the gated external checks did not. (Needles avoid the
+    // tool-presence lines: "gh: gh version…" and "brew: Homebrew…" still
+    // print — only the gated *audit* outputs below must be absent.)
+    for needle in ["brew bundle", "brew doctor", "authenticated", "mise doctor", "claude doctor"] {
+        assert!(
+            !combined.contains(needle),
+            "external check '{needle}' should be skipped under DOTCTL_DOCTOR_SKIP_EXTERNAL; got:\n{combined}"
+        );
+    }
 }
