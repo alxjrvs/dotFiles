@@ -60,21 +60,14 @@
       "Bash(gh gpg-key add*)"
     ],
     "ask": [
-      "Bash(rm *)",
       "Bash(git restore*)",
       "Bash(git push --delete*)",
       "Bash(git push origin :*)",
       "Bash(gh secret set*)",
       "Bash(gh variable set*)",
       "Bash(gh repo edit*)",
-      "Bash(brew install*)",
-      "Bash(brew uninstall*)",
-      "Bash(docker system prune*)",
-      "Bash(docker volume prune*)",
-      "Bash(docker image prune*)",
       "Bash(dropdb*)",
-      "Bash(createdb --force*)",
-      "Bash(open *)"
+      "Bash(createdb --force*)"
     ],
     "defaultMode": "auto",
     "additionalDirectories": [
