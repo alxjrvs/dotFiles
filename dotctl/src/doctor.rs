@@ -57,17 +57,14 @@ pub fn run() -> Result<()> {
     }
 
     // ── Tool presence ────────────────────────────────────────────────
-    // Required tools hard-fail (exit 1); optional tools only warn. ghostty is
-    // optional: its shim points at /Applications/Ghostty.app, which a user may
-    // have removed deliberately (e.g. trialling gnar-term). A missing GUI
-    // terminal shouldn't block the pre-push gate — surface it as a warning so
-    // `dotctl doctor` still notes the drift without failing.
+    // All listed tools hard-fail (exit 1) when missing. ghostty is a GUI
+    // terminal a user may deliberately not have installed, so it is not
+    // probed here — its config is still validated via the symlink-integrity
+    // and doc-drift checks below.
     let os = std::env::consts::OS;
     let mut tools: Vec<&str> = vec!["dotctl", "git", "gh", "mise"];
-    let mut optional: Vec<&str> = Vec::new();
     if os == "macos" {
         tools.extend(["brew", "node", "bun", "sheldon", "lefthook", "hx"]);
-        optional.push("ghostty");
     }
     for tool in &tools {
         let ver = capture(tool, &["--version"]);
@@ -77,15 +74,6 @@ pub fn run() -> Result<()> {
         } else {
             fail(&format!("{tool}: not found"));
             fails += 1;
-        }
-    }
-    for tool in &optional {
-        let ver = capture(tool, &["--version"]);
-        if !ver.is_empty() {
-            ok(&format!("{tool}: {}", ver.lines().next().unwrap_or("")));
-        } else {
-            warn_msg(&format!("{tool}: not found (optional)"));
-            warns += 1;
         }
     }
 
