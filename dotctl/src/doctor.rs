@@ -91,11 +91,12 @@ pub fn run() -> Result<()> {
 
     // ── Symlink integrity ────────────────────────────────────────────
     let home = std::env::var("HOME").map(PathBuf::from).unwrap_or_else(|_| PathBuf::from("."));
-    let dotfiles = std::env::var("DOTFILES_DIR")
-        .map(PathBuf::from)
-        .ok()
-        .filter(|p| p.is_dir())
-        .unwrap_or_else(|| home.join("dotFiles"));
+    // $DOTFILES_DIR → path dotctl was built from → legacy ~/dotFiles.
+    let dotfiles = crate::util::resolve_dotfiles_dir().unwrap_or_else(|| {
+        warn_msg("dotfiles repo not found ($DOTFILES_DIR / built-from path / ~/dotFiles) — symlink + drift audits will be skipped");
+        warns += 1;
+        home.join("dotFiles")
+    });
     let expected: &[(&str, &str)] = &[
         (".zshrc", ".zshrc"),
         (".zprofile", ".zprofile"),

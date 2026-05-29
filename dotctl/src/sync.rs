@@ -103,34 +103,16 @@ enum Os {
 
 impl Context_ {
     fn new(only: Option<&str>, upgrade: bool, link_mode: LinkMode) -> Result<Self> {
-        let dotfiles_dir = std::env::var("DOTFILES_DIR")
-            .map(PathBuf::from)
-            .ok()
-            .or_else(|| {
-                std::env::current_exe()
-                    .ok()
-                    .and_then(|p| p.canonicalize().ok())
-                    .and_then(|p| {
-                        // ~/.local/bin/dotctl → walk up to find a dotctl/ sibling,
-                        // then assume parent is DOTFILES_DIR. Fallback to ~/dotFiles.
-                        None.or_else(|| Some(p))
-                    })
-            })
-            .unwrap_or_else(|| {
-                let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-                PathBuf::from(home).join("dotFiles")
-            });
-        // If DOTFILES_DIR points at the binary itself (the unwrap chain above
-        // never resolved a real env), fall back to ~/dotFiles.
-        let dotfiles_dir = if dotfiles_dir.is_dir() && dotfiles_dir.join("Brewfile").is_file() {
-            dotfiles_dir
-        } else {
-            let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-            PathBuf::from(home).join("dotFiles")
-        };
-        if !dotfiles_dir.is_dir() {
-            bail!("DOTFILES_DIR not found: {}", dotfiles_dir.display());
-        }
+        // Resolve via the shared resolver: $DOTFILES_DIR, then the path the
+        // binary was built from (CARGO_MANIFEST_DIR/..), then legacy ~/dotFiles.
+        // See crate::util::resolve_dotfiles_dir.
+        let dotfiles_dir = crate::util::resolve_dotfiles_dir().ok_or_else(|| {
+            anyhow!(
+                "could not locate the dotfiles repo: none of $DOTFILES_DIR, the \
+                 path dotctl was built from, or ~/dotFiles is a directory \
+                 containing a Brewfile. Set DOTFILES_DIR to the repo root."
+            )
+        })?;
 
         let home = std::env::var("HOME")
             .map(PathBuf::from)
@@ -1059,30 +1041,32 @@ mod tests {
     }
 
     #[test]
-    fn context_new_falls_back_to_home_dotfiles_when_env_missing() {
+    fn context_new_resolves_built_from_repo_when_env_missing() {
         let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        // Without a valid DOTFILES_DIR pointing at a Brewfile, falls back to
-        // ~/dotFiles. We point HOME at a tmp that DOES have a Brewfile under
-        // ./dotFiles so the fallback succeeds.
+        // With DOTFILES_DIR unset, resolve_dotfiles_dir falls through to the
+        // path dotctl was built from (CARGO_MANIFEST_DIR/..), i.e. this repo —
+        // even though HOME points at a tmp with no ~/dotFiles. This is what
+        // makes the repo relocatable: a rebuilt binary self-locates.
         let tmp = TempDir::new().unwrap();
-        let nested = tmp.path().join("dotFiles");
-        std::fs::create_dir_all(&nested).unwrap();
-        std::fs::write(nested.join("Brewfile"), "# fake\n").unwrap();
         std::env::set_var("HOME", tmp.path());
         std::env::remove_var("DOTFILES_DIR");
+        let built_from = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .to_path_buf();
         let ctx = Context_::new(None, false, LinkMode::Skip).unwrap();
-        assert_eq!(ctx.dotfiles_dir, nested);
+        assert_eq!(ctx.dotfiles_dir, built_from);
     }
 
     #[test]
-    fn context_new_errors_when_no_dotfiles_dir_anywhere() {
+    fn context_new_prefers_env_dir_over_built_from() {
         let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let tmp = TempDir::new().unwrap();
+        // An explicit, valid DOTFILES_DIR wins over the built-from path.
+        let tmp = fake_dotfiles_dir();
         std::env::set_var("HOME", tmp.path());
-        std::env::remove_var("DOTFILES_DIR");
-        // Neither $DOTFILES_DIR nor ~/dotFiles is a directory.
-        let r = Context_::new(None, false, LinkMode::Skip);
-        assert!(r.is_err());
+        std::env::set_var("DOTFILES_DIR", tmp.path());
+        let ctx = Context_::new(None, false, LinkMode::Skip).unwrap();
+        assert_eq!(ctx.dotfiles_dir, tmp.path());
     }
 
     #[test]
