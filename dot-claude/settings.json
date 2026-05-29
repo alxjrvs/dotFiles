@@ -74,7 +74,6 @@
       "Bash(docker image prune*)",
       "Bash(dropdb*)",
       "Bash(createdb --force*)",
-      "Bash(gh pr merge*)",
       "Bash(open *)"
     ],
     "defaultMode": "auto",
@@ -178,6 +177,10 @@
     "padding": 0,
     "refreshInterval": 10
   },
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "dotctl subagent-statusline"
+  },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": false,
     "context7@claude-plugins-official": true,
@@ -189,18 +192,15 @@
     "claude-code-setup@claude-plugins-official": false,
     "hookify@claude-plugins-official": false,
     "playground@claude-plugins-official": false,
-    "typescript-lsp@claude-plugins-official": true,
     "playwright@claude-plugins-official": false,
     "feature-dev@claude-plugins-official": false,
     "spacebase@gnar-next": true,
     "superpowers@claude-plugins-official": true,
-    "ideate@gnar-next": true,
-    "audit@gnar-next": true,
-    "ignite@gnar-next": true,
+    "ideate@gnar-next": false,
+    "audit@gnar-next": false,
+    "ignite@gnar-next": false,
     "implement@gnar-next": true,
-    "meta@gnar-next": true,
-    "rust-analyzer-lsp@claude-plugins-official": true,
-    "expo@expo-plugins": true
+    "meta@gnar-next": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -244,6 +244,9 @@
         "nodejs.org",
         "typescriptlang.org",
         "stackoverflow.com"
+      ],
+      "allowUnixSockets": [
+        "~/Library/Application Support/waveterm/wave.sock"
       ],
       "allowLocalBinding": true,
       "allowMachLookup": [
@@ -310,13 +313,13 @@
       "gitleaks",
       "dotctl",
       "sh",
-      "bash"
+      "bash",
+      "wsh"
     ]
   },
   "feedbackSurveyRate": 0,
   "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
-  "editorMode": "vi",
   "verbose": true,
   "teammateMode": "auto",
   "isolatePeerMachines": false,
@@ -326,8 +329,5 @@
   "skipAutoPermissionPrompt": true,
   "defaultToAgentsView": true,
   "leftArrowOpensAgents": true,
-  "subagentStatusLine": {
-    "type": "command",
-    "command": "dotctl subagent-statusline"
-  }
+  "effortLevel": "medium"
 }
