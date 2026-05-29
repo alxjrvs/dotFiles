@@ -194,7 +194,7 @@
     "playground@claude-plugins-official": false,
     "playwright@claude-plugins-official": false,
     "feature-dev@claude-plugins-official": false,
-    "spacebase@gnar-next": true,
+    "spacebase@gnar-next": false,
     "superpowers@claude-plugins-official": true,
     "ideate@gnar-next": false,
     "audit@gnar-next": false,
