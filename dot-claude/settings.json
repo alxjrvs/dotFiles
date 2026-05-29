@@ -128,6 +128,18 @@
         ]
       }
     ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dotctl hook session-start",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "matcher": "",

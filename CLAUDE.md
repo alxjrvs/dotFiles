@@ -85,6 +85,7 @@ Each entry is symlinked individually into `~/.claude/` by `dotctl sync` (claude 
 | PostToolUse (Edit\|Write) | `dotctl hook format-on-save` | formatter |
 | PostToolUse (Bash) | `dotctl hook trim-bash-output` | output spill |
 | UserPromptSubmit | `dotctl hook user-prompt-submit` | git cache pre-warm |
+| SessionStart | `dotctl hook session-start` | session banner title (`<repo>:<branch>`) |
 | Stop | `dotctl hook stop` | session JSONL journal |
 
 ## Packaging policy: Lean A (brew = casks, mise = dev CLIs)

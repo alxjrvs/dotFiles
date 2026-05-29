@@ -43,6 +43,7 @@ fn dispatch(event: &str) -> Result<()> {
         "format-on-save" => format_on_save(),
         "trim-bash-output" => trim_bash_output(),
         "user-prompt-submit" => user_prompt_submit(),
+        "session-start" => session_start(),
         "stop" => stop(),
         other => {
             eprintln!("dotctl hook: unknown event '{other}'");
@@ -480,6 +481,77 @@ fn user_prompt_submit() -> Result<()> {
     Ok(())
 }
 
+// ----------------------------------------------- 7. session-start (SessionStart)
+
+// Pure formatter for the session banner title. Pulled out for unit testing
+// without invoking git. Returns "<repo>:<branch>" inside a repo, the repo
+// basename on detached HEAD (no branch), or the cwd basename outside a repo.
+fn session_title(toplevel: Option<&str>, branch: Option<&str>, cwd: &str) -> String {
+    let basename = |p: &str| {
+        Path::new(p)
+            .file_name()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_default()
+    };
+    match toplevel {
+        Some(top) if !top.is_empty() => {
+            let repo = basename(top);
+            match branch {
+                Some(b) if !b.is_empty() => format!("{repo}:{b}"),
+                _ => repo,
+            }
+        }
+        _ => basename(cwd),
+    }
+}
+
+// Set the session banner to "<repo>:<branch>" on startup/resume. Fires once
+// per session — not a hot path — so two short git calls are acceptable.
+// Emits hookSpecificOutput.sessionTitle (CC v2.1.152+); silent if empty.
+fn session_start() -> Result<()> {
+    let input = read_stdin_json();
+    let cwd = {
+        let c = str_at(&input, &["cwd"]);
+        if c.is_empty() {
+            std::env::current_dir()
+                .ok()
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        } else {
+            c
+        }
+    };
+
+    let git_out = |args: &[&str]| -> Option<String> {
+        Command::new("git")
+            .args(["-C", &cwd])
+            .args(args)
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+            .filter(|s| !s.is_empty())
+    };
+
+    let toplevel = git_out(&["rev-parse", "--show-toplevel"]);
+    let branch = toplevel
+        .as_ref()
+        .and_then(|_| git_out(&["symbolic-ref", "--short", "-q", "HEAD"]));
+
+    let title = session_title(toplevel.as_deref(), branch.as_deref(), &cwd);
+    if title.is_empty() {
+        return Ok(());
+    }
+    let payload = json!({
+        "hookSpecificOutput": {
+            "hookEventName": "SessionStart",
+            "sessionTitle": title,
+        }
+    });
+    println!("{payload}");
+    Ok(())
+}
+
 // ------------------------------------------------------- 8. stop (Stop)
 
 // Append a one-line JSONL record to ~/.claude/state/sessions.jsonl when a
@@ -633,6 +705,33 @@ mod tests {
         assert!(formatters_for("py").is_empty());
         assert!(formatters_for("").is_empty());
         assert!(formatters_for("rs").is_empty()); // rustfmt is project-local, not hook-driven
+    }
+
+    #[test]
+    fn session_title_combines_repo_and_branch() {
+        assert_eq!(
+            session_title(Some("/Users/x/dotFiles"), Some("main"), "/Users/x/dotFiles/sub"),
+            "dotFiles:main"
+        );
+    }
+
+    #[test]
+    fn session_title_falls_back_to_repo_on_detached_head() {
+        // No branch (detached HEAD) → repo basename only, no trailing colon.
+        assert_eq!(session_title(Some("/Users/x/dotFiles"), None, "/cwd"), "dotFiles");
+        assert_eq!(session_title(Some("/Users/x/dotFiles"), Some(""), "/cwd"), "dotFiles");
+    }
+
+    #[test]
+    fn session_title_uses_cwd_basename_outside_repo() {
+        assert_eq!(session_title(None, None, "/Users/x/scratch"), "scratch");
+        // Empty toplevel string is treated as "not a repo".
+        assert_eq!(session_title(Some(""), Some("main"), "/Users/x/scratch"), "scratch");
+    }
+
+    #[test]
+    fn session_title_empty_when_nothing_resolvable() {
+        assert_eq!(session_title(None, None, ""), "");
     }
 
     #[test]
