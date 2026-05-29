@@ -6,7 +6,7 @@
 //
 // Layout:
 //   Line 1: repo/dir [B: branch] [W: name] [C: counters]
-//   Line 2: [M: model] [A: advisor] [E: effort]   (optional)
+//   Line 2: [M: model] [A: advisor] [E: effort] [$cost]   (optional)
 //   Line 3: Ctx [bar] N%
 //   Line 4: 5h  [bar] N% [time left] [delta]
 //   Line 5: 7d  [bar] N% [time left] [delta]
@@ -56,6 +56,7 @@ pub fn run() -> Result<()> {
     let cwd_input = str_at(&payload, &["workspace", "current_dir"]);
     let model_name = str_at(&payload, &["model", "display_name"]);
     let effort_level = str_at(&payload, &["effort", "level"]);
+    let cost_usd = str_at(&payload, &["cost", "total_cost_usd"]);
     let five_pct = str_at(&payload, &["rate_limits", "five_hour", "used_percentage"]);
     let five_resets_at = str_at(&payload, &["rate_limits", "five_hour", "resets_at"]);
     let seven_pct = str_at(&payload, &["rate_limits", "seven_day", "used_percentage"]);
@@ -170,6 +171,14 @@ pub fn run() -> Result<()> {
             line2.push(' ');
         }
         line2.push_str(&format!("{MUTED}[{RST}{CYAN}E: {effort_level}{MUTED}]{RST}"));
+    }
+    let cost_display = format_cost(&cost_usd);
+    if !cost_display.is_empty() {
+        if !line2.is_empty() {
+            line2.push(' ');
+        }
+        // GREEN signals money — distinct from the cyan model/effort keys.
+        line2.push_str(&format!("{MUTED}[{RST}{GREEN}{cost_display}{MUTED}]{RST}"));
     }
     if !line2.is_empty() {
         println!("{line2}");
@@ -348,6 +357,16 @@ fn parse_int_prefix(s: &str) -> i32 {
     s.split('.').next().unwrap_or("0").parse().unwrap_or(0)
 }
 
+/// Format a USD session-cost string (CC's `cost.total_cost_usd`, e.g.
+/// "0.4231") as "$0.42". Empty/unparseable/negative → "" so the segment is
+/// skipped. $0.00 IS shown when the field is present (cost tracking is live).
+fn format_cost(s: &str) -> String {
+    match s.parse::<f64>() {
+        Ok(v) if v >= 0.0 => format!("${v:.2}"),
+        _ => String::new(),
+    }
+}
+
 fn str_at(v: &Value, path: &[&str]) -> String {
     let mut cur = v;
     for k in path {
@@ -423,6 +442,29 @@ mod tests {
         assert_eq!(parse_int_prefix(""), 0);
         assert_eq!(parse_int_prefix("abc"), 0);
         assert_eq!(parse_int_prefix("abc.7"), 0);
+    }
+
+    #[test]
+    fn format_cost_rounds_to_two_decimals() {
+        assert_eq!(format_cost("0.4231"), "$0.42");
+        assert_eq!(format_cost("0.4271"), "$0.43");
+        assert_eq!(format_cost("12"), "$12.00");
+        assert_eq!(format_cost("3.5"), "$3.50");
+    }
+
+    #[test]
+    fn format_cost_shows_zero_when_present() {
+        // $0.00 is meaningful — cost tracking is active, just no spend yet.
+        assert_eq!(format_cost("0"), "$0.00");
+        assert_eq!(format_cost("0.0"), "$0.00");
+    }
+
+    #[test]
+    fn format_cost_empty_on_missing_or_garbage() {
+        // Missing field (str_at → "") and non-numeric input skip the segment.
+        assert_eq!(format_cost(""), "");
+        assert_eq!(format_cost("abc"), "");
+        assert_eq!(format_cost("-1.0"), "");
     }
 
     #[test]
