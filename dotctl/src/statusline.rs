@@ -5,9 +5,9 @@
 // bars for context window + Pro/Max rate-limit windows.
 //
 // Layout:
-//   Line 1: repo/dir [B: branch] [W: name] [C: counters]
-//   Line 2: [M: model] [A: advisor] [E: effort] [$cost]   (optional)
-//   Line 3: Ctx [bar] N%
+//   Line 1: repo/dir [B: branch] [W: name] [PR #N: state] [C: counters]
+//   Line 2: [M: model] [A: advisor] [E: effort] [$cost ($/h)] [+N/-M] [T: dur]
+//   Line 3: Ctx [bar] N% [200k+]
 //   Line 4: 5h  [bar] N% [time left] [delta]
 //   Line 5: 7d  [bar] N% [time left] [delta]
 
@@ -57,6 +57,12 @@ pub fn run() -> Result<()> {
     let model_name = str_at(&payload, &["model", "display_name"]);
     let effort_level = str_at(&payload, &["effort", "level"]);
     let cost_usd = str_at(&payload, &["cost", "total_cost_usd"]);
+    let duration_ms = str_at(&payload, &["cost", "total_duration_ms"]).parse::<i64>().unwrap_or(0);
+    let lines_added = str_at(&payload, &["cost", "total_lines_added"]).parse::<i64>().unwrap_or(0);
+    let lines_removed = str_at(&payload, &["cost", "total_lines_removed"]).parse::<i64>().unwrap_or(0);
+    let pr_number = str_at(&payload, &["pr", "number"]);
+    let pr_state = str_at(&payload, &["pr", "review_state"]);
+    let exceeds_200k = payload.get("exceeds_200k_tokens").and_then(|v| v.as_bool()).unwrap_or(false);
     let five_pct = str_at(&payload, &["rate_limits", "five_hour", "used_percentage"]);
     let five_resets_at = str_at(&payload, &["rate_limits", "five_hour", "resets_at"]);
     let seven_pct = str_at(&payload, &["rate_limits", "seven_day", "used_percentage"]);
@@ -116,6 +122,19 @@ pub fn run() -> Result<()> {
     };
     if !wt.is_empty() {
         line1.push_str(&format!(" {MUTED}[{RST}{MAGENTA}W: {wt}{MUTED}]{RST}"));
+    }
+
+    // PR (statusLine `pr` object — present only when the branch has a PR).
+    // review_state colored by outcome; bare `#N` when state is unknown.
+    if !pr_number.is_empty() {
+        if pr_state.is_empty() {
+            line1.push_str(&format!(" {MUTED}[{RST}{CYAN}PR #{pr_number}{MUTED}]{RST}"));
+        } else {
+            let c = pr_state_color(&pr_state);
+            line1.push_str(&format!(
+                " {MUTED}[{RST}{CYAN}PR #{pr_number}: {c}{pr_state}{MUTED}]{RST}"
+            ));
+        }
     }
 
     // Counters
@@ -178,7 +197,30 @@ pub fn run() -> Result<()> {
             line2.push(' ');
         }
         // GREEN signals money — distinct from the cyan model/effort keys.
-        line2.push_str(&format!("{MUTED}[{RST}{GREEN}{cost_display}{MUTED}]{RST}"));
+        // Append within-session burn rate ($/h) once the session is long
+        // enough for it to be meaningful (reuses no external data).
+        let money = match format_burn_rate(&cost_usd, duration_ms) {
+            Some(rate) => format!("{cost_display} ({rate})"),
+            None => cost_display,
+        };
+        line2.push_str(&format!("{MUTED}[{RST}{GREEN}{money}{MUTED}]{RST}"));
+    }
+    // Lines churned this session (cost.total_lines_added/removed).
+    if lines_added > 0 || lines_removed > 0 {
+        if !line2.is_empty() {
+            line2.push(' ');
+        }
+        line2.push_str(&format!(
+            "{MUTED}[{RST}{GREEN}+{lines_added}{MUTED}/{RST}{RED}-{lines_removed}{MUTED}]{RST}"
+        ));
+    }
+    // Session wall-clock (cost.total_duration_ms).
+    let dur = format_duration_ms(duration_ms);
+    if !dur.is_empty() {
+        if !line2.is_empty() {
+            line2.push(' ');
+        }
+        line2.push_str(&format!("{MUTED}[{RST}{CYAN}T: {dur}{MUTED}]{RST}"));
     }
     if !line2.is_empty() {
         println!("{line2}");
@@ -187,8 +229,15 @@ pub fn run() -> Result<()> {
     // ── Line 3: Ctx bar ───────────────────────────────────────────────
     let used_int = parse_int_prefix(&used_pct);
     let ctx_bar = render_bar(used_int, None, None, cols);
+    // exceeds_200k_tokens: flags crossing the 200k threshold (relevant on
+    // 1M-context models, where % can still be low). Bold-red marker.
+    let ctx_warn = if exceeds_200k {
+        format!(" {BOLD}{RED}200k+{RST}")
+    } else {
+        String::new()
+    };
     println!(
-        "{MUTED}{:<3}{RST} {ctx_bar} {MUTED}{:3}%{RST}",
+        "{MUTED}{:<3}{RST} {ctx_bar} {MUTED}{:3}%{RST}{ctx_warn}",
         "Ctx", used_int
     );
 
@@ -367,6 +416,46 @@ fn format_cost(s: &str) -> String {
     }
 }
 
+/// Within-session burn rate ($/h) from session cost + duration — no external
+/// data. Returns None until the session has run ≥60s (rate is noise before
+/// that) or if cost is zero/unparseable.
+fn format_burn_rate(cost_str: &str, duration_ms: i64) -> Option<String> {
+    let cost = cost_str.parse::<f64>().ok()?;
+    if cost <= 0.0 || duration_ms < 60_000 {
+        return None;
+    }
+    let hours = duration_ms as f64 / 3_600_000.0;
+    Some(format!("${:.2}/h", cost / hours))
+}
+
+/// Compact session wall-clock from milliseconds: "45s" / "10m" / "1h30m".
+/// Empty string for non-positive input (segment skipped).
+fn format_duration_ms(ms: i64) -> String {
+    if ms <= 0 {
+        return String::new();
+    }
+    let secs = ms / 1000;
+    if secs < 60 {
+        format!("{secs}s")
+    } else if secs < 3600 {
+        format!("{}m", secs / 60)
+    } else {
+        format!("{}h{:02}m", secs / 3600, (secs % 3600) / 60)
+    }
+}
+
+/// Color for a PR `review_state`, case-insensitive. Unknown states fall back
+/// to MUTED so a new/renamed state still renders (just uncolored).
+fn pr_state_color(state: &str) -> &'static str {
+    match state.to_ascii_lowercase().as_str() {
+        "approved" => GREEN,
+        "changes_requested" => RED,
+        "review_required" | "pending" => YELLOW,
+        "commented" => CYAN,
+        _ => MUTED,
+    }
+}
+
 fn str_at(v: &Value, path: &[&str]) -> String {
     let mut cur = v;
     for k in path {
@@ -465,6 +554,39 @@ mod tests {
         assert_eq!(format_cost(""), "");
         assert_eq!(format_cost("abc"), "");
         assert_eq!(format_cost("-1.0"), "");
+    }
+
+    #[test]
+    fn format_burn_rate_computes_dollars_per_hour() {
+        // $0.60 over 1h → $0.60/h; $0.30 over 30m → $0.60/h.
+        assert_eq!(format_burn_rate("0.60", 3_600_000).as_deref(), Some("$0.60/h"));
+        assert_eq!(format_burn_rate("0.30", 1_800_000).as_deref(), Some("$0.60/h"));
+    }
+
+    #[test]
+    fn format_burn_rate_suppressed_when_premature_or_free() {
+        assert_eq!(format_burn_rate("0.50", 59_000), None); // <60s: too noisy
+        assert_eq!(format_burn_rate("0", 3_600_000), None); // no spend
+        assert_eq!(format_burn_rate("abc", 3_600_000), None); // unparseable
+    }
+
+    #[test]
+    fn format_duration_ms_scales_units() {
+        assert_eq!(format_duration_ms(45_000), "45s");
+        assert_eq!(format_duration_ms(600_000), "10m");
+        assert_eq!(format_duration_ms(3_600_000), "1h00m");
+        assert_eq!(format_duration_ms(5_400_000), "1h30m");
+        assert_eq!(format_duration_ms(0), "");
+        assert_eq!(format_duration_ms(-5), "");
+    }
+
+    #[test]
+    fn pr_state_color_maps_known_states_case_insensitively() {
+        assert_eq!(pr_state_color("approved"), GREEN);
+        assert_eq!(pr_state_color("CHANGES_REQUESTED"), RED);
+        assert_eq!(pr_state_color("review_required"), YELLOW);
+        assert_eq!(pr_state_color("commented"), CYAN);
+        assert_eq!(pr_state_color("something_new"), MUTED);
     }
 
     #[test]
