@@ -291,7 +291,7 @@
         "~/.gnupg",
         "~/.netrc",
         "~/.config/op",
-        "~/.ssh/id_*",
+        "~/.ssh/id_*[!.pub]",
         "**/.envrc",
         "~/Library/Group Containers/2BUA8C4S2C.com.1password"
       ]
