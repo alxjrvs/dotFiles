@@ -5,8 +5,11 @@
 //
 // Conventions:
 //   - Exit 0  = allow (default)
-//   - Exit 2  = block (printed message goes on stderr)
-//   - stdout JSON is interpreted by Claude Code as hookSpecificOutput
+//   - Exit 2  = block (printed message goes on stderr; legacy fallback)
+//   - stdout JSON is interpreted by Claude Code as hookSpecificOutput.
+//     PreToolUse guards emit `permissionDecision: "deny"` + a reason that
+//     renders in the permission UI (CC v2.1.x), instead of exit-2 which
+//     surfaces as a generic tool error. See deny_payload/emit_deny.
 //
 // All event handlers read TOOL_INPUT JSON from stdin and route on
 // fields. Routing/event-name dispatch happens in `run()` below; each
@@ -116,6 +119,28 @@ fn home_path(rel: &str) -> std::path::PathBuf {
     Path::new(&home).join(rel)
 }
 
+// Build a PreToolUse "deny" decision. CC blocks the tool call and renders
+// `permissionDecisionReason` in the permission UI — the documented structured
+// path, cleaner than exit-2's generic-error surfacing. Pure so it can be
+// unit-tested without the process::exit in emit_deny.
+fn deny_payload(reason: &str) -> Value {
+    json!({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": reason,
+        }
+    })
+}
+
+// Emit a deny decision and exit. stdout JSON + exit 0 is the structured
+// contract for permissionDecision (exit 2 would route to the legacy
+// stderr-only path instead and ignore the JSON).
+fn emit_deny(reason: &str) -> ! {
+    println!("{}", deny_payload(reason));
+    std::process::exit(0);
+}
+
 // ----------------------------------------------- 1. lock-file-guard (PreToolUse)
 
 // Block edits to lock files. Reads .tool_input.file_path; blocks if the
@@ -154,8 +179,9 @@ fn lock_file_guard() -> Result<()> {
         "flake.lock",
     ];
     if LOCKS.contains(&base.as_str()) {
-        eprintln!("BLOCK: Do not edit lock files directly");
-        std::process::exit(2);
+        emit_deny(&format!(
+            "Do not edit lock files directly — {base} is dependency-managed. Run the package manager (bun/cargo/brew) to regenerate it."
+        ));
     }
     Ok(())
 }
@@ -198,31 +224,25 @@ fn policy_guard() -> Result<()> {
     }
 
     if RE_NO_VERIFY.is_match(&cmd) {
-        eprintln!(
-            "BLOCKED by policy-guard: --no-verify bypasses pre-commit/pre-push hooks (forbidden by user policy)."
+        emit_deny(
+            "policy-guard: --no-verify bypasses pre-commit/pre-push hooks (forbidden by user policy).",
         );
-        std::process::exit(2);
     }
 
     if RE_NO_GPG_SIGN.is_match(&cmd) {
-        eprintln!(
-            "BLOCKED by policy-guard: --no-gpg-sign disables commit signing without authorization."
+        emit_deny(
+            "policy-guard: --no-gpg-sign disables commit signing without authorization.",
         );
-        std::process::exit(2);
     }
 
     if RE_FORCE_PUSH.is_match(&cmd) && !RE_FORCE_WITH_LEASE.is_match(&cmd) {
-        eprintln!(
-            "BLOCKED by policy-guard: 'git push --force' is forbidden; use --force-with-lease."
-        );
-        std::process::exit(2);
+        emit_deny("policy-guard: 'git push --force' is forbidden; use --force-with-lease.");
     }
 
     if RE_AMEND.is_match(&cmd) {
-        eprintln!(
-            "BLOCKED by policy-guard: 'git commit --amend' is forbidden — create a new commit instead."
+        emit_deny(
+            "policy-guard: 'git commit --amend' is forbidden — create a new commit instead.",
         );
-        std::process::exit(2);
     }
 
     if RE_BRANCH_DELETE.is_match(&cmd) {
@@ -615,6 +635,25 @@ mod tests {
     fn bool_at_returns_false_when_wrong_type() {
         let v = json!({"flag": "true"});
         assert!(!bool_at(&v, &["flag"]));
+    }
+
+    #[test]
+    fn deny_payload_emits_pretooluse_permission_decision() {
+        let p = deny_payload("nope, blocked");
+        assert_eq!(p["hookSpecificOutput"]["hookEventName"], "PreToolUse");
+        assert_eq!(p["hookSpecificOutput"]["permissionDecision"], "deny");
+        assert_eq!(
+            p["hookSpecificOutput"]["permissionDecisionReason"],
+            "nope, blocked"
+        );
+    }
+
+    #[test]
+    fn deny_payload_serializes_to_valid_json_object() {
+        // CC parses hook stdout as JSON; ensure the shape round-trips.
+        let s = deny_payload("r").to_string();
+        let back: Value = serde_json::from_str(&s).unwrap();
+        assert!(back["hookSpecificOutput"].is_object());
     }
 
     #[test]
