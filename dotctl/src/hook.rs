@@ -26,10 +26,14 @@ use crate::git_data;
 use crate::util::which;
 
 pub fn run(event: &str) -> Result<()> {
-    // Hot-path timing instrumentation. Every Claude Code turn fires
-    // session-start/user-prompt-submit/policy-guard at minimum; with 10
-    // arms wired, attribution of p95 latency was opaque before this.
-    // Cost: one Instant + one JSONL append per dispatch.
+    // Hot-path timing instrumentation, OFF by default. Set DOTCTL_HOOK_TIMING=1
+    // to append per-dispatch timings to ~/.claude/state/hook-timings.jsonl when
+    // re-investigating hook latency. The original p95 attribution sweep is done;
+    // leaving this ungated meant a JSONL append on every dispatch feeding a
+    // file nothing reads. Gated so the hot path stays write-free by default.
+    if std::env::var_os("DOTCTL_HOOK_TIMING").is_none() {
+        return dispatch(event);
+    }
     let start = std::time::Instant::now();
     let result = dispatch(event);
     log_timing(event, start.elapsed().as_millis(), result.is_ok());
