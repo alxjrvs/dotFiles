@@ -4,18 +4,19 @@
 // 3–5 line plain-ASCII statusline with colored git values + progress
 // bars for context window + Pro/Max rate-limit windows.
 //
-// Layout:
-//   Line 1: repo/dir [B: branch] [W: name] [PR #N: state] [C: counters]
-//   Line 2: [M: model] [A: advisor] [E: effort] [$cost ($/h)] [+N/-M] [T: dur]
-//   Line 3: Ctx [bar] N% [200k+]
+// Layout (line-1 git keys use Nerd Font glyphs; branch/PR are OSC8 links):
+//   Line 1: repo/dir [ branch] [ name] [ #N: state] [C: counters]
+//   Line 2: [M: model] [A: advisor] [E: effort] [$cost ($/h) · today $X] [+N/-M]
+//   Line 3: CTX [bar w/ amber autocompact-threshold cell] N% [AC] [200k+]
 //   Line 4: 5h  [bar] N% [time left] [delta]
 //   Line 5: 7d  [bar] N% [time left] [delta]
 
 use anyhow::Result;
+use chrono::Local;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::io::{self, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::git_data;
@@ -34,6 +35,15 @@ const CYAN: &str = "\x1b[36m";
 const NEAR_WHITE: &str = "\x1b[38;2;235;235;235m";
 const MARKER: &str = "\x1b[38;2;96;200;255m";
 const PROJ: &str = "\x1b[38;2;255;210;80m";
+// Autocompact threshold cell on the CTX bar — amber-orange, distinct from
+// the blue MARKER (rate-window clock) and the yellow PROJ (burn projection).
+const AUTOCOMPACT: &str = "\x1b[38;2;255;128;0m";
+
+// Nerd Font glyphs for line-1 git keys (escape form — Write/Edit strips raw
+// codepoints, see CLAUDE.md). Swap these consts to retaste the icons.
+const GLYPH_BRANCH: &str = "\u{e0a0}"; // powerline branch
+const GLYPH_WORKTREE: &str = "\u{f0e8}"; // fa sitemap — branched workspace
+const GLYPH_PR: &str = "\u{f407}"; // octicon git-pull-request
 
 /// Default pip count when terminal columns are unknown (pre-CC-v2.1.153
 /// payloads don't include `columns`). Used as the cap for `pip_count_for_width`.
@@ -50,6 +60,7 @@ pub fn run() -> Result<()> {
     let _ = git_data::run();
     let git = load_git_cache();
 
+    let session_id = str_at(&payload, &["session_id"]);
     let used_pct = str_at(&payload, &["context_window", "used_percentage"]);
     let worktree_name_input = str_at(&payload, &["worktree", "name"]);
     let project_dir = str_at(&payload, &["workspace", "project_dir"]);
@@ -112,7 +123,13 @@ pub fn run() -> Result<()> {
     let is_repo = git.get("GIT_IS_REPO").map(|s| s == "1").unwrap_or(false);
     if is_repo || !branch.is_empty() {
         let b = if branch.is_empty() { "-".to_string() } else { branch.clone() };
-        line1.push_str(&format!(" {MUTED}[{RST}{BLUE}B: {b}{MUTED}]{RST}"));
+        // OSC8-link the branch to its tree view when we know the repo URL.
+        let b_disp = if !repo_url.is_empty() && !branch.is_empty() {
+            format!("\x1b]8;;{repo_url}/tree/{branch}\x07{b}\x1b]8;;\x07")
+        } else {
+            b
+        };
+        line1.push_str(&format!(" {MUTED}[{RST}{BLUE}{GLYPH_BRANCH} {b_disp}{MUTED}]{RST}"));
     }
 
     let wt = if !worktree_name_input.is_empty() {
@@ -121,18 +138,24 @@ pub fn run() -> Result<()> {
         git.get("GIT_WORKTREE_NAME").cloned().unwrap_or_default()
     };
     if !wt.is_empty() {
-        line1.push_str(&format!(" {MUTED}[{RST}{MAGENTA}W: {wt}{MUTED}]{RST}"));
+        line1.push_str(&format!(" {MUTED}[{RST}{MAGENTA}{GLYPH_WORKTREE} {wt}{MUTED}]{RST}"));
     }
 
     // PR (statusLine `pr` object — present only when the branch has a PR).
     // review_state colored by outcome; bare `#N` when state is unknown.
     if !pr_number.is_empty() {
+        // OSC8-link the PR glyph+number straight to the PR page.
+        let pr_id = if !repo_url.is_empty() {
+            format!("\x1b]8;;{repo_url}/pull/{pr_number}\x07{GLYPH_PR} #{pr_number}\x1b]8;;\x07")
+        } else {
+            format!("{GLYPH_PR} #{pr_number}")
+        };
         if pr_state.is_empty() {
-            line1.push_str(&format!(" {MUTED}[{RST}{CYAN}PR #{pr_number}{MUTED}]{RST}"));
+            line1.push_str(&format!(" {MUTED}[{RST}{CYAN}{pr_id}{MUTED}]{RST}"));
         } else {
             let c = pr_state_color(&pr_state);
             line1.push_str(&format!(
-                " {MUTED}[{RST}{CYAN}PR #{pr_number}: {c}{pr_state}{MUTED}]{RST}"
+                " {MUTED}[{RST}{CYAN}{pr_id}: {c}{pr_state}{MUTED}]{RST}"
             ));
         }
     }
@@ -199,10 +222,20 @@ pub fn run() -> Result<()> {
         // GREEN signals money — distinct from the cyan model/effort keys.
         // Append within-session burn rate ($/h) once the session is long
         // enough for it to be meaningful (reuses no external data).
-        let money = match format_burn_rate(&cost_usd, duration_ms) {
+        let mut money = match format_burn_rate(&cost_usd, duration_ms) {
             Some(rate) => format!("{cost_display} ({rate})"),
             None => cost_display,
         };
+        // Cross-session spend for today. Always record this session's latest
+        // cost (so concurrent sessions can see our contribution); only render
+        // the total when *other* sessions added to it — else it just echoes
+        // this session's cost.
+        let cost_self = cost_usd.parse::<f64>().unwrap_or(0.0);
+        if let Some(day) = daily_cost_total(&session_id, &cost_usd) {
+            if day > cost_self + 0.005 {
+                money.push_str(&format!("{MUTED} · today {RST}{GREEN}${day:.2}"));
+            }
+        }
         line2.push_str(&format!("{MUTED}[{RST}{GREEN}{money}{MUTED}]{RST}"));
     }
     // Lines churned this session (cost.total_lines_added/removed).
@@ -214,31 +247,30 @@ pub fn run() -> Result<()> {
             "{MUTED}[{RST}{GREEN}+{lines_added}{MUTED}/{RST}{RED}-{lines_removed}{MUTED}]{RST}"
         ));
     }
-    // Session wall-clock (cost.total_duration_ms).
-    let dur = format_duration_ms(duration_ms);
-    if !dur.is_empty() {
-        if !line2.is_empty() {
-            line2.push(' ');
-        }
-        line2.push_str(&format!("{MUTED}[{RST}{CYAN}T: {dur}{MUTED}]{RST}"));
-    }
     if !line2.is_empty() {
         println!("{line2}");
     }
 
-    // ── Line 3: Ctx bar ───────────────────────────────────────────────
+    // ── Line 3: CTX bar ───────────────────────────────────────────────
     let used_int = parse_int_prefix(&used_pct);
-    let ctx_bar = render_bar(used_int, None, None, cols);
+    let ac = autocompact_threshold();
+    // Autocompact threshold rendered as a marker cell (amber) so the
+    // compaction wall is visible before you hit it — mirrors the rate-window
+    // clock pip, but in AUTOCOMPACT color.
+    let ctx_bar = render_bar(used_int, Some(ac), None, cols, AUTOCOMPACT);
+    let mut ctx_warn = String::new();
+    // Crossed the autocompact line: amber AC tag.
+    if used_int >= ac {
+        ctx_warn.push_str(&format!(" {AUTOCOMPACT}AC{RST}"));
+    }
     // exceeds_200k_tokens: flags crossing the 200k threshold (relevant on
     // 1M-context models, where % can still be low). Bold-red marker.
-    let ctx_warn = if exceeds_200k {
-        format!(" {BOLD}{RED}200k+{RST}")
-    } else {
-        String::new()
-    };
+    if exceeds_200k {
+        ctx_warn.push_str(&format!(" {BOLD}{RED}200k+{RST}"));
+    }
     println!(
         "{MUTED}{:<3}{RST} {ctx_bar} {MUTED}{:3}%{RST}{ctx_warn}",
-        "Ctx", used_int
+        "CTX", used_int
     );
 
     // ── Lines 4-5: rate-limit windows ─────────────────────────────────
@@ -293,7 +325,7 @@ fn print_window(pct_str: &str, resets_at_str: &str, window_min: u64, label: &str
         format!("{remain_min}m left")
     };
 
-    let bar = render_bar(pct, Some(clock_pct), proj_pct, cols);
+    let bar = render_bar(pct, Some(clock_pct), proj_pct, cols, MARKER);
     println!(
         "{MUTED}{:<3}{RST} {bar} {MUTED}{:3}%{RST} [{MARKER}{time_label}{MUTED}] [{}{MUTED}]{RST}",
         label, pct, delta_str
@@ -347,7 +379,7 @@ fn pip_count_for_width(cols: Option<usize>) -> usize {
     }
 }
 
-fn render_bar(pct: i32, marker_pct: Option<i32>, proj_pct: Option<i32>, cols: Option<usize>) -> String {
+fn render_bar(pct: i32, marker_pct: Option<i32>, proj_pct: Option<i32>, cols: Option<usize>, marker_color: &str) -> String {
     let pip_count = pip_count_for_width(cols);
     let pct = pct.max(0);
     let mut filled = (pct as usize) * pip_count / 100;
@@ -387,7 +419,7 @@ fn render_bar(pct: i32, marker_pct: Option<i32>, proj_pct: Option<i32>, cols: Op
             if marker_expired {
                 out.push_str(&format!("{UNDIM}{RED}{pip}"));
             } else {
-                out.push_str(&format!("{UNDIM}{MARKER}{pip}"));
+                out.push_str(&format!("{UNDIM}{marker_color}{pip}"));
             }
         } else if Some(i) == proj_idx {
             out.push_str(&format!("{UNDIM}{PROJ}{pip}"));
@@ -426,22 +458,6 @@ fn format_burn_rate(cost_str: &str, duration_ms: i64) -> Option<String> {
     }
     let hours = duration_ms as f64 / 3_600_000.0;
     Some(format!("${:.2}/h", cost / hours))
-}
-
-/// Compact session wall-clock from milliseconds: "45s" / "10m" / "1h30m".
-/// Empty string for non-positive input (segment skipped).
-fn format_duration_ms(ms: i64) -> String {
-    if ms <= 0 {
-        return String::new();
-    }
-    let secs = ms / 1000;
-    if secs < 60 {
-        format!("{secs}s")
-    } else if secs < 3600 {
-        format!("{}m", secs / 60)
-    } else {
-        format!("{}h{:02}m", secs / 3600, (secs % 3600) / 60)
-    }
 }
 
 /// Color for a PR `review_state`, case-insensitive. Unknown states fall back
@@ -514,6 +530,67 @@ fn read_advisor_name() -> String {
     v.get("advisorModel").and_then(|x| x.as_str()).map(String::from).unwrap_or_default()
 }
 
+/// Context % at which Claude Code triggers autocompact. Read from the
+/// `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` env var (set in settings.json `env`,
+/// inherited by the statusline subprocess); falls back to 80 when unset or
+/// out of range.
+fn autocompact_threshold() -> i32 {
+    std::env::var("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE")
+        .ok()
+        .and_then(|s| s.trim().parse::<i32>().ok())
+        .filter(|p| (1..=100).contains(p))
+        .unwrap_or(80)
+}
+
+/// `~/.claude/state` — shared journal dir (also written by hook::stop).
+fn state_dir() -> PathBuf {
+    PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".claude/state")
+}
+
+/// Record this session's latest cost under today's date dir and return the
+/// day's total across all sessions (None when `cost_usd` is unparseable or
+/// negative). Thin wrapper over `record_and_sum` for HOME/date lookup.
+fn daily_cost_total(session_id: &str, cost_usd: &str) -> Option<f64> {
+    let date = Local::now().format("%Y-%m-%d").to_string();
+    record_and_sum(&state_dir().join("cost"), &date, session_id, cost_usd)
+}
+
+/// Write `<cost_root>/<date>/<session_id>` with this session's latest cost and
+/// return the sum across that date dir. One file per session (keyed by id) so
+/// concurrent background sessions never clobber a shared file. Split from the
+/// HOME/date lookup so it's testable against a tempdir.
+fn record_and_sum(cost_root: &Path, date: &str, session_id: &str, cost_usd: &str) -> Option<f64> {
+    let cost = cost_usd.parse::<f64>().ok()?;
+    if cost < 0.0 {
+        return None;
+    }
+    let dir = cost_root.join(date);
+    if !session_id.is_empty() {
+        let _ = std::fs::create_dir_all(&dir);
+        // Defensive: keep the id filesystem-safe.
+        let fname = session_id.replace(['/', '\\', '.'], "_");
+        let _ = std::fs::write(dir.join(fname), format!("{cost}"));
+    }
+    Some(sum_cost_dir(&dir))
+}
+
+/// Sum every per-session cost file in `dir` (today's latest costs).
+fn sum_cost_dir(dir: &Path) -> f64 {
+    let mut total = 0.0;
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for e in entries.flatten() {
+            if let Ok(s) = std::fs::read_to_string(e.path()) {
+                if let Ok(v) = s.trim().parse::<f64>() {
+                    if v >= 0.0 {
+                        total += v;
+                    }
+                }
+            }
+        }
+    }
+    total
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -568,16 +645,6 @@ mod tests {
         assert_eq!(format_burn_rate("0.50", 59_000), None); // <60s: too noisy
         assert_eq!(format_burn_rate("0", 3_600_000), None); // no spend
         assert_eq!(format_burn_rate("abc", 3_600_000), None); // unparseable
-    }
-
-    #[test]
-    fn format_duration_ms_scales_units() {
-        assert_eq!(format_duration_ms(45_000), "45s");
-        assert_eq!(format_duration_ms(600_000), "10m");
-        assert_eq!(format_duration_ms(3_600_000), "1h00m");
-        assert_eq!(format_duration_ms(5_400_000), "1h30m");
-        assert_eq!(format_duration_ms(0), "");
-        assert_eq!(format_duration_ms(-5), "");
     }
 
     #[test]
@@ -637,7 +704,7 @@ mod tests {
 
     #[test]
     fn render_bar_zero_pct_emits_pip_count_chars() {
-        let s = render_bar(0, None, None, None);
+        let s = render_bar(0, None, None, None, MARKER);
         // 30 pips of any color; render produces escape-prefixed chars per pip.
         // Easier check: count fill chars + empty chars.
         let fill = s.matches(PIP_FILL).count();
@@ -648,7 +715,7 @@ mod tests {
 
     #[test]
     fn render_bar_full_pct_fills_all_pips() {
-        let s = render_bar(100, None, None, None);
+        let s = render_bar(100, None, None, None, MARKER);
         let fill = s.matches(PIP_FILL).count();
         let empty = s.matches(PIP_EMPTY).count();
         assert_eq!(fill + empty, DEFAULT_PIP_COUNT);
@@ -657,13 +724,13 @@ mod tests {
 
     #[test]
     fn render_bar_pct_one_lights_at_least_one_pip() {
-        let s = render_bar(1, None, None, None);
+        let s = render_bar(1, None, None, None, MARKER);
         assert!(s.contains(PIP_FILL));
     }
 
     #[test]
     fn render_bar_negative_pct_clamps_to_zero() {
-        let s = render_bar(-50, None, None, None);
+        let s = render_bar(-50, None, None, None, MARKER);
         assert_eq!(s.matches(PIP_FILL).count(), 0);
     }
 
@@ -674,5 +741,65 @@ mod tests {
         assert_ne!(cold, hot);
         // Hot end should be brighter overall (warmer).
         assert!(hot.0 as u32 + hot.1 as u32 + hot.2 as u32 > cold.0 as u32 + cold.1 as u32 + cold.2 as u32);
+    }
+
+    #[test]
+    fn render_bar_marker_uses_supplied_color() {
+        // The marker pip must be drawn in the passed color, not hard-coded MARKER.
+        let s = render_bar(0, Some(50), None, None, AUTOCOMPACT);
+        assert!(s.contains(AUTOCOMPACT));
+        assert!(!s.contains(MARKER));
+    }
+
+    #[test]
+    fn autocompact_threshold_reads_env_and_clamps() {
+        let prior = std::env::var("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE").ok();
+        std::env::set_var("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "80");
+        assert_eq!(autocompact_threshold(), 80);
+        // Out-of-range and garbage fall back to the 80 default.
+        std::env::set_var("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "0");
+        assert_eq!(autocompact_threshold(), 80);
+        std::env::set_var("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "abc");
+        assert_eq!(autocompact_threshold(), 80);
+        std::env::remove_var("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE");
+        assert_eq!(autocompact_threshold(), 80);
+        if let Some(v) = prior {
+            std::env::set_var("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", v);
+        }
+    }
+
+    #[test]
+    fn sum_cost_dir_totals_per_session_files() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("sess-a"), "1.50").unwrap();
+        std::fs::write(dir.path().join("sess-b"), "0.25\n").unwrap();
+        // Garbage and negatives are ignored, not fatal.
+        std::fs::write(dir.path().join("sess-c"), "nope").unwrap();
+        std::fs::write(dir.path().join("sess-d"), "-9").unwrap();
+        let total = sum_cost_dir(dir.path());
+        assert!((total - 1.75).abs() < 1e-9, "got {total}");
+    }
+
+    #[test]
+    fn sum_cost_dir_missing_dir_is_zero() {
+        assert_eq!(sum_cost_dir(Path::new("/nonexistent/cost/dir")), 0.0);
+    }
+
+    #[test]
+    fn record_and_sum_overwrites_self_and_aggregates() {
+        let root = tempfile::tempdir().unwrap();
+        let date = "2026-05-29";
+        // Records own cost; with no other sessions the total equals self.
+        let t = record_and_sum(root.path(), date, "session-xyz", "2.00").unwrap();
+        assert!((t - 2.00).abs() < 1e-9, "got {t}");
+        // Re-recording the same session overwrites (latest wins), not additive.
+        let t2 = record_and_sum(root.path(), date, "session-xyz", "3.00").unwrap();
+        assert!((t2 - 3.00).abs() < 1e-9, "got {t2}");
+        // A second concurrent session adds to the day's total.
+        let t3 = record_and_sum(root.path(), date, "session-abc", "1.50").unwrap();
+        assert!((t3 - 4.50).abs() < 1e-9, "got {t3}");
+        // Unparseable and negative costs → None.
+        assert_eq!(record_and_sum(root.path(), date, "session-xyz", "abc"), None);
+        assert_eq!(record_and_sum(root.path(), date, "session-xyz", "-1"), None);
     }
 }

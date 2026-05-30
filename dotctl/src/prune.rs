@@ -7,6 +7,7 @@
 // produces.
 
 use anyhow::Result;
+use chrono::Local;
 use std::fs;
 use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
@@ -33,6 +34,7 @@ pub fn run(mode: PromptMode) -> Result<()> {
     prune_backups(&home, &dotfiles, mode)?;
     prune_stale_worktrees(&home, mode)?;
     prune_orphan_workers(mode)?;
+    prune_stale_cost_dirs(&home, mode)?;
     Ok(())
 }
 
@@ -618,6 +620,92 @@ fn prompt_workers_default_yes() -> bool {
     answer.is_empty() || answer == "y" || answer == "yes"
 }
 
+// ─────────────────────────────────────────────── stale daily-cost dirs
+
+// `~/.claude/state/cost/<YYYY-MM-DD>/` accumulates one dir per day from the
+// statusline's cross-session spend tracking (statusline::record_and_sum).
+// Today's dir is live; older ones are historical and safe to remove.
+fn prune_stale_cost_dirs(home: &Path, mode: PromptMode) -> Result<()> {
+    println!();
+    println!("==> Stale daily-cost dirs");
+
+    let root = home.join(".claude/state/cost");
+    let today = Local::now().format("%Y-%m-%d").to_string();
+    let stale = find_stale_cost_dirs(&root, &today);
+    if stale.is_empty() {
+        println!("{GREEN}  ✓ No stale cost dirs{NC}");
+        return Ok(());
+    }
+
+    println!("{YELLOW}  Found {} stale cost dir(s):{NC}", stale.len());
+    for d in &stale {
+        println!("{DIM}    - {}{NC}", d.display());
+    }
+
+    let do_delete = match mode {
+        PromptMode::AutoYes => true,
+        PromptMode::DryRun => false,
+        PromptMode::AskDefaultYes => prompt_default_yes(),
+    };
+    if !do_delete {
+        println!("{DIM}  - Skipped (no dirs removed){NC}");
+        return Ok(());
+    }
+
+    let mut deleted = 0usize;
+    let mut failed = 0usize;
+    for d in &stale {
+        match fs::remove_dir_all(d) {
+            Ok(_) => deleted += 1,
+            Err(e) => {
+                eprintln!("{YELLOW}  → failed to delete {}: {e}{NC}", d.display());
+                failed += 1;
+            }
+        }
+    }
+    if failed == 0 {
+        println!("{GREEN}  ✓ Deleted {deleted} stale cost dir(s){NC}");
+    } else {
+        println!("{YELLOW}  → Deleted {deleted}, {failed} failed{NC}");
+    }
+    Ok(())
+}
+
+/// Date-named subdirs of `root` whose name sorts before `today`. Lexical
+/// comparison of `YYYY-MM-DD` strings is chronological. Non-date entries and
+/// today/future dirs are left alone.
+fn find_stale_cost_dirs(root: &Path, today: &str) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    if let Ok(entries) = fs::read_dir(root) {
+        for e in entries.flatten() {
+            let p = e.path();
+            if !p.is_dir() {
+                continue;
+            }
+            if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
+                if is_date_dir(name) && name < today {
+                    out.push(p);
+                }
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// True for a `YYYY-MM-DD` directory name: 10 chars, dashes at positions 4
+/// and 7, digits elsewhere.
+fn is_date_dir(name: &str) -> bool {
+    name.len() == 10
+        && name.as_bytes().iter().enumerate().all(|(i, b)| {
+            if i == 4 || i == 7 {
+                *b == b'-'
+            } else {
+                b.is_ascii_digit()
+            }
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -682,5 +770,41 @@ mod tests {
         std::fs::write(home.join("random/x.bak"), "x").unwrap();
         let backups = find_backups(home, home);
         assert!(backups.is_empty(), "found unexpected: {:?}", backups);
+    }
+
+    #[test]
+    fn is_date_dir_matches_iso_dates_only() {
+        assert!(is_date_dir("2026-05-29"));
+        assert!(is_date_dir("1999-12-31"));
+        assert!(!is_date_dir("2026-5-29")); // not zero-padded → wrong length
+        assert!(!is_date_dir("2026/05/29")); // wrong separator
+        assert!(!is_date_dir("session-id")); // non-numeric
+        assert!(!is_date_dir("2026-05-2")); // too short
+        assert!(!is_date_dir(""));
+    }
+
+    #[test]
+    fn find_stale_cost_dirs_drops_older_keeps_today_and_nondate() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path();
+        for d in ["2026-05-27", "2026-05-28", "2026-05-29", "2026-05-30"] {
+            std::fs::create_dir_all(root.join(d)).unwrap();
+        }
+        // A non-date dir and a stray file must be ignored entirely.
+        std::fs::create_dir_all(root.join("scratch")).unwrap();
+        std::fs::write(root.join("2026-05-26"), "x").unwrap(); // file, not dir
+
+        let stale = find_stale_cost_dirs(root, "2026-05-29");
+        let names: Vec<String> = stale
+            .iter()
+            .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
+            .collect();
+        // Only dirs strictly before today; today + future + non-date excluded.
+        assert_eq!(names, vec!["2026-05-27", "2026-05-28"]);
+    }
+
+    #[test]
+    fn find_stale_cost_dirs_missing_root_is_empty() {
+        assert!(find_stale_cost_dirs(Path::new("/nonexistent/cost"), "2026-05-29").is_empty());
     }
 }
