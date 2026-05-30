@@ -5,11 +5,12 @@
 // bars for context window + Pro/Max rate-limit windows.
 //
 // Layout (line-1 git keys use Nerd Font glyphs; branch/PR are OSC8 links):
-//   Line 1: repo/dir [ branch] [ name] [ #N: state] [C: counters]
-//   Line 2: [M: model] [A: advisor] [E: effort] [$cost ($/h) · today $X] [+N/-M]
+//   Line 1: repo/dir [ branch] [ name] [ #N: state] [C: counters] [+N/-M]
+//   Line 2: [M: model] [A: advisor] [E: effort]
 //   Line 3: CTX [bar w/ amber autocompact-threshold cell] N% [AC] [200k+]
 //   Line 4: 5h  [bar] N% [time left] [delta]
 //   Line 5: 7d  [bar] N% [time left] [delta]
+//   Line 6: [$cost ($/h) · today $X]
 
 use anyhow::Result;
 use chrono::Local;
@@ -195,6 +196,12 @@ pub fn run() -> Result<()> {
             counters.join(&format!("{MUTED}, {RST}"))
         ));
     }
+    // Lines churned this session (cost.total_lines_added/removed) — tail of row 1.
+    if lines_added > 0 || lines_removed > 0 {
+        line1.push_str(&format!(
+            " {MUTED}[{RST}{GREEN}+{lines_added}{MUTED}/{RST}{RED}-{lines_removed}{MUTED}]{RST}"
+        ));
+    }
     println!("{line1}");
 
     // ── Line 2 ────────────────────────────────────────────────────────
@@ -213,39 +220,6 @@ pub fn run() -> Result<()> {
             line2.push(' ');
         }
         line2.push_str(&format!("{MUTED}[{RST}{CYAN}E: {effort_level}{MUTED}]{RST}"));
-    }
-    let cost_display = format_cost(&cost_usd);
-    if !cost_display.is_empty() {
-        if !line2.is_empty() {
-            line2.push(' ');
-        }
-        // GREEN signals money — distinct from the cyan model/effort keys.
-        // Append within-session burn rate ($/h) once the session is long
-        // enough for it to be meaningful (reuses no external data).
-        let mut money = match format_burn_rate(&cost_usd, duration_ms) {
-            Some(rate) => format!("{cost_display} ({rate})"),
-            None => cost_display,
-        };
-        // Cross-session spend for today. Always record this session's latest
-        // cost (so concurrent sessions can see our contribution); only render
-        // the total when *other* sessions added to it — else it just echoes
-        // this session's cost.
-        let cost_self = cost_usd.parse::<f64>().unwrap_or(0.0);
-        if let Some(day) = daily_cost_total(&session_id, &cost_usd) {
-            if day > cost_self + 0.005 {
-                money.push_str(&format!("{MUTED} · today {RST}{GREEN}${day:.2}"));
-            }
-        }
-        line2.push_str(&format!("{MUTED}[{RST}{GREEN}{money}{MUTED}]{RST}"));
-    }
-    // Lines churned this session (cost.total_lines_added/removed).
-    if lines_added > 0 || lines_removed > 0 {
-        if !line2.is_empty() {
-            line2.push(' ');
-        }
-        line2.push_str(&format!(
-            "{MUTED}[{RST}{GREEN}+{lines_added}{MUTED}/{RST}{RED}-{lines_removed}{MUTED}]{RST}"
-        ));
     }
     if !line2.is_empty() {
         println!("{line2}");
@@ -276,6 +250,28 @@ pub fn run() -> Result<()> {
     // ── Lines 4-5: rate-limit windows ─────────────────────────────────
     print_window(&five_pct, &five_resets_at, 300, "5h", cols);
     print_window(&seven_pct, &seven_resets_at, 10_080, "7d", cols);
+
+    // ── Line 6: cost (last line, after all bars) ──────────────────────
+    let cost_display = format_cost(&cost_usd);
+    if !cost_display.is_empty() {
+        // GREEN signals money. Append within-session burn rate ($/h) once the
+        // session is long enough for it to be meaningful (reuses no external data).
+        let mut money = match format_burn_rate(&cost_usd, duration_ms) {
+            Some(rate) => format!("{cost_display} ({rate})"),
+            None => cost_display,
+        };
+        // Cross-session spend for today. Always record this session's latest
+        // cost (so concurrent sessions can see our contribution); only render
+        // the total when *other* sessions added to it — else it just echoes
+        // this session's cost.
+        let cost_self = cost_usd.parse::<f64>().unwrap_or(0.0);
+        if let Some(day) = daily_cost_total(&session_id, &cost_usd) {
+            if day > cost_self + 0.005 {
+                money.push_str(&format!("{MUTED} · today {RST}{GREEN}${day:.2}"));
+            }
+        }
+        println!("{MUTED}[{RST}{GREEN}{money}{MUTED}]{RST}");
+    }
 
     Ok(())
 }
