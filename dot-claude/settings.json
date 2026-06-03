@@ -1,7 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "cleanupPeriodDays": 14,
-  "autoMemoryEnabled": true,
   "env": {
     "EDITOR": "hx",
     "ENABLE_PROMPT_CACHING_1H": "1",
@@ -315,7 +314,9 @@
     ]
   },
   "feedbackSurveyRate": 0,
+  "effortLevel": "medium",
   "tui": "fullscreen",
+  "autoMemoryEnabled": true,
   "skipDangerousModePermissionPrompt": true,
   "verbose": true,
   "teammateMode": "auto",
@@ -325,6 +326,5 @@
   "agentPushNotifEnabled": false,
   "skipAutoPermissionPrompt": true,
   "defaultToAgentsView": true,
-  "leftArrowOpensAgents": true,
-  "effortLevel": "medium"
+  "leftArrowOpensAgents": true
 }
