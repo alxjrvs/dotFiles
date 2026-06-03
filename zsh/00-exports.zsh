@@ -1,6 +1,9 @@
 # Editor / pager / locale
 export EDITOR="hx"
 export VISUAL="$EDITOR"
+# Preferred terminal for tools that honor $TERMINAL (cmux is the Ghostty-based
+# default; Ghostty.app stays installed as the fallback emulator).
+export TERMINAL="/Applications/cmux.app/Contents/Resources/bin/cmux"
 export MANPAGER="less -R"
 export LANG=en_US.UTF-8
 export LESS='-RFX'
