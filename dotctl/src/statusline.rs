@@ -394,13 +394,22 @@ fn render_bar(pct: i32, marker_pct: Option<i32>, proj_pct: Option<i32>, cols: Op
         }
         None => (None, false),
     };
-    let proj_idx: Option<usize> = match proj_pct {
+    let mut proj_idx: Option<usize> = match proj_pct {
         Some(p) if (0..=100).contains(&p) => {
             let idx = (p as usize) * pip_count / 100;
             Some(idx.min(pip_count - 1))
         }
         _ => None,
     };
+
+    // Blue (marker) and yellow (proj) must never share a cell. On collision,
+    // keep blue on its cell and push yellow to the next cell (blue before
+    // yellow); fall back to the previous cell only when blue is on the last pip.
+    if let (Some(m), Some(p)) = (marker_idx, proj_idx) {
+        if m == p {
+            proj_idx = Some(if m + 1 < pip_count { m + 1 } else { m - 1 });
+        }
+    }
 
     // Pre-compute per-pip gradient color.
     let mut pip_colors: Vec<(u8, u8, u8)> = Vec::with_capacity(pip_count);
@@ -745,6 +754,20 @@ mod tests {
         let s = render_bar(0, Some(50), None, None, AUTOCOMPACT);
         assert!(s.contains(AUTOCOMPACT));
         assert!(!s.contains(MARKER));
+    }
+
+    #[test]
+    fn render_bar_marker_and_proj_never_share_a_cell() {
+        // Blue marker and yellow proj computed to the same pip: both must still
+        // render (yellow bumped one cell right — blue before yellow).
+        let s = render_bar(100, Some(50), Some(50), None, MARKER);
+        assert!(s.contains(MARKER), "blue marker pip missing");
+        assert!(s.contains(PROJ), "yellow proj pip missing (was dropped)");
+        // The blue pip's RGB code must appear before the yellow pip's in the
+        // left-to-right byte stream.
+        let blue = s.find(MARKER).unwrap();
+        let yellow = s.find(PROJ).unwrap();
+        assert!(blue < yellow, "blue must render before yellow");
     }
 
     #[test]
