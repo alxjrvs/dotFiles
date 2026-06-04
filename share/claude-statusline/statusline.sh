@@ -25,6 +25,7 @@ ESC=$(printf '\033')
 BEL=$(printf '\007')
 PIP_FILL=$(printf '\xe2\x96\xb0')       # ▰  U+25B0
 PIP_EMPTY=$(printf '\xe2\x96\xb1')      # ▱  U+25B1
+PIP_OVERFLOW='!'                        # burn-projection overflow marker (rendered bold red)
 GLYPH_BRANCH=$(printf '\xee\x82\xa0')   #   U+E0A0  powerline branch
 GLYPH_WORKTREE=$(printf '\xef\x83\xa8') #  U+F0E8  fa sitemap
 GLYPH_PR=$(printf '\xef\x90\x87')       #   U+F407  octicon git-pull-request
@@ -129,10 +130,16 @@ render_bar() {
       [ "$marker_idx" -gt $((pip_count - 1)) ] && marker_idx=$((pip_count - 1))
     fi
   fi
-  local proj_idx=-1
-  if [ -n "$proj_pct" ] && [ "$proj_pct" -ge 0 ] && [ "$proj_pct" -le 100 ]; then
-    proj_idx=$((proj_pct * pip_count / 100))
-    [ "$proj_idx" -gt $((pip_count - 1)) ] && proj_idx=$((pip_count - 1))
+  local proj_idx=-1 proj_overflow=0
+  if [ -n "$proj_pct" ] && [ "$proj_pct" -ge 0 ]; then
+    if [ "$proj_pct" -gt 100 ]; then
+      # Projection runs off the right edge: pin to the last cell, flag overflow.
+      proj_idx=$((pip_count - 1))
+      proj_overflow=1
+    else
+      proj_idx=$((proj_pct * pip_count / 100))
+      [ "$proj_idx" -gt $((pip_count - 1)) ] && proj_idx=$((pip_count - 1))
+    fi
   fi
 
   local out="" i pip
@@ -145,7 +152,11 @@ render_bar() {
         out="${out}${UNDIM}${marker_color}${pip}"
       fi
     elif [ "$i" -eq "$proj_idx" ]; then
-      out="${out}${UNDIM}${PROJ}${pip}"
+      if [ "$proj_overflow" -eq 1 ]; then
+        out="${out}${UNDIM}${BOLD}${RED}${PIP_OVERFLOW}"
+      else
+        out="${out}${UNDIM}${PROJ}${pip}"
+      fi
     elif [ "$i" -lt "$filled" ]; then
       gradient_at $((i * 10000 / (pip_count - 1)))
       out="${out}${UNDIM}${ESC}[38;2;${_GR};${_GG};${_GB}m${pip}"
