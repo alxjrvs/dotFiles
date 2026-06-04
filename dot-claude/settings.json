@@ -19,7 +19,6 @@
       "Bash(dot *)",
       "Skill(superpowers:*)",
       "Skill(implement:*)",
-      "mcp__plugin_context7_context7__*",
       "Bash(node *)",
       "Bash(bun *)",
       "Bash(bunx *)",
@@ -177,7 +176,6 @@
   },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": false,
-    "context7@claude-plugins-official": true,
     "github@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": false,
     "commit-commands@claude-plugins-official": true,
@@ -322,6 +320,7 @@
   "tui": "fullscreen",
   "autoMemoryEnabled": true,
   "skipDangerousModePermissionPrompt": true,
+  "editorMode": "normal",
   "verbose": true,
   "teammateMode": "auto",
   "isolatePeerMachines": false,

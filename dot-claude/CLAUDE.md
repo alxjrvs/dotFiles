@@ -28,7 +28,6 @@
 
 ## Tool Preferences
 
-- For library/framework/SDK/API docs, prefer the `context7` MCP (`query-docs`) over `WebFetch`.
 - For multi-file or multi-step work, enter plan mode (`EnterPlanMode`) before touching code. Short, clearly-scoped tasks don't need it.
 - For long-running or polling work, use `ScheduleWakeup` or the `loop` skill rather than re-running commands manually.
 - For codebase research spanning more than ~3 file lookups, dispatch the `Explore` subagent.
