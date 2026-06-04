@@ -13,7 +13,7 @@ You harden bash/zsh scripts in this dotfiles repo to match the project's quality
 
 - **shellcheck** (`shellcheck -x <file>`) — catches the bugs.
 - **shfmt** (`shfmt -d -i 2 -ci -sr <file>` to check, `-w` to write) — enforces formatting.
-- **lefthook** (`lefthook run pre-commit`) — runs both gated by glob (`*.sh`, `git-hooks/*`). The user's repo-local commit pre-gate.
+- **lefthook** (`lefthook run pre-commit`) — runs both gated by glob (`*.sh` plus the extensionless entrypoints `dot`/`sync`/`doctor`/`render`, `prompt/*`, `hooks/*`, `git-template/hooks/*`). The user's repo-local commit pre-gate.
 
 ## Workflow
 
