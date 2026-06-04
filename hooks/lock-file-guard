@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# hooks/lock-file-guard — PreToolUse: deny edits to dependency lock files.
+#
+# Reads .tool_input.file_path (or .file_path) from CC JSON on stdin.
+# Emits a deny JSON payload + exits 0 when the basename matches the
+# known lock-file list. Silent (exit 0, no output) otherwise.
+#
+# Self-contained: no shared/ sourcing. All helpers defined inline.
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Timing instrumentation (opt-in via DOTFILES_HOOK_TIMING=1)
+# ---------------------------------------------------------------------------
+_HOOK_START_MS=0
+if [[ "${DOTFILES_HOOK_TIMING:-}" == "1" ]]; then
+  if command -v gdate > /dev/null 2>&1; then
+    _HOOK_START_MS=$(gdate +%s%3N)
+  elif date +%s%3N > /dev/null 2>&1; then
+    _HOOK_START_MS=$(date +%s%3N)
+  fi
+fi
+
+_log_timing() {
+  local ok="$1"
+  if [[ "${DOTFILES_HOOK_TIMING:-}" != "1" ]]; then
+    return 0
+  fi
+  local end_ms=0
+  if command -v gdate > /dev/null 2>&1; then
+    end_ms=$(gdate +%s%3N)
+  elif date +%s%3N > /dev/null 2>&1; then
+    end_ms=$(date +%s%3N)
+  fi
+  local elapsed=$((end_ms - _HOOK_START_MS))
+  local ts
+  ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || echo "")
+  local state_dir="${HOME}/.claude/state"
+  mkdir -p "$state_dir"
+  printf '{"ts":"%s","event":"lock-file-guard","elapsed_ms":%d,"ok":%s}\n' \
+    "$ts" "$elapsed" "$ok" \
+    >> "${state_dir}/hook-timings.jsonl"
+}
+
+# ---------------------------------------------------------------------------
+# Read stdin JSON
+# ---------------------------------------------------------------------------
+INPUT=$(cat)
+
+# Extract file_path: try .tool_input.file_path first, fall back to .file_path
+FILE_PATH=$(printf '%s' "$INPUT" | jq -r '(.tool_input.file_path // .file_path) // ""')
+
+if [[ -z "$FILE_PATH" ]]; then
+  _log_timing "true"
+  exit 0
+fi
+
+BASENAME=$(basename "$FILE_PATH")
+
+# ---------------------------------------------------------------------------
+# Lock file list (mirrors LOCKS in hook.rs)
+# ---------------------------------------------------------------------------
+LOCK_FILES=(
+  "Brewfile.lock"
+  "Brewfile.lock.json"
+  "bun.lock"
+  "bun.lockb"
+  "package-lock.json"
+  "yarn.lock"
+  "pnpm-lock.yaml"
+  "Gemfile.lock"
+  "Cargo.lock"
+  "composer.lock"
+  "poetry.lock"
+  "uv.lock"
+  "flake.lock"
+)
+
+for lock in "${LOCK_FILES[@]}"; do
+  if [[ "$BASENAME" == "$lock" ]]; then
+    REASON="Do not edit lock files directly — ${BASENAME} is dependency-managed. Run the package manager (bun/cargo/brew) to regenerate it."
+    jq -n \
+      --arg reason "$REASON" \
+      '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$reason}}'
+    _log_timing "true"
+    exit 0
+  fi
+done
+
+_log_timing "true"
+exit 0

@@ -52,7 +52,7 @@ cask "ghostty"
 cask "google-chrome"
 
 # Caps Lock → Control via Karabiner (rule lives in karabiner/karabiner.json,
-# symlinked by dotctl sync).
+# symlinked by dot sync).
 cask "karabiner-elements"
 
 cask "ngrok"

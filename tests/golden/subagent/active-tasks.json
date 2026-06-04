@@ -1,0 +1,42 @@
+{
+  "session_id": "sess-golden-sa-001",
+  "transcript_path": "/tmp/claude/transcripts/sa-001.jsonl",
+  "cwd": "/Users/jarvis/Code/dotFiles/.claude/worktrees/dedotctl",
+  "agent_type": "claude",
+  "columns": 168,
+  "tasks": [
+    {
+      "id": "agent-explore-001",
+      "type": "local_agent",
+      "status": "running",
+      "description": "Explore the codebase structure",
+      "label": "Explore",
+      "startTime": 1780522678529,
+      "tokenCount": 12500,
+      "tokenSamples": [
+        1000,
+        2500,
+        5000,
+        8000,
+        12500
+      ],
+      "cwd": "/Users/jarvis/Code/dotFiles/.claude/worktrees/dedotctl"
+    },
+    {
+      "id": "agent-implement-002",
+      "type": "local_agent",
+      "status": "complete",
+      "description": "Implement the shell port",
+      "label": "Implement",
+      "startTime": 1780519198529,
+      "tokenCount": 45000,
+      "tokenSamples": [
+        5000,
+        15000,
+        30000,
+        45000
+      ],
+      "cwd": "/Users/jarvis/Code/dotFiles/.claude/worktrees/dedotctl"
+    }
+  ]
+}

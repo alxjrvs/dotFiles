@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+# hooks/trim-bash-output — PostToolUse: trim oversized Bash stdout.
+#
+# Only fires when tool_name == "Bash".
+# Threshold: 20 000 bytes. Below threshold -> silent no-op.
+# Above threshold:
+#   1. Spill full stdout to /tmp/claude/spills/<session_id>/<ts_ms>.txt
+#   2. Trim to 200 head + 100 tail lines (with elision message), or fall
+#      back to 8000 head + 4000 tail chars when there aren't that many lines.
+#   3. Emit hookSpecificOutput.updatedToolOutput {stdout,stderr,interrupted,isImage}
+#
+# JSON manipulation is done entirely with jq.
+#
+# Self-contained: no shared/ sourcing. All helpers defined inline.
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Timing instrumentation
+# ---------------------------------------------------------------------------
+_HOOK_START_MS=0
+if [[ "${DOTFILES_HOOK_TIMING:-}" == "1" ]]; then
+  if command -v gdate > /dev/null 2>&1; then
+    _HOOK_START_MS=$(gdate +%s%3N)
+  elif date +%s%3N > /dev/null 2>&1; then
+    _HOOK_START_MS=$(date +%s%3N)
+  fi
+fi
+
+_log_timing() {
+  local ok="$1"
+  if [[ "${DOTFILES_HOOK_TIMING:-}" != "1" ]]; then
+    return 0
+  fi
+  local end_ms=0
+  if command -v gdate > /dev/null 2>&1; then
+    end_ms=$(gdate +%s%3N)
+  elif date +%s%3N > /dev/null 2>&1; then
+    end_ms=$(date +%s%3N)
+  fi
+  local elapsed=$((end_ms - _HOOK_START_MS))
+  local ts
+  ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || echo "")
+  local state_dir="${HOME}/.claude/state"
+  mkdir -p "$state_dir"
+  printf '{"ts":"%s","event":"trim-bash-output","elapsed_ms":%d,"ok":%s}\n' \
+    "$ts" "$elapsed" "$ok" \
+    >> "${state_dir}/hook-timings.jsonl"
+}
+
+# ---------------------------------------------------------------------------
+# Read stdin JSON
+# ---------------------------------------------------------------------------
+INPUT=$(cat)
+
+TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.tool_name // ""')
+if [[ "$TOOL_NAME" != "Bash" ]]; then
+  _log_timing "true"
+  exit 0
+fi
+
+STDOUT=$(printf '%s' "$INPUT" | jq -r '.tool_response.stdout // ""')
+THRESHOLD=20000
+
+# Length check: use bash ${#} for fast char count (good enough for threshold guard)
+STDOUT_LEN=${#STDOUT}
+if [[ "$STDOUT_LEN" -le "$THRESHOLD" ]]; then
+  _log_timing "true"
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# Extract remaining fields
+# ---------------------------------------------------------------------------
+STDERR=$(printf '%s' "$INPUT" | jq -r '.tool_response.stderr // ""')
+INTERRUPTED=$(printf '%s' "$INPUT" | jq -r '.tool_response.interrupted // false')
+IS_IMAGE=$(printf '%s' "$INPUT" | jq -r '.tool_response.isImage // false')
+SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // ""')
+
+# ---------------------------------------------------------------------------
+# Spill full stdout to /tmp/claude/spills/<session>/<ts_ms>.txt (best-effort)
+# ---------------------------------------------------------------------------
+SPILL_HINT=""
+SESSION_DIR="${SESSION_ID:-no-session}"
+SPILL_DIR="/tmp/claude/spills/${SESSION_DIR}"
+if mkdir -p "$SPILL_DIR" 2> /dev/null; then
+  if command -v gdate > /dev/null 2>&1; then
+    TS_MS=$(gdate +%s%3N)
+  elif date +%s%3N > /dev/null 2>&1; then
+    TS_MS=$(date +%s%3N)
+  else
+    TS_MS=$(date +%s)000
+  fi
+  SPILL_PATH="${SPILL_DIR}/${TS_MS}.txt"
+  if printf '%s' "$STDOUT" > "$SPILL_PATH" 2> /dev/null; then
+    SPILL_HINT=" — full output spilled to ${SPILL_PATH}"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Trim logic: 200 head + 100 tail lines, or 8000+4000 chars fallback
+# ---------------------------------------------------------------------------
+HEAD_LINES=200
+TAIL_LINES=100
+HEAD_CHARS=8000
+TAIL_CHARS=4000
+
+TOTAL_LINES=$(printf '%s' "$STDOUT" | wc -l | tr -d '[:space:]')
+KB=$((STDOUT_LEN / 1024))
+
+if [[ "$TOTAL_LINES" -gt $((HEAD_LINES + TAIL_LINES)) ]]; then
+  # Line-based trim
+  HEAD_PART=$(printf '%s' "$STDOUT" | head -n "$HEAD_LINES")
+  TAIL_PART=$(printf '%s' "$STDOUT" | tail -n "$TAIL_LINES")
+  ELIDED=$((TOTAL_LINES - HEAD_LINES - TAIL_LINES))
+  TRIMMED="${HEAD_PART}
+... [trim-bash-output: elided ${ELIDED} lines / ~${KB}KB to save context${SPILL_HINT}] ...
+${TAIL_PART}"
+else
+  # Char-based trim (single huge line fallback)
+  HEAD_PART=$(printf '%s' "$STDOUT" | cut -c "1-${HEAD_CHARS}")
+  # For tail: take the last TAIL_CHARS characters
+  TAIL_PART=$(printf '%s' "$STDOUT" | rev | cut -c "1-${TAIL_CHARS}" | rev)
+  ELIDED=$((STDOUT_LEN - HEAD_CHARS - TAIL_CHARS))
+  if [[ "$ELIDED" -lt 0 ]]; then
+    ELIDED=0
+  fi
+  TRIMMED="${HEAD_PART}
+... [trim-bash-output: elided ${ELIDED} chars (single huge line)${SPILL_HINT}] ...
+${TAIL_PART}"
+fi
+
+# ---------------------------------------------------------------------------
+# Emit hookSpecificOutput.updatedToolOutput via jq for safe JSON encoding
+# ---------------------------------------------------------------------------
+jq -n \
+  --arg stdout "$TRIMMED" \
+  --arg stderr "$STDERR" \
+  --argjson interrupted "$INTERRUPTED" \
+  --argjson isImage "$IS_IMAGE" \
+  '{
+    hookSpecificOutput: {
+      hookEventName: "PostToolUse",
+      updatedToolOutput: {
+        stdout: $stdout,
+        stderr: $stderr,
+        interrupted: $interrupted,
+        isImage: $isImage
+      }
+    }
+  }'
+
+_log_timing "true"
+exit 0

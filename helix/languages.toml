@@ -1,6 +1,6 @@
 # helix/languages.toml — LSPs and language-specific overrides.
 #
-# Synced to ~/.config/helix/languages.toml by `dotctl sync --only=helix`.
+# Synced to ~/.config/helix/languages.toml by `dot sync --only=helix`.
 # All LSP binaries live in mise.toml so they're on PATH in every shell.
 # Verify a single language with `hx --health <language>` (e.g. `hx --health rust`).
 

@@ -23,7 +23,7 @@ yarn-error.log*
 
 # Claude — `.claude/` at the repo root is for machine-local Claude state.
 # Project-level config (settings.json, skills, agents) belongs in `dot-claude/`
-# and is symlinked into ~/.claude/ by `dotctl sync`. Everything in `.claude/`
+# and is symlinked into ~/.claude/ by `dot sync`. Everything in `.claude/`
 # is gitignored to avoid drift.
 .claude/
 
@@ -43,9 +43,5 @@ Brewfile.lock.json
 dot-claude/settings.local.json
 **/.claude/settings.local.json
 
-# Rust build artifacts (dotctl)
-# Cargo.lock IS committed for the dotctl binary crate — pins transitive
-# dep versions across `cargo install` on fresh machines.
-dotctl/target/
 # Added by code-review-graph
 .code-review-graph/

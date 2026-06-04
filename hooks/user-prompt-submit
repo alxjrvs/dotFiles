@@ -1,0 +1,209 @@
+#!/usr/bin/env bash
+# hooks/user-prompt-submit — UserPromptSubmit: inject git status context.
+#
+# 1. Finds repo root (git rev-parse --show-toplevel, fallback to $PWD).
+# 2. If the git-data cache is >60s stale or missing, spawns `dot git-data &`
+#    detached so the next turn sees fresh data.
+# 3. Loads the cache. Silent if GIT_IS_REPO != 1.
+# 4. Suppresses output on a clean default branch (main/master/develop/trunk)
+#    with no uncommitted/ahead/behind/conflict/PR state.
+# 5. Otherwise emits one additionalContext line:
+#    git: branch=<name>[, N uncommitted][, N ahead][, N behind][, N CONFLICTS][, PR-checks=<status>]
+#
+# Self-contained: no shared/ sourcing. All helpers defined inline.
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Inline: git_cache_path <toplevel>
+#
+# Mirrors cache_path() in git_data.rs:
+#   hash = SHA-256 of toplevel path, first 12 hex chars
+#   dir  = ${XDG_CACHE_HOME:-~/.cache}/git-data
+#   file = <dir>/<hash>.sh
+#
+# NOTE: Rust used sha2 crate (SHA-256); shell uses `shasum -a 256` (macOS)
+# or `sha256sum` (Linux). This changes the cache filename relative to the
+# old dotctl binary, but the shell prompt/statusline use the same function
+# so all consumers stay consistent within the shell rewrite.
+# ---------------------------------------------------------------------------
+git_cache_path() {
+  local toplevel="${1:-}"
+  local key
+  if [[ -z "$toplevel" ]]; then
+    key="$PWD"
+  else
+    key="$toplevel"
+  fi
+
+  local hash
+  if command -v shasum > /dev/null 2>&1; then
+    hash=$(printf '%s' "$key" | shasum -a 256 | cut -c1-12)
+  elif command -v sha256sum > /dev/null 2>&1; then
+    hash=$(printf '%s' "$key" | sha256sum | cut -c1-12)
+  else
+    # Fallback: use md5 (less ideal but avoids hard failure)
+    hash=$(printf '%s' "$key" | md5sum 2> /dev/null | cut -c1-12 ||
+      printf '%s' "$key" | md5 | cut -c1-12)
+  fi
+
+  local cache_dir
+  cache_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/git-data"
+  printf '%s/%s.sh' "$cache_dir" "$hash"
+}
+
+# ---------------------------------------------------------------------------
+# Timing instrumentation
+# ---------------------------------------------------------------------------
+_HOOK_START_MS=0
+if [[ "${DOTFILES_HOOK_TIMING:-}" == "1" ]]; then
+  if command -v gdate > /dev/null 2>&1; then
+    _HOOK_START_MS=$(gdate +%s%3N)
+  elif date +%s%3N > /dev/null 2>&1; then
+    _HOOK_START_MS=$(date +%s%3N)
+  fi
+fi
+
+_log_timing() {
+  local ok="$1"
+  if [[ "${DOTFILES_HOOK_TIMING:-}" != "1" ]]; then
+    return 0
+  fi
+  local end_ms=0
+  if command -v gdate > /dev/null 2>&1; then
+    end_ms=$(gdate +%s%3N)
+  elif date +%s%3N > /dev/null 2>&1; then
+    end_ms=$(date +%s%3N)
+  fi
+  local elapsed=$((end_ms - _HOOK_START_MS))
+  local ts
+  ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || echo "")
+  local state_dir="${HOME}/.claude/state"
+  mkdir -p "$state_dir"
+  printf '{"ts":"%s","event":"user-prompt-submit","elapsed_ms":%d,"ok":%s}\n' \
+    "$ts" "$elapsed" "$ok" \
+    >> "${state_dir}/hook-timings.jsonl"
+}
+
+# ---------------------------------------------------------------------------
+# Resolve repo root
+# ---------------------------------------------------------------------------
+TOPLEVEL=""
+if TOPLEVEL=$(git rev-parse --show-toplevel 2> /dev/null) && [[ -n "$TOPLEVEL" ]]; then
+  : # already set
+else
+  TOPLEVEL="$PWD"
+fi
+
+# ---------------------------------------------------------------------------
+# Check cache staleness (>60s or missing -> background refresh)
+# ---------------------------------------------------------------------------
+CACHE_PATH=$(git_cache_path "$TOPLEVEL" 2> /dev/null || true)
+
+if [[ -n "$CACHE_PATH" ]]; then
+  _is_stale=1
+  if [[ -f "$CACHE_PATH" ]]; then
+    # Get mtime: macOS stat -f%m, GNU stat -c%Y
+    if MTIME=$(stat -f%m "$CACHE_PATH" 2> /dev/null); then
+      : # macOS
+    elif MTIME=$(stat -c%Y "$CACHE_PATH" 2> /dev/null); then
+      : # Linux
+    else
+      MTIME=0
+    fi
+    NOW=$(date +%s)
+    AGE=$((NOW - MTIME))
+    if [[ "$AGE" -le 60 ]]; then
+      _is_stale=0
+    fi
+  fi
+
+  if [[ "$_is_stale" == "1" ]]; then
+    # Resolve dot command: try relative to this script, then PATH
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    DOT_CMD="$SCRIPT_DIR/../dot"
+    if [[ ! -x "$DOT_CMD" ]]; then
+      if command -v dot > /dev/null 2>&1; then
+        DOT_CMD="dot"
+      else
+        DOT_CMD=""
+      fi
+    fi
+    if [[ -n "$DOT_CMD" ]]; then
+      "$DOT_CMD" git-data < /dev/null > /dev/null 2>&1 &
+      disown 2> /dev/null || true
+    fi
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Load cache variables
+# ---------------------------------------------------------------------------
+# Define GIT_* defaults before sourcing so they are always set
+GIT_IS_REPO=0
+GIT_BRANCH=""
+GIT_STAGED_COUNT=0
+GIT_UNSTAGED_COUNT=0
+GIT_UNTRACKED_COUNT=0
+GIT_AHEAD=0
+GIT_BEHIND=0
+GIT_CONFLICT_COUNT=0
+GIT_PR_STATUS=""
+
+if [[ -n "$CACHE_PATH" ]] && [[ -f "$CACHE_PATH" ]]; then
+  # shellcheck source=/dev/null
+  source "$CACHE_PATH" 2> /dev/null || true
+fi
+
+# ---------------------------------------------------------------------------
+# Guard: not a repo
+# ---------------------------------------------------------------------------
+if [[ "${GIT_IS_REPO:-0}" != "1" ]]; then
+  _log_timing "true"
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# Compute aggregates
+# ---------------------------------------------------------------------------
+UNCOMMITTED=$((${GIT_STAGED_COUNT:-0} + ${GIT_UNSTAGED_COUNT:-0} + ${GIT_UNTRACKED_COUNT:-0}))
+AHEAD=${GIT_AHEAD:-0}
+BEHIND=${GIT_BEHIND:-0}
+CONFLICTS=${GIT_CONFLICT_COUNT:-0}
+PR_STATUS="${GIT_PR_STATUS:-}"
+PR_DISPLAY="${PR_STATUS:-none}"
+[[ -z "$PR_STATUS" ]] && PR_DISPLAY="none"
+BRANCH="${GIT_BRANCH:-}"
+
+# ---------------------------------------------------------------------------
+# Suppress on clean default branch
+# ---------------------------------------------------------------------------
+IS_DEFAULT=0
+case "$BRANCH" in
+  main | master | develop | trunk) IS_DEFAULT=1 ;;
+esac
+
+if [[ "$IS_DEFAULT" == "1" ]] &&
+  [[ "$UNCOMMITTED" -eq 0 ]] &&
+  [[ "$AHEAD" -eq 0 ]] &&
+  [[ "$BEHIND" -eq 0 ]] &&
+  [[ "$CONFLICTS" -eq 0 ]] &&
+  [[ "$PR_DISPLAY" == "none" ]]; then
+  _log_timing "true"
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# Build summary line
+# ---------------------------------------------------------------------------
+PARTS="branch=${BRANCH}"
+[[ "$UNCOMMITTED" -gt 0 ]] && PARTS="${PARTS}, ${UNCOMMITTED} uncommitted"
+[[ "$AHEAD" -gt 0 ]] && PARTS="${PARTS}, ${AHEAD} ahead"
+[[ "$BEHIND" -gt 0 ]] && PARTS="${PARTS}, ${BEHIND} behind"
+[[ "$CONFLICTS" -gt 0 ]] && PARTS="${PARTS}, ${CONFLICTS} CONFLICTS"
+[[ "$PR_DISPLAY" != "none" ]] && PARTS="${PARTS}, PR-checks=${PR_DISPLAY}"
+
+# Emit as additionalContext via jq for safe JSON encoding
+jq -n --arg line "git: ${PARTS}" '{"additionalContext": $line}'
+
+_log_timing "true"
+exit 0

@@ -1,0 +1,300 @@
+#!/usr/bin/env bash
+# sync — dotfiles installer/syncer.
+# Ports sync.rs: run().
+#
+# Usage:
+#   sync [--upgrade] [--only=tag1,tag2] [--host=air|pro]
+#        [-f|--force] [-s|--skip]
+#
+# Flags:
+#   --upgrade         brew update/upgrade/cleanup + mise upgrade
+#   --only=TAGS       comma-separated tag filter; only matching steps run
+#   --host=NAME       override host detection (sets DOTFILES_HOST)
+#   -f, --force       LINK_MODE=overwrite (backup + replace on conflict)
+#   -s, --skip        LINK_MODE=skip (leave conflicts untouched)
+#   default           LINK_MODE=interactive (prompt on conflict)
+
+set -euo pipefail
+
+_SYNC_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+# ── Inline helpers ────────────────────────────────────────────────────────────
+
+# os_kind: returns "darwin" or "linux"
+os_kind() {
+  case "$(uname -s)" in
+    Darwin) printf 'darwin\n' ;;
+    Linux) printf 'linux\n' ;;
+    *) printf 'unknown\n' ;;
+  esac
+}
+
+# host_id: returns "air", "pro", or "unknown"
+# Honors DOTFILES_HOST env override; falls back to scutil on Darwin.
+host_id() {
+  local forced="${DOTFILES_HOST:-}"
+  if [[ -n "$forced" ]]; then
+    case "${forced,,}" in
+      air)
+        printf 'air\n'
+        return 0
+        ;;
+      pro)
+        printf 'pro\n'
+        return 0
+        ;;
+    esac
+  fi
+  local hostname=""
+  if command -v scutil > /dev/null 2>&1; then
+    hostname=$(scutil --get LocalHostName 2> /dev/null || true)
+  fi
+  local lower="${hostname,,}"
+  if [[ "$lower" == *air* ]]; then
+    printf 'air\n'
+  elif [[ "$lower" == *pro* ]]; then
+    printf 'pro\n'
+  else
+    printf 'unknown\n'
+  fi
+}
+
+# resolve_dotfiles_dir: $DOTFILES_DIR → script parent → ~/dotFiles
+# Returns the first that is a directory containing a Brewfile.
+resolve_dotfiles_dir() {
+  local candidates=(
+    "${DOTFILES_DIR:-}"
+    "${_SYNC_DIR}"
+    "${HOME}/dotFiles"
+  )
+  local c
+  for c in "${candidates[@]}"; do
+    [[ -n "$c" && -d "$c" && -f "${c}/Brewfile" ]] && printf '%s\n' "$c" && return 0
+  done
+  return 1
+}
+
+# acquire_lock LOCKFILE: pid-based exclusive lock.
+# Stale lock (dead pid) is silently removed.
+acquire_lock() {
+  local lockfile="$1"
+  if [[ -f "$lockfile" ]]; then
+    local pid
+    pid=$(cat "$lockfile" 2> /dev/null || true)
+    if [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2> /dev/null; then
+      printf '\033[0;31m  \xe2\x9c\x97 Another sync is running (pid %s)\033[0m\n' "$pid" >&2
+      exit 1
+    fi
+    printf '\033[0;33m  \xe2\x86\x92 Removing stale lock file\033[0m\n'
+    rm -f "$lockfile"
+  fi
+  printf '%s\n' "$$" > "$lockfile"
+  # Remove lock on exit (normal or abnormal).
+  # shellcheck disable=SC2064
+  trap "rm -f '$lockfile'" EXIT
+}
+
+# link SRC DST: idempotent symlink with LINK_MODE conflict handling.
+# Uses LINK_MODE env ("interactive"|"overwrite"|"skip").
+link() {
+  local src="$1" dst="$2"
+  local label="${dst#"$HOME"/}"
+  label="${label/#$HOME\//~/}"
+
+  # Already correctly linked?
+  if [[ -L "$dst" ]]; then
+    local target
+    target=$(readlink "$dst" 2> /dev/null || true)
+    if [[ "$target" == "$src" ]]; then
+      printf '\033[2m  - %s already linked\033[0m\n' "$label"
+      return 0
+    fi
+  fi
+
+  if [[ ! -e "$dst" && ! -L "$dst" ]]; then
+    # Destination missing — just create.
+    mkdir -p "$(dirname "$dst")"
+    ln -s "$src" "$dst"
+    printf '\033[0;33m  \xe2\x86\x92 %s linked\033[0m\n' "$label"
+    return 0
+  fi
+
+  # Conflict: something else exists at dst.
+  printf '\033[0;31m  \xe2\x9c\x97 %s: %s exists but is not our symlink\033[0m\n' "$label" "$dst" >&2
+  local choice
+  case "${LINK_MODE:-interactive}" in
+    overwrite) choice="o" ;;
+    skip) choice="s" ;;
+    *)
+      printf '       Overwrite with symlink to %s? [o]verwrite / [s]kip: ' "$src"
+      read -r choice || choice="s"
+      ;;
+  esac
+
+  case "${choice,,}" in
+    o | overwrite)
+      mv "$dst" "${dst}.bak"
+      ln -s "$src" "$dst"
+      printf '\033[0;33m  \xe2\x86\x92 %s overwritten (backup at %s.bak)\033[0m\n' "$label" "$dst"
+      ;;
+    *)
+      printf '\033[0;32m  \xe2\x9c\x93 %s skipped\033[0m\n' "$label"
+      ;;
+  esac
+}
+
+# Export helpers for use by sourced modules.
+export -f os_kind host_id resolve_dotfiles_dir link
+
+# ── Signal to install/* modules that helpers are already defined ──────────────
+__DOT_SYNC_SOURCED=1
+export __DOT_SYNC_SOURCED
+
+# ── Prepend mise shims to PATH ────────────────────────────────────────────────
+_mise_shims="${HOME}/.local/share/mise/shims"
+if [[ -d "$_mise_shims" ]]; then
+  case ":${PATH}:" in
+    *":${_mise_shims}:"*) ;;
+    *) PATH="${_mise_shims}:${PATH}" ;;
+  esac
+fi
+export PATH
+unset _mise_shims
+
+# ── Parse flags ───────────────────────────────────────────────────────────────
+SYNC_UPGRADE=0
+SYNC_ONLY_TAGS=""
+LINK_MODE="interactive"
+
+for _arg in "$@"; do
+  case "$_arg" in
+    --upgrade)
+      SYNC_UPGRADE=1
+      ;;
+    --only=*)
+      # Convert "brew,mise" to space-separated "brew mise" and trim whitespace.
+      SYNC_ONLY_TAGS=$(printf '%s' "${_arg#--only=}" | tr ',' ' ' | tr -s ' ')
+      ;;
+    --host=*)
+      DOTFILES_HOST="${_arg#--host=}"
+      export DOTFILES_HOST
+      ;;
+    -f | --force)
+      LINK_MODE="overwrite"
+      ;;
+    -s | --skip)
+      LINK_MODE="skip"
+      ;;
+  esac
+done
+unset _arg
+
+export SYNC_UPGRADE SYNC_ONLY_TAGS LINK_MODE
+
+# ── Acquire lock ──────────────────────────────────────────────────────────────
+acquire_lock "${TMPDIR:-/tmp}/dotfiles-sync.lock"
+
+# ── Resolve dotfiles dir ──────────────────────────────────────────────────────
+DOTFILES_DIR=$(resolve_dotfiles_dir)
+export DOTFILES_DIR
+
+# ── should_run: check tags against SYNC_ONLY_TAGS ────────────────────────────
+# Usage: should_run tag1 [tag2 ...]
+# Returns 0 (run) if SYNC_ONLY_TAGS is empty OR any argument matches a tag.
+should_run() {
+  if [[ -z "${SYNC_ONLY_TAGS:-}" ]]; then
+    return 0
+  fi
+  local t o
+  for t in "$@"; do
+    for o in ${SYNC_ONLY_TAGS}; do
+      if [[ "$t" == "$o" ]]; then
+        return 0
+      fi
+    done
+  done
+  return 1
+}
+export -f should_run
+
+# ── Source + run each install module in numeric order ────────────────────────
+# Each module defines _<name>_tags() (echoes tag names, one per line) and
+# _<name>_run() (executes the step). We source, check tags, then call run.
+
+_run_module() {
+  local module="$1"
+  # Derive the base name from the filename: "00-brew.sh" → "brew".
+  local base
+  base=$(basename "$module" .sh | sed 's/^[0-9]*-//')
+  # Normalize hyphens to underscores for function names.
+  base="${base//-/_}"
+
+  # Source the module (defines _${base}_tags and _${base}_run).
+  # shellcheck source=/dev/null
+  source "$module"
+
+  local tags_fn="_${base}_tags"
+  local run_fn="_${base}_run"
+
+  if ! declare -f "$tags_fn" > /dev/null 2>&1; then
+    printf '\033[0;33m  \xe2\x86\x92 module %s: no %s() function — skipping\033[0m\n' \
+      "$module" "$tags_fn"
+    return 0
+  fi
+  if ! declare -f "$run_fn" > /dev/null 2>&1; then
+    printf '\033[0;33m  \xe2\x86\x92 module %s: no %s() function — skipping\033[0m\n' \
+      "$module" "$run_fn"
+    return 0
+  fi
+
+  # Check if this module should run.
+  local module_tags
+  module_tags=$("$tags_fn")
+  local should=0
+  if [[ -z "${SYNC_ONLY_TAGS:-}" ]]; then
+    should=1
+  else
+    local t o
+    while IFS= read -r t; do
+      [[ -z "$t" ]] && continue
+      for o in ${SYNC_ONLY_TAGS}; do
+        if [[ "$t" == "$o" ]]; then
+          should=1
+          break 2
+        fi
+      done
+    done <<< "$module_tags"
+  fi
+
+  if [[ "$should" -eq 1 ]]; then
+    "$run_fn"
+  fi
+}
+
+# Source all install/NN-*.sh in numeric order.
+for _module in "${_SYNC_DIR}/install"/[0-9][0-9]-*.sh; do
+  [[ -f "$_module" ]] || continue
+  _run_module "$_module"
+done
+unset _module
+
+# ── Prune pass at the tail ────────────────────────────────────────────────────
+# Set PRUNE_MODE based on link mode (Interactive→ask, others→auto).
+if [[ "$LINK_MODE" == "interactive" ]]; then
+  PRUNE_MODE="ask"
+else
+  PRUNE_MODE="auto"
+fi
+export PRUNE_MODE
+
+# 95-prune.sh was already sourced above; call _prune_run directly.
+if declare -f _prune_run > /dev/null 2>&1; then
+  _prune_run
+fi
+
+# ── Done ──────────────────────────────────────────────────────────────────────
+printf '\n'
+printf '\033[0;32m==> Done!\033[0m\n'
+if [[ -z "${SYNC_ONLY_TAGS:-}" ]]; then
+  printf '   Restart your shell or run: source ~/.zshrc\n'
+fi

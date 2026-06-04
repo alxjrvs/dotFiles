@@ -16,6 +16,7 @@
       "WebSearch",
       "Bash(cargo *)",
       "Bash(lefthook *)",
+      "Bash(dot *)",
       "Skill(superpowers:*)",
       "Skill(implement:*)",
       "mcp__plugin_context7_context7__*",
@@ -82,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dotctl hook lock-file-guard",
+            "command": "dot hook lock-file-guard",
             "timeout": 5
           }
         ]
@@ -92,7 +93,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dotctl hook policy-guard",
+            "command": "dot hook policy-guard",
             "timeout": 5
           }
         ]
@@ -104,7 +105,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dotctl hook format-on-save",
+            "command": "dot hook format-on-save",
             "timeout": 10
           }
         ]
@@ -114,7 +115,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dotctl hook trim-bash-output",
+            "command": "dot hook trim-bash-output",
             "timeout": 5
           }
         ]
@@ -126,7 +127,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dotctl hook session-start",
+            "command": "dot hook session-start",
             "timeout": 5
           }
         ]
@@ -138,7 +139,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dotctl hook user-prompt-submit",
+            "command": "dot hook user-prompt-submit",
             "timeout": 5
           }
         ]
@@ -150,7 +151,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dotctl hook stop",
+            "command": "dot hook stop",
             "timeout": 5
           }
         ]
@@ -166,13 +167,13 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "dotctl statusline",
+    "command": "dot statusline",
     "padding": 0,
     "refreshInterval": 10
   },
   "subagentStatusLine": {
     "type": "command",
-    "command": "dotctl subagent-statusline"
+    "command": "dot subagent-statusline"
   },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": false,
@@ -310,7 +311,7 @@
       "bunx",
       "mise",
       "gitleaks",
-      "dotctl",
+      "dot",
       "sh",
       "bash",
       "wsh"

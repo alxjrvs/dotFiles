@@ -17,7 +17,7 @@
 ## Git Workflow
 
 - Default branch `main`; rebase, squash, linear history.
-- Hard rules (`--no-verify`, `--no-gpg-sign`, `git push --force` without `--force-with-lease`, force branch deletion) are blocked by `dotctl hook policy-guard` + `permissions.deny` in `dot-claude/settings.json` — don't try to work around them.
+- Hard rules (`--no-verify`, `--no-gpg-sign`, `git push --force` without `--force-with-lease`, force branch deletion) are blocked by `dot hook policy-guard` + `permissions.deny` in `dot-claude/settings.json` — don't try to work around them.
 - NEVER delete the base branch of an open PR; this isn't hook-enforced. Run `gh pr list --base <branch>` first.
 - For working-tree cleanup, prefer `git status` over `git clean -fd`; confirm before deleting tracked files.
 

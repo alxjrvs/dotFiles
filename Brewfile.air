@@ -5,4 +5,4 @@
 # pair with iPad on the road).
 #
 # To dry-run the Pro's overlay locally:
-#   dotctl sync --only=brew --host=pro
+#   dot sync --only=brew --host=pro

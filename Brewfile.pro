@@ -5,4 +5,4 @@
 # tools, virtualization, anything desk-bound).
 #
 # To dry-run the Air's overlay locally:
-#   dotctl sync --only=brew --host=air
+#   dot sync --only=brew --host=air

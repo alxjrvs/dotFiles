@@ -8,17 +8,22 @@
 # non-lefthook repos need a one-shot
 # `cp ~/.config/git/template/hooks/pre-commit <repo>/.git/hooks/pre-commit`.
 #
-# Install (idempotent; dotctl sync runs this automatically):
+# Install (idempotent; dot sync runs this automatically):
 #   lefthook install
 
 pre-commit:
   parallel: true
   commands:
     shellcheck:
-      glob: "{*.sh,git-template/hooks/*,dot-claude/statusline-command.sh,dot-claude/hooks/*,probes/*.sh}"
+      # `*.sh` matches recursively; the extensionless entrypoints (dot, sync,
+      # prompt/*, hooks/*, …) are listed explicitly. tests/golden/cache/*.sh are
+      # `KEY=value` data fixtures (sourced, not scripts) — excluded.
+      glob: "{*.sh,dot,sync,doctor,render,prompt/*,hooks/*,git-template/hooks/*}"
+      exclude: "tests/golden/cache/"
       run: shellcheck -x {staged_files}
     shfmt-check:
-      glob: "{*.sh,git-template/hooks/*,dot-claude/statusline-command.sh,dot-claude/hooks/*,probes/*.sh}"
+      glob: "{*.sh,dot,sync,doctor,render,prompt/*,hooks/*,git-template/hooks/*}"
+      exclude: "tests/golden/cache/"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}
     gitleaks:
@@ -36,22 +41,13 @@ pre-commit:
 
 # pre-push: sanity check that the box itself is healthy before pushing
 # dotfiles changes. Catches things like a broken mise/node/bun install,
-# missing git identity, drift between this repo and the machine. Also runs
-# `cargo test` if any dotctl source files are staged — keeps the hot-path
-# binary regression-protected.
+# missing git identity, drift between this repo and the machine.
 pre-push:
   commands:
     doctor:
       # SKIP_EXTERNAL: a push gate wants the fast structural checks (tool
       # presence, git identity, symlinks, drift) — NOT the heavy/flaky brew
       # bundle+doctor / gh / network audit, which is ~minute-scale and can
-      # wedge on Homebrew's global update lock (esp. alongside cargo-test's
-      # parallel doctor runs). The full audit stays available via interactive
-      # `dotctl doctor`.
-      run: DOTCTL_DOCTOR_SKIP_EXTERNAL=1 dotctl doctor
-    cargo-test:
-      glob: "dotctl/**/*.rs"
-      # cargo-nextest is ~2x faster than `cargo test`; falls back to `cargo
-      # test` automatically if nextest isn't installed yet (fresh machine
-      # mid-bootstrap before mise has materialized the binary).
-      run: cargo nextest run --manifest-path=dotctl/Cargo.toml --no-fail-fast 2>/dev/null || cargo test --manifest-path=dotctl/Cargo.toml --quiet
+      # wedge on Homebrew's global update lock. The full audit stays available
+      # via interactive `dot doctor`.
+      run: DOTFILES_DOCTOR_SKIP_EXTERNAL=1 dot doctor

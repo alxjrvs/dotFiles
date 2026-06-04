@@ -1,7 +1,7 @@
-# Powerline prompt — rendered by `dotctl prompt-render` (Rust binary).
-# All ANSI / OSC8 / Nord palette logic lives in dotctl/src/prompt.rs.
+# Powerline prompt — rendered by `dot prompt-render` (shell script).
+# All ANSI / OSC8 / Nord palette logic lives in prompt/prompt-render.
 # This file is just the precmd glue: refresh the git cache when state
-# changed, then ask dotctl for the prompt string.
+# changed, then ask dot for the prompt string.
 
 setopt promptsubst
 
@@ -23,14 +23,14 @@ _render_prompt() {
   fi
 
   if (( _need_sync )); then
-    dotctl git-data
-    PROMPT="$(dotctl prompt-render)"
+    dot git-data
+    PROMPT="$(dot prompt-render)"
     _prompt_last_pwd="$PWD"
     _prompt_last_head_mtime="$_head_mtime"
     _prompt_last_index_mtime="$_index_mtime"
   else
     # Background refresh so next prompt sees fresh data.
-    (dotctl git-data &) 2> /dev/null
+    (dot git-data &) 2> /dev/null
   fi
 }
 precmd_functions+=(_render_prompt)
@@ -38,7 +38,7 @@ precmd_functions+=(_render_prompt)
 # Transient prompt + pre-compute next prompt (eliminates blink).
 # Collapse current line to U+276F on accept; pre-compute next prompt.
 _transient_accept_line() {
-  local _next="$(dotctl prompt-render)"
+  local _next="$(dot prompt-render)"
   PROMPT=$'%{\e[0m%}❯ '
   zle reset-prompt
   PROMPT="$_next"
