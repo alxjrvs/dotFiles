@@ -39,5 +39,5 @@ alias vim="hx"
 alias nvim="hx"
 
 # System
-alias env-sync='dotctl sync'
-alias env-doctor='dotctl doctor'
+alias env-sync='dot sync'
+alias env-doctor='dot doctor'

@@ -1,0 +1,453 @@
+#!/usr/bin/env bash
+# doctor — read-only dotfiles health check.
+# Ports doctor.rs: run().
+# Exits non-zero when any hard failure is found.
+#
+# Honors DOTFILES_DOCTOR_SKIP_EXTERNAL=1 to skip slow/network-bound checks
+# (brew bundle, gh auth, brew doctor, mise doctor, claude doctor).
+
+set -euo pipefail
+
+_DOCTOR_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+# ── Inline helpers ────────────────────────────────────────────────────────────
+
+# os_kind: returns "darwin" or "linux"
+os_kind() {
+  case "$(uname -s)" in
+    Darwin) printf 'darwin\n' ;;
+    Linux) printf 'linux\n' ;;
+    *) printf 'unknown\n' ;;
+  esac
+}
+
+# host_id: returns "air", "pro", or "unknown"
+host_id() {
+  local forced="${DOTFILES_HOST:-}"
+  if [[ -n "$forced" ]]; then
+    case "${forced,,}" in
+      air)
+        printf 'air\n'
+        return 0
+        ;;
+      pro)
+        printf 'pro\n'
+        return 0
+        ;;
+    esac
+  fi
+  local hostname=""
+  if command -v scutil > /dev/null 2>&1; then
+    hostname=$(scutil --get LocalHostName 2> /dev/null || true)
+  fi
+  local lower="${hostname,,}"
+  if [[ "$lower" == *air* ]]; then
+    printf 'air\n'
+  elif [[ "$lower" == *pro* ]]; then
+    printf 'pro\n'
+  else
+    printf 'unknown\n'
+  fi
+}
+
+# resolve_dotfiles_dir: $DOTFILES_DIR → script parent → ~/dotFiles
+resolve_dotfiles_dir() {
+  local candidates=(
+    "${DOTFILES_DIR:-}"
+    "${_DOCTOR_DIR}"
+    "${HOME}/dotFiles"
+  )
+  local c
+  for c in "${candidates[@]}"; do
+    [[ -n "$c" && -d "$c" && -f "${c}/Brewfile" ]] && printf '%s\n' "$c" && return 0
+  done
+  return 1
+}
+
+# ── Prepend mise shims to PATH ────────────────────────────────────────────────
+_mise_shims="${HOME}/.local/share/mise/shims"
+if [[ -d "$_mise_shims" ]]; then
+  case ":${PATH}:" in
+    *":${_mise_shims}:"*) ;;
+    *) PATH="${_mise_shims}:${PATH}" ;;
+  esac
+fi
+export PATH
+unset _mise_shims
+
+# ── Source macos module for audit function ────────────────────────────────────
+# We only need macos_audit(); source with __DOT_SYNC_SOURCED set so the
+# module skips re-sourcing helpers it doesn't need.
+__DOT_SYNC_SOURCED=1
+export __DOT_SYNC_SOURCED
+# shellcheck source=install/90-macos.sh
+source "${_DOCTOR_DIR}/install/90-macos.sh"
+
+# ── Counters ──────────────────────────────────────────────────────────────────
+_FAILS=0
+_WARNS=0
+
+_ok() { printf '\033[0;32m  \xe2\x9c\x93 %s\033[0m\n' "$*"; }
+_warn() {
+  printf '\033[0;33m  \xe2\x86\x92 %s\033[0m\n' "$*"
+  _WARNS=$((_WARNS + 1))
+}
+_fail() {
+  printf '\033[0;31m  \xe2\x9c\x97 %s\033[0m\n' "$*" >&2
+  _FAILS=$((_FAILS + 1))
+}
+
+skip_external="${DOTFILES_DOCTOR_SKIP_EXTERNAL:-}"
+
+printf '==> Doctor\n'
+
+# ── 1. Git config ─────────────────────────────────────────────────────────────
+_user_name=$(git config user.name 2> /dev/null || true)
+_user_email=$(git config user.email 2> /dev/null || true)
+if [[ -n "$_user_name" && -n "$_user_email" ]]; then
+  _ok "git: ${_user_name} <${_user_email}>"
+else
+  _fail "git: missing user.name or user.email"
+fi
+unset _user_name _user_email
+
+# ── 2. Tool presence ──────────────────────────────────────────────────────────
+# "dot" replaces "dotctl" in the tool list.
+_tools=(dot git gh mise)
+if [[ "$(os_kind)" == "darwin" ]]; then
+  _tools+=(brew node bun sheldon lefthook hx)
+fi
+
+for _tool in "${_tools[@]}"; do
+  _ver=$("$_tool" --version 2> /dev/null | head -1 || true)
+  if [[ -n "$_ver" ]]; then
+    _ok "${_tool}: ${_ver}"
+  else
+    _fail "${_tool}: not found"
+  fi
+done
+unset _tools _tool _ver
+
+# ── 3. Symlink integrity ──────────────────────────────────────────────────────
+_dotfiles=$(resolve_dotfiles_dir 2> /dev/null || true)
+if [[ -z "$_dotfiles" ]]; then
+  _warn "dotfiles repo not found (\$DOTFILES_DIR / dot target / ~/dotFiles) — symlink + drift audits will be skipped"
+else
+  # Expected symlink pairs: "link_rel|target_rel"
+  _expected_links=(
+    ".zshrc|.zshrc"
+    ".zprofile|.zprofile"
+    ".zshenv|.zshenv"
+    ".gitconfig|.gitconfig"
+    ".gitmessage|.gitmessage"
+    ".ripgreprc|.ripgreprc"
+    ".fdignore|.fdignore"
+    ".editorconfig|.editorconfig"
+    ".claude/CLAUDE.md|dot-claude/CLAUDE.md"
+    ".claude/settings.json|dot-claude/settings.json"
+    ".claude/agents|dot-claude/agents"
+    ".claude/commands|dot-claude/commands"
+    ".config/sheldon/plugins.toml|sheldon/plugins.toml"
+    ".config/mise/config.toml|mise.toml"
+    ".config/gh/config.yml|gh/config.yml"
+    ".config/ghostty/config|ghostty/config"
+    ".config/bat/config|bat/config"
+    ".config/atuin/config.toml|atuin/config.toml"
+    ".config/lazygit/config.yml|lazygit/config.yml"
+    ".config/helix/languages.toml|helix/languages.toml"
+    ".config/karabiner/karabiner.json|karabiner/karabiner.json"
+    ".ssh/config|ssh/config"
+  )
+
+  _checked=0
+  for _pair in "${_expected_links[@]}"; do
+    IFS='|' read -r _link_rel _target_rel <<< "$_pair"
+    local_link="${HOME}/${_link_rel}"
+    expected_target="${_dotfiles}/${_target_rel}"
+
+    # Skip silently if the source file isn't tracked (e.g., dropped tool).
+    [[ -e "$expected_target" || -L "$expected_target" ]] || continue
+
+    _checked=$((_checked + 1))
+    if [[ ! -e "$local_link" && ! -L "$local_link" ]]; then
+      _warn "symlink missing: ${local_link} (expected -> ${expected_target})"
+    elif [[ ! -L "$local_link" ]]; then
+      _warn "${local_link} is not a symlink (expected -> ${expected_target})"
+    else
+      _actual_target=$(readlink "$local_link" 2> /dev/null || true)
+      if [[ "$_actual_target" == "$expected_target" ]]; then
+        : # silently pass
+      else
+        _warn "${local_link} points to ${_actual_target}, expected ${expected_target}"
+      fi
+    fi
+  done
+  _ok "symlinks: ${_checked} checked"
+  unset _expected_links _pair _link_rel _target_rel _checked _actual_target local_link expected_target
+
+  # ── 4. Doc drift scan ────────────────────────────────────────────────────────
+  # Dead-string list: adds "dotctl" and "cargo install" / dotctl/ references
+  # compared to the original Rust scanner.
+  _dead_strings=(
+    "sync.sh"
+    "scripts/theme.sh"
+    "scripts/git-data.sh"
+    "install/lib.sh"
+    "install/00-"
+    "starship"
+    "AstroNvim"
+    "nvim/lua"
+    "dotctl"
+    "cargo install --path"
+    "dotctl/Cargo"
+  )
+
+  # Files to scan (mirrors doctor.rs scan_drift scope).
+  _strict_files=(
+    "lefthook.yml"
+    "Makefile"
+    "bootstrap.sh"
+    "Brewfile"
+    "mise.toml"
+    ".zshrc"
+    ".zprofile"
+    ".zshenv"
+    "dot-claude/settings.json"
+    "dot-claude/CLAUDE.md"
+    "atuin/config.toml"
+    "bat/config"
+    "gh/config.yml"
+    "ghostty/config"
+    "lazygit/config.yml"
+    "sheldon/plugins.toml"
+    "ssh/config"
+  )
+
+  _drift_warns=0
+
+  _scan_file_for_drift() {
+    local fpath="$1"
+    [[ -f "$fpath" ]] || return 0
+    local rel="${fpath#"${_dotfiles}"/}"
+    local lineno=0 line dead
+    while IFS= read -r line; do
+      lineno=$((lineno + 1))
+      # Allowlist: skip lines containing the drift-allow marker.
+      [[ "$line" == *"dotctl-drift-allow"* ]] && continue
+      for dead in "${_dead_strings[@]}"; do
+        if [[ "$line" == *"$dead"* ]]; then
+          # shellcheck disable=SC2016  # backticks are literal text in the message format
+          printf '\033[0;33m  \xe2\x86\x92 drift: %s L%d: "%s" found in `%s`\033[0m\n' \
+            "$rel" "$lineno" "$dead" "$line"
+          _drift_warns=$((_drift_warns + 1))
+          _WARNS=$((_WARNS + 1))
+        fi
+      done
+    done < "$fpath"
+  }
+
+  # Scan strict file list.
+  for _f in "${_strict_files[@]}"; do
+    _scan_file_for_drift "${_dotfiles}/${_f}"
+  done
+
+  # Scan directory trees.
+  for _dir in "zsh" "dot-claude/agents" "dot-claude/commands" "git-template/hooks"; do
+    [[ -d "${_dotfiles}/${_dir}" ]] || continue
+    while IFS= read -r -d '' _fp; do
+      [[ -f "$_fp" ]] || continue
+      _scan_file_for_drift "$_fp"
+    done < <(find "${_dotfiles}/${_dir}" -maxdepth 1 -type f -print0 2> /dev/null)
+  done
+
+  if [[ "$_drift_warns" -eq 0 ]]; then
+    _ok "doc drift: no dead references in tracked configs"
+  fi
+  unset _dead_strings _strict_files _f _dir _fp _drift_warns
+
+  # ── 5. brew bundle drift (Darwin, external) ───────────────────────────────
+  if [[ "$(os_kind)" == "darwin" && -z "$skip_external" ]]; then
+    _brewfile="${_dotfiles}/Brewfile"
+    if [[ -f "$_brewfile" ]]; then
+      if brew bundle check --no-upgrade --file="$_brewfile" \
+        > /dev/null 2>&1; then
+        _ok "brew bundle: all dependencies satisfied"
+      else
+        _warn "brew bundle: drift — run \`brew bundle --file=${_brewfile}\`"
+      fi
+    fi
+    unset _brewfile
+  fi
+fi
+unset _dotfiles
+
+# ── 6. gh auth status (external) ─────────────────────────────────────────────
+if [[ -z "$skip_external" ]]; then
+  if gh auth status > /dev/null 2>&1; then
+    _ok "gh: authenticated"
+  else
+    _warn "gh: not authenticated — run \`gh auth login\`"
+  fi
+fi
+
+# ── 7. mise tools installed ───────────────────────────────────────────────────
+if _mise_missing=$(mise ls --missing 2> /dev/null); then
+  _missing_count=$(printf '%s\n' "$_mise_missing" | grep -c '\S' || true)
+  if [[ "$_missing_count" -eq 0 ]]; then
+    _ok "mise: all declared tools installed"
+  else
+    _warn "mise: ${_missing_count} tool(s) missing — run \`mise install\`"
+    printf '%s\n' "$_mise_missing" | head -5 | while IFS= read -r _ml; do
+      printf '\033[0;33m  \xe2\x86\x92   %s\033[0m\n' "$_ml"
+      _WARNS=$((_WARNS + 1))
+    done
+  fi
+fi
+unset _mise_missing _missing_count
+
+# ── 8. lefthook hook installed ────────────────────────────────────────────────
+_dotfiles2=$(resolve_dotfiles_dir 2> /dev/null || true)
+if [[ -n "$_dotfiles2" ]]; then
+  _lh_hook="${_dotfiles2}/.git/hooks/pre-commit"
+  if [[ ! -f "$_lh_hook" ]]; then
+    _warn "lefthook: pre-commit hook not installed in dotfiles repo — run \`lefthook install\`"
+  else
+    if grep -qF "lefthook" "$_lh_hook" 2> /dev/null; then
+      _ok "lefthook: pre-commit hook installed"
+    else
+      _warn "lefthook: pre-commit hook present but not authored by lefthook — run \`lefthook install\`"
+    fi
+  fi
+  unset _lh_hook
+fi
+unset _dotfiles2
+
+# ── 9. pueued daemon liveness ─────────────────────────────────────────────────
+if pueued --version > /dev/null 2>&1; then
+  if pueue status > /dev/null 2>&1; then
+    _ok "pueued: daemon responding"
+  else
+    _warn "pueued: daemon not running — start with \`pueued -d\`"
+  fi
+fi
+
+# ── 10. brew doctor (Darwin, external) ────────────────────────────────────────
+if [[ "$(os_kind)" == "darwin" && -z "$skip_external" ]]; then
+  _brew_out=$(brew doctor 2>&1 || true)
+  if printf '%s\n' "$_brew_out" | grep -q "ready to brew"; then
+    _ok "brew doctor: ready to brew"
+  else
+    _brew_warns=$(printf '%s\n' "$_brew_out" | grep -c '^\s*Warning:' || true)
+    _brew_warns=$((_brew_warns > 0 ? _brew_warns : 1))
+    _warn "brew doctor: ${_brew_warns} warning(s) — run \`brew doctor\` for details"
+    printf '%s\n' "$_brew_out" | grep '^\s*Warning:' | head -3 | while IFS= read -r _wl; do
+      printf '\033[0;33m  \xe2\x86\x92   %s\033[0m\n' "${_wl## }"
+    done
+    # Counter already bumped by _warn above; add extra for multi-warning.
+    if [[ "$_brew_warns" -gt 1 ]]; then
+      _WARNS=$((_WARNS + _brew_warns - 1))
+    fi
+  fi
+  unset _brew_out _brew_warns
+fi
+
+# ── 11. mise doctor (external) ────────────────────────────────────────────────
+if [[ -z "$skip_external" ]]; then
+  # Strip shims from PATH for this one call so mise doesn't complain about
+  # "mise tool paths are not first in PATH" (the shims are first because WE
+  # put them there; the user's interactive shell has them via .zshenv).
+  _saved_path="$PATH"
+  _shims_prefix="${HOME}/.local/share/mise/shims:"
+  _stripped_path="${PATH#"$_shims_prefix"}"
+  export PATH="$_stripped_path"
+
+  _mise_out=$(mise doctor 2>&1 || true)
+
+  export PATH="$_saved_path"
+  unset _saved_path _shims_prefix _stripped_path
+
+  # Parse "N warning(s) found:" (matches parse_mise_warnings in doctor.rs).
+  _mise_warns=0
+  while IFS= read -r _ml; do
+    _trimmed="${_ml## }"
+    _trimmed="${_trimmed%% }"
+    if [[ "$_trimmed" == *"warning found:"* || "$_trimmed" == *"warnings found:"* ]]; then
+      _n="${_trimmed%% warning*}"
+      _n="${_n## }"
+      if [[ "$_n" =~ ^[0-9]+$ ]]; then
+        _mise_warns="$_n"
+      fi
+    fi
+  done <<< "$_mise_out"
+
+  if [[ "$_mise_warns" -eq 0 ]] && printf '%s\n' "$_mise_out" | grep -q "No problems found"; then
+    _ok "mise doctor: no problems found"
+  elif [[ "$_mise_warns" -gt 0 ]]; then
+    _warn "mise doctor: ${_mise_warns} warning(s) — run \`mise doctor\` for details"
+    # _warn already bumped _WARNS once; add extra for multi-warning.
+    if [[ "$_mise_warns" -gt 1 ]]; then
+      _WARNS=$((_WARNS + _mise_warns - 1))
+    fi
+  else
+    _warn "mise doctor: output unparseable — run \`mise doctor\` manually"
+  fi
+  unset _mise_out _mise_warns _ml _trimmed _n
+fi
+
+# ── 12. claude doctor (external) ─────────────────────────────────────────────
+if [[ -z "$skip_external" ]]; then
+  _claude_ver=$(claude --version 2> /dev/null | head -1 || true)
+  if [[ -n "$_claude_ver" ]]; then
+    _claude_out=$(claude doctor 2>&1)
+    _claude_rc=$?
+    if [[ "$_claude_rc" -eq 0 ]]; then
+      _ok "claude doctor: healthy"
+    else
+      _fail "claude doctor: exit ${_claude_rc} — output below"
+      printf '%s\n' "$_claude_out" | head -20 | while IFS= read -r _cl; do
+        printf '  %s\n' "$_cl" >&2
+      done
+    fi
+    unset _claude_out _claude_rc
+  fi
+  unset _claude_ver
+fi
+
+# ── 13. macOS defaults drift (Darwin) ────────────────────────────────────────
+if [[ "$(os_kind)" == "darwin" ]]; then
+  _matches=0 _drifted=0 _missing=0
+  while IFS= read -r _audit_line; do
+    IFS='|' read -r _result _domain _key _expected _actual <<< "${_audit_line}|||"
+    case "$_result" in
+      match)
+        _matches=$((_matches + 1))
+        ;;
+      drift)
+        printf '\033[0;33m  \xe2\x86\x92 macos: %s.%s = %s (expected %s)\033[0m\n' \
+          "$_domain" "$_key" "$_actual" "$_expected"
+        _drifted=$((_drifted + 1))
+        _WARNS=$((_WARNS + 1))
+        ;;
+      missing)
+        # shellcheck disable=SC2016  # backticks are literal text in the message
+        printf '\033[0;33m  \xe2\x86\x92 macos: %s.%s unset (run `dot sync --only=macos`)\033[0m\n' \
+          "$_domain" "$_key"
+        _missing=$((_missing + 1))
+        _WARNS=$((_WARNS + 1))
+        ;;
+    esac
+  done < <(macos_audit)
+  _ok "macos defaults: ${_matches} matched, ${_drifted} drifted, ${_missing} missing"
+  unset _matches _drifted _missing _audit_line _result _domain _key _expected _actual
+fi
+
+# ── Summary ───────────────────────────────────────────────────────────────────
+printf '\n'
+if [[ "$_FAILS" -eq 0 && "$_WARNS" -eq 0 ]]; then
+  _ok "All checks passed"
+elif [[ "$_FAILS" -eq 0 ]]; then
+  printf '\033[0;33m  \xe2\x86\x92 %d warning(s) — see above\033[0m\n' "$_WARNS"
+else
+  printf '\033[0;31m  \xe2\x9c\x97 %d error(s), %d warning(s)\033[0m\n' "$_FAILS" "$_WARNS" >&2
+  exit 1
+fi

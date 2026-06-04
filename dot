@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# dot — thin dispatcher; the single dotfiles command on PATH.
+#
+# Resolves DOTFILES_DIR once, then execs the matching topic script, passing
+# remaining args through. Mirrors the former dotctl subcommand surface.
+set -euo pipefail
+
+# ── Resolve DOTFILES_DIR: env → dir of this script's resolved target → ~/dotFiles.
+# First candidate that is a directory containing a Brewfile wins.
+__valid_repo() { [[ -n "$1" && -d "$1" && -f "$1/Brewfile" ]]; }
+
+resolve_dir() {
+  if __valid_repo "${DOTFILES_DIR:-}"; then
+    printf '%s' "$DOTFILES_DIR"
+    return 0
+  fi
+  local self target dir
+  self="${BASH_SOURCE[0]}"
+  target=$(readlink -f "$self" 2> /dev/null || printf '%s' "$self")
+  dir=$(cd "$(dirname "$target")" && pwd)
+  if __valid_repo "$dir"; then
+    printf '%s' "$dir"
+    return 0
+  fi
+  if __valid_repo "${HOME:-}/dotFiles"; then
+    printf '%s' "${HOME}/dotFiles"
+    return 0
+  fi
+  # shellcheck disable=SC2016  # $DOTFILES_DIR is a literal env-var name in the message
+  printf 'dot: cannot resolve DOTFILES_DIR (set $DOTFILES_DIR)\n' >&2
+  exit 1
+}
+
+DIR=$(resolve_dir)
+
+[[ $# -ge 1 ]] || {
+  printf 'usage: dot <sync|update|doctor|prune|render|git-data|prompt-render|statusline|subagent-statusline|hook> [args...]\n' >&2
+  exit 2
+}
+
+cmd="$1"
+shift
+
+case "$cmd" in
+  --version | -V | version) printf 'dot 0.1.0 (dotfiles)\n' ;;
+  sync) exec "$DIR/sync" "$@" ;;
+  update) exec "$DIR/sync" --upgrade "$@" ;;
+  doctor) exec "$DIR/doctor" "$@" ;;
+  prune) exec "$DIR/sync" --only=prune "$@" ;;
+  render) exec "$DIR/render" "$@" ;;
+  git-data) exec "$DIR/prompt/git-data" "$@" ;;
+  prompt-render) exec "$DIR/prompt/prompt-render" "$@" ;;
+  statusline) exec "$DIR/share/claude-statusline/statusline.sh" "$@" ;;
+  subagent-statusline) exec "$DIR/share/claude-statusline/subagent-statusline.sh" "$@" ;;
+  hook)
+    [[ $# -ge 1 ]] || {
+      printf 'dot hook: requires an <event>\n' >&2
+      exit 2
+    }
+    event="$1"
+    shift
+    exec "$DIR/hooks/$event" "$@"
+    ;;
+  *)
+    printf 'dot: unknown subcommand: %s\n' "$cmd" >&2
+    exit 2
+    ;;
+esac

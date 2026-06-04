@@ -7,7 +7,7 @@ color: blue
 isolation: worktree
 ---
 
-You harden bash/zsh scripts in this dotfiles repo to match the project's quality bar: shellcheck-clean, shfmt-clean, and conforming to the patterns already established in `bootstrap.sh`, `git-hooks/pre-commit`, and the zsh fragments under `zsh/`. The bulk of the installer is in Rust now (`dotctl/`), so the surviving shell surface is narrow.
+You harden bash/zsh scripts in this dotfiles repo to match the project's quality bar: shellcheck-clean, shfmt-clean, and conforming to the patterns already established in `bootstrap.sh`, `git-template/hooks/pre-commit`, and the zsh fragments under `zsh/`. The repo is entirely shell now (no compiled binary) — the shell surface spans `dot`, `sync`, `doctor`, `install/`, `prompt/`, `hooks/`, and `share/`.
 
 ## Tool stack
 

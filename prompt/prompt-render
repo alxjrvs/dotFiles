@@ -1,0 +1,361 @@
+#!/usr/bin/env bash
+# prompt-render — bash port of dotctl/src/prompt.rs.
+#
+# Reads the git-data cache (sourced via shared/git-cache.sh) and emits a
+# powerline zsh PROMPT string with %{...%} escapes so zsh's width calculator
+# ignores the escape bytes. Pure string assembly — makes zero subprocess calls
+# beyond the single `git rev-parse` inside load_git_cache (which the hot-path
+# zsh integration normally skips by passing the toplevel explicitly).
+#
+# Layout (Nord palette): opening wedge → repo/cwd cell → optional PR cell →
+# branch pill → optional worktree cell → status pips → closing arrow.
+#
+# A leading "prompt-render" positional arg (from `dot prompt-render` dispatch
+# or the golden harness `$BINARY prompt-render`) is accepted and ignored.
+
+set -euo pipefail
+
+# ── Inlined cache-path + cache-load helpers (self-contained) ──
+#
+# Mirrors git_data.rs::cache_path + load_cache: hash the repo toplevel (or cwd),
+# locate $XDG_CACHE_HOME/git-data/<hash>.sh, and source it to populate GIT_*.
+# The hash function matches prompt/git-data so they agree on the cache file.
+
+xdg_cache_home() {
+  if [[ -n "${XDG_CACHE_HOME:-}" ]]; then
+    printf '%s' "$XDG_CACHE_HOME"
+  else
+    printf '%s' "${HOME:-.}/.cache"
+  fi
+}
+
+repo_hash() {
+  local path="$1"
+  if command -v shasum > /dev/null 2>&1; then
+    printf '%s' "$path" | shasum -a 256 | cut -c1-12
+  else
+    printf '%s' "$path" | sha256sum | cut -c1-12
+  fi
+}
+
+git_cache_path() {
+  local toplevel="$1" key
+  if [[ -n "$toplevel" ]]; then
+    key="$toplevel"
+  else
+    key="$(pwd)"
+  fi
+  local short
+  short="$(repo_hash "$key")"
+  printf '%s/git-data/%s.sh' "$(xdg_cache_home)" "$short"
+}
+
+# load_git_cache — resolve the cache for the repo containing cwd and source it
+# (sets GIT_* vars). Silent no-op when outside a repo or the cache is absent.
+# Mirrors git_data.rs::load_cache: an empty toplevel falls back to cwd.
+load_git_cache() {
+  local toplevel=""
+  toplevel="$(git rev-parse --show-toplevel 2> /dev/null || true)"
+  local cache_file
+  cache_file="$(git_cache_path "$toplevel")"
+  if [[ -f "$cache_file" ]]; then
+    # shellcheck disable=SC1090  # path is computed at runtime.
+    source "$cache_file"
+  fi
+}
+
+# ── ANSI escape primitives (wrapped in zsh %{...%}) ──────────────────────────
+RST='%{'$'\033''[0m%}'
+UL='%{'$'\033''[4m%}'
+NUL='%{'$'\033''[24m%}'
+
+# Powerline glyphs (Nerd Font PUA range).
+ARROW_R=$'\xee\x82\xb0' # U+E0B0 right triangle separator
+WEDGE_O=$'\xee\x82\xba' # U+E0BA opening wedge (concave)
+GH_ICON=$'\xef\x82\x9b' # U+F09B GitHub mark
+
+# ── Nord-derived RGB triples (match prompt.rs) ──────────────────────────────
+TERM_BG='46;52;64'         # #2E3440 — Nord 0 terminal bg
+SS1='216;222;233'          # #D8DEE9 — Snow Storm 1
+FG_LIGHT='236;239;244'     # #ECEFF4 — Nord 6
+FG_DARK='46;52;64'         # dark text on SS1
+NORD_1='59;66;82'          # #3B4252 — fallback PR cell bg
+NOVA_WORKTREE='94;129;172' # #5E81AC — Nord 10
+NOVA_BG='46;52;64'         # same as TERM_BG
+
+# PR status palette
+PR_PASS='163;190;140'    # Nord 14
+PR_PENDING='235;203;139' # Nord 13
+PR_FAIL='191;97;106'     # Nord 11
+
+# Git status pip colors. Prefixed C_ so they don't collide with the GIT_*
+# cache variables sourced by load_git_cache (e.g. GIT_AHEAD holds a count).
+C_GIT_STASH='180;142;173'     # Nord 15
+C_GIT_CONFLICT='191;97;106'   # Nord 11
+C_GIT_STAGED='163;190;140'    # Nord 14
+C_GIT_UNSTAGED='235;203;139'  # Nord 13
+C_GIT_UNTRACKED='129;161;193' # Nord 9
+C_GIT_AHEAD='208;135;112'     # Nord 12
+C_GIT_BEHIND='94;129;172'     # Nord 10
+C_GIT_CLEAN='163;190;140'     # Nord 14
+
+UP_ARROW=$'\xe2\x86\x91'   # U+2191 up arrow (ahead)
+DOWN_ARROW=$'\xe2\x86\x93' # U+2193 down arrow (behind)
+CHECK=$'\xe2\x9c\x93'      # U+2713 check (clean)
+
+# fg/bg emit zsh-wrapped 24-bit SGR escapes given a "R;G;B" triple.
+fg() { printf '%%{\033[38;2;%sm%%}' "$1"; }
+bg() { printf '%%{\033[48;2;%sm%%}' "$1"; }
+osc8_open() { printf '%%{\033]8;;%s\a%%}' "$1"; }
+osc8_close() { printf '%%{\033]8;;\a%%}'; }
+
+# Cache value accessor (empty when unset).
+gv() { printf '%s' "${!1:-}"; }
+# u32 accessor (0 when unset / non-numeric).
+gu() {
+  local v="${!1:-}"
+  if [[ "$v" =~ ^[0-9]+$ ]]; then
+    printf '%s' "$v"
+  else
+    printf '0'
+  fi
+}
+
+OUT=""
+
+render_repo_dir() {
+  local repo_name repo_https pr_status pr_url is_repo
+  repo_name="$(gv GIT_REPO_NAME)"
+  repo_https="$(gv GIT_REPO_HTTPS)"
+  pr_status="$(gv GIT_PR_STATUS)"
+  pr_url="$(gv GIT_PR_URL)"
+  [[ "$(gv GIT_IS_REPO)" == "1" ]] && is_repo=1 || is_repo=0
+
+  local pr_bg pr_fg
+  case "$pr_status" in
+    pass)
+      pr_bg="$PR_PASS"
+      pr_fg="$FG_DARK"
+      ;;
+    pending)
+      pr_bg="$PR_PENDING"
+      pr_fg="$FG_DARK"
+      ;;
+    fail)
+      pr_bg="$PR_FAIL"
+      pr_fg="$FG_LIGHT"
+      ;;
+    *)
+      pr_bg="$NORD_1"
+      pr_fg="$FG_LIGHT"
+      ;;
+  esac
+
+  # Opening wedge from terminal bg into SS1 cell.
+  OUT+="$(bg "$TERM_BG")"
+  OUT+="$(fg "$SS1")"
+  OUT+="$WEDGE_O"
+
+  # SS1 cell with dark text.
+  OUT+="$(bg "$SS1")"
+  OUT+="$(fg "$FG_DARK")"
+
+  if [[ -n "$repo_name" ]]; then
+    OUT+=" "
+    OUT+="$UL"
+    OUT+="$(osc8_open "$repo_https")"
+    OUT+="$repo_name"
+    OUT+="$(osc8_close)"
+    OUT+="$NUL"
+    OUT+=" "
+
+    # SS1 → PR cell arrow.
+    OUT+="$(bg "$pr_bg")"
+    OUT+="$(fg "$SS1")"
+    OUT+="$ARROW_R"
+
+    # GH icon, optionally OSC8-linked to PR URL.
+    OUT+="$(fg "$pr_fg")"
+    OUT+=" "
+    if [[ -n "$pr_url" ]]; then
+      OUT+="$(osc8_open "$pr_url")"
+      OUT+="$GH_ICON"
+      OUT+="$(osc8_close)"
+    else
+      OUT+="$GH_ICON"
+    fi
+    OUT+=" "
+  else
+    # Bare CWD fallback: last 2 path components, no link.
+    local display
+    display="$(cwd_display)"
+    OUT+=" "
+    OUT+="$display"
+    OUT+=" "
+    if ((is_repo == 0)); then
+      OUT+="$RST"
+      OUT+="$(fg "$SS1")"
+      OUT+="$ARROW_R"
+      OUT+="$RST"
+    fi
+  fi
+}
+
+render_git_seg() {
+  [[ "$(gv GIT_IS_REPO)" == "1" ]] || return 0
+
+  local branch repo_name pr_status
+  branch="$(gv GIT_BRANCH)"
+  repo_name="$(gv GIT_REPO_NAME)"
+  pr_status="$(gv GIT_PR_STATUS)"
+
+  local from_color
+  if [[ -n "$repo_name" ]]; then
+    case "$pr_status" in
+      pass) from_color="$PR_PASS" ;;
+      pending) from_color="$PR_PENDING" ;;
+      fail) from_color="$PR_FAIL" ;;
+      *) from_color="$NORD_1" ;;
+    esac
+  else
+    from_color="$SS1"
+  fi
+
+  OUT+="$(bg "$SS1")"
+  OUT+="$(fg "$from_color")"
+  OUT+="$ARROW_R"
+  OUT+="$(fg "$FG_DARK")"
+  OUT+=" "
+  OUT+="$branch"
+  OUT+=" "
+  local prev="$SS1"
+
+  # Worktree cell: STATUSLINE_WORKTREE env overrides; else GIT_IS_WORKTREE.
+  local wt_label
+  if [[ -n "${STATUSLINE_WORKTREE:-}" ]]; then
+    wt_label="$STATUSLINE_WORKTREE"
+  elif [[ "$(gv GIT_IS_WORKTREE)" == "1" ]]; then
+    wt_label="$(gv GIT_WORKTREE_NAME)"
+  else
+    wt_label=""
+  fi
+  if [[ -n "$wt_label" ]]; then
+    OUT+="$(bg "$NOVA_WORKTREE")"
+    OUT+="$(fg "$prev")"
+    OUT+="$ARROW_R"
+    OUT+="$(fg "$NOVA_BG")"
+    OUT+=" "
+    OUT+="$wt_label"
+    OUT+=" "
+    prev="$NOVA_WORKTREE"
+  fi
+
+  local stash conflict untracked unstaged staged ahead behind
+  stash="$(gu GIT_STASH_COUNT)"
+  conflict="$(gu GIT_CONFLICT_COUNT)"
+  untracked="$(gu GIT_UNTRACKED_COUNT)"
+  unstaged="$(gu GIT_UNSTAGED_COUNT)"
+  staged="$(gu GIT_STAGED_COUNT)"
+  ahead="$(gu GIT_AHEAD)"
+  behind="$(gu GIT_BEHIND)"
+
+  local any=0
+  ((stash > 0)) && {
+    any=1
+    push_pip "$C_GIT_STASH" "\$${stash}"
+  }
+  ((conflict > 0)) && {
+    any=1
+    push_pip "$C_GIT_CONFLICT" "!${conflict}"
+  }
+  ((untracked > 0)) && {
+    any=1
+    push_pip "$C_GIT_UNTRACKED" "?${untracked}"
+  }
+  ((unstaged > 0)) && {
+    any=1
+    push_pip "$C_GIT_UNSTAGED" "~${unstaged}"
+  }
+  ((staged > 0)) && {
+    any=1
+    push_pip "$C_GIT_STAGED" "+${staged}"
+  }
+  ((ahead > 0)) && {
+    any=1
+    push_pip "$C_GIT_AHEAD" "${UP_ARROW}${ahead}"
+  }
+  ((behind > 0)) && {
+    any=1
+    push_pip "$C_GIT_BEHIND" "${DOWN_ARROW}${behind}"
+  }
+  if ((any == 0)); then
+    push_pip "$C_GIT_CLEAN" "$CHECK"
+  fi
+
+  # Closing arrow.
+  OUT+="$RST"
+  OUT+="$(fg "$prev")"
+  OUT+="$ARROW_R"
+  OUT+="$RST"
+}
+
+# push_pip COLOR LABEL — emits one status pip cell, advancing $prev (caller var).
+push_pip() {
+  local color="$1" label="$2"
+  OUT+="$(bg "$color")"
+  OUT+="$(fg "$prev")"
+  OUT+="$ARROW_R"
+  OUT+="$(fg "$NOVA_BG")"
+  OUT+=" "
+  OUT+="$label"
+  OUT+=" "
+  prev="$color"
+}
+
+# Last 2 path components of PWD with ~ for $HOME.
+cwd_display() {
+  local pwd_v="${PWD:-.}"
+  local home="${HOME:-}"
+  local shown
+  if [[ -n "$home" && "$pwd_v" == "$home"* ]]; then
+    local rel="${pwd_v:${#home}}"
+    if [[ -z "$rel" ]]; then
+      shown="~"
+    else
+      shown="~$rel"
+    fi
+  else
+    shown="$pwd_v"
+  fi
+
+  # Split on '/', dropping empty fields.
+  local -a parts=()
+  local IFS='/'
+  local seg
+  for seg in $shown; do
+    [[ -n "$seg" ]] && parts+=("$seg")
+  done
+  local n=${#parts[@]}
+
+  if [[ "$shown" == "~"* ]]; then
+    if ((n >= 3)); then
+      printf '%s/%s' "${parts[n - 2]}" "${parts[n - 1]}"
+    else
+      printf '%s' "$shown"
+    fi
+  elif ((n >= 2)); then
+    printf '%s/%s' "${parts[n - 2]}" "${parts[n - 1]}"
+  else
+    printf '%s' "$shown"
+  fi
+}
+
+main() {
+  load_git_cache
+  render_repo_dir
+  render_git_seg
+  # Matches Rust `println!("{out} ")`: trailing space then newline.
+  printf '%s \n' "$OUT"
+}
+
+main "$@"

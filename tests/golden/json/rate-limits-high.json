@@ -1,0 +1,34 @@
+{
+  "session_id": "sess-golden-003",
+  "columns": 120,
+  "context_window": {
+    "used_percentage": "35.0"
+  },
+  "workspace": {
+    "project_dir": "/Users/jarvis/Code/dotFiles/.claude/worktrees/dedotctl",
+    "current_dir": "/Users/jarvis/Code/dotFiles/.claude/worktrees/dedotctl"
+  },
+  "model": {
+    "display_name": "claude-opus-4-5"
+  },
+  "effort": {
+    "level": "max"
+  },
+  "cost": {
+    "total_cost_usd": "4.2000",
+    "total_duration_ms": 7200000,
+    "total_lines_added": 1250,
+    "total_lines_removed": 340
+  },
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": "78.0",
+      "resets_at": "1780533454"
+    },
+    "seven_day": {
+      "used_percentage": "65.0",
+      "resets_at": "1780889854"
+    }
+  },
+  "exceeds_200k_tokens": false
+}

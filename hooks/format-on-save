@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# hooks/format-on-save — PostToolUse: auto-format edited files by extension.
+#
+# Routes on file extension:
+#   .sh             -> shfmt -w -i 2
+#   .ts/.tsx/.js/.jsx -> prettier --write, then eslint --fix --format=compact
+#   .css            -> prettier --write
+#   other           -> no-op
+#
+# Missing formatters are silently skipped (command -v check).
+# eslint stdout on nonzero exit is emitted as additionalContext.
+# Silent (exit 0, no output) on success or unknown extension.
+#
+# Self-contained: no shared/ sourcing. All helpers defined inline.
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Timing instrumentation
+# ---------------------------------------------------------------------------
+_HOOK_START_MS=0
+if [[ "${DOTFILES_HOOK_TIMING:-}" == "1" ]]; then
+  if command -v gdate > /dev/null 2>&1; then
+    _HOOK_START_MS=$(gdate +%s%3N)
+  elif date +%s%3N > /dev/null 2>&1; then
+    _HOOK_START_MS=$(date +%s%3N)
+  fi
+fi
+
+_log_timing() {
+  local ok="$1"
+  if [[ "${DOTFILES_HOOK_TIMING:-}" != "1" ]]; then
+    return 0
+  fi
+  local end_ms=0
+  if command -v gdate > /dev/null 2>&1; then
+    end_ms=$(gdate +%s%3N)
+  elif date +%s%3N > /dev/null 2>&1; then
+    end_ms=$(date +%s%3N)
+  fi
+  local elapsed=$((end_ms - _HOOK_START_MS))
+  local ts
+  ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || echo "")
+  local state_dir="${HOME}/.claude/state"
+  mkdir -p "$state_dir"
+  printf '{"ts":"%s","event":"format-on-save","elapsed_ms":%d,"ok":%s}\n' \
+    "$ts" "$elapsed" "$ok" \
+    >> "${state_dir}/hook-timings.jsonl"
+}
+
+# ---------------------------------------------------------------------------
+# Read stdin JSON
+# ---------------------------------------------------------------------------
+INPUT=$(cat)
+
+FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.file_path // ""')
+if [[ -z "$FILE_PATH" ]]; then
+  _log_timing "true"
+  exit 0
+fi
+
+# Extract extension (everything after the last dot)
+FILENAME=$(basename "$FILE_PATH")
+EXT="${FILENAME##*.}"
+# If no dot or dot is the first char, ext is empty or the whole name
+if [[ "$FILENAME" == "$EXT" ]] || [[ "$FILENAME" == ".$EXT" ]]; then
+  EXT=""
+fi
+
+# ---------------------------------------------------------------------------
+# Format by extension
+# ---------------------------------------------------------------------------
+case "$EXT" in
+  sh)
+    if command -v shfmt > /dev/null 2>&1; then
+      shfmt -w -i 2 "$FILE_PATH" || true
+    fi
+    ;;
+
+  ts | tsx | js | jsx)
+    if command -v prettier > /dev/null 2>&1; then
+      prettier --write "$FILE_PATH" > /dev/null 2>&1 || true
+    fi
+    if command -v eslint > /dev/null 2>&1; then
+      # Capture stdout; emit as additionalContext if eslint exits nonzero with output
+      ESLINT_OUT=""
+      ESLINT_RC=0
+      ESLINT_OUT=$(eslint --fix --format=compact "$FILE_PATH" 2> /dev/null) || ESLINT_RC=$?
+      if [[ "$ESLINT_RC" -ne 0 ]] && [[ -n "$ESLINT_OUT" ]]; then
+        jq -n --arg ctx "$ESLINT_OUT" '{"additionalContext":$ctx}'
+      fi
+    fi
+    ;;
+
+  css)
+    if command -v prettier > /dev/null 2>&1; then
+      prettier --write "$FILE_PATH" > /dev/null 2>&1 || true
+    fi
+    ;;
+
+  *)
+    # Unknown extension — no-op
+    ;;
+esac
+
+_log_timing "true"
+exit 0

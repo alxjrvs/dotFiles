@@ -1,6 +1,6 @@
 # dotFiles
 
-macOS dotfiles for [alxjrvs](https://github.com/alxjrvs). Owned end-to-end by [`dotctl`](dotctl/), a single Rust binary that installs base dependencies, creates symlinks, applies macOS defaults, and powers the prompt + statusline + Claude Code hooks.
+macOS dotfiles for [alxjrvs](https://github.com/alxjrvs). Owned end-to-end by a set of **self-contained shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, apply macOS defaults, and power the prompt + statusline + Claude Code hooks. No Rust, no compiled binary; just `bash`, `git`, and `jq`.
 
 ## Setup (fresh machine)
 
@@ -9,80 +9,90 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 ~/dotFiles/bootstrap.sh
 ```
 
-`bootstrap.sh` is ~10 lines of shell: installs rust (rustup), builds + installs `dotctl` to `~/.local/bin/`, then `exec`s `dotctl sync`. After that everything is `dotctl <subcommand>`.
+`bootstrap.sh` is a few lines of shell: it `exec`s `~/dotFiles/dot sync`, which installs everything and symlinks `dot` onto your `PATH` at `~/.local/bin/dot`. After that everything is `dot <subcommand>`.
 
 ## Day-to-day
 
 | Command | Job |
 |---------|-----|
-| `dotctl sync` | Idempotent re-sync. Installs missing tools, recreates broken symlinks. Fast on no-op. |
-| `dotctl sync --upgrade` | Same + brew update/upgrade/cleanup. |
-| `dotctl sync --only=brew,mise` | Only the listed sections (tags: `brew mise sheldon symlinks claude gh dotctl git shell ssh ghostty bat atuin lazygit zsh git-hooks helix karabiner lefthook macos linux`). |
-| `dotctl update` | Bump everything to current — equivalent to `dotctl sync --upgrade`. |
-| `dotctl doctor` | Read-only diagnostics: tool presence, symlink integrity, drift. Exits non-zero on failures. |
+| `dot sync` | Idempotent re-sync. Installs missing tools, recreates broken symlinks. Fast on no-op. |
+| `dot sync --upgrade` | Same + brew update/upgrade/cleanup + mise upgrade. |
+| `dot sync --only=brew,mise` | Only the listed sections (tags: `brew mise sheldon symlinks claude gh git shell ssh ghostty bat atuin lazygit zsh git-template helix karabiner lefthook macos linux prune`). |
+| `dot update` | Bump everything to current — equivalent to `dot sync --upgrade`. |
+| `dot doctor` | Read-only diagnostics: tool presence, symlink integrity, drift. Exits non-zero on failures. |
+| `dot prune` | Delete `.bak` files, stale worktrees, orphan workers, old cost dirs. |
 
 ## What's here
 
 | Path | Purpose |
 |------|---------|
-| `bootstrap.sh` | Fresh-machine entry point (rust + dotctl install, then exec dotctl sync) |
-| `dotctl/` | Rust binary: sync + update + doctor + git-data + hook + statusline + prompt-render |
+| `bootstrap.sh` | Fresh-machine entry point (exec `dot sync`) |
+| `dot` | Thin dispatcher; the single dotfiles command on PATH. Resolves `DOTFILES_DIR`, execs the matching topic script. |
+| `sync`, `doctor`, `render` | Top-level commands (install/resync, health check, `op://` template resolver) |
+| `install/` | Numbered `NN-*.sh` sync modules (brew, mise, symlinks, macos, prune, …), sourced by `sync` in order |
+| `prompt/` | `git-data` (git-state → cache) + `prompt-render` (cache → zsh PROMPT). Hot path. |
+| `share/claude-statusline/` | Self-contained, curl-installable Claude Code statusline (`statusline.sh` + `subagent-statusline.sh`) with its own README |
+| `hooks/` | One self-contained script per Claude Code hook event |
+| `tests/` | `bats/` unit tests + `golden/` fixtures (byte-exact prompt/statusline references) |
 | `.zshrc` | Thin loader — sources fragments from `~/.config/zsh/*.zsh` |
 | `zsh/` | Numbered zsh fragments (exports, options, vi, plugins, completions, prompt, tools, aliases, functions) |
 | `.zprofile`, `.zshenv` | Login env, including `DOTFILES_DIR` export |
 | `.gitconfig`, `.gitmessage` | Git identity, commit template, signing (gpgSign overrides live in `~/.gitconfig.local`) |
-| `git-hooks/pre-commit` | Global pre-commit hook (gitleaks; referenced by `core.hooksPath`) |
+| `git-template/hooks/pre-commit` | Global pre-commit hook (gitleaks; referenced by `core.hooksPath`) |
 | `ghostty/config` | Ghostty terminal config |
 | `atuin/config.toml` | Atuin (shell history) config |
 | `lazygit/config.yml` | Lazygit config (Nord theme) |
 | `bat/config` | Bat config |
-| `ssh/config` | SSH client config (1Password agent, ControlMaster, Augment include) |
+| `ssh/config` | SSH client config (1Password agent, ControlMaster) |
 | `karabiner/karabiner.json` | Karabiner-Elements rules (Caps Lock → Control) |
-| `dot-claude/` | Claude Code: `CLAUDE.md`, `settings.json`, `agents/`, `commands/`, `statusline-command.sh` (hooks dispatch via `dotctl hook <event>`) |
+| `dot-claude/` | Claude Code: `CLAUDE.md`, `settings.json`, `agents/`, `commands/` (hooks dispatch via `dot hook <event>`) |
 | `Brewfile` | `brew "mise"` + casks (GUI apps, fonts). All dev CLIs live in mise.toml. |
 | `mise.toml` | Language toolchains + every dev CLI. Single update path via `mise upgrade`. |
 | `sheldon/plugins.toml` | Zsh plugin config |
-| `lefthook.yml` | Pre-commit gate (shellcheck + shfmt) for this repo |
+| `lefthook.yml` | Pre-commit/pre-push gate (shellcheck + shfmt + bats + doctor) for this repo |
 
 ## Claude Code integration
 
-`dot-claude/` is symlinked into `~/.claude/` by `dotctl sync`. Contents:
+`dot-claude/` is symlinked into `~/.claude/` by `dot sync`. Contents:
 
 - `CLAUDE.md` — user-level global instructions
-- `settings.json` — permissions, env, hook commands (all `dotctl hook <event>`)
+- `settings.json` — permissions, env, hook commands (all `dot hook <event>`), `statusLine` → `dot statusline`, `subagentStatusLine` → `dot subagent-statusline`
 - `agents/` — custom subagent definitions
 - `commands/` — custom slash commands
-- `statusline-command.sh` — context bar + Pro/Max rate-limit windows from native `rate_limits` JSON
 
-All 9 Claude Code hook events route through `dotctl hook <event>`:
+The statusline is the self-contained `share/claude-statusline/statusline.sh` (context bar + Pro/Max rate-limit windows from native `rate_limits` JSON), reached via `dot statusline`. It's a drop-in you can `curl` onto any machine — see `share/claude-statusline/README.md`.
+
+The wired Claude Code hook events route through `dot hook <event>`:
 
 | Event | Subcommand |
 |-------|-----------|
-| PreToolUse (Edit\|Write) | `dotctl hook lock-file-guard` |
-| PreToolUse (Bash) | `dotctl hook policy-guard` |
-| PostToolUse (Edit\|Write) | `dotctl hook format-on-save` |
-| PostToolUse (Bash) | `dotctl hook trim-bash-output` |
-| SessionStart | `dotctl hook session-start` |
-| UserPromptSubmit | `dotctl hook user-prompt-submit` |
-| CwdChanged | `dotctl hook cwd-changed` |
-| PreCompact | `dotctl hook pre-compact` |
-| PermissionDenied | `dotctl hook permission-denied` |
+| PreToolUse (Edit\|Write) | `dot hook lock-file-guard` |
+| PreToolUse (Bash) | `dot hook policy-guard` |
+| PostToolUse (Edit\|Write) | `dot hook format-on-save` |
+| PostToolUse (Bash) | `dot hook trim-bash-output` |
+| SessionStart | `dot hook session-start` |
+| UserPromptSubmit | `dot hook user-prompt-submit` |
+| Stop | `dot hook stop` |
+
+## Tests
+
+Shell unit tests run under [`bats`](https://github.com/bats-core/bats-core) (a managed mise tool) in `tests/bats/`. Golden fixtures in `tests/golden/` hold byte-exact reference output (captured from the prior Rust implementation) for `prompt/prompt-render`, the statusline, and the subagent statusline. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` pre-commit and `bats` + `dot doctor` pre-push.
 
 ## Git signing
 
-`.gitconfig` configures SSH commit/tag signing but **does not** set `gpgSign = true` directly. The actual toggle lives in machine-local `~/.gitconfig.local` (bootstrapped by `dotctl sync`). This keeps fresh boxes from failing commits before SSH keys are present.
+`.gitconfig` configures SSH commit/tag signing but **does not** set `gpgSign = true` directly. The actual toggle lives in machine-local `~/.gitconfig.local` (bootstrapped by `dot sync`). This keeps fresh boxes from failing commits before SSH keys are present.
 
-`dotctl sync` also bootstraps `~/.ssh/allowed_signers` from `~/.ssh/id_ed25519.pub` so `git log --show-signature` verifies your own commits.
+`dot sync` also bootstraps `~/.ssh/allowed_signers` from `~/.ssh/id_ed25519.pub` so `git log --show-signature` verifies your own commits.
 
 To disable signing on a given machine, edit `~/.gitconfig.local`.
 
 ## gitleaks pre-commit
 
-`core.hooksPath = ~/.config/git/hooks` (set in `.gitconfig`) points every repo at `git-hooks/pre-commit`, which runs `gitleaks protect --staged`. The hook also chain-runs any repo-local `pre-commit` if present. Emergency bypass: `git commit --no-verify` (blocked by `dotctl hook policy-guard` when invoked through Claude).
+`core.hooksPath` (set in `.gitconfig`) points every repo at `git-template/hooks/pre-commit`, which runs `gitleaks protect --staged`. The hook also chain-runs any repo-local `pre-commit` if present. Emergency bypass `git commit --no-verify` is blocked by `dot hook policy-guard` when invoked through Claude.
 
 ## lefthook (this repo only)
 
-`lefthook.yml` adds a pre-commit gate on staged shell files (`shellcheck` + `shfmt -d`) for the dotfiles repo itself. `dotctl sync` runs `lefthook install` automatically, which writes a repo-local `.git/hooks/pre-commit` — the global gitleaks hook (above) chain-calls it, so both run on commit here.
+`lefthook.yml` adds a pre-commit gate on staged shell files (`shellcheck` + `shfmt -i 2 -ci -sr`) plus a pre-push gate (`bats` + `dot doctor`). `dot sync` runs `lefthook install` automatically.
 
 ## difftastic
 
@@ -103,11 +113,11 @@ Wired as a git difftool. Run with `git dft` (alias for `git difftool`) — uses 
 
 ## Packaging: Lean A (brew = casks, mise = dev CLIs)
 
-The Brewfile holds **only** `brew "mise"` + casks (GUI apps, fonts, the 1Password CLI cask, the Claude desktop cask). Every dev CLI — language toolchains, git surface (gh, delta, lazygit, gitleaks, lefthook), file/text tools (bat, fd, ripgrep, jq, yq, eza, dust, glow, gdu), linters (shfmt, shellcheck), shell-init-time tools (sheldon, atuin, direnv, fzf, zoxide), and the Tier 3 escapees (supabase, carapace, watchexec, bottom, pueue, git-absorb, helix) — lives in `mise.toml`.
+The Brewfile holds **only** `brew "mise"` + casks (GUI apps, fonts, the 1Password CLI cask, the Claude desktop cask). Every dev CLI — language toolchains, git surface (gh, delta, lazygit, gitleaks, lefthook), file/text tools (bat, fd, ripgrep, jq, yq, eza, dust, glow, gdu), linters (shfmt, shellcheck), test tooling (bats), shell-init-time tools (sheldon, atuin, direnv, fzf, zoxide), and the Tier 3 escapees (supabase, carapace, watchexec, bottom, pueue, git-absorb, helix) — lives in `mise.toml`.
 
 The PATH wiring in `.zshenv` puts `~/.local/share/mise/shims` first so every mise-managed tool resolves in every shell context (interactive, non-interactive, git hooks, editor subprocesses) without waiting for `mise activate`. This makes it safe to ship shell-init dependencies (sheldon, atuin, direnv) from mise — they're on PATH before `.zshrc` fragments load.
 
-Update path: `mise upgrade` (or `dotctl update`).
+Update path: `mise upgrade` (or `dot update`).
 
 Rule: if you're about to add `brew "..."` to the Brewfile, stop. Put it in mise.toml unless it's mise itself or it's a cask. CLAUDE.md "Packaging policy" section restates this for tools.
 
@@ -117,7 +127,7 @@ Replaced AstroNvim viewer-mode. `alias v=hx`, `alias vim=hx`, `alias nvim=hx`. Z
 
 ## Caps Lock → Control
 
-Via Karabiner-Elements (Brewfile cask). Config is tracked at `karabiner/karabiner.json` and symlinked by `dotctl sync` to `~/.config/karabiner/karabiner.json`. On first launch grant Input Monitoring + Accessibility; the rebind (`caps_lock → left_control`, both device-scoped and profile-scoped) is then live. Survives sleep cycles and external keyboards.
+Via Karabiner-Elements (Brewfile cask). Config is tracked at `karabiner/karabiner.json` and symlinked by `dot sync` to `~/.config/karabiner/karabiner.json`. On first launch grant Input Monitoring + Accessibility; the rebind (`caps_lock → left_control`, both device-scoped and profile-scoped) is then live. Survives sleep cycles and external keyboards.
 
 ## 1Password SSH agent
 
@@ -127,5 +137,5 @@ Commit signing piggybacks on the same SSH key via `gpg.format = ssh` in `.gitcon
 
 ## Notes
 
-- `DOTFILES_DIR` is exported from `.zshenv`; the default points to `$HOME/dotFiles`. Override via `DOTFILES_DIR=...` if your clone lives elsewhere.
-- Files containing PUA powerline glyphs (`zsh/50-prompt.zsh`) use `$'\uXXXX'` escape syntax — ASCII source, evaluated at runtime. Safe to edit with the Claude Edit tool.
+- `DOTFILES_DIR` is exported from `.zshenv`; the default points to `$HOME/dotFiles`. Override via `DOTFILES_DIR=...` if your clone lives elsewhere. `dot` itself re-resolves it (env → dir of its resolved symlink target → `~/dotFiles`), so the repo is relocatable.
+- Files containing PUA powerline glyphs (`zsh/50-prompt.zsh`, `prompt/prompt-render`, `share/claude-statusline/statusline.sh`) use escape syntax (`$'\uXXXX'` or `printf '\xNN'`) — ASCII source, evaluated at runtime. Safe to edit with the Claude Edit tool.

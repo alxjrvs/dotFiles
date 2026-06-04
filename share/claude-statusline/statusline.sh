@@ -490,5 +490,5 @@ if [ -n "$cost_display" ]; then
     today=$(awk -v day="$day_total" -v self="$cost_usd" 'BEGIN{ if (day > self+0.005) printf "%.2f", day }')
     [ -n "$today" ] && money="${money}${MUTED} ${MIDDOT} today ${RST}${GREEN}\$${today}"
   fi
-  printf '%s[%s%s%s]%s\n' "$MUTED" "$GREEN" "$money" "$MUTED" "$RST"
+  printf '%s[%s%s%s%s]%s\n' "$MUTED" "$RST" "$GREEN" "$money" "$MUTED" "$RST"
 fi

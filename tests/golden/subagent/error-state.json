@@ -1,0 +1,35 @@
+{
+  "session_id": "sess-golden-sa-002",
+  "transcript_path": "/tmp/claude/transcripts/sa-002.jsonl",
+  "cwd": "/Users/jarvis/Code/dotFiles/.claude/worktrees/dedotctl",
+  "agent_type": "claude",
+  "columns": 168,
+  "tasks": [
+    {
+      "id": "agent-build-001",
+      "type": "local_agent",
+      "status": "failed",
+      "description": "Build failed due to compilation error",
+      "label": "Build",
+      "startTime": 1780522758529,
+      "tokenCount": 3200,
+      "tokenSamples": [
+        800,
+        1600,
+        3200
+      ],
+      "cwd": "/Users/jarvis/Code/dotFiles/.claude/worktrees/dedotctl"
+    },
+    {
+      "id": "agent-test-002",
+      "type": "local_agent",
+      "status": "inactive",
+      "description": "Run test suite",
+      "label": "Test",
+      "startTime": 1780519133529,
+      "tokenCount": 0,
+      "tokenSamples": [],
+      "cwd": "/Users/jarvis/Code/dotFiles/.claude/worktrees/dedotctl"
+    }
+  ]
+}

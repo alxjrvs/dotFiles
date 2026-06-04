@@ -4,46 +4,55 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A macOS dotfiles repository owned end-to-end by [`dotctl`](dotctl/) — a single Rust binary that installs base dependencies, creates symlinks, applies macOS defaults, renders the shell prompt, drives the Claude Code statusline, and dispatches every Claude Code hook event. There is no `sync.sh`, no `install/*.sh`, and no `scripts/` directory; the previous bash-script regime was absorbed into `dotctl` over PRs #20–#24 + Phase 2–6.
+A macOS dotfiles repository owned end-to-end by **self-contained shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, apply macOS defaults, render the shell prompt, drive the Claude Code statusline, and dispatch every Claude Code hook event. No Rust, no compiled binary: just `bash`, `git`, and `jq`.
 
-Source of truth for setup behavior is `dotctl/src/sync.rs`. Source of truth for prompt/statusline rendering is `dotctl/src/prompt.rs` and `dotctl/src/statusline.rs`.
+There is no `dotctl/` crate anymore — it was replaced by these shell scripts (this branch/PR). Each subsystem lives in its own topic folder and every script is **self-contained**: the small helpers it needs (logging, os/host detection, symlink `link()`, jq getters, the git-cache path hash, color/gradient math) are inlined at the top of the script rather than sourced from a shared library. Duplication across scripts is intentional — it keeps each folder isolated and individually shareable.
+
+Source of truth for setup behavior is `sync` + `install/*.sh`. Source of truth for prompt rendering is `prompt/git-data` + `prompt/prompt-render`. Source of truth for the statusline is `share/claude-statusline/statusline.sh`.
 
 ## Key Commands
 
 ```bash
-dotctl sync             # Idempotent install/resync. Fast on no-op. Prompts to clean .bak files at the end (default yes).
-dotctl sync --upgrade   # Same + brew update/upgrade/cleanup + mise upgrade.
-dotctl sync --only=brew,mise   # Only the listed section tags.
-dotctl update           # Bump everything (equivalent to sync --upgrade).
-dotctl doctor           # Read-only health check; exits non-zero on failures.
-dotctl prune            # Find + delete .bak files left by sync conflicts and harness-tuneup.
-cargo test --manifest-path=dotctl/Cargo.toml   # Run dotctl's test suite.
-lefthook run pre-commit # shellcheck + shfmt over staged shell files.
+dot sync                # Idempotent install/resync. Fast on no-op. Prompts to clean .bak files at the end (default yes).
+dot sync --upgrade      # Same + brew update/upgrade/cleanup + mise upgrade.
+dot sync --only=brew,mise   # Only the listed section tags.
+dot update              # Bump everything (equivalent to sync --upgrade).
+dot doctor              # Read-only health check; exits non-zero on failures.
+dot prune               # Find + delete .bak files, stale worktrees, orphan workers, old cost dirs.
+bats tests/bats/        # Run the shell unit-test suite.
+lefthook run pre-commit # shellcheck + shfmt -i 2 -ci -sr over staged shell files.
 ```
 
-Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (installs rustup, builds dotctl, execs `dotctl sync`).
+Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot sync`).
 
 ## Architecture
 
-### dotctl-owned model
+### The `dot` dispatcher + topic folders
 
-`dotctl` is a single Rust binary at `dotctl/src/main.rs` with seven subcommands:
+`dot` (repo root) is a ~40-line bash script — the single command symlinked onto `PATH` at `~/.local/bin/dot`. It resolves `DOTFILES_DIR` once, then execs the matching topic script, passing args through:
 
-| Subcommand | Purpose |
-|------------|---------|
-| `sync` | Install/resync. Tag-gated steps (`--only=<tag,...>`). Idempotent. |
-| `update` | `sync --upgrade`. |
-| `doctor` | Read-only diagnostics; exits non-zero on failures. |
-| `git-data` | Hot path: gathers git state, writes shell-sourceable cache. Called from prompt, statusline, and `UserPromptSubmit` hook. |
-| `prompt-render` | Hot path: reads git-data cache, emits zsh PROMPT-syntax with `%{...%}` escapes. Replaces the old `scripts/theme.sh` + bash prompt. |
-| `statusline` | Reads Claude Code JSON on stdin, refreshes git cache, emits 3–5 lines with progress bars. |
-| `hook <event>` | Dispatches every Claude Code hook event. Event name maps 1:1 to a kebab-case match arm in `dotctl/src/hook.rs`. |
+| Subcommand | Execs | Purpose |
+|------------|-------|---------|
+| `dot sync` | `./sync` | Install/resync. Tag-gated steps (`--only=<tag,...>`). Idempotent. |
+| `dot update` | `./sync --upgrade` | Bump everything. |
+| `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. |
+| `dot prune` | `./sync --only=prune` | `.bak` / stale-worktree / orphan-worker / old-cost cleanup (also runs standalone via `install/95-prune.sh`). |
+| `dot render <tpl>` | `./render` | `op://` template resolver. |
+| `dot git-data` | `prompt/git-data` | Hot path: gather git state, write shell-sourceable cache. |
+| `dot prompt-render` | `prompt/prompt-render` | Hot path: read git-data cache, emit zsh PROMPT syntax. |
+| `dot statusline` | `share/claude-statusline/statusline.sh` | Read Claude Code JSON on stdin, emit 3–6 lines with progress bars. |
+| `dot subagent-statusline` | `share/claude-statusline/subagent-statusline.sh` | Subagent task statusline. |
+| `dot hook <event>` | `hooks/<event>` | Dispatch a Claude Code hook event (event name maps 1:1 to a script in `hooks/`). |
 
-Sync steps are gated on `should_run(&[tags])` and on `Os::Darwin` / `Os::Linux`. To add a new sync section, add a `step_xxx(ctx)` function in `sync.rs`, call it from `run()`, and gate it on a tag. Mirror the bash-module shape this replaced.
+`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → legacy `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. Every other script is a plain script you can run directly (`./prompt/git-data`) for development.
+
+### sync / install modules
+
+`sync` sources `install/NN-*.sh` modules in numeric order; each declares its tags and a `run` function, gated by a tag filter (`--only=<tags>`) and an OS guard. Modules: `00-brew 10-linux 20-sheldon 30-mise 40-symlinks 50-ghostty 60-claude 70-gh 80-git-maint 85-lefthook 90-macos 95-prune`. To add a sync section, add an `install/NN-name.sh` module, give it a tag, and `sync` will pick it up. macOS defaults data + `audit` live in `90-macos.sh`.
 
 ### Symlink Model
 
-`sync::link()` in `dotctl/src/sync.rs` creates idempotent symlinks. On conflict, behavior depends on `--force` (overwrite with `.bak`), `--skip`, or default (interactive prompt). Mapping:
+`link()` (inlined in `sync` and `install/40-symlinks.sh`) creates idempotent symlinks. On conflict, behavior depends on `$LINK_MODE`: `overwrite` (move existing to `.bak`, then link, set via `-f`), `skip` (`-s`), or default `interactive` (prompt). Mapping:
 
 | Source | Destination |
 |--------|-------------|
@@ -61,47 +70,52 @@ Sync steps are gated on `should_run(&[tags])` and on `Os::Darwin` / `Os::Linux`.
 | `atuin/config.toml` | `~/.config/atuin/config.toml` |
 | `gh/config.yml` | `~/.config/gh/config.yml` |
 | `ssh/config` | `~/.ssh/config` (mode 600) |
-| `git-hooks/pre-commit` | `~/.config/git/hooks/pre-commit` (referenced by `core.hooksPath`) |
+| `git-template/hooks/pre-commit` | `~/.config/git/template/hooks/pre-commit` (referenced by `core.hooksPath`) |
+| `dot` | `~/.local/bin/dot` |
 | `dot-claude/{CLAUDE.md, settings.json, agents, commands}` | `~/.claude/` (individually) |
 | `dot-claude/settings.local.json` (if present) | `~/.claude/settings.local.json` |
 
-There are no read-in-place files; everything is either symlinked or compiled into the `dotctl` binary.
+Everything is symlinked; there are no read-in-place or compiled-in files.
 
 ### Claude Code Configuration (`dot-claude/`)
 
-Each entry is symlinked individually into `~/.claude/` by `dotctl sync` (claude tag):
+Each entry is symlinked individually into `~/.claude/` by `dot sync` (claude tag):
 
 - `CLAUDE.md` — user-level global instructions (identity, preferences, coding style).
-- `settings.json` — permissions, env, sandbox, enabled plugins, hook dispatch.
+- `settings.json` — permissions, env, sandbox, enabled plugins, hook dispatch, `statusLine` (→ `dot statusline`), `subagentStatusLine` (→ `dot subagent-statusline`).
 - `agents/` — custom subagent definitions.
 - `commands/` — custom slash commands.
 
-**Hook dispatch:** Claude Code hook events route through `dotctl hook <event>`. The match arms live in `dotctl/src/hook.rs`. To add or modify a hook, edit `hook.rs` — `settings.json` should not gain new shell-command hooks. The wired set is intentionally minimal (defenders + cache + worktree relocator); log-only arms with no consumer were removed in the v2 audit (commit `<see git log>`).
+**Hook dispatch:** Claude Code hook events route through `dot hook <event>`, which execs `hooks/<event>`. To add or modify a hook, add/edit the script in `hooks/` and wire it in `settings.json`. The wired set is intentionally minimal:
 
-| Event | Subcommand | Role |
-|-------|-----------|------|
-| PreToolUse (Edit\|Write) | `dotctl hook lock-file-guard` | defender |
-| PreToolUse (Bash) | `dotctl hook policy-guard` | defender |
-| PostToolUse (Edit\|Write) | `dotctl hook format-on-save` | formatter |
-| PostToolUse (Bash) | `dotctl hook trim-bash-output` | output spill |
-| UserPromptSubmit | `dotctl hook user-prompt-submit` | git cache pre-warm |
-| SessionStart | `dotctl hook session-start` | session banner title (`<repo>:<branch>`) |
-| Stop | `dotctl hook stop` | session JSONL journal |
+| Event | Script | Role |
+|-------|--------|------|
+| PreToolUse (Edit\|Write) | `hooks/lock-file-guard` | defender |
+| PreToolUse (Bash) | `hooks/policy-guard` | defender |
+| PostToolUse (Edit\|Write) | `hooks/format-on-save` | formatter |
+| PostToolUse (Bash) | `hooks/trim-bash-output` | output spill |
+| UserPromptSubmit | `hooks/user-prompt-submit` | git cache pre-warm |
+| SessionStart | `hooks/session-start` | session banner title (`<repo>:<branch>`) |
+| Stop | `hooks/stop` | session JSONL journal |
+
+### Tests
+
+Shell unit tests run under `bats` (a managed mise tool) in `tests/bats/`. `tests/golden/` holds byte-exact reference fixtures (captured from the prior Rust implementation) for `prompt/prompt-render`, the statusline, and the subagent statusline — `tests/verify-golden.sh` / `tests/verify-statusline.sh` diff the current scripts against them. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` pre-commit and `bats` + `dot doctor` pre-push.
 
 ## Packaging policy: Lean A (brew = casks, mise = dev CLIs)
 
 Brewfile holds **only**: `mise` (chicken-and-egg bootstrap), casks (GUI apps, fonts), and any system library that has no mise equivalent.
 
-`mise.toml` holds: all language toolchains AND all dev CLIs. Use the registry short-name where it resolves; fall back to `aqua:` then `github:` backends.
+`mise.toml` holds: all language toolchains AND all dev CLIs (including `jq`, `bats`, `shellcheck`, `shfmt`). Use the registry short-name where it resolves; fall back to `aqua:` then `github:` backends.
 
 If you're about to add a CLI to `Brewfile`, stop — put it in `mise.toml` unless it's `mise` itself or it's a cask.
 
 ## Terminal: Ghostty
 
 Ghostty is the chosen terminal emulator. The cask installs the .app;
-`step_ghostty` in `sync.rs` lays down a `~/.local/bin/ghostty` shim
+`install/50-ghostty.sh` lays down a `~/.local/bin/ghostty` shim
 pointing at `/Applications/Ghostty.app/Contents/MacOS/ghostty` so the
-CLI is uniform with every other managed tool. `dotctl doctor` runs
+CLI is uniform with every other managed tool. `dot doctor` runs
 `ghostty --version` like git/mise/lefthook, and validates
 `ghostty/config` indirectly via the symlink integrity check.
 
@@ -112,18 +126,18 @@ abandons it.
 
 ## Multi-host overlays
 
-Two machines (M3 Air + M2 Pro). Host detection lives in
-`dotctl/src/host.rs`: `scutil --get LocalHostName` substring match →
-`HostId::{Air, Pro, Unknown}`, with `DOTCTL_HOST=air|pro` env override
-(also exposed as `dotctl sync --host=<name>` for dry-running the
+Two machines (M3 Air + M2 Pro). Host detection is the inlined `host_id`
+helper: `scutil --get LocalHostName` substring match →
+`air|pro|unknown`, with `DOTFILES_HOST=air|pro` env override
+(also exposed as `dot sync --host=<name>` for dry-running the
 other host's config locally).
 
 Per-host surfaces today:
 
-- **macOS defaults** — `macos_defaults::SHARED` is the baseline;
-  `AIR_OVERLAY` / `PRO_OVERLAY` add or override entries by
-  `(domain, key)`. `managed_for(host)` returns the merged Vec.
-  `dotctl doctor` audits against the current host's effective list.
+- **macOS defaults** — `install/90-macos.sh` carries the shared baseline;
+  per-host overlays add or override entries by `(domain, key)` and the
+  effective list is merged for the current host. `dot doctor` audits
+  against the current host's effective list.
 - **Brewfile** — shared `Brewfile` installs everywhere; if
   `Brewfile.<host>` exists, it installs AFTER the shared file (purely
   additive, brew bundle is idempotent). Use for formulae/casks only
@@ -131,12 +145,10 @@ Per-host surfaces today:
 
 Symlinks, mise.toml, sheldon, and zsh fragments are intentionally
 shared — divergence there isn't worth the overlay surface today.
-Add overlay support to a new surface only when a real per-host need
-appears.
 
 ## Secrets management
 
-1Password CLI (`op`) is the source of truth. There is no `.secrets` file — it was decommissioned. Use the patterns below in priority order; drop down a tier only when the one above doesn't apply.
+1Password CLI (`op`) is the source of truth. There is no `.secrets` file. Use the patterns below in priority order; drop down a tier only when the one above doesn't apply.
 
 ### Patterns
 
@@ -151,10 +163,10 @@ For any CLI invocation that reads a token from env. Nothing is exported to the s
 # .npmrc
 //registry.npmjs.org/:_authToken=op://Personal/npm/credential
 ```
-Pair with `op-run` (pattern 1) — the wrapper resolves the references just for the child process. Use for any tool whose config file holds tokens.
+Pair with `op-run` (pattern 1) — the wrapper resolves the references just for the child process.
 
 **3. `gh auth token` keychain fallback — GitHub specifically**
-`zsh/00-exports.zsh` derives `GITHUB_PERSONAL_ACCESS_TOKEN` from `gh auth token` at shell start; the token lives in the macOS keychain (managed by `gh auth login`), never on disk. This is the right pattern for any GH-token consumer (Claude MCP, scripts, etc.) because it inherits at fork time without writing the token anywhere.
+`zsh/00-exports.zsh` derives `GITHUB_PERSONAL_ACCESS_TOKEN` from `gh auth token` at shell start; the token lives in the macOS keychain (managed by `gh auth login`), never on disk. The right pattern for any GH-token consumer because it inherits at fork time without writing the token anywhere.
 
 **4. `direnv` + `op read` — project-local inheritance**
 For values a project's subprocesses must inherit at fork time, use a per-project `.envrc` that resolves through `op read`:
@@ -162,33 +174,33 @@ For values a project's subprocesses must inherit at fork time, use a per-project
 # .envrc
 export STRIPE_KEY="$(op read 'op://Personal/stripe/credential')"
 ```
-`direnv` (already hooked in `zsh/30-plugins.zsh`) resolves on `cd`. Pair with a checked-in `.envrc.template` so collaborators / future you can reproduce the env without plaintext on disk.
+`direnv` (already hooked in `zsh/30-plugins.zsh`) resolves on `cd`. Pair with a checked-in `.envrc.template`.
 
 ### Rules
 
 - **Never commit a plaintext token** to any file. Use `op://` references or `op-run` instead.
 - **Never add a token to a config file as plaintext.** If `.npmrc`-shape tools need credentials, use `op://` refs + `op-run`.
 - **If you find a plaintext token anywhere**, revoke first, then migrate to `op` or a keychain CLI.
-- `gitleaks` runs as a global pre-commit hook (`git-hooks/pre-commit`); known token shapes that hit a commit block it. Don't rely on this catching everything — it's a backstop, not the policy.
+- `gitleaks` runs as a global pre-commit hook (`git-template/hooks/pre-commit`); it's a backstop, not the policy.
 
 ## Guardrails
 
 Pause and confirm with the user before doing any of these:
 
-- **Dependency lockfiles** (any file matching `*-lock*` or `*.lock*` — except `dotctl/Cargo.lock`, which is intentionally committed for binary-crate reproducibility): never edit by hand. The `dotctl hook lock-file-guard` PreToolUse hook blocks these; do not work around it.
-- **`dotctl/src/sync.rs` symlink semantics**: the `link()` function prompts on conflict (Interactive mode) unless `-f` or `-s` is passed. Do not change the default behavior to auto-overwrite.
-- **`dotctl/src/hook.rs` dispatcher**: hooks run on every Claude Code action. A panic or timeout here degrades the entire interactive surface. Add tests for any new event handler before wiring it into `settings.json`.
-- **Hot-path subcommands** (`git-data`, `prompt-render`, `statusline`): these run on every prompt/refresh. Don't add subprocess spawns, network calls, or unbounded loops. Read the cache, render, exit.
-- **Starship references**: the user replaced Starship with the `dotctl prompt-render` Rust binary. If you see `starship` anywhere, treat it as historical — do not reintroduce.
-- **AstroNvim / nvim references**: the user replaced AstroNvim viewer-mode with helix. There is no `nvim/` directory; do not propose re-adding one.
-- **`worktree.bgIsolation`** — user-global is `"none"` so BG sessions edit in place; per-repo project-level `.claude/settings.json` can flip individual repos to `"worktree"`. CC v2.1.150+ places worktrees at `<repo>/.claude/worktrees/<n>/` (NOT the legacy `.git/worktrees/<n>/`), which is outside the cwd-deny radius — so commits work without the old "Fix B" relocation hook. The relocation hooks were removed in May 2026 after verification confirmed CC's new default sidesteps the original lockout. If a future CC version reintroduces the lockout, the `WorktreeCreate` hook event is still available to wire back up.
+- **Dependency lockfiles** (any file matching `*-lock*` or `*.lock*`): never edit by hand. The `hooks/lock-file-guard` PreToolUse hook blocks these; do not work around it.
+- **`link()` symlink semantics**: the `link()` function prompts on conflict (interactive `$LINK_MODE`) unless `-f` or `-s` is passed. Do not change the default behavior to auto-overwrite.
+- **`hooks/` dispatcher**: hooks run on every Claude Code action. A crash or hang here degrades the entire interactive surface. Add a bats test for any new hook before wiring it into `settings.json`.
+- **Hot-path scripts** (`prompt/git-data`, `prompt/prompt-render`): these run on every prompt/refresh. Don't add subprocess spawns, network calls, or unbounded loops. `prompt-render` must stay fork-free — read the cache, render, exit.
+- **Self-contained rule**: scripts inline their own helpers; there is no `shared/` library layer. Don't introduce one — keep each topic folder independently runnable and shareable.
+- **Starship references**: replaced by `prompt/prompt-render`. If you see `starship` anywhere, treat it as historical — do not reintroduce.
+- **AstroNvim / nvim references**: replaced by helix. There is no `nvim/` directory; do not propose re-adding one.
 
 ## Important Gotchas
 
-- **Powerline glyphs (U+E0B0, U+E0B2, U+E0A0, U+276F)**: never paste raw glyphs into source. All glyph references in this repo use escape syntax — `\u{e0b0}` in Rust (`dotctl/src/prompt.rs`), `$'❯'` in zsh (`zsh/50-prompt.zsh`). Write/Edit silently strips raw codepoints, so the escape form is mandatory.
-- **dot-claude vs .claude**: source of truth is `dot-claude/` in this repo. The `.claude/` directory at repo root holds machine-local overrides (e.g. `settings.local.json`, local hookify rules) that are gitignored — don't confuse it with project-local Claude config.
-- **Sheldon plugin order matters**: `fast-syntax-highlighting` must be last in `sheldon/plugins.toml`. It wraps every existing ZLE widget at load time, so anything that registers a widget (e.g. `add-zle-hook-widget`) must run before sheldon's `eval` line in `zsh/30-plugins.zsh`.
-- **dotctl self-replaces during sync**: `step_dotctl` runs `cargo install --force` on the binary that's currently executing. The OS preserves the in-memory mapping of the running process; the on-disk `dotctl` is the *new* version after this step. Anything you spawn after that point gets the new code.
-- **settings.json allow + excludedCommands**: when adding a new command binary to `permissions.allow`, you must also add it to `sandbox.excludedCommands` — omitting it means the sandbox blocks the command regardless of the allow rule. The reverse also applies: an `excludedCommands` entry without a matching allow rule signals intent but has no effect on prompting.
-- **`dotctl sync --only=<tag>` requires the tag to exist**: the tag list in `Cli` doc (`main.rs`) and the `should_run(&[...])` calls in `sync.rs` must agree. If they drift, `--only=foo` silently runs nothing instead of erroring.
-- **Repo location is resolved, not hardcoded**: `util::resolve_dotfiles_dir()` (used by `sync`, `doctor`, `prune`) tries `$DOTFILES_DIR` → the path the binary was built from (`CARGO_MANIFEST_DIR/..`) → legacy `~/dotFiles`, accepting the first that's a dir containing a `Brewfile`. Because `step_dotctl` reinstalls from `<repo>/dotctl` every sync, a rebuilt binary self-locates wherever the repo lives — so the repo is relocatable. To move it: `cargo install --path <old>/dotctl --force` (new resolver onto PATH), `mv` the repo, then `DOTFILES_DIR=<new> dotctl sync --force` once (rebuilds + bakes the new path + relinks). No permanent `DOTFILES_DIR` export needed afterward.
+- **Powerline glyphs (U+E0B0, U+E0B2, U+E0A0, U+276F, etc.)**: never paste raw glyphs into source. Use escape syntax — `$'\u{e0b0}'`/`$'❯'` in zsh, `printf '\xNN'` byte sequences in the bash-3.2-compatible statusline (`share/claude-statusline/statusline.sh`). Write/Edit silently strips raw codepoints, so the escape form is mandatory.
+- **dot-claude vs .claude**: source of truth is `dot-claude/` in this repo. The `.claude/` directory at repo root holds machine-local overrides (gitignored) — don't confuse it with project-local Claude config.
+- **Sheldon plugin order matters**: `fast-syntax-highlighting` must be last in `sheldon/plugins.toml`. It wraps every existing ZLE widget at load time, so anything that registers a widget must run before sheldon's `eval` line in `zsh/30-plugins.zsh`.
+- **`dot` self-locates**: `dot` resolves `DOTFILES_DIR` from its own resolved symlink target, so the repo is relocatable. To move it: `mv` the repo, then run `DOTFILES_DIR=<new> <new>/dot sync --force` once to relink (or just re-run `bootstrap.sh`).
+- **settings.json allow + excludedCommands**: when adding a new command to `permissions.allow`, also add it to `sandbox.excludedCommands` — omitting it means the sandbox blocks the command regardless of the allow rule.
+- **`dot sync --only=<tag>` requires the tag to exist**: a module's declared tag and the `--only=` value must agree, or `--only=foo` silently runs nothing.
+- **Statusline is bash-3.2 compatible**: `share/claude-statusline/statusline.sh` targets macOS system bash (3.2) so it's portable as a standalone drop-in (it has its own README + curl install). The installer/prompt/hook scripts do not carry that constraint and use bash-4+ features.
