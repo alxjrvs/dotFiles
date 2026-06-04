@@ -87,56 +87,71 @@ _deny() {
 #
 # bash [[ =~ ]] uses ERE. Word-boundary \b is not in POSIX ERE, so we use
 # (^|[[:space:]]) / ([[:space:]]|$) equivalents as needed.
+#
+# IMPORTANT: in bash [[ =~ ]], `.` matches ANY char including newline, so a
+# pattern like `git push .* --force` would span an entire compound command —
+# e.g. `git push origin main && rm -f x` would falsely match force-push via
+# the later `rm -f`. To match the Rust per-command intent, we split the
+# command into coarse segments on shell separators (&& || ; | and newlines)
+# and check each segment in isolation. Coarse splitting is fine here: we
+# pattern-match for dangerous flags, we don't parse shell grammar.
 # ---------------------------------------------------------------------------
 
-# --no-verify on hookable git subcommands
-# Rust: \bgit\s+(commit|push|merge|rebase|cherry-pick|am|notes)\b.*--no-verify\b
-if [[ "$CMD" =~ (^|[[:space:]])git[[:space:]]+(commit|push|merge|rebase|cherry-pick|am|notes)[[:space:]].*--no-verify([[:space:]]|$) ]] ||
-  [[ "$CMD" =~ (^|[[:space:]])git[[:space:]]+(commit|push|merge|rebase|cherry-pick|am|notes).*--no-verify$ ]]; then
-  _deny "policy-guard: --no-verify bypasses pre-commit/pre-push hooks (forbidden by user policy)."
-fi
+_advisory=0
 
-# --no-gpg-sign on any git subcommand
-# Rust: \bgit\s+\S+.*--no-gpg-sign\b
-if [[ "$CMD" =~ (^|[[:space:]])git[[:space:]]+[^[:space:]]+.*--no-gpg-sign([[:space:]]|$) ]] ||
-  [[ "$CMD" =~ (^|[[:space:]])git[[:space:]]+[^[:space:]]+.*--no-gpg-sign$ ]]; then
-  _deny "policy-guard: --no-gpg-sign disables commit signing without authorization."
-fi
+_check_segment() {
+  local SEG="$1"
 
-# force push: --force (not followed by -with-lease) or -f
-# Rust: RE_FORCE_PUSH=\bgit\s+push\b.*(--force[^-]|-f\b), then !RE_FORCE_WITH_LEASE
-# Strategy: match force push, then check if --force-with-lease is also present
-_has_force_push=0
-_has_force_with_lease=0
+  # --no-verify on hookable git subcommands
+  # Rust: \bgit\s+(commit|push|merge|rebase|cherry-pick|am|notes)\b.*--no-verify\b
+  if [[ "$SEG" =~ (^|[[:space:]])git[[:space:]]+(commit|push|merge|rebase|cherry-pick|am|notes)[[:space:]].*--no-verify([[:space:]]|$) ]] ||
+    [[ "$SEG" =~ (^|[[:space:]])git[[:space:]]+(commit|push|merge|rebase|cherry-pick|am|notes).*--no-verify$ ]]; then
+    _deny "policy-guard: --no-verify bypasses pre-commit/pre-push hooks (forbidden by user policy)."
+  fi
 
-if [[ "$CMD" =~ --force-with-lease ]]; then
-  _has_force_with_lease=1
-fi
+  # --no-gpg-sign on any git subcommand
+  # Rust: \bgit\s+\S+.*--no-gpg-sign\b
+  if [[ "$SEG" =~ (^|[[:space:]])git[[:space:]]+[^[:space:]]+.*--no-gpg-sign([[:space:]]|$) ]] ||
+    [[ "$SEG" =~ (^|[[:space:]])git[[:space:]]+[^[:space:]]+.*--no-gpg-sign$ ]]; then
+    _deny "policy-guard: --no-gpg-sign disables commit signing without authorization."
+  fi
 
-if [[ "$CMD" =~ (^|[[:space:]])git[[:space:]]+push[[:space:]].*--force([^-]|$) ]] ||
-  [[ "$CMD" =~ (^|[[:space:]])git[[:space:]]+push[[:space:]].*--force$ ]] ||
-  [[ "$CMD" =~ (^|[[:space:]])git[[:space:]]+push.*[[:space:]]-f([[:space:]]|$) ]] ||
-  [[ "$CMD" =~ (^|[[:space:]])git[[:space:]]+push.*[[:space:]]-f$ ]]; then
-  _has_force_push=1
-fi
+  # force push: --force (not followed by -with-lease) or -f
+  # Rust: RE_FORCE_PUSH=\bgit\s+push\b.*(--force[^-]|-f\b), then !RE_FORCE_WITH_LEASE
+  if ! [[ "$SEG" =~ --force-with-lease ]]; then
+    if [[ "$SEG" =~ (^|[[:space:]])git[[:space:]]+push[[:space:]].*--force([^-]|$) ]] ||
+      [[ "$SEG" =~ (^|[[:space:]])git[[:space:]]+push[[:space:]].*--force$ ]] ||
+      [[ "$SEG" =~ (^|[[:space:]])git[[:space:]]+push.*[[:space:]]-f([[:space:]]|$) ]] ||
+      [[ "$SEG" =~ (^|[[:space:]])git[[:space:]]+push.*[[:space:]]-f$ ]]; then
+      _deny "policy-guard: 'git push --force' is forbidden; use --force-with-lease."
+    fi
+  fi
 
-if [[ "$_has_force_push" == "1" ]] && [[ "$_has_force_with_lease" == "0" ]]; then
-  _deny "policy-guard: 'git push --force' is forbidden; use --force-with-lease."
-fi
+  # --amend on git commit
+  # Rust: \bgit\s+commit\b.*--amend\b
+  if [[ "$SEG" =~ (^|[[:space:]])git[[:space:]]+commit[[:space:]].*--amend([[:space:]]|$) ]] ||
+    [[ "$SEG" =~ (^|[[:space:]])git[[:space:]]+commit.*--amend$ ]] ||
+    [[ "$SEG" =~ (^|[[:space:]])git[[:space:]]+commit[[:space:]]+--amend([[:space:]]|$) ]] ||
+    [[ "$SEG" =~ (^|[[:space:]])git[[:space:]]+commit[[:space:]]+--amend$ ]]; then
+    _deny "policy-guard: 'git commit --amend' is forbidden — create a new commit instead."
+  fi
 
-# --amend on git commit
-# Rust: \bgit\s+commit\b.*--amend\b
-if [[ "$CMD" =~ (^|[[:space:]])git[[:space:]]+commit[[:space:]].*--amend([[:space:]]|$) ]] ||
-  [[ "$CMD" =~ (^|[[:space:]])git[[:space:]]+commit.*--amend$ ]] ||
-  [[ "$CMD" =~ (^|[[:space:]])git[[:space:]]+commit[[:space:]]+--amend([[:space:]]|$) ]] ||
-  [[ "$CMD" =~ (^|[[:space:]])git[[:space:]]+commit[[:space:]]+--amend$ ]]; then
-  _deny "policy-guard: 'git commit --amend' is forbidden — create a new commit instead."
-fi
+  # Branch deletion — advisory only (additionalContext, not deny)
+  # Rust: \bgit\s+(branch|push)\b.*(-D|--delete|:[a-z])
+  if [[ "$SEG" =~ (^|[[:space:]])git[[:space:]]+(branch|push)[[:space:]].*(-D|--delete) ]] ||
+    [[ "$SEG" =~ (^|[[:space:]])git[[:space:]]+(branch|push).*:[a-z] ]]; then
+    _advisory=1
+  fi
+}
 
-# Branch deletion — advisory only (additionalContext, not deny)
-# Rust: \bgit\s+(branch|push)\b.*(-D|--delete|:[a-z])
-if [[ "$CMD" =~ (^|[[:space:]])git[[:space:]]+(branch|push)[[:space:]].*(-D|--delete) ]] ||
-  [[ "$CMD" =~ (^|[[:space:]])git[[:space:]]+(branch|push).*:[a-z] ]]; then
+# Split on && || ; | and newlines (tr maps each separator char to a newline),
+# then check each non-empty segment. _deny exits on the first violation.
+while IFS= read -r _seg || [[ -n "$_seg" ]]; do
+  [[ -z "$_seg" ]] && continue
+  _check_segment "$_seg"
+done < <(printf '%s' "$CMD" | tr '&|;' '\n')
+
+if [[ "$_advisory" == "1" ]]; then
   jq -n \
     '{"additionalContext":"policy-guard: branch-deletion command detected. Verify no open PRs depend on this branch (use `gh pr list --base <branch>`) before proceeding."}'
   _log_timing "true"
