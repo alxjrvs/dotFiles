@@ -15,9 +15,9 @@ if [[ -z "${__DOT_SYNC_SOURCED:-}" ]]; then
   }
 fi
 
-_ghostty_shim_tags() { printf 'ghostty\n'; }
+_ghostty_tags() { printf 'ghostty\n'; }
 
-_ghostty_shim_run() {
+_ghostty_run() {
   if [[ "$(os_kind)" != "darwin" ]]; then
     return 0
   fi
