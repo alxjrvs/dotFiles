@@ -75,6 +75,34 @@ is_deny() { [[ "$1" == *'"permissionDecision": "deny"'* ]]; }
   [[ "$output" != *deny* ]]
 }
 
+# Regression: a dangerous-looking flag in a *separate* segment of a compound
+# command must not falsely trip a git verb in another segment. bash [[ =~ ]]
+# '.' spans newlines, so `git push ... && rm -f x` used to false-deny.
+@test "policy-guard: git push in compound with later 'rm -f' is ALLOWED" {
+  run run_hook policy-guard '{"tool_name":"Bash","tool_input":{"command":"git push origin main && rm -f /tmp/x"}}'
+  [ "$status" -eq 0 ]
+  [[ "$output" != *deny* ]]
+}
+
+@test "policy-guard: git commit in compound with later 'rm -f' is ALLOWED" {
+  run run_hook policy-guard '{"tool_name":"Bash","tool_input":{"command":"git commit -m wip && rm -f /tmp/y"}}'
+  [ "$status" -eq 0 ]
+  [[ "$output" != *deny* ]]
+}
+
+@test "policy-guard: real force-push still denied even in a compound command" {
+  run run_hook policy-guard '{"tool_name":"Bash","tool_input":{"command":"echo hi && git push --force origin main"}}'
+  [ "$status" -eq 0 ]
+  is_deny "$output"
+}
+
+@test "policy-guard: branch deletion is advisory, not deny" {
+  run run_hook policy-guard '{"tool_name":"Bash","tool_input":{"command":"git push origin --delete somebranch"}}'
+  [ "$status" -eq 0 ]
+  [[ "$output" != *deny* ]]
+  [[ "$output" == *additionalContext* ]]
+}
+
 # ── lock-file-guard ─────────────────────────────────────────────────────────
 @test "lock-file-guard: denies all 13 known lock names" {
   local names=(Brewfile.lock Brewfile.lock.json bun.lock bun.lockb package-lock.json yarn.lock pnpm-lock.yaml Gemfile.lock Cargo.lock composer.lock poetry.lock uv.lock flake.lock)
