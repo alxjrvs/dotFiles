@@ -263,8 +263,7 @@
       "allowUnixSockets": [
         "/tmp/tsx-*/*.pipe",
         "/private/tmp/tsx-*/*.pipe",
-        "/var/run/com.apple.launchd.*/Listeners",
-        "/private/var/run/com.apple.launchd.*/Listeners"
+        "~/.ssh/agent/signing.sock"
       ],
       "allowLocalBinding": true,
       "allowMachLookup": [
