@@ -241,6 +241,7 @@
   "outputStyle": "Concise",
   "sandbox": {
     "enabled": true,
+    "allowUnsandboxedCommands": false,
     "autoAllowBashIfSandboxed": true,
     "network": {
       "allowedDomains": [
