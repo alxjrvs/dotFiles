@@ -238,7 +238,9 @@
         "stackoverflow.com"
       ],
       "allowUnixSockets": [
-        "~/Library/Application Support/waveterm/wave.sock"
+        "~/Library/Application Support/waveterm/wave.sock",
+        "/tmp/tsx-*/*.pipe",
+        "/private/tmp/tsx-*/*.pipe"
       ],
       "allowLocalBinding": true,
       "allowMachLookup": [
@@ -273,6 +275,8 @@
         "~/.cache",
         "/tmp/claude",
         "/private/tmp/claude",
+        "/tmp/tsx-*",
+        "/private/tmp/tsx-*",
         "/opt/homebrew",
         "~/Library/Caches/Homebrew",
         "~/Library/Logs/Homebrew",
