@@ -95,8 +95,9 @@ Each entry is symlinked individually into `~/.claude/` by `dot sync` (claude tag
 | PostToolUse (Edit\|Write) | `hooks/format-on-save` | formatter |
 | PostToolUse (Bash) | `hooks/trim-bash-output` | output spill |
 | UserPromptSubmit | `hooks/user-prompt-submit` | git cache pre-warm |
-| SessionStart | `hooks/session-start` | session banner title (`<repo>:<branch>`) |
 | Stop | `hooks/stop` | session JSONL journal |
+| PreCompact (—) | `hooks/precompact` | snapshot |
+| SubagentStop (—) | `hooks/subagent-stop` | ledger |
 
 ### Tests
 

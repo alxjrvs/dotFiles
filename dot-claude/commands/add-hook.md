@@ -10,7 +10,7 @@ Scaffold a new Claude Code hook handler as a **standalone bash script** in `hook
 ## Arguments
 
 - `<event-name>` — kebab-case slug for the new arm, e.g. `pr-link-injector`. Becomes the argument to `dot hook <event-name>`.
-- `<claude-event>` — one of: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `SessionStart`, `Stop`, `CwdChanged`, `PreCompact`, `PermissionDenied`.
+- `<claude-event>` — one of: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `Notification`, `Stop`, `SubagentStop`, `PreCompact`, `SessionStart`, `SessionEnd`.
 - `[matcher]` — optional, e.g. `Bash` or `Edit|Write` for PreToolUse/PostToolUse. Empty for the others.
 
 If any are missing, ask before scaffolding.
