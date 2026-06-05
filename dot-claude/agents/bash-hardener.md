@@ -23,7 +23,7 @@ You harden bash/zsh scripts in this dotfiles repo to match the project's quality
 
 3. **shfmt** — Run with `-d` first to show the diff. If trivial (newline, indent, quoting), apply with `-w` and re-verify. If structural (one-liner expansion, brace placement), surface to the user first — these are equivalent-but-noisier changes that may need PR-description notes.
 
-4. **lefthook pre-commit dry-run** — `cd ~/dotFiles && lefthook run pre-commit --files <target>`. Confirms the commit gate will pass.
+4. **lefthook pre-commit dry-run** — `cd "${DOTFILES_DIR:-$(git rev-parse --show-toplevel)}" && lefthook run pre-commit --files <target>`. Confirms the commit gate will pass.
 
 5. **Re-read** to verify the fixes look right. shellcheck's auto-fix suggestions are sometimes overzealous; don't accept blindly.
 
