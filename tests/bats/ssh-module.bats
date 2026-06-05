@@ -108,3 +108,24 @@ SHIM
   [ ! -e "$HOME/.ssh/agent/signing.sock" ]   # stale file removed
   grep -q -- "-a $HOME/.ssh/agent/signing.sock" "$SHIM_LOG"
 }
+
+@test "ensure_agent: healthy agent with key loaded is a no-op" {
+  mkdir -p "$HOME/.ssh/agent" "$TDIR/bin"
+  ssh-keygen -q -t ed25519 -N "" -f "$HOME/.ssh/id_ed25519"
+  touch "$HOME/.ssh/agent/signing.sock"
+  fp=$(ssh-keygen -lf "$HOME/.ssh/id_ed25519.pub" | awk '{print $2}')
+  cat > "$TDIR/bin/ssh-add" <<SHIM
+#!/bin/bash
+echo "ssh-add \$*" >> "\$SHIM_LOG"; echo "256 $fp comment (ED25519)"; exit 0
+SHIM
+  cat > "$TDIR/bin/ssh-agent" <<'SHIM'
+#!/bin/bash
+echo "ssh-agent $*" >> "$SHIM_LOG"; exit 0
+SHIM
+  chmod +x "$TDIR/bin/ssh-add" "$TDIR/bin/ssh-agent"
+  export SHIM_LOG="$TDIR/shim.log" PATH="$TDIR/bin:$PATH"
+  run _ssh_ensure_agent
+  [ "$status" -eq 0 ]
+  [ -e "$HOME/.ssh/agent/signing.sock" ]
+  ! grep -q "ssh-agent" "$SHIM_LOG"
+}
