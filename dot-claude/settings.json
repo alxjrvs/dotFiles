@@ -5,13 +5,13 @@
     "EDITOR": "hx",
     "ENABLE_PROMPT_CACHING_1H": "1",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80",
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1"
   },
   "permissions": {
     "allow": [
       "Bash(git *)",
       "Bash(gh *)",
-      "Bash(git push --force-with-lease*)",
       "Bash(gitleaks *)",
       "WebSearch",
       "Bash(cargo *)",
@@ -35,8 +35,6 @@
       "Bash(git clean *)",
       "Bash(git rebase -i*)",
       "Bash(git commit --amend*)",
-      "Bash(git commit *--no-verify*)",
-      "Bash(git push *--no-verify*)",
       "Bash(git *--no-verify*)",
       "Bash(git *--no-gpg-sign*)",
       "Bash(git -c *)",
@@ -63,7 +61,25 @@
       "Bash(gh repo delete*)",
       "Bash(gh release delete*)",
       "Bash(gh ssh-key add*)",
-      "Bash(gh gpg-key add*)"
+      "Bash(gh gpg-key add*)",
+      "Read(~/.aws/**)",
+      "Read(~/.gnupg/**)",
+      "Read(~/.netrc)",
+      "Read(~/.config/op/**)",
+      "Read(~/.ssh/id_*)",
+      "Read(**/.envrc)",
+      "Read(~/Library/Group Containers/2BUA8C4S2C.com.1password/**)",
+      "Read(~/.config/gh/hosts.yml)",
+      "Read(~/.kube/**)",
+      "Read(~/.npmrc)",
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.production)",
+      "Read(**/.env.staging)",
+      "Read(**/.env.test)",
+      "Read(**/.env.development)",
+      "Edit(~/.claude/settings.json)",
+      "Edit(~/**/.git/config)"
     ],
     "ask": [
       "Bash(git restore*)",
@@ -97,7 +113,7 @@
         ]
       },
       {
-        "matcher": "mcp__.*|WebFetch",
+        "matcher": "mcp__.*",
         "hooks": [
           {
             "type": "command",
@@ -241,6 +257,7 @@
   "outputStyle": "Concise",
   "sandbox": {
     "enabled": true,
+    "failIfUnavailable": true,
     "allowUnsandboxedCommands": false,
     "autoAllowBashIfSandboxed": true,
     "network": {
@@ -262,8 +279,6 @@
         "127.0.0.1"
       ],
       "allowUnixSockets": [
-        "/tmp/tsx-*/*.pipe",
-        "/private/tmp/tsx-*/*.pipe",
         "~/.ssh/agent/signing.sock"
       ],
       "allowLocalBinding": true,
@@ -272,9 +287,7 @@
         "com.apple.securityd.systemkeychain",
         "com.apple.security.KeychainStasher",
         "com.apple.security.XPCKeychainSandboxCheck",
-        "com.apple.trustd.agent",
-        "com.apple.pboard",
-        "com.apple.pasteboard.*"
+        "com.apple.trustd.agent"
       ]
     },
     "filesystem": {
@@ -285,12 +298,9 @@
         "~/**/.claude/commands/**",
         "~/.claude.json",
         "~/.config/.wrangler",
-        "~/.config/gh",
         "/dev/ptmx",
         "/dev/ttys",
         "~/**/.git/**",
-        "~/**/.git/config",
-        "~/**/.git/config.lock",
         "~/.gitconfig",
         "~/.npm",
         "~/.bun/install/cache",
@@ -320,8 +330,17 @@
         "~/.gnupg",
         "~/.netrc",
         "~/.config/op",
+        "~/.config/gh/hosts.yml",
+        "~/.kube",
+        "~/.npmrc",
         "~/.ssh/id_*",
         "**/.envrc",
+        "**/.env",
+        "**/.env.local",
+        "**/.env.production",
+        "**/.env.staging",
+        "**/.env.test",
+        "**/.env.development",
         "~/Library/Group Containers/2BUA8C4S2C.com.1password"
       ],
       "allowRead": [
@@ -339,7 +358,8 @@
       "bun",
       "mise",
       "gitleaks",
-      "dot"
+      "dot",
+      "pbcopy"
     ]
   },
   "feedbackSurveyRate": 0,
