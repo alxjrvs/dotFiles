@@ -79,6 +79,9 @@ _ssh_ensure_gitconfig_local() {
   fi
   git config --file "$cfg" commit.gpgSign true
   git config --file "$cfg" tag.gpgSign true
+  # Absolute path (machine-local file knows $HOME); pins the agent socket
+  # so signing works in sessions that didn't source .zprofile.
+  git config --file "$cfg" gpg.ssh.program "${HOME}/.local/bin/git-ssh-sign"
   [[ -f "$pub" ]] || return 0
   local want current
   want="key::$(cat "$pub")"

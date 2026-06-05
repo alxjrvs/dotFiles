@@ -61,6 +61,7 @@ teardown() { rm -rf "$TDIR"; }
   [ "$status" -eq 0 ]
   [ "$(git config --file "$HOME/.gitconfig.local" commit.gpgSign)" = "true" ]
   [ "$(git config --file "$HOME/.gitconfig.local" tag.gpgSign)" = "true" ]
+  [ "$(git config --file "$HOME/.gitconfig.local" gpg.ssh.program)" = "$HOME/.local/bin/git-ssh-sign" ]
   [ "$(git config --file "$HOME/.gitconfig.local" user.signingkey)" = "key::ssh-ed25519 AAAATESTKEY comment" ]
 }
 

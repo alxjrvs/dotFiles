@@ -71,6 +71,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `gh/config.yml` | `~/.config/gh/config.yml` |
 | `ssh/config` | `~/.ssh/config` (mode 600) |
 | `ssh/1password-agent.toml` | `~/.config/1Password/ssh/agent.toml` |
+| `ssh/git-ssh-sign` | `~/.local/bin/git-ssh-sign` (gpg.ssh.program wrapper) |
 | `git-template/hooks/pre-commit` | `~/.config/git/template/hooks/pre-commit` (referenced by `core.hooksPath`) |
 | `dot` | `~/.local/bin/dot` |
 | `dot-claude/{CLAUDE.md, settings.json, agents, commands}` | `~/.claude/` (individually) |
