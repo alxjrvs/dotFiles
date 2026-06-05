@@ -1,87 +1,9 @@
 #!/usr/bin/env bash
 # install/40-symlinks.sh — full symlink mapping table.
-# Ports sync.rs: step_symlinks (all sections).
 # Tags: symlinks git shell mise sheldon ghostty bat atuin lazygit zsh
 #       git-template gh claude ssh helix karabiner
-# Sourced by sync.
-
-# ── Self-contained helpers ────────────────────────────────────────────────────
-if [[ -z "${__DOT_SYNC_SOURCED:-}" ]]; then
-  os_kind() {
-    case "$(uname -s)" in
-      Darwin) printf 'darwin\n' ;;
-      Linux) printf 'linux\n' ;;
-      *) printf 'unknown\n' ;;
-    esac
-  }
-  host_id() {
-    local forced="${DOTFILES_HOST:-}"
-    if [[ -n "$forced" ]]; then
-      case "$(printf '%s' "$forced" | tr '[:upper:]' '[:lower:]')" in
-        air)
-          printf 'air\n'
-          return 0
-          ;;
-        pro)
-          printf 'pro\n'
-          return 0
-          ;;
-      esac
-    fi
-    local hostname=""
-    if command -v scutil > /dev/null 2>&1; then
-      hostname=$(scutil --get LocalHostName 2> /dev/null || true)
-    fi
-    local lower
-    lower=$(printf '%s' "$hostname" | tr '[:upper:]' '[:lower:]')
-    if [[ "$lower" == *air* ]]; then
-      printf 'air\n'
-    elif [[ "$lower" == *pro* ]]; then
-      printf 'pro\n'
-    else
-      printf 'unknown\n'
-    fi
-  }
-  # link SRC DST: idempotent symlink with LINK_MODE conflict handling.
-  link() {
-    local src="$1" dst="$2"
-    local label="${dst#"${HOME}"/}"
-    if [[ -L "$dst" ]]; then
-      local target
-      target=$(readlink "$dst" 2> /dev/null || true)
-      if [[ "$target" == "$src" ]]; then
-        printf '\033[2m  - %s already linked\033[0m\n' "$label"
-        return 0
-      fi
-    fi
-    if [[ ! -e "$dst" && ! -L "$dst" ]]; then
-      mkdir -p "$(dirname "$dst")"
-      ln -s "$src" "$dst"
-      printf '\033[0;33m  \xe2\x86\x92 %s linked\033[0m\n' "$label"
-      return 0
-    fi
-    printf '\033[0;31m  \xe2\x9c\x97 %s: %s exists but is not our symlink\033[0m\n' "$label" "$dst" >&2
-    local choice
-    case "${LINK_MODE:-interactive}" in
-      overwrite) choice="o" ;;
-      skip) choice="s" ;;
-      *)
-        printf '       Overwrite with symlink to %s? [o]verwrite / [s]kip: ' "$src"
-        read -r choice || choice="s"
-        ;;
-    esac
-    case "$(printf '%s' "$choice" | tr '[:upper:]' '[:lower:]')" in
-      o | overwrite)
-        mv "$dst" "${dst}.bak"
-        ln -s "$src" "$dst"
-        printf '\033[0;33m  \xe2\x86\x92 %s overwritten (backup at %s.bak)\033[0m\n' "$label" "$dst"
-        ;;
-      *)
-        printf '\033[0;32m  \xe2\x9c\x93 %s skipped\033[0m\n' "$label"
-        ;;
-    esac
-  }
-fi
+# Sourced by sync; not standalone — helpers (os_kind, host_id, link) come from
+# sync, which exports them before sourcing this module.
 
 _symlinks_tags() {
   printf 'symlinks\ngit\nshell\nmise\nsheldon\nghostty\nbat\natuin\nlazygit\nzsh\ngit-template\ngh\nclaude\nssh\nhelix\nkarabiner\n'

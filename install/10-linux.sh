@@ -1,19 +1,8 @@
 #!/usr/bin/env bash
 # install/10-linux.sh — apt packages + zsh default shell (Linux only).
-# Ports sync.rs: step_linux.
 # Tags: linux
-# Sourced by sync.
-
-# ── Self-contained helpers ────────────────────────────────────────────────────
-if [[ -z "${__DOT_SYNC_SOURCED:-}" ]]; then
-  os_kind() {
-    case "$(uname -s)" in
-      Darwin) printf 'darwin\n' ;;
-      Linux) printf 'linux\n' ;;
-      *) printf 'unknown\n' ;;
-    esac
-  }
-fi
+# Sourced by sync; not standalone — helpers (os_kind) come from sync, which
+# exports them before sourcing this module.
 
 _linux_tags() { printf 'linux\n'; }
 

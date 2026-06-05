@@ -54,6 +54,7 @@ bats = "latest"           # Bash Automated Testing System — unit tests for she
 # rust-analyzer ships with the `rust` toolchain above; the rest are below.
 "npm:bash-language-server" = "latest"
 "npm:typescript-language-server" = "latest"
+"npm:prettier" = "latest"                 # JS/TS/JSX/TSX formatter (helix/languages.toml format-on-save)
 "aqua:artempyanykh/marksman" = "latest"   # markdown LSP
 taplo = "latest"                          # TOML LSP + formatter (`taplo lsp stdio`); registry alias → aqua:tamasfe/taplo (no -cli suffix)
 

@@ -76,7 +76,7 @@ The wired Claude Code hook events route through `dot hook <event>`:
 
 ## Tests
 
-Shell unit tests run under [`bats`](https://github.com/bats-core/bats-core) (a managed mise tool) in `tests/bats/`. Golden fixtures in `tests/golden/` hold byte-exact reference output (regenerable snapshots of the current shell scripts) for `prompt/prompt-render`, the statusline, and the subagent statusline. Re-baseline after an intentional rendering change with `tests/verify-golden.sh --update` / `tests/verify-statusline.sh --update`, then commit the fixture diff. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` pre-commit and `bats` + `dot doctor` pre-push.
+Shell unit tests run under [`bats`](https://github.com/bats-core/bats-core) (a managed mise tool) in `tests/bats/`. Golden fixtures in `tests/golden/` hold byte-exact reference output (regenerable snapshots of the current shell scripts) for `prompt/prompt-render`, the statusline, and the subagent statusline. Re-baseline after an intentional rendering change with `tests/verify-golden.sh --update` / `tests/verify-statusline.sh --update`, then commit the fixture diff. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` pre-commit and `bats` + `dot doctor` (skip-external) pre-push. CI (`.github/workflows/test.yml`, macOS) mirrors the lint + bats checks on push to `main` and every PR — it skips `dot doctor` and the golden verifiers, which depend on a fully provisioned machine.
 
 ## Git signing
 
@@ -92,7 +92,7 @@ To disable signing on a given machine, edit `~/.gitconfig.local`.
 
 ## lefthook (this repo only)
 
-`lefthook.yml` adds a pre-commit gate on staged shell files (`shellcheck` + `shfmt -i 2 -ci -sr`) plus a pre-push gate (`bats` + `dot doctor`). `dot sync` runs `lefthook install` automatically.
+`lefthook.yml` adds a pre-commit gate on staged shell files (`shellcheck` + `shfmt -i 2 -ci -sr` + gitleaks + `settings.json` validity) plus a pre-push gate (`bats tests/bats/` + `dot doctor` with `DOTFILES_DOCTOR_SKIP_EXTERNAL=1`). `dot sync` runs `lefthook install` automatically. The same lint + bats checks also run in CI (`.github/workflows/test.yml`).
 
 ## difftastic
 

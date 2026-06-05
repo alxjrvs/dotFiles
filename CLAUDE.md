@@ -44,7 +44,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `dot subagent-statusline` | `share/claude-statusline/subagent-statusline.sh` | Subagent task statusline. |
 | `dot hook <event>` | `hooks/<event>` | Dispatch a Claude Code hook event (event name maps 1:1 to a script in `hooks/`). |
 
-`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → legacy `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. Every other script is a plain script you can run directly (`./prompt/git-data`) for development.
+`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → legacy `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`, `render`, `prompt/git-data`, `prompt/prompt-render`, `share/claude-statusline/*`) are standalone — run them directly (`./prompt/git-data`) for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` defines and exports the shared helpers (`os_kind`, `host_id`, `link`, …) before sourcing each module, so the modules carry no inlined helpers of their own. The sole exception is `install/95-prune.sh`, which keeps its own guard block + helpers because it also runs standalone (`./install/95-prune.sh` / `dot prune`).
 
 ### sync / install modules
 
@@ -101,7 +101,7 @@ Each entry is symlinked individually into `~/.claude/` by `dot sync` (claude tag
 
 ### Tests
 
-Shell unit tests run under `bats` (a managed mise tool) in `tests/bats/`. `tests/golden/` holds byte-exact reference fixtures (regenerable snapshots of the current shell scripts) for `prompt/prompt-render`, the statusline, and the subagent statusline — `tests/verify-golden.sh` / `tests/verify-statusline.sh` diff the current scripts against them. Re-baseline after an intentional rendering change with `tests/verify-golden.sh --update` / `tests/verify-statusline.sh --update`, then commit the fixture diff. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` pre-commit and `bats` + `dot doctor` pre-push.
+Shell unit tests run under `bats` (a managed mise tool) in `tests/bats/`. `tests/golden/` holds byte-exact reference fixtures (regenerable snapshots of the current shell scripts) for `prompt/prompt-render`, the statusline, and the subagent statusline — `tests/verify-golden.sh` / `tests/verify-statusline.sh` diff the current scripts against them. Re-baseline after an intentional rendering change with `tests/verify-golden.sh --update` / `tests/verify-statusline.sh --update`, then commit the fixture diff. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` pre-commit and `bats tests/bats/` + `dot doctor` (skip-external) pre-push. CI (`.github/workflows/test.yml`, macOS) runs the lint + bats checks on push to `main` and every PR; it does NOT run `dot doctor` or the golden verifiers (machine-state dependent).
 
 ## Packaging policy: Lean A (brew = casks, mise = dev CLIs)
 

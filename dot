@@ -2,7 +2,7 @@
 # dot — thin dispatcher; the single dotfiles command on PATH.
 #
 # Resolves DOTFILES_DIR once, then execs the matching topic script, passing
-# remaining args through. Mirrors the former dotctl subcommand surface.
+# remaining args through.
 set -euo pipefail
 
 # ── Resolve DOTFILES_DIR: env → dir of this script's resolved target → ~/dotFiles.

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# prompt-render — bash port of dotctl/src/prompt.rs.
+# prompt-render — read the git-data cache and emit zsh PROMPT syntax.
 #
-# Reads the git-data cache (sourced via shared/git-cache.sh) and emits a
+# Reads the git-data cache (located by hashing the repo toplevel) and emits a
 # powerline zsh PROMPT string with %{...%} escapes so zsh's width calculator
-# ignores the escape bytes. Pure string assembly — makes zero subprocess calls
-# beyond the single `git rev-parse` inside load_git_cache (which the hot-path
-# zsh integration normally skips by passing the toplevel explicitly).
+# ignores the escape bytes. Pure string assembly — makes zero subprocess calls:
+# the cache lookup walks PWD upward for a .git entry in-process, and every
+# fg/bg/osc8 escape is appended to OUT directly rather than via $(...).
 #
 # Layout (Nord palette): opening wedge → repo/cwd cell → optional PR cell →
 # branch pill → optional worktree cell → status pips → closing arrow.
@@ -17,9 +17,11 @@ set -euo pipefail
 
 # ── Inlined cache-path + cache-load helpers (self-contained) ──
 #
-# Mirrors git_data.rs::cache_path + load_cache: hash the repo toplevel (or cwd),
-# locate $XDG_CACHE_HOME/git-data/<hash>.sh, and source it to populate GIT_*.
-# The hash function matches prompt/git-data so they agree on the cache file.
+# Hash the repo toplevel (or cwd), locate $XDG_CACHE_HOME/git-data/<hash>.sh,
+# and source it to populate GIT_*. The hash function matches prompt/git-data so
+# they agree on the cache file. The toplevel is found by walking PWD upward for
+# a .git entry in-process (no `git` subprocess), matching the key git-data uses
+# (`git rev-parse --show-toplevel`) for both plain checkouts and worktrees.
 
 xdg_cache_home() {
   if [[ -n "${XDG_CACHE_HOME:-}" ]]; then
@@ -50,12 +52,31 @@ git_cache_path() {
   printf '%s/git-data/%s.sh' "$(xdg_cache_home)" "$short"
 }
 
+# find_toplevel — walk PWD upward until a directory contains a .git entry (dir
+# for a plain checkout, file for a linked worktree), printing that directory.
+# Prints nothing when no .git is found (outside a repo). Pure bash, no fork —
+# reproduces the `git rev-parse --show-toplevel` value git-data keys the cache
+# on for the common cases the prompt cares about.
+find_toplevel() {
+  local dir="${PWD:-}"
+  [[ -n "$dir" ]] || dir="$(pwd)"
+  while [[ -n "$dir" && "$dir" != "/" ]]; do
+    if [[ -e "$dir/.git" ]]; then
+      printf '%s' "$dir"
+      return 0
+    fi
+    dir="${dir%/*}"
+  done
+  [[ -e "/.git" ]] && printf '/'
+  return 0
+}
+
 # load_git_cache — resolve the cache for the repo containing cwd and source it
 # (sets GIT_* vars). Silent no-op when outside a repo or the cache is absent.
-# Mirrors git_data.rs::load_cache: an empty toplevel falls back to cwd.
+# An empty toplevel falls back to cwd inside git_cache_path.
 load_git_cache() {
-  local toplevel=""
-  toplevel="$(git rev-parse --show-toplevel 2> /dev/null || true)"
+  local toplevel
+  toplevel="$(find_toplevel)"
   local cache_file
   cache_file="$(git_cache_path "$toplevel")"
   if [[ -f "$cache_file" ]]; then
@@ -74,7 +95,7 @@ ARROW_R=$'\xee\x82\xb0' # U+E0B0 right triangle separator
 WEDGE_O=$'\xee\x82\xba' # U+E0BA opening wedge (concave)
 GH_ICON=$'\xef\x82\x9b' # U+F09B GitHub mark
 
-# ── Nord-derived RGB triples (match prompt.rs) ──────────────────────────────
+# ── Nord-derived RGB triples ────────────────────────────────────────────────
 TERM_BG='46;52;64'         # #2E3440 — Nord 0 terminal bg
 SS1='216;222;233'          # #D8DEE9 — Snow Storm 1
 FG_LIGHT='236;239;244'     # #ECEFF4 — Nord 6
@@ -103,11 +124,14 @@ UP_ARROW=$'\xe2\x86\x91'   # U+2191 up arrow (ahead)
 DOWN_ARROW=$'\xe2\x86\x93' # U+2193 down arrow (behind)
 CHECK=$'\xe2\x9c\x93'      # U+2713 check (clean)
 
-# fg/bg emit zsh-wrapped 24-bit SGR escapes given a "R;G;B" triple.
-fg() { printf '%%{\033[38;2;%sm%%}' "$1"; }
-bg() { printf '%%{\033[48;2;%sm%%}' "$1"; }
-osc8_open() { printf '%%{\033]8;;%s\a%%}' "$1"; }
-osc8_close() { printf '%%{\033]8;;\a%%}'; }
+# fg/bg/osc8 append zsh-wrapped escapes directly onto OUT (no $(...) fork on the
+# render path). fg/bg take a "R;G;B" triple; osc8_open takes a URL.
+ESC=$'\033'
+ESC_BEL=$'\a'
+fg() { OUT+="%{${ESC}[38;2;$1m%}"; }
+bg() { OUT+="%{${ESC}[48;2;$1m%}"; }
+osc8_open() { OUT+="%{${ESC}]8;;$1${ESC_BEL}%}"; }
+osc8_close() { OUT+="%{${ESC}]8;;${ESC_BEL}%}"; }
 
 # Cache value accessor (empty when unset).
 gv() { printf '%s' "${!1:-}"; }
@@ -152,49 +176,47 @@ render_repo_dir() {
   esac
 
   # Opening wedge from terminal bg into SS1 cell.
-  OUT+="$(bg "$TERM_BG")"
-  OUT+="$(fg "$SS1")"
+  bg "$TERM_BG"
+  fg "$SS1"
   OUT+="$WEDGE_O"
 
   # SS1 cell with dark text.
-  OUT+="$(bg "$SS1")"
-  OUT+="$(fg "$FG_DARK")"
+  bg "$SS1"
+  fg "$FG_DARK"
 
   if [[ -n "$repo_name" ]]; then
     OUT+=" "
     OUT+="$UL"
-    OUT+="$(osc8_open "$repo_https")"
+    osc8_open "$repo_https"
     OUT+="$repo_name"
-    OUT+="$(osc8_close)"
+    osc8_close
     OUT+="$NUL"
     OUT+=" "
 
     # SS1 → PR cell arrow.
-    OUT+="$(bg "$pr_bg")"
-    OUT+="$(fg "$SS1")"
+    bg "$pr_bg"
+    fg "$SS1"
     OUT+="$ARROW_R"
 
     # GH icon, optionally OSC8-linked to PR URL.
-    OUT+="$(fg "$pr_fg")"
+    fg "$pr_fg"
     OUT+=" "
     if [[ -n "$pr_url" ]]; then
-      OUT+="$(osc8_open "$pr_url")"
+      osc8_open "$pr_url"
       OUT+="$GH_ICON"
-      OUT+="$(osc8_close)"
+      osc8_close
     else
       OUT+="$GH_ICON"
     fi
     OUT+=" "
   else
     # Bare CWD fallback: last 2 path components, no link.
-    local display
-    display="$(cwd_display)"
     OUT+=" "
-    OUT+="$display"
+    cwd_display
     OUT+=" "
     if ((is_repo == 0)); then
       OUT+="$RST"
-      OUT+="$(fg "$SS1")"
+      fg "$SS1"
       OUT+="$ARROW_R"
       OUT+="$RST"
     fi
@@ -221,10 +243,10 @@ render_git_seg() {
     from_color="$SS1"
   fi
 
-  OUT+="$(bg "$SS1")"
-  OUT+="$(fg "$from_color")"
+  bg "$SS1"
+  fg "$from_color"
   OUT+="$ARROW_R"
-  OUT+="$(fg "$FG_DARK")"
+  fg "$FG_DARK"
   OUT+=" "
   OUT+="$branch"
   OUT+=" "
@@ -240,10 +262,10 @@ render_git_seg() {
     wt_label=""
   fi
   if [[ -n "$wt_label" ]]; then
-    OUT+="$(bg "$NOVA_WORKTREE")"
-    OUT+="$(fg "$prev")"
+    bg "$NOVA_WORKTREE"
+    fg "$prev"
     OUT+="$ARROW_R"
-    OUT+="$(fg "$NOVA_BG")"
+    fg "$NOVA_BG"
     OUT+=" "
     OUT+="$wt_label"
     OUT+=" "
@@ -294,7 +316,7 @@ render_git_seg() {
 
   # Closing arrow.
   OUT+="$RST"
-  OUT+="$(fg "$prev")"
+  fg "$prev"
   OUT+="$ARROW_R"
   OUT+="$RST"
 }
@@ -302,17 +324,17 @@ render_git_seg() {
 # push_pip COLOR LABEL — emits one status pip cell, advancing $prev (caller var).
 push_pip() {
   local color="$1" label="$2"
-  OUT+="$(bg "$color")"
-  OUT+="$(fg "$prev")"
+  bg "$color"
+  fg "$prev"
   OUT+="$ARROW_R"
-  OUT+="$(fg "$NOVA_BG")"
+  fg "$NOVA_BG"
   OUT+=" "
   OUT+="$label"
   OUT+=" "
   prev="$color"
 }
 
-# Last 2 path components of PWD with ~ for $HOME.
+# Append the last 2 path components of PWD (with ~ for $HOME) onto OUT.
 cwd_display() {
   local pwd_v="${PWD:-.}"
   local home="${HOME:-}"
@@ -339,14 +361,14 @@ cwd_display() {
 
   if [[ "$shown" == "~"* ]]; then
     if ((n >= 3)); then
-      printf '%s/%s' "${parts[n - 2]}" "${parts[n - 1]}"
+      OUT+="${parts[n - 2]}/${parts[n - 1]}"
     else
-      printf '%s' "$shown"
+      OUT+="$shown"
     fi
   elif ((n >= 2)); then
-    printf '%s/%s' "${parts[n - 2]}" "${parts[n - 1]}"
+    OUT+="${parts[n - 2]}/${parts[n - 1]}"
   else
-    printf '%s' "$shown"
+    OUT+="$shown"
   fi
 }
 
