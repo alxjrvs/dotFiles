@@ -23,7 +23,10 @@
 [user]
 	name = alxjrvs
 	email = alxjrvs@gmail.com
-	signingkey = ~/.ssh/id_ed25519.pub
+	# Literal pubkey (not a file path) → git signs via ssh-agent (-U), so the
+	# private key file is never read at commit time. The agent is loaded at
+	# login by .zprofile; the sandbox only needs the agent socket allowed.
+	signingkey = key::ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOPKPdTHi3qsWUMivyLIXbsQ22P8F1/gMGPHuLgFUoDP jarvis@Alexs-MacBook-Air.local
 [credential]
 	helper = osxkeychain
 [core]
