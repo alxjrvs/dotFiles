@@ -350,14 +350,8 @@
     "excludedCommands": [
       "git",
       "gh",
-      "lefthook",
-      "cargo",
       "brew",
       "open",
-      "npm",
-      "bun",
-      "mise",
-      "gitleaks",
       "dot",
       "pbcopy"
     ]
