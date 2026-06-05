@@ -20,6 +20,7 @@
       "Skill(superpowers:*)",
       "Skill(implement:*)",
       "Bash(node *)",
+      "Bash(npm *)",
       "Bash(bun *)",
       "Bash(bunx *)",
       "Bash(mise *)"
@@ -235,11 +236,15 @@
         "bun.sh",
         "nodejs.org",
         "typescriptlang.org",
-        "stackoverflow.com"
+        "stackoverflow.com",
+        "localhost",
+        "127.0.0.1"
       ],
       "allowUnixSockets": [
         "/tmp/tsx-*/*.pipe",
-        "/private/tmp/tsx-*/*.pipe"
+        "/private/tmp/tsx-*/*.pipe",
+        "/var/run/com.apple.launchd.*/Listeners",
+        "/private/var/run/com.apple.launchd.*/Listeners"
       ],
       "allowLocalBinding": true,
       "allowMachLookup": [
@@ -280,6 +285,9 @@
         "~/Library/Caches/Homebrew",
         "~/Library/Logs/Homebrew",
         "~/Library/Caches/mise",
+        "~/Library/Caches/ms-playwright",
+        "~/Code",
+        "~/**/node_modules",
         "~/**/.git/HEAD",
         "~/**/.git/index",
         "~/**/.git/index.lock",
@@ -309,6 +317,7 @@
       "brew",
       "open",
       "node",
+      "npm",
       "bun",
       "bunx",
       "mise",
