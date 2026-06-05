@@ -85,10 +85,11 @@ if [[ "$TOTAL_LINES" -gt $((HEAD_LINES + TAIL_LINES)) ]]; then
 ... [trim-bash-output: elided ${ELIDED} lines / ~${KB}KB to save context${SPILL_HINT}] ...
 ${TAIL_PART}"
 else
-  # Char-based trim (single huge line fallback)
-  HEAD_PART=$(printf '%s' "$STDOUT" | cut -c "1-${HEAD_CHARS}")
-  # For tail: take the last TAIL_CHARS characters
-  TAIL_PART=$(printf '%s' "$STDOUT" | rev | cut -c "1-${TAIL_CHARS}" | rev)
+  # Byte-based trim (single huge line fallback). Use head -c / tail -c so the
+  # split is locale-independent and never mangles multibyte/invalid UTF-8 the
+  # way a char-oriented `rev | cut | rev` pipeline would.
+  HEAD_PART=$(printf '%s' "$STDOUT" | head -c "$HEAD_CHARS")
+  TAIL_PART=$(printf '%s' "$STDOUT" | tail -c "$TAIL_CHARS")
   ELIDED=$((STDOUT_LEN - HEAD_CHARS - TAIL_CHARS))
   if [[ "$ELIDED" -lt 0 ]]; then
     ELIDED=0
