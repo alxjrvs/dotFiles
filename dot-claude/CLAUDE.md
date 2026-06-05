@@ -21,9 +21,15 @@
 ## Git Workflow
 
 - Default branch `main`; rebase, squash, linear history.
-- Discouraged git flags (`--no-verify`, `--no-gpg-sign`, `git push --force` without `--force-with-lease`, force branch deletion): the `permissions.deny` list in `dot-claude/settings.json` is a best-effort backstop — it matches on prefix globs and is defeatable by wrappers (`git -c core.hooksPath=/dev/null …`, `sh -c …`), so treat it as discouragement, not a guarantee. The actually-enforced layer is the sandbox (filesystem `allowWrite` + network allowlists). Don't reach for these flags.
+- Discouraged git flags (`--no-verify`, `--no-gpg-sign`, `git push --force` without `--force-with-lease`, force branch deletion): the `permissions.deny` list in `dot-claude/settings.json` is a best-effort backstop — it matches on prefix globs and is defeatable by wrappers (`git -c core.hooksPath=/dev/null …`, `sh -c …`), so treat it as discouragement, not a guarantee. The sandbox (filesystem `allowWrite` + network allowlists) is the enforced layer for sandboxed commands — but note git/gh themselves are in `sandbox.excludedCommands`, so for them the deny rules ARE the only client-side layer; real enforcement is server-side (branch protection, CI gitleaks) plus the PreToolUse hooks. Don't reach for these flags.
 - NEVER delete the base branch of an open PR; this isn't hook-enforced. Run `gh pr list --base <branch>` first.
 - For working-tree cleanup, prefer `git status` over `git clean -fd`; confirm before deleting tracked files.
+
+## Sandbox & Permissions Posture (conscious choices)
+
+- **Auto-approval surface**: `defaultMode:auto` + `autoAllowBashIfSandboxed:true` + `skipAutoPermissionPrompt:true` together mean sandboxed Bash runs without prompts (and would silently override any `ask: Bash(*)` rule). This is deliberate: the sandbox boundary (filesystem/network/socket rules), not per-command prompting, is the control for sandboxed commands.
+- **Bypass mode stays available**: `skipDangerousModePermissionPrompt:true` is set and `disableBypassPermissionsMode` is intentionally NOT set — bypass mode is used deliberately on occasion, operator-initiated only. Accepted exposure: in bypass mode all prompts (including writes to `.git`, `.claude`, `.config/git`) are skipped.
+- **The Read/Edit tools do not route through the sandbox** — that's what the `Read(...)`/`Edit(...)` mirrors in `permissions.deny` are for. Keep them in sync with `sandbox.filesystem.denyRead` when adding credential paths.
 
 ## Investigation Discipline
 
