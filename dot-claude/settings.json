@@ -279,6 +279,7 @@
         "/opt/homebrew",
         "~/Library/Caches/Homebrew",
         "~/Library/Logs/Homebrew",
+        "~/Library/Caches/mise",
         "~/**/.git/HEAD",
         "~/**/.git/index",
         "~/**/.git/index.lock",
