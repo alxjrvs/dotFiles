@@ -9,40 +9,7 @@
 # Emits hookSpecificOutput.sessionTitle if non-empty. Silent on empty.
 #
 # Self-contained: no shared/ sourcing. All helpers defined inline.
-set -euo pipefail
-
-# ---------------------------------------------------------------------------
-# Timing instrumentation
-# ---------------------------------------------------------------------------
-_HOOK_START_MS=0
-if [[ "${DOTFILES_HOOK_TIMING:-}" == "1" ]]; then
-  if command -v gdate > /dev/null 2>&1; then
-    _HOOK_START_MS=$(gdate +%s%3N)
-  elif date +%s%3N > /dev/null 2>&1; then
-    _HOOK_START_MS=$(date +%s%3N)
-  fi
-fi
-
-_log_timing() {
-  local ok="$1"
-  if [[ "${DOTFILES_HOOK_TIMING:-}" != "1" ]]; then
-    return 0
-  fi
-  local end_ms=0
-  if command -v gdate > /dev/null 2>&1; then
-    end_ms=$(gdate +%s%3N)
-  elif date +%s%3N > /dev/null 2>&1; then
-    end_ms=$(date +%s%3N)
-  fi
-  local elapsed=$((end_ms - _HOOK_START_MS))
-  local ts
-  ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || echo "")
-  local state_dir="${HOME}/.claude/state"
-  mkdir -p "$state_dir"
-  printf '{"ts":"%s","event":"session-start","elapsed_ms":%d,"ok":%s}\n' \
-    "$ts" "$elapsed" "$ok" \
-    >> "${state_dir}/hook-timings.jsonl"
-}
+set -uo pipefail
 
 # ---------------------------------------------------------------------------
 # Read stdin JSON
@@ -76,7 +43,6 @@ else
 fi
 
 if [[ -z "$TITLE" ]]; then
-  _log_timing "true"
   exit 0
 fi
 
@@ -87,5 +53,4 @@ jq -n \
   --arg title "$TITLE" \
   '{hookSpecificOutput:{hookEventName:"SessionStart",sessionTitle:$title}}'
 
-_log_timing "true"
 exit 0

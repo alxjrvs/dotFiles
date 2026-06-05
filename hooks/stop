@@ -6,40 +6,7 @@
 # Always exits 0 — failures are best-effort (don't break session teardown).
 #
 # Self-contained: no shared/ sourcing. All helpers defined inline.
-set -euo pipefail
-
-# ---------------------------------------------------------------------------
-# Timing instrumentation
-# ---------------------------------------------------------------------------
-_HOOK_START_MS=0
-if [[ "${DOTFILES_HOOK_TIMING:-}" == "1" ]]; then
-  if command -v gdate > /dev/null 2>&1; then
-    _HOOK_START_MS=$(gdate +%s%3N)
-  elif date +%s%3N > /dev/null 2>&1; then
-    _HOOK_START_MS=$(date +%s%3N)
-  fi
-fi
-
-_log_timing() {
-  local ok="$1"
-  if [[ "${DOTFILES_HOOK_TIMING:-}" != "1" ]]; then
-    return 0
-  fi
-  local end_ms=0
-  if command -v gdate > /dev/null 2>&1; then
-    end_ms=$(gdate +%s%3N)
-  elif date +%s%3N > /dev/null 2>&1; then
-    end_ms=$(date +%s%3N)
-  fi
-  local elapsed=$((end_ms - _HOOK_START_MS))
-  local ts_str
-  ts_str=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || echo "")
-  local state_dir="${HOME}/.claude/state"
-  mkdir -p "$state_dir"
-  printf '{"ts":"%s","event":"stop","elapsed_ms":%d,"ok":%s}\n' \
-    "$ts_str" "$elapsed" "$ok" \
-    >> "${state_dir}/hook-timings.jsonl"
-}
+set -uo pipefail
 
 # ---------------------------------------------------------------------------
 # Read stdin JSON
@@ -57,13 +24,19 @@ TRANSCRIPT=$(printf '%s' "$INPUT" | jq -r '.transcript_path // ""')
 STATE_DIR="${HOME}/.claude/state"
 mkdir -p "$STATE_DIR"
 
+LEDGER="${STATE_DIR}/sessions.jsonl"
+# Secrets-at-rest: lock the ledger to the owner on first creation.
+if [[ ! -e "$LEDGER" ]]; then
+  : >> "$LEDGER"
+  chmod 600 "$LEDGER" 2> /dev/null || true
+fi
+
 jq -cn \
   --arg ts "$TS" \
   --arg session_id "$SESSION_ID" \
   --arg cwd "$CWD_VAL" \
   --arg transcript_path "$TRANSCRIPT" \
   '{ts:$ts,session_id:$session_id,cwd:$cwd,transcript_path:$transcript_path}' \
-  >> "${STATE_DIR}/sessions.jsonl"
+  >> "$LEDGER"
 
-_log_timing "true"
 exit 0

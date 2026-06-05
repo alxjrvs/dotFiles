@@ -35,6 +35,11 @@
       "Bash(git clean *)",
       "Bash(git rebase -i*)",
       "Bash(git commit --amend*)",
+      "Bash(git commit *--no-verify*)",
+      "Bash(git push *--no-verify*)",
+      "Bash(git *--no-verify*)",
+      "Bash(git *--no-gpg-sign*)",
+      "Bash(git -c *)",
       "Bash(rm -rf /)",
       "Bash(rm -rf /*)",
       "Bash(rm -rf ~)",
@@ -64,6 +69,7 @@
       "Bash(git restore*)",
       "Bash(git push --delete*)",
       "Bash(git push origin :*)",
+      "Bash(git branch -D*)",
       "Bash(gh secret set*)",
       "Bash(gh variable set*)",
       "Bash(gh repo edit*)",
@@ -89,11 +95,11 @@
         ]
       },
       {
-        "matcher": "Bash",
+        "matcher": "mcp__.*|WebFetch",
         "hooks": [
           {
             "type": "command",
-            "command": "dot hook policy-guard",
+            "command": "dot hook mcp-guard",
             "timeout": 5
           }
         ]
@@ -315,15 +321,11 @@
       "cargo",
       "brew",
       "open",
-      "node",
       "npm",
       "bun",
-      "bunx",
       "mise",
       "gitleaks",
-      "dot",
-      "sh",
-      "bash"
+      "dot"
     ]
   },
   "feedbackSurveyRate": 0,

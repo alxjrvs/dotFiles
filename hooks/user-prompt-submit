@@ -11,7 +11,7 @@
 #    git: branch=<name>[, N uncommitted][, N ahead][, N behind][, N CONFLICTS][, PR-checks=<status>]
 #
 # Self-contained: no shared/ sourcing. All helpers defined inline.
-set -euo pipefail
+set -uo pipefail
 
 # ---------------------------------------------------------------------------
 # Inline: git_cache_path <toplevel>
@@ -21,10 +21,8 @@ set -euo pipefail
 #   dir  = ${XDG_CACHE_HOME:-~/.cache}/git-data
 #   file = <dir>/<hash>.sh
 #
-# NOTE: Rust used sha2 crate (SHA-256); shell uses `shasum -a 256` (macOS)
-# or `sha256sum` (Linux). This changes the cache filename relative to the
-# old dotctl binary, but the shell prompt/statusline use the same function
-# so all consumers stay consistent within the shell rewrite.
+# Uses `shasum -a 256` (macOS) or `sha256sum` (Linux). The shell prompt and
+# statusline use the same function so all consumers stay consistent.
 # ---------------------------------------------------------------------------
 git_cache_path() {
   local toplevel="${1:-}"
@@ -49,39 +47,6 @@ git_cache_path() {
   local cache_dir
   cache_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/git-data"
   printf '%s/%s.sh' "$cache_dir" "$hash"
-}
-
-# ---------------------------------------------------------------------------
-# Timing instrumentation
-# ---------------------------------------------------------------------------
-_HOOK_START_MS=0
-if [[ "${DOTFILES_HOOK_TIMING:-}" == "1" ]]; then
-  if command -v gdate > /dev/null 2>&1; then
-    _HOOK_START_MS=$(gdate +%s%3N)
-  elif date +%s%3N > /dev/null 2>&1; then
-    _HOOK_START_MS=$(date +%s%3N)
-  fi
-fi
-
-_log_timing() {
-  local ok="$1"
-  if [[ "${DOTFILES_HOOK_TIMING:-}" != "1" ]]; then
-    return 0
-  fi
-  local end_ms=0
-  if command -v gdate > /dev/null 2>&1; then
-    end_ms=$(gdate +%s%3N)
-  elif date +%s%3N > /dev/null 2>&1; then
-    end_ms=$(date +%s%3N)
-  fi
-  local elapsed=$((end_ms - _HOOK_START_MS))
-  local ts
-  ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || echo "")
-  local state_dir="${HOME}/.claude/state"
-  mkdir -p "$state_dir"
-  printf '{"ts":"%s","event":"user-prompt-submit","elapsed_ms":%d,"ok":%s}\n' \
-    "$ts" "$elapsed" "$ok" \
-    >> "${state_dir}/hook-timings.jsonl"
 }
 
 # ---------------------------------------------------------------------------
@@ -129,7 +94,12 @@ if [[ -n "$CACHE_PATH" ]]; then
       fi
     fi
     if [[ -n "$DOT_CMD" ]]; then
-      "$DOT_CMD" git-data < /dev/null > /dev/null 2>&1 &
+      # Bound the detached refresh so a wedged git-data can't linger.
+      if command -v timeout > /dev/null 2>&1; then
+        timeout 10 "$DOT_CMD" git-data < /dev/null > /dev/null 2>&1 &
+      else
+        "$DOT_CMD" git-data < /dev/null > /dev/null 2>&1 &
+      fi
       disown 2> /dev/null || true
     fi
   fi
@@ -150,15 +120,18 @@ GIT_CONFLICT_COUNT=0
 GIT_PR_STATUS=""
 
 if [[ -n "$CACHE_PATH" ]] && [[ -f "$CACHE_PATH" ]]; then
-  # shellcheck source=/dev/null
-  source "$CACHE_PATH" 2> /dev/null || true
+  # Safe ingest: never `source` the cache (it lives at a predictable
+  # <sha>.sh path an attacker could pre-seed — sourcing is arbitrary code
+  # exec). Read only well-formed GIT_* assignment lines and eval those.
+  while IFS= read -r _l; do
+    eval "$_l"
+  done < <(grep -E '^GIT_[A-Z_]+=' "$CACHE_PATH" 2> /dev/null)
 fi
 
 # ---------------------------------------------------------------------------
 # Guard: not a repo
 # ---------------------------------------------------------------------------
 if [[ "${GIT_IS_REPO:-0}" != "1" ]]; then
-  _log_timing "true"
   exit 0
 fi
 
@@ -188,7 +161,6 @@ if [[ "$IS_DEFAULT" == "1" ]] &&
   [[ "$BEHIND" -eq 0 ]] &&
   [[ "$CONFLICTS" -eq 0 ]] &&
   [[ "$PR_DISPLAY" == "none" ]]; then
-  _log_timing "true"
   exit 0
 fi
 
@@ -205,5 +177,4 @@ PARTS="branch=${BRANCH}"
 # Emit as additionalContext via jq for safe JSON encoding
 jq -n --arg line "git: ${PARTS}" '{"additionalContext": $line}'
 
-_log_timing "true"
 exit 0
