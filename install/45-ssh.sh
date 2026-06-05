@@ -62,8 +62,10 @@ _ssh_ensure_agent() {
   local fp
   fp=$(ssh-keygen -lf "${key}.pub" 2> /dev/null | awk '{print $2}')
   if [[ -n "$fp" ]] && ! SSH_AUTH_SOCK="$sock" ssh-add -l 2> /dev/null | grep -qF "$fp"; then
-    SSH_AUTH_SOCK="$sock" ssh-add -q "$key" 2> /dev/null ||
-      printf '\033[0;33m  \xe2\x86\x92 could not load signing key into agent\033[0m\n'
+    # shellcheck disable=SC1007  # DISPLAY= intentionally clears the var for this command
+    SSH_AUTH_SOCK="$sock" SSH_ASKPASS_REQUIRE=never SSH_ASKPASS=/usr/bin/false DISPLAY= \
+      ssh-add -q "$key" < /dev/null 2> /dev/null ||
+      printf '\033[0;33m  \xe2\x86\x92 could not load signing key into agent (passphrase-protected?)\033[0m\n'
   fi
 }
 
