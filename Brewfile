@@ -41,8 +41,6 @@ cask "discord"
 # Migration: export needed images/volumes from Docker Desktop before switching.
 cask "orbstack"
 
-cask "wave"
-
 # ── Fonts ─────────────────────────────────────────────────────────────
 cask "font-fira-code-nerd-font"
 

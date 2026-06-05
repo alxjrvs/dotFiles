@@ -238,7 +238,6 @@
         "stackoverflow.com"
       ],
       "allowUnixSockets": [
-        "~/Library/Application Support/waveterm/wave.sock",
         "/tmp/tsx-*/*.pipe",
         "/private/tmp/tsx-*/*.pipe"
       ],
@@ -315,8 +314,7 @@
       "gitleaks",
       "dot",
       "sh",
-      "bash",
-      "wsh"
+      "bash"
     ]
   },
   "feedbackSurveyRate": 0,
