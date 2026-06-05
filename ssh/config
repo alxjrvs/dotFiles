@@ -20,7 +20,9 @@ Host *
   ControlMaster auto
   # Sockets live in /tmp (user-private 600) — avoids ~/.ssh/ if its perms ever drift.
   ControlPath /tmp/ssh-cm-%r@%h:%p
-  ControlPersist 10m
+  # 4h: repeated pushes in a work session reuse one authenticated connection,
+  # so the 1Password agent isn't re-consulted.
+  ControlPersist 4h
 
 Host github.com
   User git

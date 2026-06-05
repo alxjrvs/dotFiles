@@ -48,6 +48,9 @@ _symlinks_run() {
     chmod 700 "${HOME}/.ssh"
     link "${df}/ssh/config" "${HOME}/.ssh/config"
     chmod 600 "${HOME}/.ssh/config" 2> /dev/null || true
+    # 1Password SSH agent key-offer config (auth keys live in 1Password).
+    mkdir -p "${HOME}/.config/1Password/ssh"
+    link "${df}/ssh/1password-agent.toml" "${HOME}/.config/1Password/ssh/agent.toml"
   fi
 
   # ── Shell config ──────────────────────────────────────────────────────

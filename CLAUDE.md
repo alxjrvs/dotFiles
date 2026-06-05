@@ -70,6 +70,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `atuin/config.toml` | `~/.config/atuin/config.toml` |
 | `gh/config.yml` | `~/.config/gh/config.yml` |
 | `ssh/config` | `~/.ssh/config` (mode 600) |
+| `ssh/1password-agent.toml` | `~/.config/1Password/ssh/agent.toml` |
 | `git-template/hooks/pre-commit` | `~/.config/git/template/hooks/pre-commit` (referenced by `core.hooksPath`) |
 | `dot` | `~/.local/bin/dot` |
 | `dot-claude/{CLAUDE.md, settings.json, agents, commands}` | `~/.claude/` (individually) |
