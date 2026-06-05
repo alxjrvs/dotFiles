@@ -4,8 +4,8 @@
 # prompt gradient/bar, macOS expected_read normalization, symlink link() modes,
 # trim-bash-output thresholds, cache hash.
 
-ROOT="/Users/jarvis/Code/dotFiles/.claude/worktrees/dedotctl"
-JQDIR="/Users/jarvis/.local/share/mise/installs/jq/1.8.1"
+ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
+JQDIR="$(dirname "$(mise which jq 2> /dev/null || command -v jq)")"
 
 setup() {
   export PATH="$JQDIR:/opt/homebrew/bin:/usr/bin:/bin"

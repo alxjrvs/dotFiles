@@ -16,7 +16,7 @@ if [[ -z "${__DOT_SYNC_SOURCED:-}" ]]; then
   host_id() {
     local forced="${DOTFILES_HOST:-}"
     if [[ -n "$forced" ]]; then
-      case "${forced,,}" in
+      case "$(printf '%s' "$forced" | tr '[:upper:]' '[:lower:]')" in
         air)
           printf 'air\n'
           return 0
@@ -31,7 +31,8 @@ if [[ -z "${__DOT_SYNC_SOURCED:-}" ]]; then
     if command -v scutil > /dev/null 2>&1; then
       hostname=$(scutil --get LocalHostName 2> /dev/null || true)
     fi
-    local lower="${hostname,,}"
+    local lower
+    lower=$(printf '%s' "$hostname" | tr '[:upper:]' '[:lower:]')
     if [[ "$lower" == *air* ]]; then
       printf 'air\n'
     elif [[ "$lower" == *pro* ]]; then

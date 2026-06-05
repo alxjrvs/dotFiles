@@ -52,7 +52,7 @@ _prune_ask_yes() {
   printf '       %s [Y/n]: ' "$question" >&2
   local reply
   read -r reply || reply=""
-  case "${reply,,}" in
+  case "$(printf '%s' "$reply" | tr '[:upper:]' '[:lower:]')" in
     "" | y | yes) return 0 ;;
     *) return 1 ;;
   esac

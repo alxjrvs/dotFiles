@@ -62,7 +62,6 @@ uv = "latest"           # Python project / venv manager
 "cargo:tealdeer" = "latest"  # `tldr` pager; not in mise registry. Aqua dropped binary releases (only completions remain), so we build from crates.io.
 
 # ── Pre-existing entries: Tier 3 escapees from Brewfile (kept) ────────
-supabase = "latest"                    # aqua:supabase/cli — tap formula broke on Tier 3
 carapace = "latest"                    # multi-shell completions (~600 CLIs)
 watchexec = "latest"                   # file-change watcher
 bottom = "latest"                      # top/htop replacement (binary: btm)
