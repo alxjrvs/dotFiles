@@ -48,7 +48,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 
 ### sync / install modules
 
-`sync` sources `install/NN-*.sh` modules in numeric order; each declares its tags and a `run` function, gated by a tag filter (`--only=<tags>`) and an OS guard. Modules: `00-brew 10-linux 20-sheldon 30-mise 40-symlinks 50-ghostty 60-claude 70-gh 80-git-maint 85-lefthook 90-macos 95-prune`. To add a sync section, add an `install/NN-name.sh` module, give it a tag, and `sync` will pick it up. macOS defaults data + `audit` live in `90-macos.sh`.
+`sync` sources `install/NN-*.sh` modules in numeric order; each declares its tags and a `run` function, gated by a tag filter (`--only=<tags>`) and an OS guard. Modules: `00-brew 10-linux 20-sheldon 30-mise 40-symlinks 45-ssh 50-ghostty 60-claude 70-gh 80-git-maint 85-lefthook 90-macos 95-prune`. To add a sync section, add an `install/NN-name.sh` module, give it a tag, and `sync` will pick it up. macOS defaults data + `audit` live in `90-macos.sh`.
 
 ### Symlink Model
 
@@ -205,3 +205,9 @@ Pause and confirm with the user before doing any of these:
 - **settings.json allow + excludedCommands**: when adding a new command to `permissions.allow`, also add it to `sandbox.excludedCommands` — omitting it means the sandbox blocks the command regardless of the allow rule.
 - **`dot sync --only=<tag>` requires the tag to exist**: a module's declared tag and the `--only=` value must agree, or `--only=foo` silently runs nothing.
 - **Statusline is bash-3.2 compatible**: `share/claude-statusline/statusline.sh` targets macOS system bash (3.2) so it's portable as a standalone drop-in (it has its own README + curl install). The installer/prompt/hook scripts do not carry that constraint and use bash-4+ features.
+- **Sandbox `allowUnixSockets` is literal**: Claude Code compiles entries to
+  seatbelt `subpath` rules — globs are matched as literal characters, never
+  expanded. Any socket the sandbox must reach needs a stable literal path
+  (this is why git signing uses a dedicated agent at
+  `~/.ssh/agent/signing.sock`, not Apple's per-boot-random launchd socket).
+  `dot doctor` lints for dead glob entries.
