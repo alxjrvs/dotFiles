@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# hooks/lock-file-guard — PreToolUse: deny edits to dependency lock files.
+# hooks/lock-file-guard — PreToolUse: deny edits to dependency lock files
+# and secret-bearing dotenv files.
 #
 # Reads .tool_input.file_path (or .file_path) from CC JSON on stdin.
 # Emits a deny JSON payload + exits 0 when the basename matches the
-# known lock-file list. Silent (exit 0, no output) otherwise.
+# known lock-file list or is a .env/.env.* file (templates exempt).
+# Silent (exit 0, no output) otherwise.
 #
 # Self-contained: no shared/ sourcing. All helpers defined inline.
 #
@@ -60,5 +62,20 @@ for lock in "${LOCK_FILES[@]}"; do
     exit 0
   fi
 done
+
+# ---------------------------------------------------------------------------
+# Dotenv files (secrets policy: never write plaintext tokens to .env files).
+# Templates are exempt — they hold placeholders, not secrets.
+# ---------------------------------------------------------------------------
+case "$BASENAME" in
+  .env.example | .env.template | .env.sample) ;;
+  .env | .env.*)
+    REASON="Do not write to ${BASENAME} — secrets live in 1Password. Use an op:// reference + op-run, or direnv + 'op read' in .envrc (see CLAUDE.md secrets policy). Templates (.env.example) are allowed."
+    jq -n \
+      --arg reason "$REASON" \
+      '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$reason}}'
+    exit 0
+    ;;
+esac
 
 exit 0
