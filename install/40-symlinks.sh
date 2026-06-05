@@ -51,6 +51,9 @@ _symlinks_run() {
     # 1Password SSH agent key-offer config (auth keys live in 1Password).
     mkdir -p "${HOME}/.config/1Password/ssh"
     link "${df}/ssh/1password-agent.toml" "${HOME}/.config/1Password/ssh/agent.toml"
+    # gpg.ssh.program wrapper — env-independent commit signing.
+    mkdir -p "${HOME}/.local/bin"
+    link "${df}/ssh/git-ssh-sign" "${HOME}/.local/bin/git-ssh-sign"
   fi
 
   # ── Shell config ──────────────────────────────────────────────────────
