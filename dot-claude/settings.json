@@ -286,7 +286,6 @@
         "~/Library/Logs/Homebrew",
         "~/Library/Caches/mise",
         "~/Library/Caches/ms-playwright",
-        "~/Code",
         "~/**/node_modules",
         "~/**/.git/HEAD",
         "~/**/.git/index",
