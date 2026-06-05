@@ -34,35 +34,6 @@ _symlinks_run() {
       rmdir "${HOME}/.config/git/hooks" 2> /dev/null || true
     fi
 
-    # Bootstrap ~/.gitconfig.local if absent.
-    local local_cfg="${HOME}/.gitconfig.local"
-    if [[ ! -e "$local_cfg" ]]; then
-      cat > "$local_cfg" << 'EOF'
-# Machine-local git overrides — NOT in dotfiles.
-# Enable SSH commit/tag signing on this machine.
-[commit]
-	gpgSign = true
-[tag]
-	gpgSign = true
-EOF
-      printf '\033[0;33m  \xe2\x86\x92 .gitconfig.local bootstrapped (gpgSign enabled)\033[0m\n'
-    else
-      printf '\033[2m  - .gitconfig.local already exists\033[0m\n'
-    fi
-
-    # Bootstrap ~/.ssh/allowed_signers if absent.
-    local allowed="${HOME}/.ssh/allowed_signers"
-    local pubkey="${HOME}/.ssh/id_ed25519.pub"
-    local email
-    email=$(git config --file "${df}/.gitconfig" user.email 2> /dev/null || true)
-    if [[ ! -e "$allowed" && -f "$pubkey" && -n "$email" ]]; then
-      mkdir -p "${HOME}/.ssh"
-      local pub_contents
-      pub_contents=$(cat "$pubkey")
-      printf '%s %s\n' "$email" "$pub_contents" > "$allowed"
-      chmod 600 "$allowed"
-      printf '\033[0;33m  \xe2\x86\x92 ~/.ssh/allowed_signers bootstrapped\033[0m\n'
-    fi
   fi
 
   # ── dot dispatcher ────────────────────────────────────────────────────
