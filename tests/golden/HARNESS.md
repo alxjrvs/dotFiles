@@ -1,9 +1,19 @@
 # Golden Test Harness
 
-Pixel-identical reference outputs captured from the live `dotctl` binary
-**before** it is retired in the de-dotctl shell rewrite. The shell ports must
-produce byte-identical output (modulo documented time-dependent fields) to pass
-these goldens.
+Byte-exact reference outputs that snapshot the current shell renderers
+(`prompt/prompt-render`, `share/claude-statusline/statusline.sh`,
+`share/claude-statusline/subagent-statusline.sh`). The shell scripts are
+the source of truth; goldens must match their output (modulo documented
+time-dependent fields).
+
+Re-baseline after any intentional rendering change:
+
+```bash
+tests/verify-golden.sh --update      # regenerate all golden fixtures
+tests/verify-statusline.sh --update  # regenerate statusline fixtures only
+```
+
+Then commit the fixture diff for review.
 
 ## Directory layout
 
@@ -121,33 +131,31 @@ behavior is invisible (cache is regenerated on next `git-data` run). Both
 | `subagent-*.txt` | `state`, `tokenText`, `tokenSamples` | YES | byte-for-byte diff (after strip) |
 | `subagent-*.txt` | `elapsed` | **NO** — depends on `now - startTime` | `strip_elapsed()` replaces value with `"ELAPSED"` before diff |
 
-## Re-running golden capture
+## Verifying fixtures
 
-When the dotctl binary is updated (or to re-baseline after a deliberate behavior
-change), run:
-
-```bash
-# Recapture everything
-tests/golden/run-golden.sh capture dotctl
-
-# Recapture one fixture
-tests/golden/run-golden.sh capture dotctl statusline-low-ctx
-```
-
-## Verifying the shell port
-
-Once the shell scripts are in place, run:
+Run the verify scripts to diff current script output against the stored goldens:
 
 ```bash
-# Verify all fixtures against the shell port
-tests/golden/run-golden.sh compare dot
+# Verify all fixtures (prompt, statusline, subagent)
+tests/verify-golden.sh
 
-# Verify one fixture
-tests/golden/run-golden.sh compare ./prompt/prompt-render prompt-clean-main
-
-# Verify statusline
-tests/golden/run-golden.sh compare ./statusline/statusline statusline-low-ctx
+# Verify statusline fixtures only
+tests/verify-statusline.sh
 ```
 
-The compare mode exits 0 when all checked fixtures pass, 1 on any failure.
-`run-golden.sh` is the entrypoint wired into `lefthook.yml` for pre-push checks.
+Both scripts exit 0 when all checked fixtures pass, 1 on any mismatch.
+
+## Re-baselining after intentional rendering changes
+
+When a rendering change is deliberate (e.g. you modified prompt-render or
+statusline.sh), regenerate the fixtures and commit the diff:
+
+```bash
+tests/verify-golden.sh --update      # overwrite all goldens from current scripts
+tests/verify-statusline.sh --update  # overwrite statusline goldens only
+git diff tests/golden/out/           # review what changed
+git add tests/golden/out/
+```
+
+`--update` prints each file it rewrites. The subsequent `verify-golden.sh` run
+(without `--update`) must exit 0 before pushing.

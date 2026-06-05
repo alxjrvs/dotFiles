@@ -100,7 +100,7 @@ Each entry is symlinked individually into `~/.claude/` by `dot sync` (claude tag
 
 ### Tests
 
-Shell unit tests run under `bats` (a managed mise tool) in `tests/bats/`. `tests/golden/` holds byte-exact reference fixtures (captured from the prior Rust implementation) for `prompt/prompt-render`, the statusline, and the subagent statusline — `tests/verify-golden.sh` / `tests/verify-statusline.sh` diff the current scripts against them. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` pre-commit and `bats` + `dot doctor` pre-push.
+Shell unit tests run under `bats` (a managed mise tool) in `tests/bats/`. `tests/golden/` holds byte-exact reference fixtures (regenerable snapshots of the current shell scripts) for `prompt/prompt-render`, the statusline, and the subagent statusline — `tests/verify-golden.sh` / `tests/verify-statusline.sh` diff the current scripts against them. Re-baseline after an intentional rendering change with `tests/verify-golden.sh --update` / `tests/verify-statusline.sh --update`, then commit the fixture diff. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` pre-commit and `bats` + `dot doctor` pre-push.
 
 ## Packaging policy: Lean A (brew = casks, mise = dev CLIs)
 

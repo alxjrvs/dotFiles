@@ -76,7 +76,7 @@ The wired Claude Code hook events route through `dot hook <event>`:
 
 ## Tests
 
-Shell unit tests run under [`bats`](https://github.com/bats-core/bats-core) (a managed mise tool) in `tests/bats/`. Golden fixtures in `tests/golden/` hold byte-exact reference output (captured from the prior Rust implementation) for `prompt/prompt-render`, the statusline, and the subagent statusline. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` pre-commit and `bats` + `dot doctor` pre-push.
+Shell unit tests run under [`bats`](https://github.com/bats-core/bats-core) (a managed mise tool) in `tests/bats/`. Golden fixtures in `tests/golden/` hold byte-exact reference output (regenerable snapshots of the current shell scripts) for `prompt/prompt-render`, the statusline, and the subagent statusline. Re-baseline after an intentional rendering change with `tests/verify-golden.sh --update` / `tests/verify-statusline.sh --update`, then commit the fixture diff. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` pre-commit and `bats` + `dot doctor` pre-push.
 
 ## Git signing
 

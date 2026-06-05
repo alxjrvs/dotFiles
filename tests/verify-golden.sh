@@ -1,11 +1,24 @@
 #!/usr/bin/env bash
-# verify-golden.sh — wrapper around the golden fixtures that runs the NEW shell
-# ports with jq/gdate/coreutils on PATH (the stock run-golden.sh SAFE_PATH omits
-# them because the Rust binary had them built in). Mirrors run-golden.sh's strip
-# logic exactly. Reports PASS/FAIL per fixture; exit 0 iff all pass.
+# verify-golden.sh — diff (or regenerate) golden fixtures against the current
+# shell scripts. Reports PASS/FAIL per fixture; exits non-zero on any mismatch.
+#
+# Usage:
+#   tests/verify-golden.sh           # compare mode: diff scripts vs fixtures
+#   tests/verify-golden.sh --update  # update mode: regenerate fixtures from scripts
 set -euo pipefail
 
-ROOT=/Users/jarvis/Code/dotFiles/.claude/worktrees/dedotctl
+UPDATE=0
+for arg in "$@"; do
+  case "$arg" in
+    --update) UPDATE=1 ;;
+    *)
+      echo "unknown arg: $arg" >&2
+      exit 1
+      ;;
+  esac
+done
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GOLDEN="$ROOT/tests/golden"
 OUT="$GOLDEN/out"
 JQDIR=/Users/jarvis/.local/share/mise/installs/jq/1.8.1
@@ -22,6 +35,7 @@ printf '{\n  "advisorModel": "claude-haiku-4-5"\n}\n' > "$T/.claude/settings.jso
 PASS=0
 FAIL=0
 declare -a FAILED=()
+declare -a UPDATED=()
 
 strip_rate() { LC_ALL=C grep -v $'^\033\[90m[57][hd] ' || true; }
 strip_elapsed() { sed 's/"elapsed":"[^"]*"/"elapsed":"ELAPSED"/g'; }
@@ -30,6 +44,14 @@ cmp_out() {
   local name="$1"
   local actual="$2"
   local gf="$OUT/${name}.txt"
+
+  if [ "$UPDATE" -eq 1 ]; then
+    printf '%s\n' "$actual" > "$gf"
+    echo "UPDATED $name"
+    UPDATED+=("$name")
+    return
+  fi
+
   [ -f "$gf" ] || {
     echo "SKIP $name"
     return
@@ -90,6 +112,10 @@ for f in active-tasks error-state narrow-compact; do
   cmp_out "subagent-${f}" "$(run_sub "$f")"
 done
 
-echo "Results: $PASS passed, $FAIL failed"
-[ "${#FAILED[@]}" -eq 0 ] || printf 'FAILED: %s\n' "${FAILED[*]}"
-[ "$FAIL" -eq 0 ]
+if [ "$UPDATE" -eq 1 ]; then
+  echo "Updated ${#UPDATED[@]} fixture(s): ${UPDATED[*]}"
+else
+  echo "Results: $PASS passed, $FAIL failed"
+  [ "${#FAILED[@]}" -eq 0 ] || printf 'FAILED: %s\n' "${FAILED[*]}"
+  [ "$FAIL" -eq 0 ]
+fi
