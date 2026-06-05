@@ -63,6 +63,30 @@ _extract_link() {
   is_deny "$output"
 }
 
+@test "lock-file-guard: denies .env and secret-bearing variants" {
+  local names=(.env .env.local .env.production .env.staging .env.test .env.development)
+  for n in "${names[@]}"; do
+    run run_hook lock-file-guard "{\"tool_input\":{\"file_path\":\"/some/path/$n\"}}"
+    [ "$status" -eq 0 ]
+    is_deny "$output" || {
+      echo "expected deny for $n, got: $output"
+      false
+    }
+  done
+}
+
+@test "lock-file-guard: allows .env templates and non-dotenv names" {
+  local names=(.env.example .env.template .env.sample foo.env environment)
+  for n in "${names[@]}"; do
+    run run_hook lock-file-guard "{\"tool_input\":{\"file_path\":\"/some/path/$n\"}}"
+    [ "$status" -eq 0 ]
+    [[ "$output" != *deny* ]] || {
+      echo "expected allow for $n, got: $output"
+      false
+    }
+  done
+}
+
 # ── trim-bash-output thresholds ─────────────────────────────────────────────
 @test "trim-bash-output: under 20k threshold passes through untrimmed" {
   local small
