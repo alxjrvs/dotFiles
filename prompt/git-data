@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# git-data — bash port of dotctl/src/git_data.rs.
+# git-data — gather git state and write a shell-sourceable cache.
 #
 # Gathers git state in a single pass and writes a shell-sourceable cache file
 # at $(xdg_cache_home)/git-data/<repo-hash>.sh (mode 600, dir 700). Cache key
@@ -47,7 +47,7 @@ repo_hash() {
 
 # git_cache_path TOPLEVEL — resolve the cache file path for a repo toplevel
 # (falls back to cwd when empty). Creates the cache dir (mode 700) as a side
-# effect, mirroring cache_path() in git_data.rs.
+# effect.
 git_cache_path() {
   local toplevel="$1" key
   if [[ -n "$toplevel" ]]; then
@@ -106,7 +106,7 @@ trim() {
 }
 
 # tally XY — classify a porcelain v2 XY pair into conflict/staged/unstaged.
-# Mirrors git_data.rs::tally exactly (conflict patterns short-circuit).
+# Conflict patterns short-circuit before staged/unstaged classification.
 tally() {
   local xy="$1"
   local x="${xy:0:1}"
@@ -126,8 +126,8 @@ tally() {
 }
 
 # extract_path_after_fields LINE N — return the rest of LINE after N
-# whitespace-separated fields (path may contain spaces). Mirrors the Rust
-# helper used for porcelain v2 path extraction (field counts 9/10/11).
+# whitespace-separated fields (path may contain spaces). Used for porcelain v2
+# path extraction (field counts 9/10/11).
 extract_path_after_fields() {
   local line="$1" n="$2"
   local count=0 i ch
@@ -277,7 +277,7 @@ gather() {
 
 # Query gh for the current branch's PR status. Sets G_PR_STATUS / G_PR_URL /
 # G_PR_NUMBER. Degrades to ("","",0) when gh is missing/unauthenticated or no
-# PR exists. The jq aggregation mirrors git_data.rs::query_pr_status.
+# PR exists.
 query_pr_status() {
   G_PR_STATUS=""
   G_PR_URL=""
@@ -318,11 +318,26 @@ query_pr_status() {
   fi
 }
 
-# Read prior PR fields from an existing cache file. Echoes
-# "status<TAB>url<TAB>number<TAB>checked_at" and returns 0 only when all four
-# fields are present (mirrors read_existing_pr_data Some(...) semantics).
+# Prior PR fields parsed from an existing cache file by read_existing_pr_data.
+# Named globals are used instead of round-tripping a tab-joined string through
+# `read`: under bash 3.2, `read -a` collapses leading empty IFS fields, so a
+# no-PR record ("\t\t0\t<epoch>") would parse to 2 elements and lose the
+# timestamp — making the TTL check always miss and re-invoke gh every prompt.
+G_PRIOR_STATUS=""
+G_PRIOR_URL=""
+G_PRIOR_NUMBER=0
+G_PRIOR_CHECKED_AT=0
+
+# Read prior PR fields from an existing cache file into the G_PRIOR_* globals.
+# Returns 0 only when all four fields are present and number/checked_at parse
+# as integers (mirrors read_existing_pr_data Some(...) semantics). On any
+# failure the globals are left at their defaults and the caller re-queries.
 read_existing_pr_data() {
   local cache_file="$1"
+  G_PRIOR_STATUS=""
+  G_PRIOR_URL=""
+  G_PRIOR_NUMBER=0
+  G_PRIOR_CHECKED_AT=0
   [[ -f "$cache_file" ]] || return 1
   local status="" url="" number="" checked_at=""
   local have_s=0 have_u=0 have_n=0 have_c=0
@@ -346,7 +361,10 @@ read_existing_pr_data() {
   # number / checked_at must parse as integers (Rust .parse().ok()? on u32/u64).
   [[ "$number" =~ ^[0-9]+$ ]] || return 1
   [[ "$checked_at" =~ ^[0-9]+$ ]] || return 1
-  printf '%s\t%s\t%s\t%s' "$status" "$url" "$number" "$checked_at"
+  G_PRIOR_STATUS="$status"
+  G_PRIOR_URL="$url"
+  G_PRIOR_NUMBER="$number"
+  G_PRIOR_CHECKED_AT="$checked_at"
 }
 
 # Extract the single-quoted value from a `KEY='value'` line. Returns non-zero
@@ -369,7 +387,7 @@ esc() {
 }
 
 # Local-time human stamp for the cache header (informational; consumers don't
-# parse it). Mirrors macOS `date` default format used by git_data.rs.
+# parse it). Uses the macOS `date` default format.
 human_time() {
   local epoch="$1"
   date -r "$epoch" '+%a %b %e %H:%M:%S %Z %Y' 2> /dev/null ||
@@ -438,19 +456,18 @@ main() {
   now=$(date +%s)
 
   # PR-status freshness: reuse cached values if checked within TTL.
+  # read_existing_pr_data sets G_PRIOR_* globals (no tab-joined round-trip —
+  # see the note above its definition for the bash 3.2 `read` collapse bug).
   if [[ -n "$G_IS_REPO" ]]; then
-    local prior age
-    if prior=$(read_existing_pr_data "$cache_file"); then
-      local -a pp=()
-      local IFS=$'\t'
-      read -r -a pp <<< "$prior"
-      age=$((now - pp[3]))
+    local age
+    if read_existing_pr_data "$cache_file"; then
+      age=$((now - G_PRIOR_CHECKED_AT))
       ((age < 0)) && age=0 # saturating_sub
       if ((age < PR_TTL_SECS)); then
-        G_PR_STATUS="${pp[0]}"
-        G_PR_URL="${pp[1]}"
-        G_PR_NUMBER="${pp[2]}"
-        G_PR_CHECKED_AT="${pp[3]}"
+        G_PR_STATUS="$G_PRIOR_STATUS"
+        G_PR_URL="$G_PRIOR_URL"
+        G_PR_NUMBER="$G_PRIOR_NUMBER"
+        G_PR_CHECKED_AT="$G_PRIOR_CHECKED_AT"
       else
         query_pr_status
         G_PR_CHECKED_AT="$now"

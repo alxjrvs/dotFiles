@@ -1,19 +1,8 @@
 #!/usr/bin/env bash
 # install/70-gh.sh — GitHub CLI extensions (gated on auth).
-# Ports sync.rs: step_gh.
 # Tags: gh
-# Sourced by sync.
-
-# ── Self-contained helpers ────────────────────────────────────────────────────
-if [[ -z "${__DOT_SYNC_SOURCED:-}" ]]; then
-  os_kind() {
-    case "$(uname -s)" in
-      Darwin) printf 'darwin\n' ;;
-      Linux) printf 'linux\n' ;;
-      *) printf 'unknown\n' ;;
-    esac
-  }
-fi
+# Sourced by sync; not standalone — helpers (os_kind) come from sync, which
+# exports them before sourcing this module.
 
 _gh_tags() { printf 'gh\n'; }
 

@@ -1,47 +1,8 @@
 #!/usr/bin/env bash
 # install/00-brew.sh — Homebrew install + bundle (Darwin only).
-# Ports sync.rs: step_brew.
 # Tags: brew
-# Sourced by sync; also independently runnable.
-
-# ── Self-contained helpers (only defined when not already provided by sync) ───
-if [[ -z "${__DOT_SYNC_SOURCED:-}" ]]; then
-  os_kind() {
-    case "$(uname -s)" in
-      Darwin) printf 'darwin\n' ;;
-      Linux) printf 'linux\n' ;;
-      *) printf 'unknown\n' ;;
-    esac
-  }
-  host_id() {
-    local forced="${DOTFILES_HOST:-}"
-    if [[ -n "$forced" ]]; then
-      case "$(printf '%s' "$forced" | tr '[:upper:]' '[:lower:]')" in
-        air)
-          printf 'air\n'
-          return 0
-          ;;
-        pro)
-          printf 'pro\n'
-          return 0
-          ;;
-      esac
-    fi
-    local hostname=""
-    if command -v scutil > /dev/null 2>&1; then
-      hostname=$(scutil --get LocalHostName 2> /dev/null || true)
-    fi
-    local lower
-    lower=$(printf '%s' "$hostname" | tr '[:upper:]' '[:lower:]')
-    if [[ "$lower" == *air* ]]; then
-      printf 'air\n'
-    elif [[ "$lower" == *pro* ]]; then
-      printf 'pro\n'
-    else
-      printf 'unknown\n'
-    fi
-  }
-fi
+# Sourced by sync; not standalone — helpers (os_kind, host_id) come from sync,
+# which exports them before sourcing this module.
 
 _brew_tags() { printf 'brew\n'; }
 

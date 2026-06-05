@@ -39,11 +39,19 @@ pre-commit:
       glob: "dot-claude/settings*.json"
       run: jq -e . {staged_files} >/dev/null
 
-# pre-push: sanity check that the box itself is healthy before pushing
-# dotfiles changes. Catches things like a broken mise/node/bun install,
-# missing git identity, drift between this repo and the machine.
+# pre-push: run the shell unit-test suite, then a fast structural sanity
+# check that the box itself is healthy before pushing dotfiles changes.
+# Catches a broken mise/node/bun install, missing git identity, drift
+# between this repo and the machine, plus any regression the bats suite
+# guards. Both stay fast (seconds-scale); the heavy/flaky external audit
+# is deferred (see SKIP_EXTERNAL below).
 pre-push:
+  parallel: true
   commands:
+    bats:
+      # ~30 shell unit tests, seconds-scale. Runs on every push so the
+      # documented gate (bats + doctor) is real, not aspirational.
+      run: bats tests/bats/
     doctor:
       # SKIP_EXTERNAL: a push gate wants the fast structural checks (tool
       # presence, git identity, symlinks, drift) — NOT the heavy/flaky brew

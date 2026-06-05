@@ -1,19 +1,8 @@
 #!/usr/bin/env bash
 # install/20-sheldon.sh — Sheldon binary install + plugin lock.
-# Ports sync.rs: step_sheldon_bin + step_sheldon_plugins.
 # Tags: sheldon
-# Sourced by sync.
-
-# ── Self-contained helpers ────────────────────────────────────────────────────
-if [[ -z "${__DOT_SYNC_SOURCED:-}" ]]; then
-  os_kind() {
-    case "$(uname -s)" in
-      Darwin) printf 'darwin\n' ;;
-      Linux) printf 'linux\n' ;;
-      *) printf 'unknown\n' ;;
-    esac
-  }
-fi
+# Sourced by sync; not standalone — helpers (os_kind) come from sync, which
+# exports them before sourcing this module.
 
 _sheldon_tags() { printf 'sheldon\n'; }
 

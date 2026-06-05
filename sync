@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # sync — dotfiles installer/syncer.
-# Ports sync.rs: run().
 #
 # Usage:
 #   sync [--upgrade] [--only=tag1,tag2] [--host=air|pro]
@@ -99,8 +98,7 @@ acquire_lock() {
 # Uses LINK_MODE env ("interactive"|"overwrite"|"skip").
 link() {
   local src="$1" dst="$2"
-  local label="${dst#"$HOME"/}"
-  label="${label/#$HOME\//~/}"
+  local label="${dst#"${HOME}"/}"
 
   # Already correctly linked?
   if [[ -L "$dst" ]]; then
@@ -127,8 +125,16 @@ link() {
     overwrite) choice="o" ;;
     skip) choice="s" ;;
     *)
-      printf '       Overwrite with symlink to %s? [o]verwrite / [s]kip: ' "$src"
-      read -r choice || choice="s"
+      # Interactive default — but never block on a non-TTY (unattended
+      # bootstrap). Fall back to skip + a loud warning so the conflict is
+      # visible rather than hanging on read.
+      if [[ ! -t 0 ]]; then
+        choice="s"
+        printf '\033[0;33m  \xe2\x9a\xa0 %s: non-interactive — skipping conflict (existing %s left in place)\033[0m\n' "$label" "$dst" >&2
+      else
+        printf '       Overwrite with symlink to %s? [o]verwrite / [s]kip: ' "$src"
+        read -r choice || choice="s"
+      fi
       ;;
   esac
 
@@ -268,29 +274,66 @@ _run_module() {
   fi
 
   if [[ "$should" -eq 1 ]]; then
+    # Run the module in-process (NOT a subshell) so PATH/env exports — e.g.
+    # the mise shims prepend from 30-mise — propagate to later modules.
+    # Trade-off: `set +e` here suspends errexit inside the run fn too (errexit
+    # is shell-global), so a module's failure status is that of its LAST
+    # command. Accepted so one module's failure can't abort the whole sync;
+    # the caller records the exit code and reports at the end.
+    local rc=0
+    set +e
     "$run_fn"
+    rc=$?
+    set -e
+    return "$rc"
   fi
+  return 0
 }
 
-# Source all install/NN-*.sh in numeric order.
+# Source + run all install/NN-*.sh in numeric order. A module failure is
+# recorded (name + exit code) and the remaining modules still run; sync exits
+# non-zero at the end if any module failed.
+_FAILED_MODULES=()
 for _module in "${_SYNC_DIR}/install"/[0-9][0-9]-*.sh; do
   [[ -f "$_module" ]] || continue
-  _run_module "$_module"
+  if _run_module "$_module"; then
+    :
+  else
+    _rc=$? # status of the failed condition, NOT inverted by `!`
+    _FAILED_MODULES+=("$(basename "$_module"):${_rc}")
+  fi
 done
-unset _module
+unset _module _rc
 
 # ── Prune pass at the tail ────────────────────────────────────────────────────
-# Set PRUNE_MODE based on link mode (Interactive→ask, others→auto).
-if [[ "$LINK_MODE" == "interactive" ]]; then
-  PRUNE_MODE="ask"
-else
-  PRUNE_MODE="auto"
-fi
-export PRUNE_MODE
+# Gated by the prune tag so `--only=brew` (etc.) does not trigger the full
+# 4-section prune pass. The PRUNE_MODE derivation stays inside the gate.
+if should_run prune; then
+  # Set PRUNE_MODE based on link mode (Interactive→ask, others→auto).
+  if [[ "$LINK_MODE" == "interactive" ]]; then
+    PRUNE_MODE="ask"
+  else
+    PRUNE_MODE="auto"
+  fi
+  export PRUNE_MODE
 
-# 95-prune.sh was already sourced above; call _prune_run directly.
-if declare -f _prune_run > /dev/null 2>&1; then
-  _prune_run
+  # 95-prune.sh was already sourced above; call _prune_run directly.
+  if declare -f _prune_run > /dev/null 2>&1; then
+    _prune_run
+  fi
+fi
+
+# ── Failure summary ───────────────────────────────────────────────────────────
+# If any module failed, report each (name:exit-code) and exit non-zero so
+# callers (CI, bootstrap) can detect partial failure.
+if [[ "${#_FAILED_MODULES[@]}" -gt 0 ]]; then
+  printf '\n'
+  printf '\033[0;31m==> \xe2\x9c\x97 failed: %d module(s)\033[0m\n' "${#_FAILED_MODULES[@]}" >&2
+  for _f in "${_FAILED_MODULES[@]}"; do
+    printf '\033[0;31m  \xe2\x9c\x97 %s\033[0m\n' "$_f" >&2
+  done
+  unset _f
+  exit 1
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # install/95-prune.sh — cleanup: .bak files, stale worktrees, orphan workers,
-# stale cost dirs. Ports prune.rs.
+# stale cost dirs.
 #
 # Modes (env vars or flags when run standalone):
 #   PRUNE_MODE=auto   — delete without prompting (AutoYes)
@@ -87,6 +87,71 @@ _is_backup_file() {
   return 1
 }
 
+# Compute the non-.bak "live" sibling path for a backup file. link() creates
+# backups as "${dst}.bak", so for "foo.bak" the sibling is "foo". For the
+# ".bak-<suffix>" / ".bak.<suffix>" variants we strip from the ".bak" marker.
+# Echoes the sibling path; empty if none can be derived.
+_prune_bak_sibling() {
+  local path="$1" name dir base
+  dir=$(dirname "$path")
+  name=$(basename "$path")
+  if [[ "$name" == *.bak ]]; then
+    base="${name%.bak}"
+  elif [[ "$name" == *".bak-"* || "$name" == *".bak."* ]]; then
+    base="${name%%.bak*}"
+  else
+    return 0
+  fi
+  [[ -z "$base" ]] && return 0
+  printf '%s/%s\n' "$dir" "$base"
+}
+
+# Resolve the dotfiles repo dir for the .bak guard. Sourced by sync →
+# $DOTFILES_DIR is exported; standalone → resolve_dotfiles_dir() is defined in
+# the guard block above. Cached in _PRUNE_DOTFILES_DIR. Empty if unresolvable.
+_prune_dotfiles_dir() {
+  if [[ -n "${_PRUNE_DOTFILES_DIR+x}" ]]; then
+    printf '%s\n' "$_PRUNE_DOTFILES_DIR"
+    return 0
+  fi
+  local resolved="${DOTFILES_DIR:-}"
+  if [[ -z "$resolved" ]] && declare -f resolve_dotfiles_dir > /dev/null 2>&1; then
+    resolved=$(resolve_dotfiles_dir 2> /dev/null || true)
+  fi
+  _PRUNE_DOTFILES_DIR="$resolved"
+  printf '%s\n' "$_PRUNE_DOTFILES_DIR"
+}
+
+# Guard: a .bak is safe to delete only when its live sibling is a symlink that
+# points into the dotfiles repo (i.e. link() displaced a real file we still own
+# a tracked copy of). If the sibling is absent, a plain file, or a symlink
+# pointing elsewhere, the .bak may be the only copy of that config — keep it.
+# Returns 0 = safe to delete, 1 = should be skipped.
+_prune_bak_is_safe() {
+  local bak="$1"
+  local sibling target df
+  sibling=$(_prune_bak_sibling "$bak")
+  # No derivable sibling → be conservative, keep it.
+  [[ -z "$sibling" ]] && return 1
+  # Sibling missing entirely → the .bak may be the only copy.
+  [[ -e "$sibling" || -L "$sibling" ]] || return 1
+  # Sibling must be a symlink (link() replaces conflicts with a symlink).
+  [[ -L "$sibling" ]] || return 1
+  target=$(readlink "$sibling" 2> /dev/null || true)
+  [[ -n "$target" ]] || return 1
+  # Resolve relative link targets against the sibling's directory.
+  case "$target" in
+    /*) ;;
+    *) target="$(dirname "$sibling")/${target}" ;;
+  esac
+  df=$(_prune_dotfiles_dir)
+  [[ -n "$df" ]] || return 1
+  case "$target" in
+    "$df"/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 # Walk DIR up to DEPTH levels, calling cb (a function name) on each file.
 # Skips .git, node_modules, target, share, Caches, installs, and symlinks.
 _prune_walk() {
@@ -120,7 +185,7 @@ _prune_backups() {
   local home="${1:-$HOME}"
   _PRUNE_BACKUPS=()
 
-  # Scan roots and depths (matching prune.rs find_backups).
+  # Scan roots and depths for .bak backups.
   _prune_walk "$home" 1 _prune_collect_backup
   _prune_walk "${home}/.config" 4 _prune_collect_backup
   _prune_walk "${home}/.claude" 4 _prune_collect_backup
@@ -153,8 +218,16 @@ _prune_backups() {
     return 0
   fi
 
-  local deleted=0 failed=0
+  local deleted=0 failed=0 skipped=0
   for b in "${_PRUNE_BACKUPS[@]}"; do
+    # Guard: skip a .bak whose live sibling is NOT a symlink into the dotfiles
+    # repo — it may be the only copy of a displaced config.
+    if ! _prune_bak_is_safe "$b"; then
+      printf '\033[0;33m  \xe2\x9a\xa0 keeping %s (sibling not a dotfiles symlink — may be the only copy)\033[0m\n' \
+        "${b/#$home\//~/}" >&2
+      skipped=$((skipped + 1))
+      continue
+    fi
     if rm -f "$b" 2> /dev/null; then
       deleted=$((deleted + 1))
     else
@@ -166,6 +239,9 @@ _prune_backups() {
     printf '\033[0;32m  \xe2\x9c\x93 Deleted %d backup file(s)\033[0m\n' "$deleted"
   else
     printf '\033[0;33m  \xe2\x86\x92 Deleted %d, %d failed\033[0m\n' "$deleted" "$failed"
+  fi
+  if [[ "$skipped" -gt 0 ]]; then
+    printf '\033[0;33m  \xe2\x9a\xa0 Kept %d backup(s) with no dotfiles-symlink sibling\033[0m\n' "$skipped"
   fi
 }
 

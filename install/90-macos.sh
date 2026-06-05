@@ -1,54 +1,15 @@
 #!/usr/bin/env bash
 # install/90-macos.sh — macOS defaults apply + audit.
-# Ports macos_defaults.rs + sync.rs step_macos + doctor.rs macos audit.
 # Tags: macos
-# Sourced by sync; audit() also called by doctor.
-
-# ── Self-contained helpers ────────────────────────────────────────────────────
-if [[ -z "${__DOT_SYNC_SOURCED:-}" ]]; then
-  os_kind() {
-    case "$(uname -s)" in
-      Darwin) printf 'darwin\n' ;;
-      Linux) printf 'linux\n' ;;
-      *) printf 'unknown\n' ;;
-    esac
-  }
-  host_id() {
-    local forced="${DOTFILES_HOST:-}"
-    if [[ -n "$forced" ]]; then
-      case "$(printf '%s' "$forced" | tr '[:upper:]' '[:lower:]')" in
-        air)
-          printf 'air\n'
-          return 0
-          ;;
-        pro)
-          printf 'pro\n'
-          return 0
-          ;;
-      esac
-    fi
-    local hostname=""
-    if command -v scutil > /dev/null 2>&1; then
-      hostname=$(scutil --get LocalHostName 2> /dev/null || true)
-    fi
-    local lower
-    lower=$(printf '%s' "$hostname" | tr '[:upper:]' '[:lower:]')
-    if [[ "$lower" == *air* ]]; then
-      printf 'air\n'
-    elif [[ "$lower" == *pro* ]]; then
-      printf 'pro\n'
-    else
-      printf 'unknown\n'
-    fi
-  }
-fi
+# Sourced-only — by sync (apply) and doctor (audit). Both define and export
+# os_kind/host_id and set __DOT_SYNC_SOURCED before sourcing this module, so
+# this file carries no inlined helpers of its own.
 
 _macos_tags() { printf 'macos\n'; }
 
 # ── Data table ────────────────────────────────────────────────────────────────
 # Format: "domain|key|kind|raw"
 # kind: bool|int|float|string
-# Maps directly to macos_defaults.rs SHARED const.
 _MACOS_SHARED_DEFAULTS=(
   "NSGlobalDomain|KeyRepeat|int|2"
   "NSGlobalDomain|InitialKeyRepeat|int|15"
@@ -133,6 +94,40 @@ _macos_managed_for() {
   done
 }
 
+# ── Snapshot (pre-write backup) ───────────────────────────────────────────────
+# Before the first `defaults write` of a run, record the current value of every
+# (domain,key) the run is about to write, so the prior state is recoverable.
+# Keys not yet set read back empty → recorded as 'unset' (never aborts the run).
+# Writes a single timestamped file under ~/.local/state/dotfiles/defaults-backup/.
+# Echoes the backup path on success; returns non-zero (without aborting the
+# caller) if the directory could not be created.
+_macos_snapshot() {
+  local host="$1"
+  local dir="${HOME}/.local/state/dotfiles/defaults-backup"
+  if ! mkdir -p "$dir" 2> /dev/null; then
+    return 1
+  fi
+  local stamp
+  stamp=$(date +%Y%m%dT%H%M%S)
+  local file="${dir}/${stamp}.txt"
+
+  local entry domain key _kind _raw current
+  {
+    printf '# dotfiles macOS defaults snapshot — %s (host: %s)\n' "$stamp" "$host"
+    while IFS= read -r entry; do
+      IFS='|' read -r domain key _kind _raw <<< "$entry"
+      if current=$(defaults read "$domain" "$key" 2> /dev/null); then
+        current=$(printf '%s' "$current" | tr -d '\n')
+        printf '%s|%s|%s\n' "$domain" "$key" "$current"
+      else
+        printf '%s|%s|unset\n' "$domain" "$key"
+      fi
+    done < <(_macos_managed_for "$host")
+  } > "$file" 2> /dev/null
+
+  printf '%s\n' "$file"
+}
+
 # ── Run (apply) ───────────────────────────────────────────────────────────────
 
 _macos_run() {
@@ -146,6 +141,14 @@ _macos_run() {
   host=$(host_id)
   local applied=0
   local entry domain key kind raw flag
+
+  # Snapshot current values before the first write (best-effort; never aborts).
+  local snapshot
+  if snapshot=$(_macos_snapshot "$host"); then
+    printf '\033[2m  - snapshot saved to %s\033[0m\n' "${snapshot/#$HOME\//~/}"
+  else
+    printf '\033[0;33m  \xe2\x9a\xa0 could not write defaults snapshot (continuing)\033[0m\n' >&2
+  fi
 
   while IFS= read -r entry; do
     IFS='|' read -r domain key kind raw <<< "$entry"

@@ -24,6 +24,16 @@ run_hook() {
 # jq pretty-prints deny payloads with a space: "permissionDecision": "deny"
 is_deny() { [[ "$1" == *'"permissionDecision": "deny"'* ]]; }
 
+# link() now lives only in sync (exported to the install/* modules at runtime);
+# the modules no longer inline it. Extract just the link() function from sync
+# into a sourceable file (awk avoids sed's brace-escaping pitfalls) and echo the
+# path, so the link() tests exercise the canonical definition.
+_extract_link() {
+  local fnfile="$TDIR/synclink.sh"
+  awk '/^link\(\) \{/{f=1} f{print} /^\}/{if(f)exit}' "$ROOT/sync" > "$fnfile"
+  printf '%s\n' "$fnfile"
+}
+
 # NOTE: policy-guard was removed; --no-verify / --no-gpg-sign / force-push are
 # now blocked by permissions.deny in dot-claude/settings.json, not by a hook.
 # Its former bats coverage lived here and was deleted with the hook.
@@ -122,7 +132,7 @@ is_deny() { [[ "$1" == *'"permissionDecision": "deny"'* ]]; }
 
 # ── symlink link() mode branches ────────────────────────────────────────────
 @test "symlink link(): creates a new symlink when dst absent" {
-  source "$ROOT/install/40-symlinks.sh"
+  source "$(_extract_link)"
   local src="$TDIR/src" dst="$TDIR/dst"
   echo hi >"$src"
   link "$src" "$dst"
@@ -131,7 +141,7 @@ is_deny() { [[ "$1" == *'"permissionDecision": "deny"'* ]]; }
 }
 
 @test "symlink link(): no-op when already correctly linked" {
-  source "$ROOT/install/40-symlinks.sh"
+  source "$(_extract_link)"
   local src="$TDIR/src" dst="$TDIR/dst"
   echo hi >"$src"
   ln -s "$src" "$dst"
@@ -141,7 +151,7 @@ is_deny() { [[ "$1" == *'"permissionDecision": "deny"'* ]]; }
 }
 
 @test "symlink link(): overwrite mode backs up and relinks" {
-  source "$ROOT/install/40-symlinks.sh"
+  source "$(_extract_link)"
   local src="$TDIR/src" dst="$TDIR/dst"
   echo new >"$src"
   echo old >"$dst"
@@ -153,11 +163,51 @@ is_deny() { [[ "$1" == *'"permissionDecision": "deny"'* ]]; }
 }
 
 @test "symlink link(): skip mode leaves dst untouched" {
-  source "$ROOT/install/40-symlinks.sh"
+  source "$(_extract_link)"
   local src="$TDIR/src" dst="$TDIR/dst"
   echo new >"$src"
   echo old >"$dst"
   LINK_MODE=skip link "$src" "$dst"
+  [ ! -L "$dst" ]
+  [ "$(cat "$dst")" = "old" ]
+  [ ! -e "${dst}.bak" ]
+}
+
+# Interactive mode on a non-TTY (unattended bootstrap) must NOT block on
+# read: it falls back to skip + a loud warning instead of hanging.
+@test "symlink link(): interactive mode on non-TTY skips conflict (no hang)" {
+  local fnfile
+  fnfile="$(_extract_link)"
+  local src="$TDIR/src" dst="$TDIR/dst"
+  echo new >"$src"
+  echo old >"$dst"
+  # Default LINK_MODE (interactive) + closed stdin: must return, not block.
+  run env -u LINK_MODE bash -c '
+    source "'"$fnfile"'"
+    link "'"$src"'" "'"$dst"'"
+  ' </dev/null
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"non-interactive"* ]]
+  [ ! -L "$dst" ]
+  [ "$(cat "$dst")" = "old" ]
+  [ ! -e "${dst}.bak" ]
+}
+
+# Same guarantee for sync's copy of link().
+@test "sync link(): interactive mode on non-TTY skips conflict (no hang)" {
+  local src="$TDIR/src" dst="$TDIR/dst"
+  echo new >"$src"
+  echo old >"$dst"
+  # Extract just the link() function from sync into a sourceable file
+  # (awk avoids sed's brace-escaping pitfalls), then exercise it with
+  # stdin closed so the interactive read would block if unguarded.
+  local fnfile="$TDIR/synclink.sh"
+  awk '/^link\(\) \{/{f=1} f{print} /^\}/{if(f)exit}' "$ROOT/sync" >"$fnfile"
+  unset LINK_MODE
+  source "$fnfile"
+  run link "$src" "$dst" </dev/null
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"non-interactive"* ]]
   [ ! -L "$dst" ]
   [ "$(cat "$dst")" = "old" ]
   [ ! -e "${dst}.bak" ]
@@ -242,4 +292,302 @@ cache_path() {
   local sl="$ROOT/share/claude-statusline/statusline.sh"
   # locate the gradient color function (awk-backed) by name
   grep -qE 'gradient|blackbody|pip_color|grad_color' "$sl"
+}
+
+# ── PR-status TTL cache (gh re-query regression) ────────────────────────────
+# Regression: in the no-PR case the cached PR record is "\t\t0\t<epoch>".
+# git-data used to round-trip those four fields through a tab-joined string
+# consumed by `read -a`; under macOS system bash 3.2 `read` collapses the
+# leading empty IFS fields, so the timestamp was lost and the 60s TTL never
+# held — gh (~0.75s) was re-invoked on EVERY prompt. These tests run git-data
+# under /bin/bash (bash 3.2) explicitly and assert the second run within the
+# TTL invokes gh ZERO times.
+
+# install_gh_stub DIR MODE — drop a `gh` shim on PATH that bumps a counter file
+# ($DIR/calls) each invocation. MODE=nopr emits the empty no-PR string; MODE=pr
+# emits a populated "pass\turl\t7" record (mirrors query_pr_status jq output).
+install_gh_stub() {
+  local dir="$1" mode="$2"
+  mkdir -p "$dir"
+  : > "$dir/calls"
+  {
+    printf '#!/bin/bash\n'
+    printf 'printf x >> "%s/calls"\n' "$dir"
+    if [ "$mode" = "pr" ]; then
+      # %b expands the \t escapes in the gh stub into real tab separators.
+      printf 'printf "%%b" "pass\\thttps://github.com/o/r/pull/7\\t7"\n'
+    fi
+    # nopr: print nothing (empty => no PR), exit 0.
+    printf 'exit 0\n'
+  } > "$dir/gh"
+  chmod +x "$dir/gh"
+}
+
+gh_call_count() {
+  local f="$1"
+  [ -f "$f" ] || {
+    echo 0
+    return
+  }
+  wc -c < "$f" | tr -d ' '
+}
+
+@test "git-data PR TTL: no-PR cache holds; gh not re-queried within TTL" {
+  local repo="$TDIR/prrepo"
+  init_repo "$repo"
+  echo a > "$repo/a"
+  git -C "$repo" add a
+  git -C "$repo" commit -qm init
+  git -C "$repo" remote add origin git@github.com:o/r.git
+  export XDG_CACHE_HOME="$TDIR/.cache"
+  local stub="$TDIR/ghstub"
+  install_gh_stub "$stub" nopr
+  # Run under /bin/bash (bash 3.2) explicitly to exercise the read-collapse path.
+  (cd "$repo" && PATH="$stub:$PATH" /bin/bash "$ROOT/prompt/git-data")
+  [ "$(gh_call_count "$stub/calls")" -eq 1 ]
+  local cache
+  cache=$(cache_path "$repo")
+  [ -f "$cache" ]
+  grep -q "GIT_PR_STATUS=''" "$cache"
+  grep -q "GIT_PR_NUMBER='0'" "$cache"
+  # Second run within TTL must NOT touch gh.
+  (cd "$repo" && PATH="$stub:$PATH" /bin/bash "$ROOT/prompt/git-data")
+  [ "$(gh_call_count "$stub/calls")" -eq 1 ]
+}
+
+@test "git-data PR TTL: with-PR cache holds; gh not re-queried within TTL" {
+  local repo="$TDIR/prrepo2"
+  init_repo "$repo"
+  echo a > "$repo/a"
+  git -C "$repo" add a
+  git -C "$repo" commit -qm init
+  git -C "$repo" remote add origin git@github.com:o/r.git
+  export XDG_CACHE_HOME="$TDIR/.cache"
+  local stub="$TDIR/ghstub2"
+  install_gh_stub "$stub" pr
+  (cd "$repo" && PATH="$stub:$PATH" /bin/bash "$ROOT/prompt/git-data")
+  [ "$(gh_call_count "$stub/calls")" -eq 1 ]
+  local cache
+  cache=$(cache_path "$repo")
+  grep -q "GIT_PR_STATUS='pass'" "$cache"
+  grep -q "GIT_PR_NUMBER='7'" "$cache"
+  # Second run within TTL must NOT touch gh.
+  (cd "$repo" && PATH="$stub:$PATH" /bin/bash "$ROOT/prompt/git-data")
+  [ "$(gh_call_count "$stub/calls")" -eq 1 ]
+}
+
+@test "git-data PR TTL: stale checked_at re-queries gh exactly once" {
+  local repo="$TDIR/prrepo3"
+  init_repo "$repo"
+  echo a > "$repo/a"
+  git -C "$repo" add a
+  git -C "$repo" commit -qm init
+  git -C "$repo" remote add origin git@github.com:o/r.git
+  export XDG_CACHE_HOME="$TDIR/.cache"
+  local stub="$TDIR/ghstub3"
+  install_gh_stub "$stub" nopr
+  (cd "$repo" && PATH="$stub:$PATH" /bin/bash "$ROOT/prompt/git-data")
+  [ "$(gh_call_count "$stub/calls")" -eq 1 ]
+  local cache
+  cache=$(cache_path "$repo")
+  # Backdate the cached check well past the 60s TTL.
+  local sed_re="s/GIT_PR_CHECKED_AT='[0-9]*'/GIT_PR_CHECKED_AT='1000000000'/"
+  sed -i.bak "$sed_re" "$cache"
+  rm -f "$cache.bak"
+  (cd "$repo" && PATH="$stub:$PATH" /bin/bash "$ROOT/prompt/git-data")
+  [ "$(gh_call_count "$stub/calls")" -eq 2 ]
+}
+
+# ── doctor ───────────────────────────────────────────────────────────────────
+# Note: doctor resolves DOTFILES_DIR independently of $HOME, so these tests run
+# against the real repo. setup() repoints $HOME at a temp dir, which only
+# affects the (warn-only) symlink audit — failures there don't change exit code.
+
+@test "doctor: completes with a summary when external checks are skipped" {
+  run env DOTFILES_DOCTOR_SKIP_EXTERNAL=1 DOTFILES_DIR="$ROOT" "$ROOT/doctor"
+  # Warn-only run exits 0; a hard fail exits 1. Either way it must reach the end.
+  [ "$status" -eq 0 ] || [ "$status" -eq 1 ]
+  [[ "$output" == *"==> Doctor"* ]]
+  # The final summary line is one of: all-passed, warning(s), or error(s).
+  [[ "$output" == *"checks passed"* ]] ||
+    [[ "$output" == *"warning(s)"* ]] ||
+    [[ "$output" == *"error(s)"* ]]
+}
+
+@test "doctor: a failing check reports a cross and still prints the summary" {
+  # set -e used to abort on a failing command-substitution mid-stream; a failing
+  # tool-presence check must now emit a cross AND reach the error summary.
+  run env -i PATH="/usr/bin:/bin" HOME="$HOME" \
+    DOTFILES_DOCTOR_SKIP_EXTERNAL=1 DOTFILES_DIR="$ROOT" "$ROOT/doctor"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"not found"* ]]
+  [[ "$output" == *"error(s)"* ]]
+}
+
+@test "doctor: claude-doctor uses if-assignment, not the set -e dollar-question trap" {
+  # The unreachable `_x=$(cmd); rc=$?` idiom must be gone; the failure branch
+  # is reached via `if _claude_out=$(claude doctor ...)`.
+  grep -q 'if _claude_out=$(claude doctor 2>&1); then' "$ROOT/doctor"
+  ! grep -q '_claude_rc=$?' "$ROOT/doctor"
+}
+
+@test "doctor: doc-drift scanner has been removed" {
+  ! grep -q '_dead_strings' "$ROOT/doctor"
+  ! grep -q '_scan_file_for_drift' "$ROOT/doctor"
+  ! grep -q 'doc drift' "$ROOT/doctor"
+}
+
+@test "doctor: symlink audit covers dot, git-template hook, settings.local, zsh frags" {
+  grep -q '.local/bin/dot|dot' "$ROOT/doctor"
+  grep -q 'git/template/hooks/pre-commit|git-template/hooks/pre-commit' "$ROOT/doctor"
+  grep -q '.claude/settings.local.json|dot-claude/settings.local.json' "$ROOT/doctor"
+  # zsh fragments expanded from the [0-9]*.zsh glob.
+  grep -q 'zsh/\[0-9\]\*.zsh' "$ROOT/doctor"
+}
+
+# ── zsh prompt fast-path: GIT_DIR cache parse (zsh/50-prompt.zsh) ────────────
+# The mtime fast path reads GIT_DIR out of the git-data cache into a
+# shell-LOCAL `_dot_git_dir` (never the magic env var GIT_DIR). These tests
+# pin the glob + single-quote-strip parse used in _dot_read_git_dir.
+ZSH_BIN="$(command -v zsh || echo /bin/zsh)"
+
+@test "prompt fast-path: parses GIT_DIR='...' line into _dot_git_dir" {
+  [ -x "$ZSH_BIN" ] || skip "zsh not available"
+  local dir="$TDIR/git-data"
+  mkdir -p "$dir"
+  printf "GIT_IS_REPO='1'\nGIT_DIR='%s'\nGIT_TOPLEVEL='%s'\n" \
+    "$TDIR/repo/.git" "$TDIR/repo" > "$dir/deadbeef.sh"
+  run "$ZSH_BIN" -c '
+    setopt nullglob
+    _dot_git_cache_dir="'"$dir"'"
+    _dot_git_dir=""
+    local -a _caches=("$_dot_git_cache_dir"/*.sh(Nom))
+    local _cache="$_caches[1]" _line
+    local sq=$'\''\x27'\''
+    while IFS= read -r _line; do
+      if [[ "$_line" == GIT_DIR=* ]]; then
+        _dot_git_dir="${${_line#GIT_DIR=$sq}%$sq}"
+        break
+      fi
+    done < "$_cache"
+    print -r -- "$_dot_git_dir"
+  '
+  [ "$status" -eq 0 ]
+  [ "$output" = "$TDIR/repo/.git" ]
+}
+
+@test "prompt fast-path: empty GIT_DIR (outside repo) parses to empty string" {
+  [ -x "$ZSH_BIN" ] || skip "zsh not available"
+  local dir="$TDIR/git-data"
+  mkdir -p "$dir"
+  printf "GIT_IS_REPO=''\nGIT_DIR=''\n" > "$dir/cafef00d.sh"
+  run "$ZSH_BIN" -c '
+    setopt nullglob
+    _dot_git_dir="sentinel"
+    local -a _caches=("'"$dir"'"/*.sh(Nom))
+    local _cache="$_caches[1]" _line
+    local sq=$'\''\x27'\''
+    while IFS= read -r _line; do
+      if [[ "$_line" == GIT_DIR=* ]]; then
+        _dot_git_dir="${${_line#GIT_DIR=$sq}%$sq}"
+        break
+      fi
+    done < "$_cache"
+    print -r -- "[$_dot_git_dir]"
+  '
+  [ "$status" -eq 0 ]
+  [ "$output" = "[]" ]
+}
+
+# ── zsh compinit fast-path glob (zsh/40-completions.zsh) ─────────────────────
+# Glob qualifiers don't expand inside [[ ]]; the fix evaluates `(Nmh-24)` via
+# an array assignment. A non-empty array means "fresh dump => compinit -C";
+# empty means "missing or stale => full compinit".
+@test "compinit fast-path: fresh .zcompdump yields non-empty array (-> compinit -C)" {
+  [ -x "$ZSH_BIN" ] || skip "zsh not available"
+  local zd="$TDIR/zdot"
+  mkdir -p "$zd"
+  touch "$zd/.zcompdump"
+  run "$ZSH_BIN" -c '
+    setopt nullglob
+    local _f=("'"$zd"'/.zcompdump"(Nmh-24))
+    print -r -- "${#_f}"
+  '
+  [ "$status" -eq 0 ]
+  [ "$output" = "1" ]
+}
+
+@test "compinit fast-path: stale (>24h) .zcompdump yields empty array (-> full compinit)" {
+  [ -x "$ZSH_BIN" ] || skip "zsh not available"
+  local zd="$TDIR/zdot"
+  mkdir -p "$zd"
+  touch -t 202001010000 "$zd/.zcompdump"
+  run "$ZSH_BIN" -c '
+    setopt nullglob
+    local _f=("'"$zd"'/.zcompdump"(Nmh-24))
+    print -r -- "${#_f}"
+  '
+  [ "$status" -eq 0 ]
+  [ "$output" = "0" ]
+}
+
+@test "compinit fast-path: missing .zcompdump yields empty array (-> full compinit)" {
+  [ -x "$ZSH_BIN" ] || skip "zsh not available"
+  local zd="$TDIR/zdot"
+  mkdir -p "$zd"
+  run "$ZSH_BIN" -c '
+    setopt nullglob
+    local _f=("'"$zd"'/.zcompdump"(Nmh-24))
+    print -r -- "${#_f}"
+  '
+  [ "$status" -eq 0 ]
+  [ "$output" = "0" ]
+}
+
+# ── prune .bak guard (_prune_bak_is_safe) ───────────────────────────────────
+# A .bak is only safe to delete when its live sibling is a symlink into the
+# dotfiles repo (link() displaced a tracked file). Otherwise the .bak may be
+# the only copy and must be kept. Tests source 95-prune.sh standalone (no
+# __DOT_SYNC_SOURCED) and point DOTFILES_DIR at a fake repo.
+_setup_prune_guard() {
+  # Fake dotfiles repo (needs a Brewfile for resolve_dotfiles_dir, though we
+  # set DOTFILES_DIR explicitly so the guard never re-resolves).
+  export DOTFILES_DIR="$TDIR/repo"
+  mkdir -p "$DOTFILES_DIR"
+  : >"$DOTFILES_DIR/Brewfile"
+  unset __DOT_SYNC_SOURCED
+  source "$ROOT/install/95-prune.sh"
+}
+
+@test "prune .bak guard: sibling symlink into dotfiles repo is safe to delete" {
+  _setup_prune_guard
+  echo tracked >"$DOTFILES_DIR/.zshrc"
+  ln -s "$DOTFILES_DIR/.zshrc" "$TDIR/.zshrc"
+  echo backup >"$TDIR/.zshrc.bak"
+  run _prune_bak_is_safe "$TDIR/.zshrc.bak"
+  [ "$status" -eq 0 ]
+}
+
+@test "prune .bak guard: sibling is a plain file -> kept (not safe)" {
+  _setup_prune_guard
+  echo plain >"$TDIR/.zshrc"
+  echo backup >"$TDIR/.zshrc.bak"
+  run _prune_bak_is_safe "$TDIR/.zshrc.bak"
+  [ "$status" -ne 0 ]
+}
+
+@test "prune .bak guard: sibling missing -> kept (.bak may be only copy)" {
+  _setup_prune_guard
+  echo backup >"$TDIR/.zshrc.bak"
+  run _prune_bak_is_safe "$TDIR/.zshrc.bak"
+  [ "$status" -ne 0 ]
+}
+
+@test "prune .bak guard: sibling symlink outside the repo -> kept (not safe)" {
+  _setup_prune_guard
+  echo elsewhere >"$TDIR/other"
+  ln -s "$TDIR/other" "$TDIR/.zshrc"
+  echo backup >"$TDIR/.zshrc.bak"
+  run _prune_bak_is_safe "$TDIR/.zshrc.bak"
+  [ "$status" -ne 0 ]
 }

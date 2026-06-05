@@ -1,0 +1,38 @@
+# CI mirror of the lefthook pre-commit/pre-push lint + test gate.
+# Runs the machine-state-independent checks only: shellcheck + shfmt over
+# the same glob lefthook uses, plus the bats suite. `dot doctor` and the
+# golden verifiers are intentionally excluded — they depend on a fully
+# provisioned machine (symlinks, brew, mise tools) that CI doesn't have.
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: brew install bats-core shellcheck shfmt
+        # Same set lefthook's pre-commit globs over; tests/golden/cache/*.sh
+        # are KEY=value data fixtures (sourced, not scripts) and are excluded.
+        # Uses `find` rather than bash globstar so it works under the macOS
+        # runner's system bash 3.2.
+      - name: Collect target files
+        run: |
+          {
+            find . -name '*.sh' -not -path '*/tests/golden/cache/*' -not -path './.git/*' -not -path './.claude/*'
+            for f in dot sync doctor render prompt/* hooks/* git-template/hooks/*; do
+              [ -f "$f" ] && printf '%s\n' "$f"
+            done
+          } > "$RUNNER_TEMP/targets.txt"
+          cat "$RUNNER_TEMP/targets.txt"
+      - name: shellcheck
+        run: xargs shellcheck -x < "$RUNNER_TEMP/targets.txt"
+      - name: shfmt
+        run: xargs shfmt -d -i 2 -ci -sr < "$RUNNER_TEMP/targets.txt"
+      - name: bats
+        run: bats tests/bats/

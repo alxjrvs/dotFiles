@@ -1,11 +1,19 @@
 # Completions — must run after fpath extensions (sheldon adds zsh-completions
 # in 30-plugins.zsh) and BEFORE plugins that wrap ZLE.
 autoload -Uz compinit
-if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(Nm+1) ]]; then
-  compinit
-else
+# Glob qualifiers don't expand inside [[ ]]; evaluate via an array assignment.
+# `N` = nullglob (empty when no match). `_fresh` matches the dump only when it
+# exists AND is newer than 24h (mh-24 = mtime within the last 24 hours). Empty
+# array ⇒ dump missing or stale ⇒ run the full compinit (with security audit);
+# non-empty ⇒ skip the audit with -C for a faster startup.
+_zcompdump="${ZDOTDIR:-$HOME}/.zcompdump"
+_zcompdump_fresh=("$_zcompdump"(Nmh-24))
+if (( ${#_zcompdump_fresh} )); then
   compinit -C
+else
+  compinit
 fi
+unset _zcompdump _zcompdump_fresh
 
 # fzf-tab requires menu off (or no-select) — it owns the rendering.
 zstyle ':completion:*' menu no
