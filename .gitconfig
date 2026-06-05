@@ -23,10 +23,9 @@
 [user]
 	name = alxjrvs
 	email = alxjrvs@gmail.com
-	# Literal pubkey (not a file path) → git signs via ssh-agent (-U), so the
-	# private key file is never read at commit time. The agent is loaded at
-	# login by .zprofile; the sandbox only needs the agent socket allowed.
-	signingkey = key::ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOPKPdTHi3qsWUMivyLIXbsQ22P8F1/gMGPHuLgFUoDP jarvis@Alexs-MacBook-Air.local
+	# user.signingkey is machine-local (~/.gitconfig.local, written by
+	# `dot sync` -> install/45-ssh.sh) -- a literal `key::` pubkey, so git signs
+	# via the fixed-socket signing agent and never reads the private key file.
 [credential]
 	helper = osxkeychain
 [core]
