@@ -13,9 +13,8 @@ _lefthook_run() {
     return 0
   fi
 
-  if lefthook install \
-    --working-directory "${DOTFILES_DIR}" \
-    > /dev/null 2>&1; then
+  # lefthook has no --working-directory flag; it operates on the cwd.
+  if (cd "${DOTFILES_DIR}" && lefthook install) > /dev/null 2>&1; then
     printf '\033[0;32m  \xe2\x9c\x93 lefthook hooks installed in %s/.git/hooks/\033[0m\n' "${DOTFILES_DIR}"
   else
     printf '\033[0;33m  \xe2\x86\x92 lefthook install failed — check '"'"'lefthook install --force'"'"' manually\033[0m\n'
