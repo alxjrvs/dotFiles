@@ -91,12 +91,13 @@ Each entry is symlinked individually into `~/.claude/` by `dot sync` (claude tag
 | Event | Script | Role |
 |-------|--------|------|
 | PreToolUse (Edit\|Write) | `hooks/lock-file-guard` | defender |
-| PreToolUse (Bash) | `hooks/policy-guard` | defender |
+| PreToolUse (mcp__*\|WebFetch) | `hooks/mcp-guard` | defender |
 | PostToolUse (Edit\|Write) | `hooks/format-on-save` | formatter |
 | PostToolUse (Bash) | `hooks/trim-bash-output` | output spill |
 | UserPromptSubmit | `hooks/user-prompt-submit` | git cache pre-warm |
-| SessionStart | `hooks/session-start` | session banner title (`<repo>:<branch>`) |
 | Stop | `hooks/stop` | session JSONL journal |
+| PreCompact (—) | `hooks/precompact` | snapshot |
+| SubagentStop (—) | `hooks/subagent-stop` | ledger |
 
 ### Tests
 

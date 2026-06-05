@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# hooks/subagent-stop — SubagentStop: append a ledger line when a subagent finishes.
+#
+# Reads session_id, agent_type/agent_id, stop_hook_active, cwd from CC JSON on stdin.
+# Captures whether the cwd worktree is dirty (git status --porcelain non-empty).
+# Appends {ts, session_id, task, elapsed_unknown, cwd, dirty} to
+# ~/.claude/state/subagent-ledger.jsonl.
+# Always exits 0 — best-effort ledger.
+#
+# Self-contained: no shared/ sourcing. All helpers defined inline.
+set -uo pipefail
+
+# jq is required to parse the payload; if absent, silently no-op (logger, not defender).
+command -v jq > /dev/null 2>&1 || exit 0
+
+# ---------------------------------------------------------------------------
+# Read stdin JSON
+# ---------------------------------------------------------------------------
+INPUT=$(cat)
+
+TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || echo "")
+SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // empty')
+# task: prefer a human agent type, fall back to the unique agent id.
+TASK=$(printf '%s' "$INPUT" | jq -r '.agent_type // .agent_id // empty')
+CWD_VAL=$(printf '%s' "$INPUT" | jq -r '.cwd // empty')
+
+# ---------------------------------------------------------------------------
+# Worktree dirty check — guarded so a non-repo cwd doesn't error.
+# ---------------------------------------------------------------------------
+DIRTY="false"
+if git -C "$PWD" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  PORCELAIN=$(git -C "$PWD" status --porcelain 2> /dev/null || true)
+  if [[ -n "$PORCELAIN" ]]; then
+    DIRTY="true"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Append JSONL record
+# ---------------------------------------------------------------------------
+STATE_DIR="${HOME}/.claude/state"
+mkdir -p "$STATE_DIR"
+
+LEDGER="${STATE_DIR}/subagent-ledger.jsonl"
+# Secrets-at-rest: lock the ledger to the owner on first creation.
+if [[ ! -e "$LEDGER" ]]; then
+  : >> "$LEDGER"
+  chmod 600 "$LEDGER" 2> /dev/null || true
+fi
+
+jq -cn \
+  --arg ts "$TS" \
+  --arg session_id "$SESSION_ID" \
+  --arg task "$TASK" \
+  --arg cwd "$CWD_VAL" \
+  --argjson dirty "$DIRTY" \
+  '{ts:$ts,session_id:$session_id,task:$task,elapsed_unknown:true,cwd:$cwd,dirty:$dirty}' \
+  >> "$LEDGER" 2> /dev/null || true
+
+# ---------------------------------------------------------------------------
+# Self-bound: trim to last 1000 lines once the file exceeds 2000.
+# ---------------------------------------------------------------------------
+LINES=$(wc -l < "$LEDGER" 2> /dev/null | tr -d ' ')
+if [[ -n "$LINES" && "$LINES" -gt 2000 ]]; then
+  TMP="${LEDGER}.tmp.$$"
+  if tail -n 1000 "$LEDGER" > "$TMP" 2> /dev/null; then
+    chmod 600 "$TMP" 2> /dev/null || true
+    mv "$TMP" "$LEDGER" 2> /dev/null || rm -f "$TMP" 2> /dev/null || true
+  else
+    rm -f "$TMP" 2> /dev/null || true
+  fi
+fi
+
+exit 0

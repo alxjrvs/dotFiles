@@ -497,6 +497,197 @@ _prune_stale_cost_dirs() {
   fi
 }
 
+# ── Pass 5: unbounded state journals ──────────────────────────────────────────
+
+# Bound an append-only JSONL journal: if it exceeds HARD lines, truncate to the
+# last KEEP lines in place (atomic via temp file). Idempotent: a file already
+# under HARD is left untouched.
+_prune_bound_jsonl() {
+  local file="$1" keep="$2" hard="$3" home="$4"
+  [[ -f "$file" ]] || return 0
+  local lines
+  lines=$(wc -l < "$file" 2> /dev/null | tr -d ' ')
+  [[ "$lines" =~ ^[0-9]+$ ]] || return 0
+
+  local display="${file/#$home\//~/}"
+  if [[ "$lines" -le "$hard" ]]; then
+    printf '\033[0;32m  \xe2\x9c\x93 %s (%d lines, within bound)\033[0m\n' "$display" "$lines"
+    return 0
+  fi
+
+  printf '\033[0;33m  %s has %d lines (> %d); will trim to last %d\033[0m\n' \
+    "$display" "$lines" "$hard" "$keep"
+
+  local do_trim=0
+  case "${PRUNE_MODE:-ask}" in
+    auto) do_trim=1 ;;
+    dry) do_trim=0 ;;
+    *)
+      _prune_ask_yes "Trim ${display}?" && do_trim=1 || do_trim=0
+      ;;
+  esac
+
+  if [[ "$do_trim" -eq 0 ]]; then
+    printf '\033[2m  - Skipped (left unbounded)\033[0m\n'
+    return 0
+  fi
+
+  local tmp="${file}.prune.$$"
+  if tail -n "$keep" "$file" > "$tmp" 2> /dev/null && mv "$tmp" "$file" 2> /dev/null; then
+    printf '\033[0;32m  \xe2\x9c\x93 Trimmed %s to %d lines\033[0m\n' "$display" "$keep"
+  else
+    rm -f "$tmp" 2> /dev/null || true
+    printf '\033[0;33m  \xe2\x86\x92 failed to trim %s\033[0m\n' "$display" >&2
+  fi
+}
+
+_prune_state_journals() {
+  local home="${1:-$HOME}"
+  printf '\n==> State journal bounding\n'
+  # Keep the last 500 entries once a journal grows past ~1000 lines.
+  _prune_bound_jsonl "${home}/.claude/state/hook-timings.jsonl" 500 1000 "$home"
+  # P3 ledgers — same line-bound treatment as hook-timings.jsonl.
+  _prune_bound_jsonl "${home}/.claude/state/precompact-snapshots.jsonl" 500 1000 "$home"
+  _prune_bound_jsonl "${home}/.claude/state/subagent-ledger.jsonl" 500 1000 "$home"
+}
+
+# ── Pass 5b: stale per-session shards ─────────────────────────────────────────
+# hooks/stop now writes per-session shards under state/sessions/<id>.jsonl
+# (replacing the single sessions.jsonl). Age them out the same way as cost dirs
+# / spills: a shard last modified before midnight today is stale.
+_prune_session_shards() {
+  local home="${1:-$HOME}"
+  printf '\n==> Stale session shards\n'
+
+  local root="${home}/.claude/state/sessions"
+  if [[ ! -d "$root" ]]; then
+    printf '\033[0;32m  \xe2\x9c\x93 No stale session shards\033[0m\n'
+    return 0
+  fi
+
+  local today
+  today=$(date +%Y-%m-%d)
+
+  local -a stale=()
+  local entry mday
+  while IFS= read -r -d '' entry; do
+    [[ -f "$entry" ]] || continue
+    mday=$(date -r "$entry" +%Y-%m-%d 2> /dev/null || true)
+    [[ -n "$mday" && "$mday" < "$today" ]] && stale+=("$entry")
+  done < <(find "$root" -maxdepth 1 -mindepth 1 -name '*.jsonl' -print0 2> /dev/null)
+
+  if [[ "${#stale[@]}" -gt 0 ]]; then
+    mapfile -t stale < <(printf '%s\n' "${stale[@]}" | sort)
+  fi
+
+  if [[ "${#stale[@]}" -eq 0 ]]; then
+    printf '\033[0;32m  \xe2\x9c\x93 No stale session shards\033[0m\n'
+    return 0
+  fi
+
+  printf '\033[0;33m  Found %d stale session shard(s):\033[0m\n' "${#stale[@]}"
+  local d display
+  for d in "${stale[@]}"; do
+    display="${d/#$home\//~/}"
+    printf '\033[2m    - %s\033[0m\n' "$display"
+  done
+
+  local do_delete=0
+  case "${PRUNE_MODE:-ask}" in
+    auto) do_delete=1 ;;
+    dry) do_delete=0 ;;
+    *)
+      _prune_ask_yes "Delete these session shards?" && do_delete=1 || do_delete=0
+      ;;
+  esac
+
+  if [[ "$do_delete" -eq 0 ]]; then
+    printf '\033[2m  - Skipped (no shards removed)\033[0m\n'
+    return 0
+  fi
+
+  local deleted=0 failed=0
+  for d in "${stale[@]}"; do
+    if rm -f "$d" 2> /dev/null; then
+      deleted=$((deleted + 1))
+    else
+      printf '\033[0;33m  \xe2\x86\x92 failed to delete %s\033[0m\n' "$d" >&2
+      failed=$((failed + 1))
+    fi
+  done
+  if [[ "$failed" -eq 0 ]]; then
+    printf '\033[0;32m  \xe2\x9c\x93 Deleted %d stale session shard(s)\033[0m\n' "$deleted"
+  else
+    printf '\033[0;33m  \xe2\x86\x92 Deleted %d, %d failed\033[0m\n' "$deleted" "$failed"
+  fi
+}
+
+# ── Pass 6: stale bash-output spills ──────────────────────────────────────────
+
+_prune_stale_spills() {
+  printf '\n==> Stale bash-output spills\n'
+
+  local -a roots=("/tmp/claude/spills" "/private/tmp/claude/spills")
+  local -a stale=()
+  local root entry display
+  # Match the cost-dir convention: an entry is stale once its date precedes
+  # today. Spill files carry no date in their name, so use mtime: anything
+  # last modified before midnight today (older than today) is stale.
+  local today
+  today=$(date +%Y-%m-%d)
+  for root in "${roots[@]}"; do
+    [[ -d "$root" ]] || continue
+    while IFS= read -r -d '' entry; do
+      local mday
+      mday=$(date -r "$entry" +%Y-%m-%d 2> /dev/null || true)
+      [[ -n "$mday" && "$mday" < "$today" ]] && stale+=("$entry")
+    done < <(find "$root" -mindepth 1 -print0 2> /dev/null)
+  done
+
+  if [[ "${#stale[@]}" -gt 0 ]]; then
+    mapfile -t stale < <(printf '%s\n' "${stale[@]}" | sort)
+  fi
+
+  if [[ "${#stale[@]}" -eq 0 ]]; then
+    printf '\033[0;32m  \xe2\x9c\x93 No stale spills\033[0m\n'
+    return 0
+  fi
+
+  printf '\033[0;33m  Found %d stale spill(s):\033[0m\n' "${#stale[@]}"
+  for entry in "${stale[@]}"; do
+    printf '\033[2m    - %s\033[0m\n' "$entry"
+  done
+
+  local do_delete=0
+  case "${PRUNE_MODE:-ask}" in
+    auto) do_delete=1 ;;
+    dry) do_delete=0 ;;
+    *)
+      _prune_ask_yes "Delete these spills?" && do_delete=1 || do_delete=0
+      ;;
+  esac
+
+  if [[ "$do_delete" -eq 0 ]]; then
+    printf '\033[2m  - Skipped (no spills removed)\033[0m\n'
+    return 0
+  fi
+
+  local deleted=0 failed=0
+  for entry in "${stale[@]}"; do
+    if rm -rf "$entry" 2> /dev/null; then
+      deleted=$((deleted + 1))
+    else
+      printf '\033[0;33m  \xe2\x86\x92 failed to delete %s\033[0m\n' "$entry" >&2
+      failed=$((failed + 1))
+    fi
+  done
+  if [[ "$failed" -eq 0 ]]; then
+    printf '\033[0;32m  \xe2\x9c\x93 Deleted %d stale spill(s)\033[0m\n' "$deleted"
+  else
+    printf '\033[0;33m  \xe2\x86\x92 Deleted %d, %d failed\033[0m\n' "$deleted" "$failed"
+  fi
+}
+
 # ── Main entry ────────────────────────────────────────────────────────────────
 
 _prune_run() {
@@ -504,6 +695,9 @@ _prune_run() {
   _prune_stale_worktrees "${HOME}"
   _prune_orphan_workers
   _prune_stale_cost_dirs "${HOME}"
+  _prune_state_journals "${HOME}"
+  _prune_session_shards "${HOME}"
+  _prune_stale_spills
 }
 
 # ── Standalone execution (dot prune / ./install/95-prune.sh) ─────────────────

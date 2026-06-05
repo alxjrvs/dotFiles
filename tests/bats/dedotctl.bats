@@ -24,84 +24,9 @@ run_hook() {
 # jq pretty-prints deny payloads with a space: "permissionDecision": "deny"
 is_deny() { [[ "$1" == *'"permissionDecision": "deny"'* ]]; }
 
-# ── policy-guard ────────────────────────────────────────────────────────────
-@test "policy-guard: --no-verify on git commit is denied" {
-  run run_hook policy-guard '{"tool_name":"Bash","tool_input":{"command":"git commit --no-verify -m x"}}'
-  [ "$status" -eq 0 ]
-  is_deny "$output"
-  [[ "$output" == *"--no-verify"* ]]
-}
-
-@test "policy-guard: --no-gpg-sign is denied" {
-  run run_hook policy-guard '{"tool_name":"Bash","tool_input":{"command":"git commit --no-gpg-sign -m x"}}'
-  [ "$status" -eq 0 ]
-  is_deny "$output"
-}
-
-@test "policy-guard: git push --force is denied" {
-  run run_hook policy-guard '{"tool_name":"Bash","tool_input":{"command":"git push --force origin main"}}'
-  [ "$status" -eq 0 ]
-  is_deny "$output"
-  [[ "$output" == *"force-with-lease"* ]]
-}
-
-@test "policy-guard: git push -f is denied" {
-  run run_hook policy-guard '{"tool_name":"Bash","tool_input":{"command":"git push -f origin main"}}'
-  [ "$status" -eq 0 ]
-  is_deny "$output"
-}
-
-@test "policy-guard: git push --force-with-lease is ALLOWED" {
-  run run_hook policy-guard '{"tool_name":"Bash","tool_input":{"command":"git push --force-with-lease origin main"}}'
-  [ "$status" -eq 0 ]
-  ! is_deny "$output"
-}
-
-@test "policy-guard: git commit --amend is denied" {
-  run run_hook policy-guard '{"tool_name":"Bash","tool_input":{"command":"git commit --amend"}}'
-  [ "$status" -eq 0 ]
-  is_deny "$output"
-}
-
-@test "policy-guard: benign git command is allowed" {
-  run run_hook policy-guard '{"tool_name":"Bash","tool_input":{"command":"git status"}}'
-  [ "$status" -eq 0 ]
-  [[ "$output" != *deny* ]]
-}
-
-@test "policy-guard: non-Bash tool is ignored" {
-  run run_hook policy-guard '{"tool_name":"Edit","tool_input":{"command":"git push --force"}}'
-  [ "$status" -eq 0 ]
-  [[ "$output" != *deny* ]]
-}
-
-# Regression: a dangerous-looking flag in a *separate* segment of a compound
-# command must not falsely trip a git verb in another segment. bash [[ =~ ]]
-# '.' spans newlines, so `git push ... && rm -f x` used to false-deny.
-@test "policy-guard: git push in compound with later 'rm -f' is ALLOWED" {
-  run run_hook policy-guard '{"tool_name":"Bash","tool_input":{"command":"git push origin main && rm -f /tmp/x"}}'
-  [ "$status" -eq 0 ]
-  [[ "$output" != *deny* ]]
-}
-
-@test "policy-guard: git commit in compound with later 'rm -f' is ALLOWED" {
-  run run_hook policy-guard '{"tool_name":"Bash","tool_input":{"command":"git commit -m wip && rm -f /tmp/y"}}'
-  [ "$status" -eq 0 ]
-  [[ "$output" != *deny* ]]
-}
-
-@test "policy-guard: real force-push still denied even in a compound command" {
-  run run_hook policy-guard '{"tool_name":"Bash","tool_input":{"command":"echo hi && git push --force origin main"}}'
-  [ "$status" -eq 0 ]
-  is_deny "$output"
-}
-
-@test "policy-guard: branch deletion is advisory, not deny" {
-  run run_hook policy-guard '{"tool_name":"Bash","tool_input":{"command":"git push origin --delete somebranch"}}'
-  [ "$status" -eq 0 ]
-  [[ "$output" != *deny* ]]
-  [[ "$output" == *additionalContext* ]]
-}
+# NOTE: policy-guard was removed; --no-verify / --no-gpg-sign / force-push are
+# now blocked by permissions.deny in dot-claude/settings.json, not by a hook.
+# Its former bats coverage lived here and was deleted with the hook.
 
 # ── lock-file-guard ─────────────────────────────────────────────────────────
 @test "lock-file-guard: denies all 13 known lock names" {

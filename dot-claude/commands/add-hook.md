@@ -10,7 +10,7 @@ Scaffold a new Claude Code hook handler as a **standalone bash script** in `hook
 ## Arguments
 
 - `<event-name>` — kebab-case slug for the new arm, e.g. `pr-link-injector`. Becomes the argument to `dot hook <event-name>`.
-- `<claude-event>` — one of: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `SessionStart`, `Stop`, `CwdChanged`, `PreCompact`, `PermissionDenied`.
+- `<claude-event>` — one of: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `Notification`, `Stop`, `SubagentStop`, `PreCompact`, `SessionStart`, `SessionEnd`.
 - `[matcher]` — optional, e.g. `Bash` or `Edit|Write` for PreToolUse/PostToolUse. Empty for the others.
 
 If any are missing, ask before scaffolding.
@@ -23,17 +23,32 @@ If any are missing, ask before scaffolding.
    #!/usr/bin/env bash
    # hooks/<event-name> — <one-line purpose>.
    # Reads Claude Code JSON from stdin; emits structured JSON response to stdout.
-   # Exit 0 = allow/continue. For PreToolUse: exit 2 = block (stderr shown to model).
+   # Exit 0 = continue. For PreToolUse, deny by emitting a permissionDecision JSON
+   # object (see below) and still exit 0 — do NOT rely on exit 2.
    set -uo pipefail
 
    # ── Helpers ──────────────────────────────────────────────────────────────────
    _log() { printf '[<event-name>] %s\n' "$*" >&2; }
+
+   # Defender hooks must fail closed: if jq is missing they cannot evaluate the
+   # input, so deny rather than silently allowing. (Omit for non-defender hooks.)
+   command -v jq >/dev/null || {
+     jq_missing='{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"<event-name>: jq not found; failing closed"}}'
+     # If jq itself is gone we cannot use jq -n, so emit the literal string.
+     printf '%s\n' "$jq_missing"
+     exit 0
+   }
 
    # ── Main ─────────────────────────────────────────────────────────────────────
    input=$(cat)
 
    # Use jq to extract fields from $input.
    # tool_name=$(printf '%s' "$input" | jq -r '.tool_name // empty')
+
+   # To BLOCK a PreToolUse call, emit a deny decision and exit 0:
+   #   jq -n --arg reason "why this is blocked" \
+   #     '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$reason}}'
+   #   exit 0
 
    # Default: pass through (no-op).
    exit 0
@@ -45,11 +60,11 @@ If any are missing, ask before scaffolding.
    chmod +x hooks/<event-name>
    ```
 
-3. **Add at least one bats test** in `test/hooks/<event-name>.bats`. Required by the CLAUDE.md guardrail ("Add tests for any new event handler before wiring it into settings.json"). Use the existing test files as examples. Template:
+3. **Add at least one bats test** in `tests/bats/<event-name>.bats`. Required by the CLAUDE.md guardrail ("Add tests for any new event handler before wiring it into settings.json"). Use the existing test files as examples. Template:
 
    ```bash
    #!/usr/bin/env bats
-   # test/hooks/<event-name>.bats — unit tests for hooks/<event-name>
+   # tests/bats/<event-name>.bats — unit tests for hooks/<event-name>
 
    setup() {
      HOOK="$BATS_TEST_DIRNAME/../../hooks/<event-name>"
@@ -79,7 +94,7 @@ If any are missing, ask before scaffolding.
 6. **Run tests:**
 
    ```bash
-   bats test/hooks/<event-name>.bats
+   bats tests/bats/<event-name>.bats
    ```
 
    Failures block the commit (`lefthook.yml` pre-push runs the suite). Fix at write time.
@@ -97,7 +112,8 @@ If any are missing, ask before scaffolding.
 
 ## Gotchas
 
-- **PreToolUse Bash** handlers can `printf 'BLOCK: ...\n' >&2` + `exit 2` to block. PostToolUse cannot block — emit `hookSpecificOutput.updatedToolOutput` via jq to mutate the response instead.
+- **PreToolUse** handlers block by emitting a deny decision on stdout, NOT via `exit 2`. Every shipped guard (`policy-guard`, `lock-file-guard`) does this: `jq -n --arg reason "..." '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$reason}}'` then `exit 0`. PostToolUse cannot block — emit `hookSpecificOutput.updatedToolOutput` via jq to mutate the response instead.
+- **Fail closed for defenders**: a PreToolUse guard that can't evaluate its input (e.g. `jq` missing) must deny, not silently pass. Gate with `command -v jq >/dev/null || { <emit deny>; exit 0; }` at the top.
 - **JSON shapes** vary per event — check existing hook scripts for the right jq paths. For example: `.tool_input.command` for Bash, `.tool_input.file_path` for Edit/Write.
 - **Performance**: hooks fire on every tool call; avoid unnecessary subprocess spawns. `jq` is the right tool for JSON; `command -v` for binary presence checks.
 - **Stdout discipline**: PreToolUse hooks treat stdout as `hookSpecificOutput` JSON. Don't print human-readable text to stdout from a PreToolUse hook — use `>&2` instead.

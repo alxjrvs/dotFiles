@@ -59,7 +59,49 @@ case "$cmd" in
     }
     event="$1"
     shift
-    exec "$DIR/hooks/$event" "$@"
+    # Timing wraps the hook: capture start, run, capture rc, append one bounded
+    # JSON line to the timings log (opt-in via DOTFILES_HOOK_TIMING=1), exit rc.
+    # Runs AFTER the hook decision so a hook's own deny/exit is never delayed.
+    _hook_start_ms=""
+    if [[ "${DOTFILES_HOOK_TIMING:-}" == "1" ]]; then
+      if command -v gdate > /dev/null 2>&1; then
+        _hook_start_ms=$(gdate +%s%3N)
+      elif date +%s%3N > /dev/null 2>&1; then
+        _hook_start_ms=$(date +%s%3N)
+      fi
+    fi
+
+    _hook_rc=0
+    "$DIR/hooks/$event" "$@" || _hook_rc=$?
+
+    if [[ "${DOTFILES_HOOK_TIMING:-}" == "1" && -n "$_hook_start_ms" ]]; then
+      _hook_end_ms=""
+      if command -v gdate > /dev/null 2>&1; then
+        _hook_end_ms=$(gdate +%s%3N)
+      elif date +%s%3N > /dev/null 2>&1; then
+        _hook_end_ms=$(date +%s%3N)
+      fi
+      if [[ -n "$_hook_end_ms" ]]; then
+        _hook_elapsed=$((_hook_end_ms - _hook_start_ms))
+        _hook_ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || printf '')
+        _hook_state_dir="${HOME}/.claude/state"
+        _hook_log="${_hook_state_dir}/hook-timings.jsonl"
+        mkdir -p "$_hook_state_dir" 2> /dev/null || true
+        # Bound the log: keep the last 500 lines once it grows past ~1000.
+        if [[ -f "$_hook_log" ]]; then
+          _hook_lines=$(wc -l < "$_hook_log" 2> /dev/null | tr -d '[:space:]')
+          if [[ -n "$_hook_lines" && "$_hook_lines" -gt 1000 ]]; then
+            tail -n 500 "$_hook_log" > "${_hook_log}.tmp" 2> /dev/null &&
+              mv "${_hook_log}.tmp" "$_hook_log" 2> /dev/null || true
+          fi
+        fi
+        printf '{"ts":"%s","event":"%s","elapsed_ms":%d,"rc":%d}\n' \
+          "$_hook_ts" "$event" "$_hook_elapsed" "$_hook_rc" \
+          >> "$_hook_log" 2> /dev/null || true
+      fi
+    fi
+
+    exit "$_hook_rc"
     ;;
   *)
     printf 'dot: unknown subcommand: %s\n' "$cmd" >&2

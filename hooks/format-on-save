@@ -2,59 +2,40 @@
 # hooks/format-on-save — PostToolUse: auto-format edited files by extension.
 #
 # Routes on file extension:
-#   .sh             -> shfmt -w -i 2
-#   .ts/.tsx/.js/.jsx -> prettier --write, then eslint --fix --format=compact
-#   .css            -> prettier --write
-#   other           -> no-op
+#   .sh               -> shfmt -w -i 2          (format)
+#   .ts/.tsx/.js/.jsx -> prettier --write --no-config   (format)
+#   .css              -> prettier --write --no-config   (format)
+#   other             -> no-op
 #
-# Missing formatters are silently skipped (command -v check).
-# eslint stdout on nonzero exit is emitted as additionalContext.
+# Formatters never execute repo-local config: prettier runs --no-config so a
+# hostile repo's prettier.config.js / plugins cannot run as code. The eslint
+# --fix arm was removed entirely — it auto-exec'd project-local eslint
+# (eslint.config.js) UNSANDBOXED, a code-exec vector.
+#
+# Non-gating lint-as-context arm (single-file scope, NEVER blocks):
+#   .sh      -> shellcheck
+#   .ts/.tsx -> tsc --noEmit on the single file
+# Captured stdout, if non-empty, is surfaced via additionalContext only.
+# Tools are resolved through mise (mise exec / mise which) so they are the
+# pinned toolchain, not an arbitrary PATH binary; a missing tool is skipped.
+#
+# Missing formatters/linters are silently skipped (command -v / mise which).
 # Silent (exit 0, no output) on success or unknown extension.
 #
 # Self-contained: no shared/ sourcing. All helpers defined inline.
-set -euo pipefail
-
-# ---------------------------------------------------------------------------
-# Timing instrumentation
-# ---------------------------------------------------------------------------
-_HOOK_START_MS=0
-if [[ "${DOTFILES_HOOK_TIMING:-}" == "1" ]]; then
-  if command -v gdate > /dev/null 2>&1; then
-    _HOOK_START_MS=$(gdate +%s%3N)
-  elif date +%s%3N > /dev/null 2>&1; then
-    _HOOK_START_MS=$(date +%s%3N)
-  fi
-fi
-
-_log_timing() {
-  local ok="$1"
-  if [[ "${DOTFILES_HOOK_TIMING:-}" != "1" ]]; then
-    return 0
-  fi
-  local end_ms=0
-  if command -v gdate > /dev/null 2>&1; then
-    end_ms=$(gdate +%s%3N)
-  elif date +%s%3N > /dev/null 2>&1; then
-    end_ms=$(date +%s%3N)
-  fi
-  local elapsed=$((end_ms - _HOOK_START_MS))
-  local ts
-  ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || echo "")
-  local state_dir="${HOME}/.claude/state"
-  mkdir -p "$state_dir"
-  printf '{"ts":"%s","event":"format-on-save","elapsed_ms":%d,"ok":%s}\n' \
-    "$ts" "$elapsed" "$ok" \
-    >> "${state_dir}/hook-timings.jsonl"
-}
+set -uo pipefail
 
 # ---------------------------------------------------------------------------
 # Read stdin JSON
 # ---------------------------------------------------------------------------
 INPUT=$(cat)
 
+if ! command -v jq > /dev/null 2>&1; then
+  exit 0
+fi
+
 FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.file_path // ""')
 if [[ -z "$FILE_PATH" ]]; then
-  _log_timing "true"
   exit 0
 fi
 
@@ -67,40 +48,75 @@ if [[ "$FILENAME" == "$EXT" ]] || [[ "$FILENAME" == ".$EXT" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Format by extension
+# Tool resolution via mise (pinned toolchain, not arbitrary PATH binary).
+#   _have_tool <name>  -> 0 if the tool is resolvable, else 1 (silent skip)
+#   _run_tool  <name> ...args -> exec the tool through `mise exec --`
+# Falls back to a bare PATH lookup only when mise itself is absent.
+# ---------------------------------------------------------------------------
+_have_tool() {
+  local t="$1"
+  if command -v mise > /dev/null 2>&1; then
+    mise which "$t" > /dev/null 2>&1 && return 0
+  fi
+  command -v "$t" > /dev/null 2>&1
+}
+
+_run_tool() {
+  local t="$1"
+  shift
+  if command -v mise > /dev/null 2>&1 && mise which "$t" > /dev/null 2>&1; then
+    mise exec -- "$t" "$@"
+  else
+    "$t" "$@"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Format by extension (mutating, best-effort, never blocks)
 # ---------------------------------------------------------------------------
 case "$EXT" in
   sh)
-    if command -v shfmt > /dev/null 2>&1; then
-      shfmt -w -i 2 "$FILE_PATH" || true
+    if _have_tool shfmt; then
+      _run_tool shfmt -w -i 2 "$FILE_PATH" > /dev/null 2>&1 || true
     fi
     ;;
 
-  ts | tsx | js | jsx)
-    if command -v prettier > /dev/null 2>&1; then
-      prettier --write "$FILE_PATH" > /dev/null 2>&1 || true
-    fi
-    if command -v eslint > /dev/null 2>&1; then
-      # Capture stdout; emit as additionalContext if eslint exits nonzero with output
-      ESLINT_OUT=""
-      ESLINT_RC=0
-      ESLINT_OUT=$(eslint --fix --format=compact "$FILE_PATH" 2> /dev/null) || ESLINT_RC=$?
-      if [[ "$ESLINT_RC" -ne 0 ]] && [[ -n "$ESLINT_OUT" ]]; then
-        jq -n --arg ctx "$ESLINT_OUT" '{"additionalContext":$ctx}'
-      fi
-    fi
-    ;;
-
-  css)
-    if command -v prettier > /dev/null 2>&1; then
-      prettier --write "$FILE_PATH" > /dev/null 2>&1 || true
+  ts | tsx | js | jsx | css)
+    # --no-config: never load (and thus never execute) repo-local prettier
+    # config or plugins.
+    if _have_tool prettier; then
+      _run_tool prettier --write --no-config "$FILE_PATH" > /dev/null 2>&1 || true
     fi
     ;;
 
   *)
-    # Unknown extension — no-op
+    # Unknown extension — no formatter
     ;;
 esac
 
-_log_timing "true"
+# ---------------------------------------------------------------------------
+# Lint-as-context (non-mutating, NEVER blocks, single-file scope).
+# Captured stdout, if non-empty, is surfaced via additionalContext only.
+# ---------------------------------------------------------------------------
+LINT_OUT=""
+case "$EXT" in
+  sh)
+    if _have_tool shellcheck; then
+      LINT_OUT=$(_run_tool shellcheck "$FILE_PATH" 2>&1) || true
+    fi
+    ;;
+
+  ts | tsx)
+    if _have_tool tsc; then
+      LINT_OUT=$(_run_tool tsc --noEmit "$FILE_PATH" 2>&1) || true
+    fi
+    ;;
+
+  *) ;;
+esac
+
+if [[ -n "$LINT_OUT" ]]; then
+  jq -n --arg ctx "$LINT_OUT" '{"additionalContext":$ctx}'
+fi
+
 exit 0

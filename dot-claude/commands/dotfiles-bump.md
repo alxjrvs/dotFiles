@@ -4,7 +4,7 @@ description: Survey Brewfile + mise drift and draft a bump PR
 
 # /dotfiles-bump
 
-Check what's outdated in `~/dotFiles/` and draft an update PR.
+Check what's outdated in the dotfiles repo (`$DOTFILES_DIR`, else `$(git rev-parse --show-toplevel)`) and draft an update PR.
 
 ## Steps
 
@@ -25,10 +25,10 @@ mise tool:    <name>  <current>  →  <latest>
 
 After reporting, ask the user "Open a `chore(deps): bump …` PR?" If yes:
 
-1. Branch `git switch -c chore/bump-$(date +%Y%m%d)` in `~/dotFiles/`.
+1. Branch `git switch -c chore/bump-$(date +%Y%m%d)` in `$DOTFILES_DIR`.
 2. For each accepted bump: edit Brewfile / mise.toml in place. (Brew formula version isn't pinned in Brewfile, so no edit needed unless you want to add a `version` arg — usually skip.)
-3. Run `brew bundle --file=~/dotFiles/Brewfile --no-upgrade` and `mise install` to materialize.
-4. Verify with `make lint`.
+3. Run `dot sync --only=brew` (preferred — host-aware and path-robust) or `brew bundle --file="$DOTFILES_DIR/Brewfile"`, then `mise install` to materialize. Note: if a `Brewfile.<host>` exists it installs additively after the shared `Brewfile`; `dot sync --only=brew` handles that automatically.
+4. Verify with `lefthook run pre-commit`.
 5. Commit + push + open PR with the bump list in the body.
 
 Don't auto-merge.

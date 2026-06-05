@@ -11,7 +11,7 @@ You migrate plaintext secrets in this repository to the user's established 1Pass
 
 ## The patterns (priority order)
 
-The user's secrets-handling patterns are documented in `~/dotFiles/CLAUDE.md` "Secrets management":
+The user's secrets-handling patterns are documented in `$DOTFILES_DIR/CLAUDE.md` (the repo root, `$(git rev-parse --show-toplevel)`) "Secrets management":
 
 1. **`op-run <cmd>`** — for one-shot CLI invocations that read a token from env.
 2. **`op://` refs in config files** (e.g. `.npmrc`) paired with `op-run`.
@@ -24,6 +24,8 @@ Default to pattern 1 or 2 unless the use case requires fork-time inheritance.
 
 1. **Scan** — Use Grep with the following patterns (combine into one ripgrep call):
    - `gh[oprsu]_[A-Za-z0-9]{20,}` (GitHub tokens)
+   - `github_pat_[A-Za-z0-9_]{22,}` (GitHub fine-grained PATs)
+   - `sk-ant-api03-[A-Za-z0-9_-]{20,}` (Anthropic API keys)
    - `sk-[A-Za-z0-9_-]{20,}` (OpenAI-shape)
    - `AKIA[0-9A-Z]{16}` (AWS access keys)
    - `xox[bp]-[A-Za-z0-9-]{20,}` (Slack tokens)

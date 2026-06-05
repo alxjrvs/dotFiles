@@ -12,40 +12,7 @@
 # JSON manipulation is done entirely with jq.
 #
 # Self-contained: no shared/ sourcing. All helpers defined inline.
-set -euo pipefail
-
-# ---------------------------------------------------------------------------
-# Timing instrumentation
-# ---------------------------------------------------------------------------
-_HOOK_START_MS=0
-if [[ "${DOTFILES_HOOK_TIMING:-}" == "1" ]]; then
-  if command -v gdate > /dev/null 2>&1; then
-    _HOOK_START_MS=$(gdate +%s%3N)
-  elif date +%s%3N > /dev/null 2>&1; then
-    _HOOK_START_MS=$(date +%s%3N)
-  fi
-fi
-
-_log_timing() {
-  local ok="$1"
-  if [[ "${DOTFILES_HOOK_TIMING:-}" != "1" ]]; then
-    return 0
-  fi
-  local end_ms=0
-  if command -v gdate > /dev/null 2>&1; then
-    end_ms=$(gdate +%s%3N)
-  elif date +%s%3N > /dev/null 2>&1; then
-    end_ms=$(date +%s%3N)
-  fi
-  local elapsed=$((end_ms - _HOOK_START_MS))
-  local ts
-  ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || echo "")
-  local state_dir="${HOME}/.claude/state"
-  mkdir -p "$state_dir"
-  printf '{"ts":"%s","event":"trim-bash-output","elapsed_ms":%d,"ok":%s}\n' \
-    "$ts" "$elapsed" "$ok" \
-    >> "${state_dir}/hook-timings.jsonl"
-}
+set -uo pipefail
 
 # ---------------------------------------------------------------------------
 # Read stdin JSON
@@ -54,7 +21,6 @@ INPUT=$(cat)
 
 TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.tool_name // ""')
 if [[ "$TOOL_NAME" != "Bash" ]]; then
-  _log_timing "true"
   exit 0
 fi
 
@@ -64,7 +30,6 @@ THRESHOLD=20000
 # Length check: use bash ${#} for fast char count (good enough for threshold guard)
 STDOUT_LEN=${#STDOUT}
 if [[ "$STDOUT_LEN" -le "$THRESHOLD" ]]; then
-  _log_timing "true"
   exit 0
 fi
 
@@ -91,8 +56,12 @@ if mkdir -p "$SPILL_DIR" 2> /dev/null; then
     TS_MS=$(date +%s)000
   fi
   SPILL_PATH="${SPILL_DIR}/${TS_MS}.txt"
-  if printf '%s' "$STDOUT" > "$SPILL_PATH" 2> /dev/null; then
-    SPILL_HINT=" — full output spilled to ${SPILL_PATH}"
+  # Secrets-at-rest: create owner-only, then write the (possibly sensitive) spill.
+  if (umask 177 && : > "$SPILL_PATH") 2> /dev/null; then
+    chmod 600 "$SPILL_PATH" 2> /dev/null || true
+    if printf '%s' "$STDOUT" > "$SPILL_PATH" 2> /dev/null; then
+      SPILL_HINT=" — full output spilled to ${SPILL_PATH}"
+    fi
   fi
 fi
 
@@ -116,10 +85,11 @@ if [[ "$TOTAL_LINES" -gt $((HEAD_LINES + TAIL_LINES)) ]]; then
 ... [trim-bash-output: elided ${ELIDED} lines / ~${KB}KB to save context${SPILL_HINT}] ...
 ${TAIL_PART}"
 else
-  # Char-based trim (single huge line fallback)
-  HEAD_PART=$(printf '%s' "$STDOUT" | cut -c "1-${HEAD_CHARS}")
-  # For tail: take the last TAIL_CHARS characters
-  TAIL_PART=$(printf '%s' "$STDOUT" | rev | cut -c "1-${TAIL_CHARS}" | rev)
+  # Byte-based trim (single huge line fallback). Use head -c / tail -c so the
+  # split is locale-independent and never mangles multibyte/invalid UTF-8 the
+  # way a char-oriented `rev | cut | rev` pipeline would.
+  HEAD_PART=$(printf '%s' "$STDOUT" | head -c "$HEAD_CHARS")
+  TAIL_PART=$(printf '%s' "$STDOUT" | tail -c "$TAIL_CHARS")
   ELIDED=$((STDOUT_LEN - HEAD_CHARS - TAIL_CHARS))
   if [[ "$ELIDED" -lt 0 ]]; then
     ELIDED=0
@@ -149,5 +119,4 @@ jq -n \
     }
   }'
 
-_log_timing "true"
 exit 0

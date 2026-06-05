@@ -6,51 +6,27 @@
 # known lock-file list. Silent (exit 0, no output) otherwise.
 #
 # Self-contained: no shared/ sourcing. All helpers defined inline.
-set -euo pipefail
-
-# ---------------------------------------------------------------------------
-# Timing instrumentation (opt-in via DOTFILES_HOOK_TIMING=1)
-# ---------------------------------------------------------------------------
-_HOOK_START_MS=0
-if [[ "${DOTFILES_HOOK_TIMING:-}" == "1" ]]; then
-  if command -v gdate > /dev/null 2>&1; then
-    _HOOK_START_MS=$(gdate +%s%3N)
-  elif date +%s%3N > /dev/null 2>&1; then
-    _HOOK_START_MS=$(date +%s%3N)
-  fi
-fi
-
-_log_timing() {
-  local ok="$1"
-  if [[ "${DOTFILES_HOOK_TIMING:-}" != "1" ]]; then
-    return 0
-  fi
-  local end_ms=0
-  if command -v gdate > /dev/null 2>&1; then
-    end_ms=$(gdate +%s%3N)
-  elif date +%s%3N > /dev/null 2>&1; then
-    end_ms=$(date +%s%3N)
-  fi
-  local elapsed=$((end_ms - _HOOK_START_MS))
-  local ts
-  ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || echo "")
-  local state_dir="${HOME}/.claude/state"
-  mkdir -p "$state_dir"
-  printf '{"ts":"%s","event":"lock-file-guard","elapsed_ms":%d,"ok":%s}\n' \
-    "$ts" "$elapsed" "$ok" \
-    >> "${state_dir}/hook-timings.jsonl"
-}
+#
+# Defender: -e is intentionally OFF so a failed command-substitution can never
+# abort the guard before it emits its deny (which CC would treat as allow).
+set -uo pipefail
 
 # ---------------------------------------------------------------------------
 # Read stdin JSON
 # ---------------------------------------------------------------------------
 INPUT=$(cat)
 
+# Fail closed: this hook's whole job is to deny. If jq is unavailable we cannot
+# inspect the payload, so deny rather than silently pass.
+if ! command -v jq > /dev/null 2>&1; then
+  printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"lock-file-guard: jq unavailable, denying to fail closed"}}'
+  exit 0
+fi
+
 # Extract file_path: try .tool_input.file_path first, fall back to .file_path
 FILE_PATH=$(printf '%s' "$INPUT" | jq -r '(.tool_input.file_path // .file_path) // ""')
 
 if [[ -z "$FILE_PATH" ]]; then
-  _log_timing "true"
   exit 0
 fi
 
@@ -81,10 +57,8 @@ for lock in "${LOCK_FILES[@]}"; do
     jq -n \
       --arg reason "$REASON" \
       '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$reason}}'
-    _log_timing "true"
     exit 0
   fi
 done
 
-_log_timing "true"
 exit 0
