@@ -15,6 +15,13 @@
 
 set -euo pipefail
 
+# Raise the soft file-descriptor limit. macOS hands GUI-launched apps (and the
+# shells they spawn — e.g. `dot sync` run via `!` from inside Claude Code) a low
+# soft RLIMIT_NOFILE (~256), which the prune pass can exhaust ("Too many open
+# files") when the parent already holds many fds. The hard limit is unlimited,
+# so this raise always succeeds; it's a no-op when the limit is already higher.
+ulimit -Sn 4096 2> /dev/null || true
+
 _SYNC_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # ── Inline helpers ────────────────────────────────────────────────────────────

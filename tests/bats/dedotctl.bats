@@ -482,6 +482,18 @@ gh_call_count() {
   [ "$n" -eq 1 ]
 }
 
+# Launched with a low soft RLIMIT_NOFILE (macOS GUI-app default ~256), the prune
+# pass used to die with "Too many open files" when the parent already held many
+# fds. sync now raises the soft limit early. This is a structural guard — the
+# behavioral threshold is environment-sensitive (an empty $HOME never exhausts
+# the table), so asserting the raise itself is the deterministic test.
+@test "sync: raises soft fd limit to at least 4096" {
+  grep -Eq 'ulimit -Sn [0-9]+' "$ROOT/sync"
+  local val
+  val=$(grep -Eo 'ulimit -Sn [0-9]+' "$ROOT/sync" | grep -Eo '[0-9]+' | head -1)
+  [ "$val" -ge 4096 ]
+}
+
 # ── zsh prompt fast-path: GIT_DIR cache parse (zsh/50-prompt.zsh) ────────────
 # The mtime fast path reads GIT_DIR out of the git-data cache into a
 # shell-LOCAL `_dot_git_dir` (never the magic env var GIT_DIR). These tests
