@@ -120,10 +120,13 @@ fi
 
 for _tool in "${_tools[@]}"; do
   # Presence is what this check is for — probe the binary on PATH, not its
-  # --version output. gh in particular loads ~/.config/gh/hosts.yml at startup,
-  # which is in the sandbox denyRead set, so `gh --version` fails under the
-  # sandbox even though gh is installed. Use `--version` only for the friendly
-  # version string, never as the presence test.
+  # --version output. gh in particular loads ~/.config/gh/hosts.yml at startup
+  # and exits non-zero when that file is unreadable — whether from broken perms
+  # (e.g. a root-owned 000 hosts.yml) or, for a sandboxed caller, the denyRead
+  # rule on that path. gh itself is in sandbox.excludedCommands, so a top-level
+  # gh runs unsandboxed; the failure this guards against is a config-read error,
+  # not the sandbox per se. Use `--version` only for the friendly version
+  # string, never as the presence test.
   if ! command -v "$_tool" > /dev/null 2>&1; then
     _fail "${_tool}: not found"
     continue
@@ -132,7 +135,7 @@ for _tool in "${_tools[@]}"; do
   if [[ -n "$_ver" ]]; then
     _ok "${_tool}: ${_ver}"
   else
-    _ok "${_tool}: present (version unavailable — likely sandbox-restricted config)"
+    _ok "${_tool}: present (version unavailable — config unreadable)"
   fi
 done
 unset _tools _tool _ver
