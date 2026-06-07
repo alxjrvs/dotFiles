@@ -296,6 +296,15 @@ _run_module() {
 _FAILED_MODULES=()
 for _module in "${_SYNC_DIR}/install"/[0-9][0-9]-*.sh; do
   [[ -f "$_module" ]] || continue
+  # 95-prune.sh defines _prune_run but must execute exactly once, at the tail
+  # block below (which derives PRUNE_MODE first). _run_module would run it a
+  # second time here, doubling the work and the fd pressure. Source it for its
+  # function definitions only, then skip the run.
+  if [[ "$(basename "$_module")" == "95-prune.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "$_module"
+    continue
+  fi
   if _run_module "$_module"; then
     :
   else
