@@ -469,6 +469,19 @@ gh_call_count() {
   grep -q 'zsh/\[0-9\]\*.zsh' "$ROOT/doctor"
 }
 
+# ── sync: prune pass runs exactly once ───────────────────────────────────────
+# 95-prune.sh matched the module-loop glob AND the explicit tail block, so the
+# prune pass ran twice on a full sync. It must now run exactly once.
+@test "sync: prune pass runs exactly once (--only=prune)" {
+  local home="$TDIR/synchome"
+  mkdir -p "$home"
+  run env HOME="$home" "$ROOT/sync" --only=prune -s
+  [ "$status" -eq 0 ]
+  local n
+  n=$(printf '%s\n' "$output" | grep -c '==> Backup cleanup')
+  [ "$n" -eq 1 ]
+}
+
 # ── zsh prompt fast-path: GIT_DIR cache parse (zsh/50-prompt.zsh) ────────────
 # The mtime fast path reads GIT_DIR out of the git-data cache into a
 # shell-LOCAL `_dot_git_dir` (never the magic env var GIT_DIR). These tests
