@@ -119,11 +119,20 @@ if [[ "$(os_kind)" == "darwin" ]]; then
 fi
 
 for _tool in "${_tools[@]}"; do
+  # Presence is what this check is for — probe the binary on PATH, not its
+  # --version output. gh in particular loads ~/.config/gh/hosts.yml at startup,
+  # which is in the sandbox denyRead set, so `gh --version` fails under the
+  # sandbox even though gh is installed. Use `--version` only for the friendly
+  # version string, never as the presence test.
+  if ! command -v "$_tool" > /dev/null 2>&1; then
+    _fail "${_tool}: not found"
+    continue
+  fi
   _ver=$("$_tool" --version 2> /dev/null | head -1 || true)
   if [[ -n "$_ver" ]]; then
     _ok "${_tool}: ${_ver}"
   else
-    _fail "${_tool}: not found"
+    _ok "${_tool}: present (version unavailable — likely sandbox-restricted config)"
   fi
 done
 unset _tools _tool _ver

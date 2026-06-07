@@ -469,6 +469,24 @@ gh_call_count() {
   grep -q 'zsh/\[0-9\]\*.zsh' "$ROOT/doctor"
 }
 
+# A tool present on PATH but whose --version fails (gh loads ~/.config/gh/
+# hosts.yml, which is in the sandbox denyRead set) must register as PRESENT,
+# not "not found".
+@test "doctor: gh present but config-restricted is not reported as not found" {
+  local fakebin="$TDIR/fakebin"
+  mkdir -p "$fakebin"
+  cat > "$fakebin/gh" << 'SH'
+#!/usr/bin/env bash
+echo "failed to load config: operation not permitted" >&2
+exit 1
+SH
+  chmod +x "$fakebin/gh"
+  run env DOTFILES_DOCTOR_SKIP_EXTERNAL=1 DOTFILES_DIR="$ROOT" \
+    PATH="$fakebin:$PATH" "$ROOT/doctor"
+  [[ "$output" == *"gh: present (version unavailable"* ]]
+  [[ "$output" != *"gh: not found"* ]]
+}
+
 # ── sync: prune pass runs exactly once ───────────────────────────────────────
 # 95-prune.sh matched the module-loop glob AND the explicit tail block, so the
 # prune pass ran twice on a full sync. It must now run exactly once.
