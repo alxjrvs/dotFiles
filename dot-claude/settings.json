@@ -62,10 +62,10 @@
       "Read(~/.gnupg/**)",
       "Read(~/.netrc)",
       "Read(~/.config/op/**)",
+      "Read(~/.config/gh/hosts.yml)",
       "Read(~/.ssh/**)",
       "Read(**/.envrc)",
       "Read(~/Library/Group Containers/2BUA8C4S2C.com.1password/**)",
-      "Read(~/.config/gh/hosts.yml)",
       "Read(~/.kube/**)",
       "Read(~/.npmrc)",
       "Read(~/.claude/.credentials.json)",
@@ -274,7 +274,7 @@
     "enabled": true,
     "failIfUnavailable": true,
     "autoAllowBashIfSandboxed": true,
-    "allowUnsandboxedCommands": false,
+    "allowUnsandboxedCommands": true,
     "network": {
       "allowedDomains": [
         "github.com",
