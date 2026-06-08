@@ -218,6 +218,18 @@ sjq() { jq -e "$1" "$SETTINGS" > /dev/null; }
   sjq '.sandbox.filesystem.denyWrite | index("~/.config/git/config")'
   sjq '.sandbox.filesystem.denyWrite | index("/opt/homebrew/bin")'
   sjq '.sandbox.filesystem.denyWrite | index("~/.cargo/credentials.toml")'
+  # ~/.ssh: private keys + config are tamper targets (swap signing key /
+  # redirect a host). Defense-in-depth alongside the allowlist (it has no
+  # allowWrite entry, like ~/.gitconfig) — does NOT touch the signing socket,
+  # which is governed by allowUnixSockets, so git commit signing still works.
+  sjq '.sandbox.filesystem.denyWrite | index("~/.ssh")'
+}
+
+@test "settings: ~/.ssh write-tamper is mirrored in denyWrite AND Edit()" {
+  # The Edit/Write tools bypass the sandbox, so denyWrite alone is half-open —
+  # Edit() must mirror it or Claude could rewrite ~/.ssh/config or plant a key.
+  sjq '.sandbox.filesystem.denyWrite | index("~/.ssh")'
+  sjq '.permissions.deny | index("Edit(~/.ssh/**)")'
 }
 
 @test "settings: per-repo .git config/hooks are NOT denyWrite (clone/init must work)" {

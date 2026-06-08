@@ -85,7 +85,8 @@
       "Edit(~/.gitconfig)",
       "Edit(~/.config/git/config)",
       "Edit(~/**/.git/config)",
-      "Edit(~/**/.git/hooks/**)"
+      "Edit(~/**/.git/hooks/**)",
+      "Edit(~/.ssh/**)"
     ],
     "ask": [
       "Bash(git restore*)",
@@ -341,6 +342,7 @@
         "~/.claude.json",
         "~/.gitconfig",
         "~/.config/git/config",
+        "~/.ssh",
         "~/.cargo/credentials.toml",
         "~/.cargo/config.toml",
         "/opt/homebrew/bin",
