@@ -258,8 +258,8 @@
   "sandbox": {
     "enabled": true,
     "failIfUnavailable": true,
-    "allowUnsandboxedCommands": false,
     "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false,
     "network": {
       "allowedDomains": [
         "github.com",
@@ -275,6 +275,10 @@
         "nodejs.org",
         "typescriptlang.org",
         "stackoverflow.com",
+        "exp.host",
+        "*.exp.host",
+        "reactnative.directory",
+        "*.reactnative.directory",
         "localhost",
         "127.0.0.1"
       ],
@@ -370,5 +374,6 @@
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
   "defaultToAgentsView": true,
-  "leftArrowOpensAgents": true
+  "leftArrowOpensAgents": true,
+  "skipWorkflowUsageWarning": true
 }
