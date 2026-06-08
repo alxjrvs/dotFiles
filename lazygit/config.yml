@@ -27,8 +27,8 @@ git:
     signOff: false
   fetchAll: true
 os:
-  edit: "hx {{filename}}"
-  editAtLine: "hx {{filename}}:{{line}}"
+  edit: "nvim {{filename}}"
+  editAtLine: "nvim +{{line}} {{filename}}"
 keybinding:
   universal:
     quit: "q"
