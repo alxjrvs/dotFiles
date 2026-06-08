@@ -29,7 +29,7 @@
 [credential]
 	helper = osxkeychain
 [core]
-	editor = hx
+	editor = nvim
 	excludesfile = ~/.gitignore
 	pager = delta
 	fsmonitor = false

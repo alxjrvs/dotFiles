@@ -17,7 +17,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 |---------|-----|
 | `dot sync` | Idempotent re-sync. Installs missing tools, recreates broken symlinks. Fast on no-op. |
 | `dot sync --upgrade` | Same + brew update/upgrade/cleanup + mise upgrade. |
-| `dot sync --only=brew,mise` | Only the listed sections (tags: `brew mise sheldon symlinks claude gh git shell ssh ghostty bat atuin lazygit zsh git-template helix karabiner lefthook macos linux prune`). |
+| `dot sync --only=brew,mise` | Only the listed sections (tags: `brew mise sheldon symlinks claude gh git shell ssh ghostty bat atuin lazygit zsh git-template nvim karabiner lefthook macos linux prune`). |
 | `dot update` | Bump everything to current — equivalent to `dot sync --upgrade`. |
 | `dot doctor` | Read-only diagnostics: tool presence, symlink integrity, drift. Exits non-zero on failures. |
 | `dot prune` | Delete `.bak` files, stale worktrees, orphan workers, old cost dirs. |
@@ -113,7 +113,7 @@ Wired as a git difftool. Run with `git dft` (alias for `git difftool`) — uses 
 
 ## Packaging: Lean A (brew = casks, mise = dev CLIs)
 
-The Brewfile holds **only** `brew "mise"` + casks (GUI apps, fonts, the 1Password CLI cask, the Claude desktop cask). Every dev CLI — language toolchains, git surface (gh, delta, lazygit, gitleaks, lefthook), file/text tools (bat, fd, ripgrep, jq, yq, eza, dust, glow, gdu), linters (shfmt, shellcheck), test tooling (bats), shell-init-time tools (sheldon, atuin, direnv, fzf, zoxide), and the Tier 3 escapees (supabase, carapace, watchexec, bottom, pueue, git-absorb, helix) — lives in `mise.toml`.
+The Brewfile holds **only** `brew "mise"` + casks (GUI apps, fonts, the 1Password CLI cask, the Claude desktop cask). Every dev CLI — language toolchains, git surface (gh, delta, lazygit, gitleaks, lefthook), file/text tools (bat, fd, ripgrep, jq, yq, eza, dust, glow, gdu), linters (shfmt, shellcheck), test tooling (bats), shell-init-time tools (sheldon, atuin, direnv, fzf, zoxide), and the Tier 3 escapees (supabase, carapace, watchexec, bottom, pueue, git-absorb, neovim) — lives in `mise.toml`.
 
 The PATH wiring in `.zshenv` puts `~/.local/share/mise/shims` first so every mise-managed tool resolves in every shell context (interactive, non-interactive, git hooks, editor subprocesses) without waiting for `mise activate`. This makes it safe to ship shell-init dependencies (sheldon, atuin, direnv) from mise — they're on PATH before `.zshrc` fragments load.
 
@@ -121,9 +121,9 @@ Update path: `mise upgrade` (or `dot update`).
 
 Rule: if you're about to add `brew "..."` to the Brewfile, stop. Put it in mise.toml unless it's mise itself or it's a cask. CLAUDE.md "Packaging policy" section restates this for tools.
 
-## Editor: helix
+## Editor: neovim
 
-Replaced AstroNvim viewer-mode. `alias v=hx`, `alias vim=hx`, `alias nvim=hx`. Zero plugins to maintain; one binary install via mise.
+`alias v=nvim`, `alias vi=nvim`, `alias vim=nvim`. Configured by a single plugin-free `nvim/init.lua` (sensible defaults + native LSP via `vim.lsp.config`/`vim.lsp.enable`, requires Neovim 0.11+); LSP/formatter binaries install via mise. No plugin manager, no distro.
 
 ## Caps Lock → Control
 

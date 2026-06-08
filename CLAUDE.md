@@ -65,7 +65,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `sheldon/plugins.toml` | `~/.config/sheldon/plugins.toml` |
 | `ghostty/config` | `~/.config/ghostty/config` |
 | `lazygit/config.yml` | `~/.config/lazygit/config.yml` |
-| `helix/languages.toml` | `~/.config/helix/languages.toml` |
+| `nvim/init.lua` | `~/.config/nvim/init.lua` |
 | `karabiner/karabiner.json` | `~/.config/karabiner/karabiner.json` |
 | `atuin/config.toml` | `~/.config/atuin/config.toml` |
 | `gh/config.yml` | `~/.config/gh/config.yml` |
@@ -196,7 +196,7 @@ Pause and confirm with the user before doing any of these:
 - **Hot-path scripts** (`prompt/git-data`, `prompt/prompt-render`): these run on every prompt/refresh. Don't add subprocess spawns, network calls, or unbounded loops. `prompt-render` must stay fork-free — read the cache, render, exit.
 - **Self-contained rule**: scripts inline their own helpers; there is no `shared/` library layer. Don't introduce one — keep each topic folder independently runnable and shareable.
 - **Starship references**: replaced by `prompt/prompt-render`. If you see `starship` anywhere, treat it as historical — do not reintroduce.
-- **AstroNvim / nvim references**: replaced by helix. There is no `nvim/` directory; do not propose re-adding one.
+- **Neovim is plugin-free**: the editor is configured by a single `nvim/init.lua` (sensible defaults + native LSP via `vim.lsp.config`/`vim.lsp.enable`, requires Neovim 0.11+). There is no plugin manager (lazy.nvim, packer) and no AstroNvim/LazyVim distro — don't propose adding one; keep the config to a single self-contained `init.lua`. (Historical: this stack used helix before; if you see `helix`/`hx`, it's gone.)
 
 ## Important Gotchas
 

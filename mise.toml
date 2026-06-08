@@ -50,11 +50,11 @@ shfmt = "latest"
 shellcheck = "latest"
 bats = "latest"           # Bash Automated Testing System — unit tests for shell scripts
 
-# ── Helix language servers (helix/languages.toml wires these in) ──────
+# ── Neovim language servers (nvim/init.lua wires these in) ────────────
 # rust-analyzer ships with the `rust` toolchain above; the rest are below.
 "npm:bash-language-server" = "latest"
 "npm:typescript-language-server" = "latest"
-"npm:prettier" = "latest"                 # JS/TS/JSX/TSX formatter (helix/languages.toml format-on-save)
+"npm:prettier" = "latest"                 # JS/TS/JSX/TSX formatter (nvim/init.lua format-on-save)
 "aqua:artempyanykh/marksman" = "latest"   # markdown LSP
 taplo = "latest"                          # TOML LSP + formatter (`taplo lsp stdio`); registry alias → aqua:tamasfe/taplo (no -cli suffix)
 
@@ -68,7 +68,7 @@ watchexec = "latest"                   # file-change watcher
 bottom = "latest"                      # top/htop replacement (binary: btm)
 "aqua:Nukesor/pueue/pueue" = "latest"  # persistent task queue daemon
 "aqua:tummychow/git-absorb" = "latest" # auto-fixup staged hunks
-"github:helix-editor/helix" = { version = "latest", exe = "hx" } # modal editor
+neovim = "latest" # modal editor (binary: nvim)
 
 [settings]
 trusted_config_paths = ["~/**/.worktrees"]
