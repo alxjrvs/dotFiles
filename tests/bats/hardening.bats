@@ -63,11 +63,10 @@ jq_absent() {
 }
 
 # ── mcp-guard ───────────────────────────────────────────────────────────────
-@test "mcp-guard: denies a destructive MCP write (merge_pull_request)" {
+@test "mcp-guard: allows merge_pull_request (PR merges are permitted)" {
   run run_hook mcp-guard '{"tool_name":"mcp__github__merge_pull_request","tool_input":{}}'
   [ "$status" -eq 0 ]
-  is_deny "$output"
-  [[ "$output" == *"merge_pull_request"* ]]
+  [ -z "$output" ]
 }
 
 @test "mcp-guard: denies delete_file and push_files" {

@@ -3,8 +3,11 @@
 #
 # Reads CC JSON on stdin, inspects .tool_name. If the tool is an MCP tool
 # (mcp__-prefixed) whose name contains a known-destructive write operation
-# (merge_pull_request, delete_file, push_files, or any delete_*), emit a
-# permissionDecision:deny. Anything else exits 0 silently.
+# (delete_file, push_files, or any delete_*), emit a permissionDecision:deny.
+# Anything else exits 0 silently.
+#
+# merge_pull_request is intentionally NOT blocked: merging PRs via MCP is an
+# allowed workflow (branch protection + CI remain the server-side backstops).
 #
 # Defender: -e is intentionally OFF so a failed command-substitution can never
 # abort the guard before it emits its deny (which CC would treat as allow).
@@ -39,8 +42,7 @@ esac
 # Case-insensitive match against the destructive substrings.
 TOOL_LC=$(printf '%s' "$TOOL_NAME" | tr '[:upper:]' '[:lower:]')
 
-if [[ "$TOOL_LC" == *merge_pull_request* ]] ||
-  [[ "$TOOL_LC" == *delete_file* ]] ||
+if [[ "$TOOL_LC" == *delete_file* ]] ||
   [[ "$TOOL_LC" == *push_files* ]] ||
   [[ "$TOOL_LC" == *delete_* ]]; then
   REASON="mcp-guard: destructive MCP write '${TOOL_NAME}' is blocked. Run the equivalent operation manually (e.g. via gh/git) after confirming intent."
