@@ -6,10 +6,10 @@ export LANG=en_US.UTF-8
 export LESS='-RFX'
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 
-# GITHUB_PERSONAL_ACCESS_TOKEN is resolved once per login shell in .zprofile
-# (from the gh CLI keychain) so it forks `gh auth token` only on login rather
-# than on every interactive subshell, while still inheriting at fork time into
-# child processes (e.g. the github MCP server). See CLAUDE.md secrets pattern 3.
+# GITHUB_PERSONAL_ACCESS_TOKEN is deliberately NOT exported (see .zprofile for
+# the rationale): exporting it leaked the PAT into every Bash subprocess Claude
+# Code spawns. The github MCP server authenticates via the gh keychain; resolve
+# the token on demand with `gh auth token` when a tool needs it.
 
 # Colored man pages (CMYK)
 export LESS_TERMCAP_mb=$'\e[1;35m'

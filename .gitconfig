@@ -28,6 +28,17 @@
 	# via the fixed-socket signing agent and never reads the private key file.
 [credential]
 	helper = osxkeychain
+# GitHub HTTPS auth via the gh CLI (hosts.yml-backed). Lets git push resolve a
+# token on demand instead of needing a PAT in the environment, and works inside
+# the Claude sandbox (gh reads ~/.config/gh/hosts.yml, kept sandbox-readable for
+# this). The empty `helper =` resets the inherited osxkeychain helper for
+# github.com so gh is used. Mirrors `gh auth setup-git`.
+[credential "https://github.com"]
+	helper =
+	helper = !gh auth git-credential
+[credential "https://gist.github.com"]
+	helper =
+	helper = !gh auth git-credential
 [core]
 	editor = nvim
 	excludesfile = ~/.gitignore

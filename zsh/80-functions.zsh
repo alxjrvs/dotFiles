@@ -13,9 +13,14 @@ claude-fix() { claude -p "Fix the following issue without committing: $*"; }
 # Run a command with secrets injected by 1Password CLI.
 # Usage: op-run npm publish
 # Resolves op:// references at exec time; nothing sensitive in shell env.
+# Masking is left ON (no --no-masking): the child process still receives the
+# real resolved value, but 1Password redacts it from the child's stdout/stderr,
+# so secrets don't land in command output an agent/transcript could capture.
+# If a tool genuinely breaks under masked output, add a one-off wrapper and
+# document why, rather than weakening this sanctioned default.
 op-run() {
   command -v op &>/dev/null || { echo "op (1Password CLI) not installed"; return 1; }
-  op run --no-masking -- "$@"
+  op run -- "$@"
 }
 
 # Re-run a command on edits to common source extensions. Respects .gitignore.
