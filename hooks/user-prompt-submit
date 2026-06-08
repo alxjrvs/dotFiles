@@ -120,12 +120,21 @@ GIT_CONFLICT_COUNT=0
 GIT_PR_STATUS=""
 
 if [[ -n "$CACHE_PATH" ]] && [[ -f "$CACHE_PATH" ]]; then
-  # Safe ingest: never `source` the cache (it lives at a predictable
-  # <sha>.sh path an attacker could pre-seed — sourcing is arbitrary code
-  # exec). Read only well-formed GIT_* assignment lines and eval those.
+  # Safe ingest: NEVER `source` or `eval` the cache. It lives at a predictable
+  # <sha>.sh path under ~/.cache — which is sandbox-writable, so a (possibly
+  # prompt-injected) sandboxed command can pre-seed it, and this hook runs
+  # UNSANDBOXED. `grep | eval` is NOT safe: a seeded line like `GIT_X=1; cmd`
+  # passes the `^GIT_…=` filter and eval would execute `cmd`. Instead, accept
+  # ONLY the exact single-quoted shape git-data emits (GIT_NAME='value') via a
+  # fully-anchored regex, and assign with `printf -v` (which never evaluates).
+  # Command substitutions, backticks, semicolons, and embedded quotes can't
+  # appear in a matching value, so none can execute. Values containing a single
+  # quote (esc()'d to '\'' by git-data) won't match and are skipped — safe to
+  # drop, as consumers only display branch/counts/PR status.
   while IFS= read -r _l; do
-    eval "$_l"
-  done < <(grep -E '^GIT_[A-Z_]+=' "$CACHE_PATH" 2> /dev/null)
+    [[ $_l =~ ^(GIT_[A-Z_]+)=\'([^\']*)\'$ ]] || continue
+    printf -v "${BASH_REMATCH[1]}" '%s' "${BASH_REMATCH[2]}"
+  done < "$CACHE_PATH"
 fi
 
 # ---------------------------------------------------------------------------

@@ -45,7 +45,10 @@ SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // ""')
 # Spill full stdout to /tmp/claude/spills/<session>/<ts_ms>.txt (best-effort)
 # ---------------------------------------------------------------------------
 SPILL_HINT=""
-SESSION_DIR="${SESSION_ID:-no-session}"
+# Sanitize session_id before using it as a path segment (mirrors hooks/stop):
+# strip anything outside [A-Za-z0-9._-] so a crafted id like '../escape' cannot
+# traverse out of the spills dir.
+SESSION_DIR=$(printf '%s' "${SESSION_ID:-no-session}" | tr -c 'A-Za-z0-9._-' '_')
 SPILL_DIR="/tmp/claude/spills/${SESSION_DIR}"
 if mkdir -p "$SPILL_DIR" 2> /dev/null; then
   if command -v gdate > /dev/null 2>&1; then

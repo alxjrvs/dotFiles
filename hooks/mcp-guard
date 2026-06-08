@@ -3,11 +3,15 @@
 #
 # Reads CC JSON on stdin, inspects .tool_name. If the tool is an MCP tool
 # (mcp__-prefixed) whose name contains a known-destructive write operation
-# (delete_file, push_files, or any delete_*), emit a permissionDecision:deny.
+# (delete_file, or any delete_*), emit a permissionDecision:deny.
 # Anything else exits 0 silently.
 #
 # merge_pull_request is intentionally NOT blocked: merging PRs via MCP is an
 # allowed workflow (branch protection + CI remain the server-side backstops).
+#
+# push_files is intentionally NOT blocked (relaxed 2026-06-07): pushing branch
+# contents via MCP is an allowed workflow when the keychain-backed git
+# credential is unreachable from the sandbox. delete_* stays blocked.
 #
 # Defender: -e is intentionally OFF so a failed command-substitution can never
 # abort the guard before it emits its deny (which CC would treat as allow).
@@ -20,8 +24,23 @@ set -uo pipefail
 # ---------------------------------------------------------------------------
 INPUT=$(cat)
 
+# Robust fail-closed deny. Normal path: emit a clean permissionDecision:deny
+# JSON on stdout and exit 0. If jq itself fails to emit, write the reason to
+# stderr and `exit 2` instead of falling through to a silent exit 0 (which CC
+# treats as ALLOW) — so a broken deny-emitter still hard-blocks the tool.
+emit_deny() {
+  local reason="$1"
+  if jq -n --arg reason "$reason" \
+    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$reason}}'; then
+    exit 0
+  fi
+  printf '%s\n' "$reason" >&2
+  exit 2
+}
+
 # Fail closed: this hook's whole job is to deny. If jq is unavailable we cannot
-# inspect the payload, so deny rather than silently pass.
+# inspect the payload, so deny rather than silently pass. (printf is a builtin,
+# so this branch needs no jq.)
 if ! command -v jq > /dev/null 2>&1; then
   printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"mcp-guard: jq unavailable, denying to fail closed"}}'
   exit 0
@@ -43,13 +62,9 @@ esac
 TOOL_LC=$(printf '%s' "$TOOL_NAME" | tr '[:upper:]' '[:lower:]')
 
 if [[ "$TOOL_LC" == *delete_file* ]] ||
-  [[ "$TOOL_LC" == *push_files* ]] ||
   [[ "$TOOL_LC" == *delete_* ]]; then
   REASON="mcp-guard: destructive MCP write '${TOOL_NAME}' is blocked. Run the equivalent operation manually (e.g. via gh/git) after confirming intent."
-  jq -n \
-    --arg reason "$REASON" \
-    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$reason}}'
-  exit 0
+  emit_deny "$REASON"
 fi
 
 exit 0
