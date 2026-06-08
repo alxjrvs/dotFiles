@@ -3,7 +3,7 @@
 ## Identity
 
 - Name: alxjrvs
-- Editor: helix (`hx`)
+- Editor: neovim (`nvim`)
 - Shell: zsh with vi keybindings
 - Package managers: bun (preferred for JS), brew (system)
 - Power user of Claude Code: hand-rolls dotfiles, hooks, statusline. Assume familiarity with the feature surface.

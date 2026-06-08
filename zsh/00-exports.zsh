@@ -1,5 +1,5 @@
 # Editor / pager / locale
-export EDITOR="hx"
+export EDITOR="nvim"
 export VISUAL="$EDITOR"
 export MANPAGER="less -R"
 export LANG=en_US.UTF-8

@@ -33,10 +33,9 @@ alias b="bat --style=plain"
 alias btop="btm"  # bottom (rust) covers the top/htop slot via mise (cargo:bottom)
 
 # Editor
-alias v="hx"
-alias vi="hx"
-alias vim="hx"
-alias nvim="hx"
+alias v="nvim"
+alias vi="nvim"
+alias vim="nvim"
 
 # System
 alias env-sync='dot sync'

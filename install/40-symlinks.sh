@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # install/40-symlinks.sh — full symlink mapping table.
 # Tags: symlinks git shell mise sheldon ghostty bat atuin lazygit zsh
-#       git-template gh claude ssh helix karabiner
+#       git-template gh claude ssh nvim karabiner
 # Sourced by sync; not standalone — helpers (os_kind, host_id, link) come from
 # sync, which exports them before sourcing this module.
 
 _symlinks_tags() {
-  printf 'symlinks\ngit\nshell\nmise\nsheldon\nghostty\nbat\natuin\nlazygit\nzsh\ngit-template\ngh\nclaude\nssh\nhelix\nkarabiner\n'
+  printf 'symlinks\ngit\nshell\nmise\nsheldon\nghostty\nbat\natuin\nlazygit\nzsh\ngit-template\ngh\nclaude\nssh\nnvim\nkarabiner\n'
 }
 
 _symlinks_run() {
@@ -97,9 +97,9 @@ _symlinks_run() {
       link "${df}/lazygit/config.yml" "${HOME}/.config/lazygit/config.yml"
     fi
 
-    if _should_run_tags "symlinks helix"; then
-      mkdir -p "${HOME}/.config/helix"
-      link "${df}/helix/languages.toml" "${HOME}/.config/helix/languages.toml"
+    if _should_run_tags "symlinks nvim"; then
+      mkdir -p "${HOME}/.config/nvim"
+      link "${df}/nvim/init.lua" "${HOME}/.config/nvim/init.lua"
     fi
 
     if _should_run_tags "symlinks karabiner"; then
