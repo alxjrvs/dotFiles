@@ -304,6 +304,9 @@
       "allowLocalBinding": true,
       "allowMachLookup": [
         "com.apple.SecurityServer",
+        "com.apple.securityd.systemkeychain",
+        "com.apple.security.KeychainStasher",
+        "com.apple.security.XPCKeychainSandboxCheck",
         "com.apple.trustd.agent"
       ]
     },

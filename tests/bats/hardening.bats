@@ -263,8 +263,11 @@ sjq() { jq -e "$1" "$SETTINGS" > /dev/null; }
   sjq '.permissions.ask  | index("Bash(gh api *)")'
 }
 
-@test "settings: keychain-stash Mach lookups dropped, TLS lookups kept" {
+@test "settings: keychain Mach lookups kept (needed for gh/git keychain auth)" {
+  # These are required so keychain-backed gh/git credential resolution works
+  # under the sandbox — especially now that the GitHub PAT is no longer
+  # exported and the github MCP relies on gh keychain auth. Removing them
+  # broke credential access in testing, so they stay.
   sjq '.sandbox.network.allowMachLookup | index("com.apple.SecurityServer")'
-  run jq -e '.sandbox.network.allowMachLookup | index("com.apple.securityd.systemkeychain")' "$SETTINGS"
-  [ "$status" -ne 0 ]
+  sjq '.sandbox.network.allowMachLookup | index("com.apple.securityd.systemkeychain")'
 }
