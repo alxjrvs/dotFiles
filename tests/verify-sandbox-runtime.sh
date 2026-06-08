@@ -58,12 +58,20 @@ for p in "$HOME/.cache/_sbx_probe_$$" "$HOME/.cargo/registry/_sbx_$$"; do
   else bad "blocked (should be allowed): $p"; fi
 done
 
-printf '\n==> denyRead (sandboxed read of the gh token must be BLOCKED)\n'
-# Only check the errno, never the content. EPERM => sandbox-denied (good).
-if python3 -c "open('$HOME/.config/gh/hosts.yml','rb').read(1)" 2> /dev/null; then
-  bad "gh hosts.yml is sandbox-readable (token exposed)"
+printf '\n==> gh token storage (keychain, not a readable file)\n'
+# hosts.yml is now sandbox-readable on purpose (gh loads it at startup for host
+# metadata), but it must hold NO plaintext oauth_token — the secret lives in the
+# login keychain, decrypted per-item by securityd. Grep for the key only.
+if grep -qE 'oauth_token:[[:space:]]*\S' "$HOME/.config/gh/hosts.yml" 2> /dev/null; then
+  bad "gh hosts.yml contains a plaintext oauth_token (should be keychain-only)"
 else
-  ok "gh hosts.yml read blocked in-sandbox"
+  ok "gh hosts.yml carries no plaintext token (keychain-backed)"
+fi
+# Functional: sandboxed gh must resolve its token via the keychain.
+if gh auth token > /dev/null 2>&1; then
+  ok "sandboxed gh resolves token via keychain"
+else
+  note "sandboxed gh can't resolve token — keychain unreachable or token invalid ('gh auth login')"
 fi
 
 printf '\n==> network egress (allowlist)\n'
@@ -81,13 +89,9 @@ done
 
 printf '\n==> git push prerequisites\n'
 auc=$(jq -r '.sandbox.allowUnsandboxedCommands' dot-claude/settings.json 2> /dev/null)
-note "allowUnsandboxedCommands = ${auc} (push relies on the unsandboxed retry)"
-if gh auth token > /dev/null 2>&1; then
-  note "gh token: present in this context"
-else
-  note "gh token: NOT resolvable here (sandboxed gh can't read hosts.yml — expected; or token invalid → 'gh auth login')"
-fi
-note "SSH is unusable in-sandbox (no raw TCP); push must be HTTPS via the gh credential helper."
+note "allowUnsandboxedCommands = ${auc} (unsandboxed retry remains the fallback)"
+note "gh now resolves its token via the keychain in-sandbox, so HTTPS push via the"
+note "gh credential helper can work without the unsandboxed retry. SSH stays unusable (no raw TCP)."
 
 printf '\n==> %d ok, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

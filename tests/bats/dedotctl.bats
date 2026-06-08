@@ -469,8 +469,8 @@ gh_call_count() {
   grep -q 'zsh/\[0-9\]\*.zsh' "$ROOT/doctor"
 }
 
-# A tool present on PATH but whose --version fails (gh loads ~/.config/gh/
-# hosts.yml, which is in the sandbox denyRead set) must register as PRESENT,
+# A tool present on PATH but whose --version fails (e.g. gh aborting when it
+# can't load its config in a restricted environment) must register as PRESENT,
 # not "not found".
 @test "doctor: gh present but config-restricted is not reported as not found" {
   local fakebin="$TDIR/fakebin"

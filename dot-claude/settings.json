@@ -62,7 +62,6 @@
       "Read(~/.gnupg/**)",
       "Read(~/.netrc)",
       "Read(~/.config/op/**)",
-      "Read(~/.config/gh/hosts.yml)",
       "Read(~/.ssh/**)",
       "Read(**/.envrc)",
       "Read(~/Library/Group Containers/2BUA8C4S2C.com.1password/**)",
@@ -353,7 +352,6 @@
         "~/.gnupg",
         "~/.netrc",
         "~/.config/op",
-        "~/.config/gh/hosts.yml",
         "~/.kube",
         "~/.npmrc",
         "~/.claude/.credentials.json",
@@ -379,7 +377,8 @@
         "~/.ssh/agent",
         "**/.env.example",
         "**/.env.template",
-        "**/.env.sample"
+        "**/.env.sample",
+        "~/Library/Keychains/login.keychain-db"
       ]
     },
     "excludedCommands": [
