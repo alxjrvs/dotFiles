@@ -9,6 +9,10 @@ JQDIR="$(dirname "$(mise which jq 2> /dev/null || command -v jq)")"
 
 setup() {
   export PATH="$JQDIR:/opt/homebrew/bin:/usr/bin:/bin"
+  # Hermetic under git hooks: `git push` exports GIT_DIR et al into hook
+  # subprocesses (lefthook pre-push runs this suite), which hijacks the
+  # throwaway `git init` repos below into the real repo's git dir.
+  unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_PREFIX
   TDIR="$(mktemp -d "${TMPDIR:-/tmp}/bats.XXXXXX")"
   export HOME="$TDIR"
   mkdir -p "$HOME/.claude/state"

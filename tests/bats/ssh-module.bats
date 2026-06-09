@@ -8,6 +8,8 @@ ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
 ORIG_HOME="$HOME"
 
 setup() {
+  # Hermetic under git hooks (see dedotctl.bats): drop inherited GIT_* env.
+  unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_PREFIX
   TDIR="$(mktemp -d "${TMPDIR:-/tmp}/bats-ssh.XXXXXX")"
   export HOME="$TDIR"
   # Guard: never run against the real home.

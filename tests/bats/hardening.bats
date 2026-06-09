@@ -8,6 +8,8 @@ JQDIR="$(dirname "$(mise which jq 2> /dev/null || command -v jq)")"
 
 setup() {
   export PATH="$JQDIR:/opt/homebrew/bin:/usr/bin:/bin"
+  # Hermetic under git hooks (see dedotctl.bats): drop inherited GIT_* env.
+  unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_PREFIX
   TDIR="$(mktemp -d "${TMPDIR:-/tmp}/bats.XXXXXX")"
   export HOME="$TDIR"
   mkdir -p "$HOME/.claude/state"
