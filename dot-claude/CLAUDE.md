@@ -32,7 +32,7 @@
 - `allowUnsandboxedCommands` is `false` and stays false: a sandbox-blocked command hard-fails; the `dangerouslyDisableSandbox` retry is ignored. Do not propose flipping it for routine git/gh/build operations — they work sandboxed. The hatch is operator-only: flipped briefly for a named tool, then closed.
 - When a command fails under the sandbox, diagnose the missing resource (denyRead path? unix socket? network domain?) and propose the narrowest targeted allow — in the project's `.claude/settings.json` where possible, since permission and sandbox arrays merge across scopes and the global file stays strict.
 - SSH/raw TCP has no path through the sandbox proxy (it dies at DNS); HTTPS is the answer, not exclusion.
-- The Read/Edit tools bypass the sandbox: every `sandbox.filesystem.denyRead`/`denyWrite` credential path keeps a `Read(...)`/`Edit(...)` mirror in `permissions.deny` (directory entries take `/**` on the mirror; file entries stay byte-identical). Keep them in lockstep — `tests/bats/hardening.bats` asserts the key pairs.
+- The Read/Edit tools bypass the sandbox: every `sandbox.filesystem.denyRead`/`denyWrite` credential path keeps a `Read(...)`/`Edit(...)` mirror in `permissions.deny` (directory entries take `/**` on the mirror; file entries stay byte-identical). Keep them in lockstep — `tests/bats/hardening.bats` derives and asserts the mirror for every entry.
 - Never deny-rule a git-tracked dotfiles file (`dot-claude/settings.json`, `hooks/*`, `dot`): sandboxed git can't check out a denyWrite path, and an `Edit()` deny on the live `~/.claude/settings.json` self-locks the file against every in-session edit path. Tampering with tracked files is git-visible instead.
 
 ## Secrets

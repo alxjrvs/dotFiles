@@ -39,6 +39,7 @@
       "Bash(git checkout .)",
       "Bash(gh api *)",
       "Bash(gh secret set*)",
+      "Bash(gh variable set*)",
       "Bash(gh repo edit*)",
       "Bash(gh release delete*)",
       "Bash(npm publish*)",
@@ -60,6 +61,8 @@
       "Bash(rm -rf ~)",
       "Bash(rm -rf ~/*)",
       "Bash(rm -rf $HOME*)",
+      "Bash(chmod -R*)",
+      "Bash(chown -R*)",
       "Bash(curl * | sh)",
       "Bash(curl * | sh *)",
       "Bash(curl * | bash)",
@@ -68,6 +71,7 @@
       "Bash(wget * | sh *)",
       "Bash(wget * | bash)",
       "Bash(wget * | bash *)",
+      "Bash(cargo publish*)",
       "Bash(gh repo delete*)",
       "Bash(gh gist *)",
       "Bash(gh alias set*)",
@@ -99,7 +103,12 @@
       "Edit(~/.config/git/config)",
       "Edit(~/**/.git/config)",
       "Edit(~/**/.git/hooks/**)",
-      "Edit(~/.ssh/**)"
+      "Edit(~/.ssh/**)",
+      "Edit(~/.claude.json)",
+      "Edit(~/.cargo/credentials.toml)",
+      "Edit(~/.cargo/config.toml)",
+      "Edit(//opt/homebrew/bin/**)",
+      "Edit(//opt/homebrew/sbin/**)"
     ]
   },
   "sandbox": {
@@ -124,6 +133,13 @@
         "*.anthropic.com",
         "*.claude.com",
         "*.npmjs.org",
+        "*.jsr.io",
+        "nodejs.org",
+        "bun.sh",
+        "static.rust-lang.org",
+        "crates.io",
+        "index.crates.io",
+        "static.crates.io",
         "*.brew.sh",
         "localhost",
         "127.0.0.1"

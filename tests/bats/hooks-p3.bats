@@ -7,10 +7,11 @@
 ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
 JQDIR="$(dirname "$(mise which jq 2> /dev/null || command -v jq)")"
 
+load 'helpers'
+
 setup() {
+  scrub_git_env
   export PATH="$JQDIR:/opt/homebrew/bin:/usr/bin:/bin"
-  # Hermetic under git hooks (see dedotctl.bats): drop inherited GIT_* env.
-  unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_PREFIX
   TDIR="$(mktemp -d "${TMPDIR:-/tmp}/bats.XXXXXX")"
   export HOME="$TDIR"
   mkdir -p "$HOME/.claude/state"

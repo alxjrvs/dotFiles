@@ -132,6 +132,18 @@ _symlinks_run() {
     link "${df}/dot-claude/CLAUDE.md" "${HOME}/.claude/CLAUDE.md"
     link "${df}/dot-claude/settings.json" "${HOME}/.claude/settings.json"
 
+    # Clean up stale symlinks from the pre-rebuild layout: dot-claude/agents
+    # and dot-claude/commands were deleted, so the old links dangle (and a
+    # later `mkdir -p ~/.claude/agents` would follow the dangling link and
+    # resurrect the directory inside the repo). Only remove symlinks — a
+    # real directory here is machine-local content we don't own.
+    local stale
+    for stale in "${HOME}/.claude/agents" "${HOME}/.claude/commands"; do
+      if [[ -L "$stale" ]]; then
+        rm -f "$stale"
+      fi
+    done
+
     local local_settings="${df}/dot-claude/settings.local.json"
     if [[ -f "$local_settings" ]]; then
       link "$local_settings" "${HOME}/.claude/settings.local.json"
