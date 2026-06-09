@@ -327,8 +327,7 @@
   "enabledPlugins": {
     "github@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": true,
-    "meta@gnar": true
+    "superpowers@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -336,14 +335,6 @@
         "source": "github",
         "repo": "anthropics/claude-plugins-official"
       }
-    },
-    "gnar": {
-      "source": {
-        "source": "github",
-        "repo": "thegnarco/agent-skills",
-        "ref": "next"
-      },
-      "autoUpdate": false
     }
   }
 }
