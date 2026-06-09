@@ -1,40 +1,60 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "cleanupPeriodDays": 14,
+  "editorMode": "vim",
   "env": {
     "EDITOR": "nvim",
-    "ENABLE_PROMPT_CACHING_1H": "1",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80",
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1"
   },
+  "worktree": {
+    "baseRef": "fresh",
+    "symlinkDirectories": [
+      "node_modules"
+    ]
+  },
   "permissions": {
+    "defaultMode": "auto",
+    "additionalDirectories": [
+      "/tmp/claude",
+      "/private/tmp/claude"
+    ],
     "allow": [
       "Bash(git *)",
       "Bash(gh *)",
-      "Bash(gitleaks *)",
-      "WebSearch",
-      "Bash(cargo *)",
-      "Bash(lefthook *)",
       "Bash(dot *)",
-      "Skill(superpowers:*)",
-      "Skill(implement:*)",
-      "Bash(node *)",
-      "Bash(npm *)",
-      "Bash(bun *)",
-      "Bash(bunx *)",
-      "Bash(mise *)"
+      "WebSearch",
+      "Skill(superpowers:*)"
+    ],
+    "ask": [
+      "Bash(git reset --hard)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean)",
+      "Bash(git clean *)",
+      "Bash(git commit --amend*)",
+      "Bash(git branch -D*)",
+      "Bash(git push --delete*)",
+      "Bash(git push origin :*)",
+      "Bash(git restore*)",
+      "Bash(git checkout -- *)",
+      "Bash(git checkout .)",
+      "Bash(gh api *)",
+      "Bash(gh secret set*)",
+      "Bash(gh variable set*)",
+      "Bash(gh repo edit*)",
+      "Bash(gh release delete*)",
+      "Bash(npm publish*)",
+      "Bash(bun publish*)"
     ],
     "deny": [
-      "$defaults",
       "Bash(git push --force)",
       "Bash(git push --force *)",
       "Bash(git push -f)",
       "Bash(git push -f *)",
-      "Bash(git rebase -i*)",
       "Bash(git *--no-verify*)",
       "Bash(git *--no-gpg-sign*)",
       "Bash(git -c *)",
+      "Bash(git rebase -i*)",
+      "Bash(sudo)",
+      "Bash(sudo *)",
       "Bash(rm -rf /)",
       "Bash(rm -rf /*)",
       "Bash(rm -rf ~)",
@@ -42,8 +62,6 @@
       "Bash(rm -rf $HOME*)",
       "Bash(chmod -R*)",
       "Bash(chown -R*)",
-      "Bash(sudo)",
-      "Bash(sudo *)",
       "Bash(curl * | sh)",
       "Bash(curl * | sh *)",
       "Bash(curl * | bash)",
@@ -54,20 +72,18 @@
       "Bash(wget * | bash *)",
       "Bash(cargo publish*)",
       "Bash(gh repo delete*)",
-      "Bash(gh ssh-key add*)",
-      "Bash(gh gpg-key add*)",
       "Bash(gh gist *)",
       "Bash(gh alias set*)",
+      "Bash(gh ssh-key add*)",
+      "Bash(gh gpg-key add*)",
       "Read(~/.aws/**)",
       "Read(~/.gnupg/**)",
       "Read(~/.netrc)",
       "Read(~/.config/op/**)",
-      "Read(~/.ssh/**)",
-      "Read(**/.envrc)",
-      "Read(~/Library/Group Containers/2BUA8C4S2C.com.1password/**)",
       "Read(~/.kube/**)",
       "Read(~/.npmrc)",
       "Read(~/.claude/.credentials.json)",
+      "Read(~/.ssh/**)",
       "Read(~/.docker/config.json)",
       "Read(~/.config/gcloud/**)",
       "Read(~/.terraform.d/**)",
@@ -77,43 +93,132 @@
       "Read(~/Library/Keychains/**)",
       "Read(~/Library/Cookies/**)",
       "Read(~/Library/Application Support/**/Cookies*)",
+      "Read(~/Library/Group Containers/2BUA8C4S2C.com.1password/**)",
+      "Read(**/.envrc)",
       "Read(**/.env)",
       "Read(**/.env.*)",
-      "Edit(~/.claude/settings.json)",
       "Edit(~/.claude/.credentials.json)",
       "Edit(~/.gitconfig)",
       "Edit(~/.config/git/config)",
       "Edit(~/**/.git/config)",
       "Edit(~/**/.git/hooks/**)",
-      "Edit(~/.ssh/**)"
-    ],
-    "ask": [
-      "Bash(git restore*)",
-      "Bash(git push --delete*)",
-      "Bash(git push origin :*)",
-      "Bash(git branch -D*)",
-      "Bash(git checkout -- *)",
-      "Bash(git checkout .)",
-      "Bash(git reset --hard)",
-      "Bash(git reset --hard *)",
-      "Bash(git clean)",
-      "Bash(git clean *)",
-      "Bash(git commit --amend*)",
-      "Bash(gh secret set*)",
-      "Bash(gh variable set*)",
-      "Bash(gh repo edit*)",
-      "Bash(gh release delete*)",
-      "Bash(gh api *)",
-      "Bash(npm publish*)",
-      "Bash(bun publish*)",
-      "Bash(dropdb*)",
-      "Bash(createdb --force*)"
-    ],
-    "defaultMode": "auto",
-    "additionalDirectories": [
-      "/tmp/claude",
-      "/private/tmp/claude"
+      "Edit(~/.ssh/**)",
+      "Edit(~/.claude.json)",
+      "Edit(~/.cargo/credentials.toml)",
+      "Edit(~/.cargo/config.toml)",
+      "Edit(//opt/homebrew/bin/**)",
+      "Edit(//opt/homebrew/sbin/**)"
     ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false,
+    "excludedCommands": [
+      "git",
+      "gh",
+      "brew",
+      "open",
+      "dot",
+      "pbcopy"
+    ],
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "api.github.com",
+        "codeload.github.com",
+        "*.githubusercontent.com",
+        "*.anthropic.com",
+        "*.claude.com",
+        "*.npmjs.org",
+        "*.jsr.io",
+        "nodejs.org",
+        "bun.sh",
+        "static.rust-lang.org",
+        "crates.io",
+        "index.crates.io",
+        "static.crates.io",
+        "*.brew.sh",
+        "localhost",
+        "127.0.0.1"
+      ],
+      "allowLocalBinding": true,
+      "allowUnixSockets": [
+        "~/.ssh/agent/signing.sock"
+      ],
+      "allowMachLookup": [
+        "com.apple.SecurityServer",
+        "com.apple.securityd.systemkeychain",
+        "com.apple.security.KeychainStasher",
+        "com.apple.security.XPCKeychainSandboxCheck",
+        "com.apple.trustd.agent"
+      ]
+    },
+    "filesystem": {
+      "allowRead": [
+        "~/.ssh/*.pub",
+        "~/.ssh/config",
+        "~/.ssh/known_hosts*",
+        "~/.ssh/agent",
+        "~/Library/Keychains/login.keychain-db",
+        "**/.env.example",
+        "**/.env.template",
+        "**/.env.sample"
+      ],
+      "denyRead": [
+        "~/.aws",
+        "~/.gnupg",
+        "~/.netrc",
+        "~/.config/op",
+        "~/.kube",
+        "~/.npmrc",
+        "~/.claude/.credentials.json",
+        "~/.ssh",
+        "~/.docker/config.json",
+        "~/.config/gcloud",
+        "~/.terraform.d",
+        "~/.git-credentials",
+        "~/.config/git/credentials",
+        "~/.cargo/credentials.toml",
+        "~/Library/Keychains",
+        "~/Library/Cookies",
+        "~/Library/Application Support/**/Cookies*",
+        "~/Library/Group Containers/2BUA8C4S2C.com.1password",
+        "**/.envrc",
+        "**/.env",
+        "**/.env.*"
+      ],
+      "allowWrite": [
+        "~/.claude",
+        "~/.cache",
+        "~/.npm",
+        "~/.bun/install/cache",
+        "~/.cargo",
+        "~/.local/share/mise",
+        "~/Library/Caches/mise",
+        "/opt/homebrew",
+        "~/Library/Caches/Homebrew",
+        "~/Library/Logs/Homebrew",
+        "~/**/node_modules",
+        "~/**/.git",
+        "/tmp/claude",
+        "/private/tmp/claude",
+        "/dev/ptmx",
+        "/dev/ttys"
+      ],
+      "denyWrite": [
+        "~/.claude/.credentials.json",
+        "~/.claude.json",
+        "~/.gitconfig",
+        "~/.config/git/config",
+        "~/.ssh",
+        "~/.cargo/credentials.toml",
+        "~/.cargo/config.toml",
+        "/opt/homebrew/bin",
+        "/opt/homebrew/sbin"
+      ]
+    }
   },
   "hooks": {
     "PreToolUse": [
@@ -209,13 +314,6 @@
       }
     ]
   },
-  "worktree": {
-    "symlinkDirectories": [
-      "node_modules"
-    ],
-    "baseRef": "head",
-    "bgIsolation": "none"
-  },
   "statusLine": {
     "type": "command",
     "command": "dot statusline",
@@ -227,24 +325,9 @@
     "command": "dot subagent-statusline"
   },
   "enabledPlugins": {
-    "frontend-design@claude-plugins-official": false,
     "github@claude-plugins-official": true,
-    "code-simplifier@claude-plugins-official": false,
     "commit-commands@claude-plugins-official": true,
-    "security-guidance@claude-plugins-official": false,
-    "pr-review-toolkit@claude-plugins-official": false,
-    "claude-code-setup@claude-plugins-official": false,
-    "hookify@claude-plugins-official": false,
-    "playground@claude-plugins-official": false,
-    "playwright@claude-plugins-official": false,
-    "feature-dev@claude-plugins-official": false,
-    "spacebase@gnar-next": false,
-    "superpowers@claude-plugins-official": true,
-    "ideate@gnar-next": false,
-    "audit@gnar-next": false,
-    "ignite@gnar-next": false,
-    "implement@gnar-next": true,
-    "meta@gnar-next": true
+    "superpowers@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -252,158 +335,6 @@
         "source": "github",
         "repo": "anthropics/claude-plugins-official"
       }
-    },
-    "gnar-next": {
-      "source": {
-        "source": "github",
-        "repo": "thegnarco/agent-skills",
-        "ref": "next"
-      },
-      "autoUpdate": false
-    },
-    "expo-plugins": {
-      "source": {
-        "source": "github",
-        "repo": "expo/skills"
-      }
     }
-  },
-  "forceLoginMethod": "claudeai",
-  "outputStyle": "Concise",
-  "sandbox": {
-    "enabled": true,
-    "failIfUnavailable": true,
-    "autoAllowBashIfSandboxed": true,
-    "allowUnsandboxedCommands": true,
-    "network": {
-      "allowedDomains": [
-        "github.com",
-        "api.github.com",
-        "codeload.github.com",
-        "*.githubusercontent.com",
-        "*.anthropic.com",
-        "*.claude.com",
-        "*.npmjs.org",
-        "*.jsr.io",
-        "*.brew.sh",
-        "developer.mozilla.org",
-        "bun.sh",
-        "nodejs.org",
-        "typescriptlang.org",
-        "stackoverflow.com",
-        "exp.host",
-        "*.exp.host",
-        "reactnative.directory",
-        "*.reactnative.directory",
-        "localhost",
-        "127.0.0.1"
-      ],
-      "allowUnixSockets": [
-        "~/.ssh/agent/signing.sock"
-      ],
-      "allowLocalBinding": true,
-      "allowMachLookup": [
-        "com.apple.SecurityServer",
-        "com.apple.securityd.systemkeychain",
-        "com.apple.security.KeychainStasher",
-        "com.apple.security.XPCKeychainSandboxCheck",
-        "com.apple.trustd.agent"
-      ]
-    },
-    "filesystem": {
-      "allowWrite": [
-        "~/.claude",
-        "~/**/.claude/agents/**",
-        "~/**/.claude/agents",
-        "~/**/.claude/commands/**",
-        "~/.config/.wrangler",
-        "/dev/ptmx",
-        "/dev/ttys",
-        "~/.npm",
-        "~/.bun/install/cache",
-        "~/.cargo/**",
-        "~/.local/share/mise/**",
-        "~/.cache",
-        "/tmp/claude",
-        "/private/tmp/claude",
-        "/tmp/tsx-*",
-        "/private/tmp/tsx-*",
-        "/opt/homebrew",
-        "~/Library/Caches/Homebrew",
-        "~/Library/Logs/Homebrew",
-        "~/Library/Caches/mise",
-        "~/Library/Caches/ms-playwright",
-        "~/**/node_modules",
-        "~/**/.git/**"
-      ],
-      "denyWrite": [
-        "~/.claude/.credentials.json",
-        "~/.claude.json",
-        "~/.gitconfig",
-        "~/.config/git/config",
-        "~/.ssh",
-        "~/.cargo/credentials.toml",
-        "~/.cargo/config.toml",
-        "/opt/homebrew/bin",
-        "/opt/homebrew/sbin"
-      ],
-      "denyRead": [
-        "~/.aws",
-        "~/.gnupg",
-        "~/.netrc",
-        "~/.config/op",
-        "~/.kube",
-        "~/.npmrc",
-        "~/.claude/.credentials.json",
-        "~/.ssh",
-        "~/.docker/config.json",
-        "~/.config/gcloud",
-        "~/.terraform.d",
-        "~/.git-credentials",
-        "~/.config/git/credentials",
-        "~/.cargo/credentials.toml",
-        "~/Library/Keychains",
-        "~/Library/Cookies",
-        "~/Library/Application Support/**/Cookies*",
-        "**/.envrc",
-        "**/.env",
-        "**/.env.*",
-        "~/Library/Group Containers/2BUA8C4S2C.com.1password"
-      ],
-      "allowRead": [
-        "~/.ssh/*.pub",
-        "~/.ssh/config",
-        "~/.ssh/known_hosts*",
-        "~/.ssh/agent",
-        "**/.env.example",
-        "**/.env.template",
-        "**/.env.sample",
-        "~/Library/Keychains/login.keychain-db"
-      ]
-    },
-    "excludedCommands": [
-      "git",
-      "gh",
-      "brew",
-      "open",
-      "dot",
-      "pbcopy"
-    ]
-  },
-  "feedbackSurveyRate": 0,
-  "effortLevel": "medium",
-  "tui": "fullscreen",
-  "autoMemoryEnabled": true,
-  "skipDangerousModePermissionPrompt": true,
-  "editorMode": "normal",
-  "verbose": true,
-  "teammateMode": "auto",
-  "isolatePeerMachines": false,
-  "daemonColdStart": "transient",
-  "inputNeededNotifEnabled": true,
-  "agentPushNotifEnabled": true,
-  "skipAutoPermissionPrompt": true,
-  "defaultToAgentsView": true,
-  "leftArrowOpensAgents": true,
-  "skipWorkflowUsageWarning": true
+  }
 }

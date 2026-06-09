@@ -45,7 +45,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `bat/config` | Bat config |
 | `ssh/config` | SSH client config (1Password agent, ControlMaster) |
 | `karabiner/karabiner.json` | Karabiner-Elements rules (Caps Lock → Control) |
-| `dot-claude/` | Claude Code: `CLAUDE.md`, `settings.json`, `agents/`, `commands/` (hooks dispatch via `dot hook <event>`) |
+| `dot-claude/` | Claude Code: `CLAUDE.md`, `settings.json` (hooks dispatch via `dot hook <event>`) |
 | `Brewfile` | `brew "mise"` + casks (GUI apps, fonts). All dev CLIs live in mise.toml. |
 | `mise.toml` | Language toolchains + every dev CLI. Single update path via `mise upgrade`. |
 | `sheldon/plugins.toml` | Zsh plugin config |
@@ -57,8 +57,6 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 
 - `CLAUDE.md` — user-level global instructions
 - `settings.json` — permissions, env, hook commands (all `dot hook <event>`), `statusLine` → `dot statusline`, `subagentStatusLine` → `dot subagent-statusline`
-- `agents/` — custom subagent definitions
-- `commands/` — custom slash commands
 
 The statusline is the self-contained `share/claude-statusline/statusline.sh` (context bar + Pro/Max rate-limit windows from native `rate_limits` JSON), reached via `dot statusline`. It's a drop-in you can `curl` onto any machine — see `share/claude-statusline/README.md`.
 
@@ -104,7 +102,7 @@ Wired as a git difftool. Run with `git dft` (alias for `git difftool`) — uses 
 
 - **`op-run <cmd>`** (`zsh/80-functions.zsh`) — one-shot CLI injection. `op-run npm publish` resolves `op://` refs at exec time and never writes them anywhere.
 - **`op://` references in config files** — pair with `op-run`. The wrapper resolves them just for the child process.
-- **`gh auth token` keychain fallback** — `zsh/00-exports.zsh` derives `GITHUB_PERSONAL_ACCESS_TOKEN` from the gh keychain at shell start, so subprocesses (Claude MCP, scripts) inherit it without plaintext on disk.
+- **`gh` keychain auth** — the GitHub token lives in the macOS keychain (`gh auth login`, secure storage) and is deliberately NOT exported to the environment (a standing export would leak it into every subprocess). Resolve on demand with `gh auth token` when a tool needs it.
 - **`direnv` + `op read` in `.envrc`** — for project-local env that must inherit at fork time. `direnv` is already hooked in `zsh/30-plugins.zsh`.
 
 ## Completions

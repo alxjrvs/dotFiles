@@ -89,9 +89,10 @@ done
 
 printf '\n==> git push prerequisites\n'
 auc=$(jq -r '.sandbox.allowUnsandboxedCommands' dot-claude/settings.json 2> /dev/null)
-note "allowUnsandboxedCommands = ${auc} (unsandboxed retry remains the fallback)"
-note "gh now resolves its token via the keychain in-sandbox, so HTTPS push via the"
-note "gh credential helper can work without the unsandboxed retry. SSH stays unusable (no raw TCP)."
+note "allowUnsandboxedCommands = ${auc} (expected: false — strict/closed; a sandbox-blocked"
+note "command hard-fails, the dangerouslyDisableSandbox retry is ignored, and the hatch is"
+note "operator-only). gh resolves its token via the keychain in-sandbox, so HTTPS push via the"
+note "gh credential helper works on the first sandboxed attempt. SSH stays unusable (no raw TCP)."
 
 printf '\n==> %d ok, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

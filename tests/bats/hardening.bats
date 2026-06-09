@@ -6,7 +6,10 @@
 ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
 JQDIR="$(dirname "$(mise which jq 2> /dev/null || command -v jq)")"
 
+load 'helpers'
+
 setup() {
+  scrub_git_env
   export PATH="$JQDIR:/opt/homebrew/bin:/usr/bin:/bin"
   TDIR="$(mktemp -d "${TMPDIR:-/tmp}/bats.XXXXXX")"
   export HOME="$TDIR"
@@ -239,7 +242,9 @@ sjq() { jq -e "$1" "$SETTINGS" > /dev/null; }
 
 @test "settings: denyWrite/Edit do NOT lock the git-tracked repo policy files" {
   # Locking these breaks git/sync and dotfiles maintenance — must stay absent.
-  run grep -E 'Edit\(//|dotFiles/(dot-claude|hooks|dot)' "$SETTINGS"
+  # Absolute Edit(//...) rules are fine for non-repo paths (/opt/homebrew
+  # mirrors); what must never appear is one targeting the dotfiles repo.
+  run grep -E 'Edit\(//[^)]*dotFiles|dotFiles/(dot-claude|hooks|dot)' "$SETTINGS"
   [ "$status" -ne 0 ]
 }
 
@@ -282,4 +287,48 @@ sjq() { jq -e "$1" "$SETTINGS" > /dev/null; }
   # broke credential access in testing, so they stay.
   sjq '.sandbox.network.allowMachLookup | index("com.apple.SecurityServer")'
   sjq '.sandbox.network.allowMachLookup | index("com.apple.securityd.systemkeychain")'
+}
+
+@test "settings: strict sandbox posture is pinned (enabled, failIfUnavailable, hatch closed)" {
+  sjq '.sandbox.enabled == true'
+  sjq '.sandbox.failIfUnavailable == true'
+  # The load-bearing one: false means a sandbox-blocked command hard-fails
+  # (the dangerouslyDisableSandbox retry is ignored). The documented hatch
+  # workflow is "flip to true for a named tool, run it, flip back" — this
+  # assert is what catches a forgotten flip-back at the next commit.
+  sjq '.sandbox.allowUnsandboxedCommands == false'
+}
+
+# Mirror convention (CLAUDE.md): the Read/Edit tools bypass the sandbox, so
+# every sandbox.filesystem deny entry needs a permissions.deny mirror —
+# byte-identical for file/glob entries, /** suffix for directories. Derive
+# the expected mirror for EVERY entry instead of spot-checking a few.
+@test "settings: every denyRead entry has a Read() mirror in permissions.deny" {
+  local e
+  while IFS= read -r e; do
+    jq -e --arg p "$e" \
+      '.permissions.deny as $d
+       | (($d | index("Read(" + $p + ")")) != null)
+         or (($d | index("Read(" + $p + "/**)")) != null)' \
+      "$SETTINGS" > /dev/null \
+      || { echo "missing Read() mirror for denyRead entry: $e" >&2; false; }
+  done < <(jq -r '.sandbox.filesystem.denyRead[]' "$SETTINGS")
+}
+
+@test "settings: every denyWrite entry has an Edit() mirror in permissions.deny" {
+  # Absolute sandbox paths (/opt/...) take the absolute-anchor Edit form
+  # (Edit(//opt/...)); ~ and glob entries mirror as-is.
+  local e p
+  while IFS= read -r e; do
+    case "$e" in
+      /*) p="/$e" ;;
+      *) p="$e" ;;
+    esac
+    jq -e --arg p "$p" \
+      '.permissions.deny as $d
+       | (($d | index("Edit(" + $p + ")")) != null)
+         or (($d | index("Edit(" + $p + "/**)")) != null)' \
+      "$SETTINGS" > /dev/null \
+      || { echo "missing Edit() mirror for denyWrite entry: $e" >&2; false; }
+  done < <(jq -r '.sandbox.filesystem.denyWrite[]' "$SETTINGS")
 }

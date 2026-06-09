@@ -7,7 +7,10 @@
 ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
 ORIG_HOME="$HOME"
 
+load 'helpers'
+
 setup() {
+  scrub_git_env
   TDIR="$(mktemp -d "${TMPDIR:-/tmp}/bats-ssh.XXXXXX")"
   export HOME="$TDIR"
   # Guard: never run against the real home.
