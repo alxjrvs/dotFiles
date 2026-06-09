@@ -11,7 +11,7 @@ The CC built-in surface is wider than I tend to use. Verified on v2.1.153+:
 - `/branch [name]` (alias `/fork`) — fork the session to try risky work; return to trunk if it doesn't pan out.
 - `/focus` — toggles hiding of intermediate tool calls (fullscreen TUI only). Pairs with auto mode + `/goal` for hands-off runs.
 - `/goal <verifiable-condition>` — iterate until a deterministic check passes (e.g. "all tests in test/auth pass and lint is clean"). Distinct from `/loop`: condition-based, not interval-based. Cancel with `/goal clear`.
-- `/insights` — usage-pattern report. Run alongside `meta:tuneup` periodically.
+- `/insights` — usage-pattern report. Worth running periodically.
 - `/copy [N]` — copy last response with code-block picker. `/copy 2` for second-to-last.
 - `/context [all]` — visualize context fill. Check before deciding whether to `/compact` for the next feature.
 - `/export [filename]` — dump conversation. With filename writes directly; without opens a clipboard/file dialog.
