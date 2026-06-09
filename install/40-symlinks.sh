@@ -131,8 +131,6 @@ _symlinks_run() {
     mkdir -p "${HOME}/.claude"
     link "${df}/dot-claude/CLAUDE.md" "${HOME}/.claude/CLAUDE.md"
     link "${df}/dot-claude/settings.json" "${HOME}/.claude/settings.json"
-    link "${df}/dot-claude/agents" "${HOME}/.claude/agents"
-    link "${df}/dot-claude/commands" "${HOME}/.claude/commands"
 
     local local_settings="${df}/dot-claude/settings.local.json"
     if [[ -f "$local_settings" ]]; then

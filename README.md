@@ -45,7 +45,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `bat/config` | Bat config |
 | `ssh/config` | SSH client config (1Password agent, ControlMaster) |
 | `karabiner/karabiner.json` | Karabiner-Elements rules (Caps Lock → Control) |
-| `dot-claude/` | Claude Code: `CLAUDE.md`, `settings.json`, `agents/`, `commands/` (hooks dispatch via `dot hook <event>`) |
+| `dot-claude/` | Claude Code: `CLAUDE.md`, `settings.json` (hooks dispatch via `dot hook <event>`) |
 | `Brewfile` | `brew "mise"` + casks (GUI apps, fonts). All dev CLIs live in mise.toml. |
 | `mise.toml` | Language toolchains + every dev CLI. Single update path via `mise upgrade`. |
 | `sheldon/plugins.toml` | Zsh plugin config |
