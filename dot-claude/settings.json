@@ -22,8 +22,7 @@
       "Bash(gh *)",
       "Bash(dot *)",
       "WebSearch",
-      "Skill(superpowers:*)",
-      "Skill(implement:*)"
+      "Skill(superpowers:*)"
     ],
     "ask": [
       "Bash(git reset --hard)",
@@ -329,7 +328,6 @@
     "github@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
-    "implement@gnar-next": true,
     "meta@gnar-next": true
   },
   "extraKnownMarketplaces": {
