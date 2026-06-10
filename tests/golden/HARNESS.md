@@ -43,7 +43,7 @@ tests/golden/
 | `worktree.sh` | Git worktree: `GIT_IS_WORKTREE=1`, `GIT_WORKTREE_NAME=dedotctl`, branch `worktree-dedotctl`. |
 | `pr-pass.sh` | Feature branch with `GIT_PR_STATUS=pass`, PR #42, 2 ahead. |
 
-Key format: `KEY='value'` (bash single-quoted). Same format as `dotctl git-data` writes.
+Key format: `KEY='value'` (bash single-quoted). Same format as `dot git-data` writes.
 
 ### json/ — statusline stdin fixtures
 
@@ -77,7 +77,7 @@ elapsed values are small and meaningful. The `elapsed` field is time-dependent
 All outputs were captured using:
 
 ```bash
-tests/golden/run-golden.sh capture dotctl
+tests/golden/run-golden.sh capture dot
 ```
 
 Which sets the following pinned environment per run:
@@ -88,7 +88,7 @@ Which sets the following pinned environment per run:
 | `XDG_CACHE_HOME` | `$TMPDIR/golden-capture-$$/`.cache` | Isolated git-data cache |
 | `COLUMNS` | Fixture-specific (60/120/200 etc.) | Controls bar pip count |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `80` | Pins autocompact threshold |
-| `PATH` | `$(dirname dotctl):/usr/bin:/bin:/usr/local/bin` | Excludes `gh` so PR refresh is neutralized |
+| `PATH` | `$(dirname dot):$(dirname jq):/usr/bin:/bin:/usr/local/bin` | Excludes `gh` so PR refresh is neutralized |
 | `PWD` | Repo worktree toplevel (prompt-render only) | Ensures correct cache-hash lookup |
 
 **prompt-render**: runs with `PWD=$REPO_TOPLEVEL` (the git repo) so

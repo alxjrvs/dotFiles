@@ -149,6 +149,14 @@ _symlinks_run() {
     if [[ -L "${HOME}/.claude/settings.local.json" ]]; then
       rm -f "${HOME}/.claude/settings.local.json"
     fi
+
+    # The compiled dotctl binary predates the shell rewrite; nothing
+    # references it anymore. Remove the leftover (plain file only — never
+    # follow a symlink someone re-pointed).
+    if [[ -f "${HOME}/.local/bin/dotctl" && ! -L "${HOME}/.local/bin/dotctl" ]]; then
+      rm -f "${HOME}/.local/bin/dotctl"
+      printf '\033[2m  - removed legacy dotctl binary\033[0m\n'
+    fi
   fi
 }
 

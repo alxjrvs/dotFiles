@@ -21,8 +21,14 @@ done
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GOLDEN="$ROOT/tests/golden"
 OUT="$GOLDEN/out"
-JQDIR=/Users/jarvis/.local/share/mise/installs/jq/1.8.1
-TOOLPATH="$JQDIR:/opt/homebrew/bin:/usr/bin:/bin"
+# jq lives wherever mise put it (version changes on every bump) — resolve it,
+# don't hardcode the install path. Falls back to any jq on PATH.
+JQBIN="$(mise which jq 2> /dev/null || command -v jq || true)"
+if [[ -z "$JQBIN" ]]; then
+  echo "ERROR: jq not found (mise which jq / PATH) — cannot run renderers" >&2
+  exit 2
+fi
+TOOLPATH="$(dirname "$JQBIN"):/opt/homebrew/bin:/usr/bin:/bin"
 
 REPO=$(git -C "$ROOT" rev-parse --show-toplevel)
 HASH=$(printf '%s' "$REPO" | shasum -a 256 | cut -c1-12)
@@ -37,7 +43,31 @@ FAIL=0
 declare -a FAILED=()
 declare -a UPDATED=()
 
-strip_rate() { LC_ALL=C grep -v $'^\033\[90m[57][hd] ' || true; }
+# Rate-limit rows (5h / 7d) carry a "[Xh Ym left]" label computed from
+# `resets_at - now` — time-dependent, so they're stripped before diffing.
+# Matching is plain shell `case` globbing on the exact ANSI prefix the
+# statusline emits: no grep, so no regex-engine drift (the previous grep
+# pattern silently matched nothing under both BSD grep and ugrep).
+RATE5=$'\033[90m5h '
+RATE7=$'\033[90m7d '
+strip_rate() {
+  local line
+  while IFS= read -r line; do
+    case "$line" in
+      "$RATE5"* | "$RATE7"*) ;;
+      *) printf '%s\n' "$line" ;;
+    esac
+  done
+}
+rate_count() {
+  local line n=0
+  while IFS= read -r line; do
+    case "$line" in
+      "$RATE5"* | "$RATE7"*) n=$((n + 1)) ;;
+    esac
+  done
+  echo "$n"
+}
 strip_elapsed() { sed 's/"elapsed":"[^"]*"/"elapsed":"ELAPSED"/g'; }
 
 cmp_out() {
@@ -59,6 +89,19 @@ cmp_out() {
   local g a
   case "$name" in
     statusline-*)
+      # Self-check: a golden whose rows carry the time label must yield
+      # strips, or the ANSI prefix has drifted and the "stripped" diff would
+      # silently compare time-dependent text (flaky) — fail loudly instead.
+      local gn
+      gn=$(rate_count < "$gf")
+      if [ "$gn" -eq 0 ] && [ -n "$(cat "$gf")" ]; then
+        case "$(cat "$gf")" in
+          *" left"*)
+            echo "ERROR: $name golden has rate-limit rows but strip matched none — update RATE5/RATE7 prefixes" >&2
+            exit 2
+            ;;
+        esac
+      fi
       g=$(strip_rate < "$gf")
       a=$(printf '%s\n' "$actual" | strip_rate)
       ;;

@@ -4,14 +4,14 @@
 # USAGE
 #   Capture mode (record new goldens from a binary):
 #     ./run-golden.sh capture [binary-prefix]
-#     binary-prefix defaults to "dotctl" (must be on PATH or an absolute path)
+#     binary-prefix defaults to "dot" (must be on PATH or an absolute path)
 #
 #   Compare mode (verify a binary produces byte-identical output):
 #     ./run-golden.sh compare [binary-prefix]
 #
 #   Single fixture:
-#     ./run-golden.sh capture dotctl prompt-clean-main
-#     ./run-golden.sh compare ./prompt/prompt-render prompt-clean-main
+#     ./run-golden.sh capture dot prompt-clean-main
+#     ./run-golden.sh compare dot prompt-clean-main
 #
 # EXIT CODES
 #   0 — all comparisons passed (or capture completed)
@@ -42,7 +42,7 @@ SUBAGENT_DIR="$GOLDEN_DIR/subagent"
 OUT_DIR="$GOLDEN_DIR/out"
 
 MODE="${1:-compare}"
-BINARY="${2:-dotctl}"
+BINARY="${2:-dot}"
 SINGLE_FIXTURE="${3:-}"
 
 # ── Resolve the repo toplevel (for prompt-render: must run from inside it) ──
@@ -57,8 +57,8 @@ if [[ -z "$REPO_TOPLEVEL" ]]; then
 fi
 
 # ── Repo hash (SHA-256 of toplevel path, first 12 hex chars) ──
-# Rust uses sha2::Sha256; shell port uses shasum -a 256 / sha256sum.
-# Both hash the same byte sequence (the toplevel string), so the filenames agree.
+# Must agree with the cache-path hash inlined in prompt/git-data and
+# prompt/prompt-render (shasum -a 256 of the toplevel string).
 repo_hash() {
   local path="$1"
   if command -v shasum &> /dev/null; then
@@ -82,8 +82,20 @@ cat > "$TMPDIR_TEST/.claude/settings.json" << 'EOF'
 }
 EOF
 
-# Strip gh from PATH so statusline's git_data::run() PR refresh is neutralized.
-SAFE_PATH="$(dirname "$(command -v dotctl)"):/usr/bin:/bin:/usr/local/bin"
+# Strip gh from PATH so the statusline's PR refresh is neutralized. The
+# binary's own dir and jq's dir stay reachable (jq lives wherever mise put
+# it — resolve, don't hardcode).
+if command -v "$BINARY" > /dev/null 2>&1; then
+  BIN_DIR="$(dirname "$(command -v "$BINARY")")"
+else
+  BIN_DIR="$(cd "$(dirname "$BINARY")" && pwd)"
+fi
+JQBIN="$(mise which jq 2> /dev/null || command -v jq || true)"
+if [[ -z "$JQBIN" ]]; then
+  echo "ERROR: jq not found (mise which jq / PATH)" >&2
+  exit 1
+fi
+SAFE_PATH="$BIN_DIR:$(dirname "$JQBIN"):/usr/bin:/bin:/usr/local/bin"
 
 PASS=0
 FAIL=0
@@ -164,13 +176,20 @@ run_subagent_statusline() {
 # entirely; lines 1-3 (git context, model, CTX bar) and line 6 (cost) are
 # strictly comparable.
 #
-# Rate-limit rows are identified by the ANSI-grey "5h " / "7d " prefix that
-# dotctl emits: ESC[90m<label>ESC[0m at column 0. grep -v removes matching lines.
+# Rate-limit rows are identified by the ANSI-grey "5h " / "7d " prefix the
+# statusline emits: ESC[90m<label> at column 0. Matched with plain shell
+# `case` globbing — no grep, so no regex-engine drift (the previous grep
+# pattern silently matched nothing under both BSD grep and ugrep).
+RATE5=$'\033[90m5h '
+RATE7=$'\033[90m7d '
 strip_rate_limit_rows() {
-  # Remove lines starting with ESC[90m5h / ESC[90m7d (rate-limit rows).
-  # Use LC_ALL=C and a literal escape byte for portability (macOS grep
-  # doesn't support -P / PCRE; \x1b is not supported in basic/extended regex).
-  LC_ALL=C grep -v $'^\033\[90m[57][hd] ' || true
+  local line
+  while IFS= read -r line; do
+    case "$line" in
+      "$RATE5"* | "$RATE7"*) ;;
+      *) printf '%s\n' "$line" ;;
+    esac
+  done
 }
 
 # Subagent: remove "elapsed" JSON field value (keep key, zero out value to "0s").

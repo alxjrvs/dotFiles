@@ -49,8 +49,9 @@ pre-push:
   parallel: true
   commands:
     bats:
-      # ~30 shell unit tests, seconds-scale. Runs on every push so the
-      # documented gate (bats + doctor) is real, not aspirational.
+      # Shell unit tests (bats --count for the live number), seconds-scale.
+      # Runs on every push so the documented gate (bats + doctor) is real,
+      # not aspirational.
       run: bats tests/bats/
     doctor:
       # SKIP_EXTERNAL: a push gate wants the fast structural checks (tool
@@ -59,3 +60,9 @@ pre-push:
       # wedge on Homebrew's global update lock. The full audit stays available
       # via interactive `dot doctor`.
       run: DOTFILES_DOCTOR_SKIP_EXTERNAL=1 dot doctor
+    golden:
+      # Byte-exact fixture verification for all three renderers (prompt,
+      # statusline, subagent). Seconds-scale, fully offline. verify-golden.sh
+      # supersedes verify-statusline.sh (its statusline fixtures are a
+      # subset), so only the full verifier runs here.
+      run: tests/verify-golden.sh

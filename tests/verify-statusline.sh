@@ -22,15 +22,43 @@ done
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GOLDEN="$ROOT/tests/golden"
 OUT="$GOLDEN/out"
-JQDIR=/Users/jarvis/.local/share/mise/installs/jq/1.8.1
-TOOLPATH="$JQDIR:/opt/homebrew/bin:/usr/bin:/bin"
+# jq lives wherever mise put it (version changes on every bump) — resolve it,
+# don't hardcode the install path. Falls back to any jq on PATH.
+JQBIN="$(mise which jq 2> /dev/null || command -v jq || true)"
+if [[ -z "$JQBIN" ]]; then
+  echo "ERROR: jq not found (mise which jq / PATH) — cannot run statusline" >&2
+  exit 2
+fi
+TOOLPATH="$(dirname "$JQBIN"):/opt/homebrew/bin:/usr/bin:/bin"
 
 T=$(mktemp -d "${TMPDIR:-/tmp}/vsl.XXXXXX")
 trap 'rm -rf "$T"' EXIT
 mkdir -p "$T/.cache/git-data" "$T/.claude/state/cost" "$T/nonrepo"
 printf '{\n  "advisorModel": "claude-haiku-4-5"\n}\n' > "$T/.claude/settings.json"
 
-strip_rate() { LC_ALL=C grep -v $'^\033\[90m[57][hd] ' || true; }
+# Strip the time-dependent 5h/7d rate-limit rows by exact ANSI prefix, via
+# shell `case` globbing — no grep, no regex-engine drift (the previous grep
+# pattern silently matched nothing). rate_count feeds the self-check below.
+RATE5=$'\033[90m5h '
+RATE7=$'\033[90m7d '
+strip_rate() {
+  local line
+  while IFS= read -r line; do
+    case "$line" in
+      "$RATE5"* | "$RATE7"*) ;;
+      *) printf '%s\n' "$line" ;;
+    esac
+  done
+}
+rate_count() {
+  local line n=0
+  while IFS= read -r line; do
+    case "$line" in
+      "$RATE5"* | "$RATE7"*) n=$((n + 1)) ;;
+    esac
+  done
+  echo "$n"
+}
 
 PASS=0
 FAIL=0
@@ -50,6 +78,18 @@ for f in low-ctx high-ctx-near-ac rate-limits-high with-pr narrow-60 wide-200; d
     continue
   fi
 
+  # Self-check: a golden carrying the "[Xh Ym left]" label must yield strips,
+  # or the ANSI prefix has drifted and the diff would silently compare
+  # time-dependent text (flaky) — fail loudly instead.
+  gn=$(rate_count < "$OUT/statusline-${f}.txt")
+  if [ "$gn" -eq 0 ]; then
+    case "$(cat "$OUT/statusline-${f}.txt")" in
+      *" left"*)
+        echo "ERROR: statusline-$f golden has rate-limit rows but strip matched none — update RATE5/RATE7 prefixes" >&2
+        exit 2
+        ;;
+    esac
+  fi
   printf '%s\n' "$actual" | strip_rate > "$T/actual.txt"
   strip_rate < "$OUT/statusline-${f}.txt" > "$T/golden.txt"
   if diff -u "$T/golden.txt" "$T/actual.txt" > "$T/diff.txt" 2>&1; then
