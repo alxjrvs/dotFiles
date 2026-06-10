@@ -75,7 +75,6 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `git-template/hooks/pre-commit` | `~/.config/git/template/hooks/pre-commit` (referenced by `core.hooksPath`) |
 | `dot` | `~/.local/bin/dot` |
 | `dot-claude/{CLAUDE.md, settings.json}` | `~/.claude/` (individually) |
-| `dot-claude/settings.local.json` (if present) | `~/.claude/settings.local.json` |
 
 Everything is symlinked; there are no read-in-place or compiled-in files.
 

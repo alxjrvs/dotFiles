@@ -147,9 +147,8 @@ if [[ -z "$_dotfiles" ]]; then
 else
   # Expected symlink pairs: "link_rel|target_rel".
   # Kept 1:1 in sync with install/40-symlinks.sh. The zsh/[0-9]*.zsh fragment
-  # glob and the conditional settings.local.json are handled below the static
-  # list. Pairs whose source is absent are skipped silently (see loop), so the
-  # conditional .claude/settings.local.json entry is safe to list unconditionally.
+  # glob is handled below the static list. Pairs whose source is absent are
+  # skipped silently (see loop).
   _expected_links=(
     ".zshrc|.zshrc"
     ".zprofile|.zprofile"
@@ -165,7 +164,6 @@ else
     ".config/git/template/hooks/pre-commit|git-template/hooks/pre-commit"
     ".claude/CLAUDE.md|dot-claude/CLAUDE.md"
     ".claude/settings.json|dot-claude/settings.json"
-    ".claude/settings.local.json|dot-claude/settings.local.json"
     ".config/sheldon/plugins.toml|sheldon/plugins.toml"
     ".config/mise/config.toml|mise.toml"
     ".config/gh/config.yml|gh/config.yml"

@@ -464,12 +464,19 @@ gh_call_count() {
   ! grep -q 'doc drift' "$ROOT/doctor"
 }
 
-@test "doctor: symlink audit covers dot, git-template hook, settings.local, zsh frags" {
+@test "doctor: symlink audit covers dot, git-template hook, zsh frags" {
   grep -q '.local/bin/dot|dot' "$ROOT/doctor"
   grep -q 'git/template/hooks/pre-commit|git-template/hooks/pre-commit' "$ROOT/doctor"
-  grep -q '.claude/settings.local.json|dot-claude/settings.local.json' "$ROOT/doctor"
   # zsh fragments expanded from the [0-9]*.zsh glob.
   grep -q 'zsh/\[0-9\]\*.zsh' "$ROOT/doctor"
+}
+
+@test "repo carries no settings.local overlay (machinery removed)" {
+  ! grep -q 'settings\.local' "$ROOT/doctor"
+  [[ ! -f "$ROOT/dot-claude/settings.local.json" ]]
+  # 40-symlinks must not create the link (the stale-cleanup rm is the only
+  # remaining mention).
+  ! grep -q 'link .*settings\.local' "$ROOT/install/40-symlinks.sh"
 }
 
 # A tool present on PATH but whose --version fails (e.g. gh aborting when it

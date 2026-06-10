@@ -144,11 +144,10 @@ _symlinks_run() {
       fi
     done
 
-    local local_settings="${df}/dot-claude/settings.local.json"
-    if [[ -f "$local_settings" ]]; then
-      link "$local_settings" "${HOME}/.claude/settings.local.json"
-    else
-      printf '\033[2m  - claude/settings.local.json not present — skipping\033[0m\n'
+    # settings.local.json is deliberately unsupported: this repo carries no
+    # local-settings overlay. Remove a stale symlink if an old sync made one.
+    if [[ -L "${HOME}/.claude/settings.local.json" ]]; then
+      rm -f "${HOME}/.claude/settings.local.json"
     fi
   fi
 }
