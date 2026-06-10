@@ -34,7 +34,10 @@ if ! command -v jq > /dev/null 2>&1; then
   exit 0
 fi
 
-FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.file_path // ""')
+# PostToolUse delivers the path inside tool_input (Edit/Write) or
+# tool_response; bare .file_path is kept as a last-resort fallback. Reading
+# only .file_path made this hook a silent no-op against real CC payloads.
+FILE_PATH=$(printf '%s' "$INPUT" | jq -r '(.tool_input.file_path // .tool_response.filePath // .file_path) // ""')
 if [[ -z "$FILE_PATH" ]]; then
   exit 0
 fi
@@ -76,8 +79,10 @@ _run_tool() {
 # ---------------------------------------------------------------------------
 case "$EXT" in
   sh)
+    # Same flags as the lefthook pre-commit gate (-i 2 -ci -sr) so the hook
+    # and the gate can never fight over style.
     if _have_tool shfmt; then
-      _run_tool shfmt -w -i 2 "$FILE_PATH" > /dev/null 2>&1 || true
+      _run_tool shfmt -w -i 2 -ci -sr "$FILE_PATH" > /dev/null 2>&1 || true
     fi
     ;;
 
@@ -116,7 +121,11 @@ case "$EXT" in
 esac
 
 if [[ -n "$LINT_OUT" ]]; then
-  jq -n --arg ctx "$LINT_OUT" '{"additionalContext":$ctx}'
+  # additionalContext is only documented inside the hookSpecificOutput
+  # envelope (with hookEventName); a bare top-level key is not a defined
+  # output field and may be ignored.
+  jq -n --arg ctx "$LINT_OUT" \
+    '{hookSpecificOutput:{hookEventName:"PostToolUse",additionalContext:$ctx}}'
 fi
 
 exit 0

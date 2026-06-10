@@ -6,6 +6,11 @@
 
 ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
 JQDIR="$(dirname "$(mise which jq 2> /dev/null || command -v jq)")"
+# Resolved at file scope (real HOME): once setup() fakes HOME, `mise which`
+# can no longer see the real installs, so the format-on-save tests put these
+# dirs on PATH and the hook reaches the tools via its command -v fallback.
+SHFMTDIR="$(dirname "$(mise which shfmt 2> /dev/null || command -v shfmt 2> /dev/null || echo /nonexistent/shfmt)")"
+SHELLCHECKDIR="$(dirname "$(mise which shellcheck 2> /dev/null || command -v shellcheck 2> /dev/null || echo /nonexistent/shellcheck)")"
 
 load 'helpers'
 
@@ -133,4 +138,57 @@ run_hook() {
   run bash -c 'cat "$1" | "$2/hooks/trim-bash-output"' _ "$payload" "$ROOT"
   [ "$status" -eq 0 ]
   [[ "$output" == *"trim-bash-output"* ]]
+}
+
+# ── format-on-save: behavioral coverage with real PostToolUse payloads ──────
+# The hook once read bare .file_path (never delivered by CC) and was a silent
+# no-op for its entire life; these tests pin the real payload shape.
+
+@test "format-on-save: formats a .sh file from a real tool_input payload" {
+  [ -x "$SHFMTDIR/shfmt" ] || skip "shfmt unavailable"
+  export PATH="$SHFMTDIR:$PATH"
+  local f="$TDIR/messy.sh"
+  printf '%s\n' '#!/bin/bash' 'if true;then' '      echo hi' 'fi' > "$f"
+  run run_hook format-on-save "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$f\"}}"
+  [ "$status" -eq 0 ]
+  # shfmt -i 2 -ci -sr normalizes the body to two-space indent + then on its
+  # own clause.
+  run cat "$f"
+  [[ "$output" == *'if true; then'* ]]
+  [[ "$output" == *'  echo hi'* ]]
+}
+
+@test "format-on-save: tool_response.filePath also resolves" {
+  [ -x "$SHFMTDIR/shfmt" ] || skip "shfmt unavailable"
+  export PATH="$SHFMTDIR:$PATH"
+  local f="$TDIR/messy2.sh"
+  printf 'if true;then\necho hi\nfi\n' > "$f"
+  run run_hook format-on-save "{\"tool_name\":\"Edit\",\"tool_response\":{\"filePath\":\"$f\"}}"
+  [ "$status" -eq 0 ]
+  run cat "$f"
+  [[ "$output" == *'if true; then'* ]]
+}
+
+@test "format-on-save: lint findings arrive in the hookSpecificOutput envelope" {
+  [ -x "$SHELLCHECKDIR/shellcheck" ] || skip "shellcheck unavailable"
+  export PATH="$SHELLCHECKDIR:$PATH"
+  local f="$TDIR/warn.sh"
+  # SC2086: unquoted variable — guaranteed shellcheck finding.
+  printf '%s\n' '#!/bin/bash' 'v="a b"' 'echo $v' > "$f"
+  run run_hook format-on-save "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$f\"}}"
+  [ "$status" -eq 0 ]
+  # Envelope shape: documented additionalContext lives inside
+  # hookSpecificOutput with the event name.
+  echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "PostToolUse"'
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | length > 0'
+}
+
+@test "format-on-save: unknown extension is a silent no-op" {
+  local f="$TDIR/data.xyz"
+  printf 'payload\n' > "$f"
+  run run_hook format-on-save "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$f\"}}"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  run cat "$f"
+  [[ "$output" == "payload" ]]
 }
