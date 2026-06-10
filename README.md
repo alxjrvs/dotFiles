@@ -60,21 +60,14 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 
 The statusline is the self-contained `share/claude-statusline/statusline.sh` (context bar + Pro/Max rate-limit windows from native `rate_limits` JSON), reached via `dot statusline`. It's a drop-in you can `curl` onto any machine — see `share/claude-statusline/README.md`.
 
-The wired Claude Code hook events route through `dot hook <event>`:
-
-| Event | Subcommand |
-|-------|-----------|
-| PreToolUse (Edit\|Write) | `dot hook lock-file-guard` |
-| PreToolUse (Bash) | `dot hook policy-guard` |
-| PostToolUse (Edit\|Write) | `dot hook format-on-save` |
-| PostToolUse (Bash) | `dot hook trim-bash-output` |
-| SessionStart | `dot hook session-start` |
-| UserPromptSubmit | `dot hook user-prompt-submit` |
-| Stop | `dot hook stop` |
+The wired Claude Code hook events route through `dot hook <event>`; the
+event name maps 1:1 to a script in `hooks/`. The authoritative
+event/script table lives in [CLAUDE.md](CLAUDE.md) under **Hook
+dispatch** — one table, not two drifting copies.
 
 ## Tests
 
-Shell unit tests run under [`bats`](https://github.com/bats-core/bats-core) (a managed mise tool) in `tests/bats/`. Golden fixtures in `tests/golden/` hold byte-exact reference output (regenerable snapshots of the current shell scripts) for `prompt/prompt-render`, the statusline, and the subagent statusline. Re-baseline after an intentional rendering change with `tests/verify-golden.sh --update` / `tests/verify-statusline.sh --update`, then commit the fixture diff. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` pre-commit and `bats` + `dot doctor` (skip-external) pre-push. CI (`.github/workflows/test.yml`, macOS) mirrors the lint + bats checks on push to `main` and every PR — it skips `dot doctor` and the golden verifiers, which depend on a fully provisioned machine.
+Shell unit tests run under [`bats`](https://github.com/bats-core/bats-core) (a managed mise tool) in `tests/bats/`. Golden fixtures in `tests/golden/` hold byte-exact reference output (regenerable snapshots of the current shell scripts) for `prompt/prompt-render`, the statusline, and the subagent statusline. Re-baseline after an intentional rendering change with `tests/verify-golden.sh --update` / `tests/verify-statusline.sh --update`, then commit the fixture diff. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` pre-commit and `bats` + `dot doctor` (skip-external) + `tests/verify-golden.sh` pre-push. CI (`.github/workflows/test.yml`, macOS) mirrors the lint + bats checks on push to `main` and every PR — it skips `dot doctor` and the golden verifiers, which depend on a fully provisioned machine.
 
 ## Git signing
 
@@ -86,11 +79,11 @@ To disable signing on a given machine, edit `~/.gitconfig.local`.
 
 ## gitleaks pre-commit
 
-`core.hooksPath` (set in `.gitconfig`) points every repo at `git-template/hooks/pre-commit`, which runs `gitleaks protect --staged`. The hook also chain-runs any repo-local `pre-commit` if present. Emergency bypass `git commit --no-verify` is blocked by `dot hook policy-guard` when invoked through Claude.
+`core.hooksPath` (set in `.gitconfig`) points every repo at `git-template/hooks/pre-commit`, which runs `gitleaks protect --staged`. The hook also chain-runs any repo-local `pre-commit` if present. Emergency bypass `git commit --no-verify` is deny-listed for Claude in `dot-claude/settings.json` (`permissions.deny`), not by a hook.
 
 ## lefthook (this repo only)
 
-`lefthook.yml` adds a pre-commit gate on staged shell files (`shellcheck` + `shfmt -i 2 -ci -sr` + gitleaks + `settings.json` validity) plus a pre-push gate (`bats tests/bats/` + `dot doctor` with `DOTFILES_DOCTOR_SKIP_EXTERNAL=1`). `dot sync` runs `lefthook install` automatically. The same lint + bats checks also run in CI (`.github/workflows/test.yml`).
+`lefthook.yml` adds a pre-commit gate on staged shell files (`shellcheck` + `shfmt -i 2 -ci -sr` + gitleaks + `settings.json` validity) plus a pre-push gate (`bats tests/bats/` + `dot doctor` with `DOTFILES_DOCTOR_SKIP_EXTERNAL=1` + `tests/verify-golden.sh`). `dot sync` runs `lefthook install` automatically. The same lint + bats checks also run in CI (`.github/workflows/test.yml`).
 
 ## difftastic
 

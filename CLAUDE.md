@@ -52,7 +52,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 
 ### Symlink Model
 
-`link()` (inlined in `sync` and `install/40-symlinks.sh`) creates idempotent symlinks. On conflict, behavior depends on `$LINK_MODE`: `overwrite` (move existing to `.bak`, then link, set via `-f`), `skip` (`-s`), or default `interactive` (prompt). Mapping:
+`link()` (defined in `sync`, exported to the install modules) creates idempotent symlinks. On conflict, behavior depends on `$LINK_MODE`: `overwrite` (move existing to `.bak`, then link, set via `-f`), `skip` (`-s`), or default `interactive` (prompt). Mapping:
 
 | Source | Destination |
 |--------|-------------|
@@ -92,7 +92,7 @@ There is no `agents/` or `commands/` directory — custom subagents and slash co
 | Event | Script | Role |
 |-------|--------|------|
 | PreToolUse (Edit\|Write) | `hooks/lock-file-guard` | defender |
-| PreToolUse (mcp__*\|WebFetch) | `hooks/mcp-guard` | defender |
+| PreToolUse (mcp__.*) | `hooks/mcp-guard` | defender |
 | PostToolUse (Edit\|Write) | `hooks/format-on-save` | formatter |
 | PostToolUse (Bash) | `hooks/trim-bash-output` | output spill |
 | UserPromptSubmit | `hooks/user-prompt-submit` | git cache pre-warm |

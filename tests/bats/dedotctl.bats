@@ -644,3 +644,24 @@ ZSH_BIN="$(command -v zsh || echo /bin/zsh)"
   [ "$status" -eq 0 ]
   [ "$output" = "0" ]
 }
+
+# ── doctor expected-links table derives from 40-symlinks ────────────────────
+# The table is hand-maintained 1:1 with install/40-symlinks.sh; this derives
+# the literal link() calls (joining backslash continuations; the ${f}/${name}
+# loop calls are audited by doctor's own zsh-glob expansion) and asserts each
+# has a doctor row — so a new symlink can't ship without its audit entry.
+@test "doctor: every literal link() call in 40-symlinks has an expected-links row" {
+  local joined pairs pair
+  # Join backslash-continued lines so multi-line link() calls match.
+  joined=$(sed -e ':a' -e '/\\$/N; s/\\\n[[:space:]]*/ /; ta' "$ROOT/install/40-symlinks.sh")
+  pairs=$(printf '%s\n' "$joined" |
+    grep -oE 'link "\$\{df\}/[^"$]+" "\$\{HOME\}/[^"$]+"' |
+    sed -E 's|link "\$\{df\}/([^"]+)" "\$\{HOME\}/([^"]+)"|\2\|\1|')
+  [ -n "$pairs" ]
+  while IFS= read -r pair; do
+    grep -qF "\"$pair\"" "$ROOT/doctor" || {
+      echo "link() pair missing from doctor _expected_links: $pair" >&2
+      false
+    }
+  done <<< "$pairs"
+}

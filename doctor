@@ -174,6 +174,8 @@ else
     ".config/nvim/init.lua|nvim/init.lua"
     ".config/karabiner/karabiner.json|karabiner/karabiner.json"
     ".ssh/config|ssh/config"
+    ".config/1Password/ssh/agent.toml|ssh/1password-agent.toml"
+    ".local/bin/git-ssh-sign|ssh/git-ssh-sign"
   )
 
   # zsh fragments are a glob in install/40-symlinks.sh — expand the same
@@ -193,8 +195,12 @@ else
     local_link="${HOME}/${_link_rel}"
     expected_target="${_dotfiles}/${_target_rel}"
 
-    # Skip silently if the source file isn't tracked (e.g., dropped tool).
-    [[ -e "$expected_target" || -L "$expected_target" ]] || continue
+    # An absent source means the expected-links table drifted from the repo
+    # (a dropped tool whose row wasn't removed) — surface it, don't hide it.
+    if [[ ! -e "$expected_target" && ! -L "$expected_target" ]]; then
+      _warn "expected-links table lists ${_target_rel} but the repo has no such file — remove the stale row"
+      continue
+    fi
 
     _checked=$((_checked + 1))
     if [[ ! -e "$local_link" && ! -L "$local_link" ]]; then
