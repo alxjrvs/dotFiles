@@ -20,22 +20,35 @@ _dot_git_cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/git-data"
 # interactive env would make `git` operate on the wrong repo after a cd.
 # We never export, and never name it GIT_DIR.
 #
-# `dot git-data` runs in the foreground before this, so the newest file in the
-# cache dir is the one for the current repo. Pure-zsh glob + line read; no fork.
+# `dot git-data` runs in the foreground before this, so the newest file in
+# the cache dir is USUALLY ours — but background refreshes from other
+# sessions/repos race it (Claude Code fires them constantly), so a cache is
+# accepted only when its GIT_TOPLEVEL actually contains $PWD. The few newest
+# files are scanned. Pure-zsh glob + line reads; no fork.
 _dot_read_git_dir() {
   _dot_git_dir=""
-  local _cache _line
-  # Newest cache file first (om = order by mtime, descending).
+  local _cache _line _dir _top
+  # Newest cache files first (om = order by mtime, descending).
   local -a _caches=("$_dot_git_cache_dir"/*.sh(Nom))
-  _cache="$_caches[1]"
-  [[ -n "$_cache" && -r "$_cache" ]] || return
-  while IFS= read -r _line; do
-    if [[ "$_line" == GIT_DIR=* ]]; then
-      # Strip the `GIT_DIR='...'` wrapper (value is single-quoted by git-data).
-      _dot_git_dir="${${_line#GIT_DIR=\'}%\'}"
+  for _cache in "${(@)_caches[1,4]}"; do
+    [[ -r "$_cache" ]] || continue
+    _dir="" _top=""
+    while IFS= read -r _line; do
+      case "$_line" in
+        # Strip the KEY='...' wrapper (values are single-quoted by git-data).
+        GIT_DIR=*) _dir="${${_line#GIT_DIR=\'}%\'}" ;;
+        GIT_TOPLEVEL=*)
+          _top="${${_line#GIT_TOPLEVEL=\'}%\'}"
+          break # TOPLEVEL is emitted after DIR — both are in hand
+          ;;
+      esac
+    done < "$_cache"
+    if [[ -n "$_top" && -n "$_dir" ]] &&
+      [[ "$PWD" == "$_top" || "$PWD" == "$_top"/* ]]; then
+      _dot_git_dir="$_dir"
       return
     fi
-  done < "$_cache"
+  done
 }
 
 _render_prompt() {
@@ -53,7 +66,11 @@ _render_prompt() {
   fi
 
   if (( _need_sync )); then
-    dot git-data
+    # SKIP_PR: the foreground refresh runs before the prompt draws — an
+    # expired PR TTL here used to mean a ~1s synchronous gh call right after
+    # every commit. Stale PR data is served; the background refresh below
+    # (without the flag) keeps it current.
+    DOT_GIT_DATA_SKIP_PR=1 dot git-data
     PROMPT="$(dot prompt-render)"
     # Refresh the fast-path git dir from the freshly written cache.
     _dot_read_git_dir
@@ -62,11 +79,11 @@ _render_prompt() {
     _prompt_last_pwd="$PWD"
     _prompt_last_head_mtime="$_head_mtime"
     _prompt_last_index_mtime="$_index_mtime"
-  else
-    # Steady state: HEAD/index unchanged and same dir. Kick a background
-    # refresh so time-based data (e.g. PR status TTL) stays current without
-    # blocking the prompt. This now only fires when the fast path holds — not
-    # on every prompt — because `_dot_git_dir` makes the mtime check live.
+  elif [[ -n "$_dot_git_dir" ]]; then
+    # Steady state inside a repo: HEAD/index unchanged and same dir. Kick a
+    # background refresh so time-based data (PR status TTL) stays current
+    # without blocking the prompt. Outside a repo (_dot_git_dir empty) there
+    # is nothing time-based to refresh — no kick.
     (dot git-data &) 2> /dev/null
   fi
 }

@@ -14,16 +14,30 @@
 set -uo pipefail
 
 # ---------------------------------------------------------------------------
-# Inline: git_cache_path <toplevel>
+# Inline: cache path resolution
 #
-# Mirrors cache_path() in git_data.rs:
-#   hash = SHA-256 of toplevel path, first 12 hex chars
+#   hash = 12 hex chars of FNV-1a over the toplevel path (low 48 bits)
 #   dir  = ${XDG_CACHE_HOME:-~/.cache}/git-data
 #   file = <dir>/<hash>.sh
 #
-# Uses `shasum -a 256` (macOS) or `sha256sum` (Linux). The shell prompt and
-# statusline use the same function so all consumers stay consistent.
+# repo_hash is IDENTICAL to the function in prompt/git-data and
+# prompt/prompt-render (bats asserts it) so all consumers agree.
 # ---------------------------------------------------------------------------
+repo_hash() {
+  local path="$1" out="${2:-}"
+  local -i h=-3750763034362895579 prime=1099511628211 c # 0xcbf29ce484222325
+  local i
+  for ((i = 0; i < ${#path}; i++)); do
+    printf -v c '%d' "'${path:i:1}"
+    ((h ^= c, h *= prime)) || true
+  done
+  if [[ -n "$out" ]]; then
+    printf -v "$out" '%012x' $((h & 0xFFFFFFFFFFFF))
+  else
+    printf '%012x' $((h & 0xFFFFFFFFFFFF))
+  fi
+}
+
 git_cache_path() {
   local toplevel="${1:-}"
   local key
@@ -32,21 +46,9 @@ git_cache_path() {
   else
     key="$toplevel"
   fi
-
   local hash
-  if command -v shasum > /dev/null 2>&1; then
-    hash=$(printf '%s' "$key" | shasum -a 256 | cut -c1-12)
-  elif command -v sha256sum > /dev/null 2>&1; then
-    hash=$(printf '%s' "$key" | sha256sum | cut -c1-12)
-  else
-    # Fallback: use md5 (less ideal but avoids hard failure)
-    hash=$(printf '%s' "$key" | md5sum 2> /dev/null | cut -c1-12 ||
-      printf '%s' "$key" | md5 | cut -c1-12)
-  fi
-
-  local cache_dir
-  cache_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/git-data"
-  printf '%s/%s.sh' "$cache_dir" "$hash"
+  repo_hash "$key" hash
+  printf '%s/git-data/%s.sh' "${XDG_CACHE_HOME:-${HOME}/.cache}" "$hash"
 }
 
 # ---------------------------------------------------------------------------
@@ -94,9 +96,12 @@ if [[ -n "$CACHE_PATH" ]]; then
       fi
     fi
     if [[ -n "$DOT_CMD" ]]; then
-      # Bound the detached refresh so a wedged git-data can't linger.
+      # Bound the detached refresh so a wedged git-data can't linger. Stock
+      # macOS has no `timeout`; coreutils ships it as `gtimeout`.
       if command -v timeout > /dev/null 2>&1; then
         timeout 10 "$DOT_CMD" git-data < /dev/null > /dev/null 2>&1 &
+      elif command -v gtimeout > /dev/null 2>&1; then
+        gtimeout 10 "$DOT_CMD" git-data < /dev/null > /dev/null 2>&1 &
       else
         "$DOT_CMD" git-data < /dev/null > /dev/null 2>&1 &
       fi
@@ -153,7 +158,6 @@ BEHIND=${GIT_BEHIND:-0}
 CONFLICTS=${GIT_CONFLICT_COUNT:-0}
 PR_STATUS="${GIT_PR_STATUS:-}"
 PR_DISPLAY="${PR_STATUS:-none}"
-[[ -z "$PR_STATUS" ]] && PR_DISPLAY="none"
 BRANCH="${GIT_BRANCH:-}"
 
 # ---------------------------------------------------------------------------
@@ -183,7 +187,9 @@ PARTS="branch=${BRANCH}"
 [[ "$CONFLICTS" -gt 0 ]] && PARTS="${PARTS}, ${CONFLICTS} CONFLICTS"
 [[ "$PR_DISPLAY" != "none" ]] && PARTS="${PARTS}, PR-checks=${PR_DISPLAY}"
 
-# Emit as additionalContext via jq for safe JSON encoding
-jq -n --arg line "git: ${PARTS}" '{"additionalContext": $line}'
+# Emit as additionalContext via jq for safe JSON encoding. additionalContext
+# is only documented inside the hookSpecificOutput envelope.
+jq -n --arg line "git: ${PARTS}" \
+  '{hookSpecificOutput:{hookEventName:"UserPromptSubmit",additionalContext:$line}}'
 
 exit 0

@@ -23,62 +23,55 @@ set -euo pipefail
 # a .git entry in-process (no `git` subprocess), matching the key git-data uses
 # (`git rev-parse --show-toplevel`) for both plain checkouts and worktrees.
 
-xdg_cache_home() {
-  if [[ -n "${XDG_CACHE_HOME:-}" ]]; then
-    printf '%s' "$XDG_CACHE_HOME"
-  else
-    printf '%s' "${HOME:-.}/.cache"
-  fi
-}
-
+# repo_hash PATH [OUTVAR] — 12-hex cache key: FNV-1a 64-bit over the path
+# characters, low 48 bits, pure bash. IDENTICAL to the function in
+# prompt/git-data and hooks/user-prompt-submit (bats asserts it); the render
+# path calls it with OUTVAR so even the hash costs no subshell.
 repo_hash() {
-  local path="$1"
-  if command -v shasum > /dev/null 2>&1; then
-    printf '%s' "$path" | shasum -a 256 | cut -c1-12
+  local path="$1" out="${2:-}"
+  local -i h=-3750763034362895579 prime=1099511628211 c # 0xcbf29ce484222325
+  local i
+  for ((i = 0; i < ${#path}; i++)); do
+    printf -v c '%d' "'${path:i:1}"
+    ((h ^= c, h *= prime)) || true
+  done
+  if [[ -n "$out" ]]; then
+    printf -v "$out" '%012x' $((h & 0xFFFFFFFFFFFF))
   else
-    printf '%s' "$path" | sha256sum | cut -c1-12
+    printf '%012x' $((h & 0xFFFFFFFFFFFF))
   fi
-}
-
-git_cache_path() {
-  local toplevel="$1" key
-  if [[ -n "$toplevel" ]]; then
-    key="$toplevel"
-  else
-    key="$(pwd)"
-  fi
-  local short
-  short="$(repo_hash "$key")"
-  printf '%s/git-data/%s.sh' "$(xdg_cache_home)" "$short"
 }
 
 # find_toplevel — walk PWD upward until a directory contains a .git entry (dir
-# for a plain checkout, file for a linked worktree), printing that directory.
-# Prints nothing when no .git is found (outside a repo). Pure bash, no fork —
-# reproduces the `git rev-parse --show-toplevel` value git-data keys the cache
-# on for the common cases the prompt cares about.
+# for a plain checkout, file for a linked worktree), setting _toplevel. Empty
+# when no .git is found (outside a repo). Pure bash, no fork — reproduces the
+# `git rev-parse --show-toplevel` value git-data keys the cache on for the
+# common cases the prompt cares about.
 find_toplevel() {
+  _toplevel=""
   local dir="${PWD:-}"
   [[ -n "$dir" ]] || dir="$(pwd)"
   while [[ -n "$dir" && "$dir" != "/" ]]; do
     if [[ -e "$dir/.git" ]]; then
-      printf '%s' "$dir"
+      _toplevel="$dir"
       return 0
     fi
     dir="${dir%/*}"
   done
-  [[ -e "/.git" ]] && printf '/'
+  [[ -e "/.git" ]] && _toplevel="/"
   return 0
 }
 
 # load_git_cache — resolve the cache for the repo containing cwd and source it
 # (sets GIT_* vars). Silent no-op when outside a repo or the cache is absent.
-# An empty toplevel falls back to cwd inside git_cache_path.
+# An empty toplevel falls back to PWD as the cache key. Every step is in-
+# process: this script's contract is fork-free (read cache, render, exit).
 load_git_cache() {
-  local toplevel
-  toplevel="$(find_toplevel)"
-  local cache_file
-  cache_file="$(git_cache_path "$toplevel")"
+  find_toplevel
+  local key="${_toplevel:-${PWD:-.}}"
+  local short
+  repo_hash "$key" short
+  local cache_file="${XDG_CACHE_HOME:-${HOME:-.}/.cache}/git-data/${short}.sh"
   if [[ -f "$cache_file" ]]; then
     # shellcheck disable=SC1090  # path is computed at runtime.
     source "$cache_file"
@@ -133,27 +126,25 @@ bg() { OUT+="%{${ESC}[48;2;$1m%}"; }
 osc8_open() { OUT+="%{${ESC}]8;;$1${ESC_BEL}%}"; }
 osc8_close() { OUT+="%{${ESC}]8;;${ESC_BEL}%}"; }
 
-# Cache value accessor (empty when unset).
-gv() { printf '%s' "${!1:-}"; }
-# u32 accessor (0 when unset / non-numeric).
-gu() {
+# num VAR OUT — copy a u32 cache var into OUT (0 when unset / non-numeric)
+# via printf -v: no subshell on the render path. String cache vars are read
+# with plain ${VAR:-} expansions for the same reason — the old $(gv/gu)
+# substitutions forked ~18 subshells per render.
+num() {
   local v="${!1:-}"
-  if [[ "$v" =~ ^[0-9]+$ ]]; then
-    printf '%s' "$v"
-  else
-    printf '0'
-  fi
+  [[ "$v" =~ ^[0-9]+$ ]] || v=0
+  printf -v "$2" '%s' "$v"
 }
 
 OUT=""
 
 render_repo_dir() {
-  local repo_name repo_https pr_status pr_url is_repo
-  repo_name="$(gv GIT_REPO_NAME)"
-  repo_https="$(gv GIT_REPO_HTTPS)"
-  pr_status="$(gv GIT_PR_STATUS)"
-  pr_url="$(gv GIT_PR_URL)"
-  [[ "$(gv GIT_IS_REPO)" == "1" ]] && is_repo=1 || is_repo=0
+  local repo_name="${GIT_REPO_NAME:-}"
+  local repo_https="${GIT_REPO_HTTPS:-}"
+  local pr_status="${GIT_PR_STATUS:-}"
+  local pr_url="${GIT_PR_URL:-}"
+  local is_repo
+  [[ "${GIT_IS_REPO:-}" == "1" ]] && is_repo=1 || is_repo=0
 
   local pr_bg pr_fg
   case "$pr_status" in
@@ -224,12 +215,11 @@ render_repo_dir() {
 }
 
 render_git_seg() {
-  [[ "$(gv GIT_IS_REPO)" == "1" ]] || return 0
+  [[ "${GIT_IS_REPO:-}" == "1" ]] || return 0
 
-  local branch repo_name pr_status
-  branch="$(gv GIT_BRANCH)"
-  repo_name="$(gv GIT_REPO_NAME)"
-  pr_status="$(gv GIT_PR_STATUS)"
+  local branch="${GIT_BRANCH:-}"
+  local repo_name="${GIT_REPO_NAME:-}"
+  local pr_status="${GIT_PR_STATUS:-}"
 
   local from_color
   if [[ -n "$repo_name" ]]; then
@@ -256,8 +246,8 @@ render_git_seg() {
   local wt_label
   if [[ -n "${STATUSLINE_WORKTREE:-}" ]]; then
     wt_label="$STATUSLINE_WORKTREE"
-  elif [[ "$(gv GIT_IS_WORKTREE)" == "1" ]]; then
-    wt_label="$(gv GIT_WORKTREE_NAME)"
+  elif [[ "${GIT_IS_WORKTREE:-}" == "1" ]]; then
+    wt_label="${GIT_WORKTREE_NAME:-}"
   else
     wt_label=""
   fi
@@ -273,13 +263,13 @@ render_git_seg() {
   fi
 
   local stash conflict untracked unstaged staged ahead behind
-  stash="$(gu GIT_STASH_COUNT)"
-  conflict="$(gu GIT_CONFLICT_COUNT)"
-  untracked="$(gu GIT_UNTRACKED_COUNT)"
-  unstaged="$(gu GIT_UNSTAGED_COUNT)"
-  staged="$(gu GIT_STAGED_COUNT)"
-  ahead="$(gu GIT_AHEAD)"
-  behind="$(gu GIT_BEHIND)"
+  num GIT_STASH_COUNT stash
+  num GIT_CONFLICT_COUNT conflict
+  num GIT_UNTRACKED_COUNT untracked
+  num GIT_UNSTAGED_COUNT unstaged
+  num GIT_STAGED_COUNT staged
+  num GIT_AHEAD ahead
+  num GIT_BEHIND behind
 
   local any=0
   ((stash > 0)) && {

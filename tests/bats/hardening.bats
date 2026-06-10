@@ -160,14 +160,15 @@ emit_fail_jq() {
 # The cache lives at a sandbox-writable, predictable path; the hook runs
 # unsandboxed. A seeded line that isn't the exact GIT_NAME='value' shape must be
 # rejected (no command execution). Replicate the cache path the hook computes
-# (sha256(toplevel)[0:12].sh under $XDG_CACHE_HOME/git-data) and seed payloads.
+# (repo_hash(toplevel).sh under $XDG_CACHE_HOME/git-data) and seed payloads.
 @test "user-prompt-submit: malicious cache lines do not execute" {
   local sentinel="$TDIR/PWNED"
   local top="$TDIR/repo"
   mkdir -p "$top"
   export XDG_CACHE_HOME="$TDIR/cache"
   local hash cachedir cache
-  hash=$(printf '%s' "$top" | shasum -a 256 | cut -c1-12)
+  # Compute the cache key with the hook's own repo_hash (FNV-1a, no shasum).
+  hash=$(bash -c "$(sed -n '/^repo_hash() {/,/^}/p' "$ROOT/hooks/user-prompt-submit"); repo_hash \"\$1\"" _ "$top")
   cachedir="$XDG_CACHE_HOME/git-data"
   mkdir -p "$cachedir"
   cache="$cachedir/$hash.sh"

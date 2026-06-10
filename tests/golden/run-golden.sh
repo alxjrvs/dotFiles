@@ -56,18 +56,17 @@ if [[ -z "$REPO_TOPLEVEL" ]]; then
   exit 1
 fi
 
-# ── Repo hash (SHA-256 of toplevel path, first 12 hex chars) ──
-# Must agree with the cache-path hash inlined in prompt/git-data and
-# prompt/prompt-render (shasum -a 256 of the toplevel string).
+# ── Repo hash (12-hex cache key) ──
+# Run the canonical repo_hash extracted from prompt/git-data itself, so the
+# harness can never drift from the producer's hash function.
 repo_hash() {
-  local path="$1"
-  if command -v shasum &> /dev/null; then
-    printf '%s' "$path" | shasum -a 256 | cut -c1-12
-  else
-    printf '%s' "$path" | sha256sum | cut -c1-12
-  fi
+  bash -c "$(sed -n '/^repo_hash() {/,/^}/p' "$DOTFILES_WORKTREE/prompt/git-data"); repo_hash \"\$1\"" _ "$1"
 }
 REPO_HASH=$(repo_hash "$REPO_TOPLEVEL")
+[[ "$REPO_HASH" =~ ^[0-9a-f]{12}$ ]] || {
+  echo "ERROR: repo_hash extraction from prompt/git-data failed" >&2
+  exit 1
+}
 
 # ── Pinned test environment ──
 TMPDIR_TEST="${TMPDIR:-/tmp}/golden-harness-$$"

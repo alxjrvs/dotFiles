@@ -111,27 +111,51 @@ _extract_link() {
 }
 
 # ── cache hash ──────────────────────────────────────────────────────────────
-@test "cache hash: git-data repo_hash matches shasum -a 256 first 12 chars" {
+# The cache key is FNV-1a (pure bash, no fork) inlined identically in
+# git-data, prompt-render, and user-prompt-submit. These tests pin the
+# deterministic 12-hex shape and cross-file agreement.
+@test "cache hash: git-data repo_hash is deterministic 12-hex" {
   local p="/Users/jarvis/Code/dotFiles/.claude/worktrees/dedotctl"
-  local expect
-  expect=$(printf '%s' "$p" | shasum -a 256 | cut -c1-12)
-  # extract repo_hash from git-data and invoke it in isolation
-  local fn
+  local fn a b
   fn=$(sed -n '/^repo_hash() {/,/^}/p' "$ROOT/prompt/git-data")
-  local got
-  got=$(bash -c "$fn; repo_hash '$p'")
-  [ "$got" = "$expect" ]
+  a=$(bash -c "$fn; repo_hash '$p'")
+  b=$(bash -c "$fn; repo_hash '$p'")
+  [ "$a" = "$b" ]
+  [[ "$a" =~ ^[0-9a-f]{12}$ ]]
+  # Different inputs hash differently.
+  local c
+  c=$(bash -c "$fn; repo_hash '/some/other/repo'")
+  [ "$a" != "$c" ]
 }
 
-@test "cache hash: prompt-render and git-data use identical hash fn" {
+@test "cache hash: repo_hash OUTVAR form matches the printing form" {
   local p="/tmp/some/repo"
-  local fn_gd fn_pr a b
+  local fn
+  fn=$(sed -n '/^repo_hash() {/,/^}/p' "$ROOT/prompt/git-data")
+  local printed assigned
+  printed=$(bash -c "$fn; repo_hash '$p'")
+  assigned=$(bash -c "$fn; repo_hash '$p' v; printf '%s' \"\$v\"")
+  [ "$printed" = "$assigned" ]
+}
+
+@test "cache hash: git-data, prompt-render, user-prompt-submit use identical hash fn" {
+  local p="/tmp/some/repo"
+  local fn_gd fn_pr fn_up a b c
   fn_gd=$(sed -n '/^repo_hash() {/,/^}/p' "$ROOT/prompt/git-data")
   fn_pr=$(sed -n '/^repo_hash() {/,/^}/p' "$ROOT/prompt/prompt-render")
+  fn_up=$(sed -n '/^repo_hash() {/,/^}/p' "$ROOT/hooks/user-prompt-submit")
   a=$(bash -c "$fn_gd; repo_hash '$p'")
   b=$(bash -c "$fn_pr; repo_hash '$p'")
+  c=$(bash -c "$fn_up; repo_hash '$p'")
   [ "$a" = "$b" ]
+  [ "$a" = "$c" ]
   [ "${#a}" -eq 12 ]
+}
+
+# Fork-free contract: prompt-render's render path must make zero subprocess
+# calls — no command substitution of external tools, no pipelines to shasum.
+@test "prompt-render: no shasum/sha256sum/cut remain (fork-free contract)" {
+  ! grep -E 'shasum|sha256sum|\bcut\b' "$ROOT/prompt/prompt-render"
 }
 
 # ── macOS expected_read normalization ───────────────────────────────────────

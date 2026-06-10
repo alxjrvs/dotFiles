@@ -31,7 +31,13 @@ fi
 TOOLPATH="$(dirname "$JQBIN"):/opt/homebrew/bin:/usr/bin:/bin"
 
 REPO=$(git -C "$ROOT" rev-parse --show-toplevel)
-HASH=$(printf '%s' "$REPO" | shasum -a 256 | cut -c1-12)
+# Cache key: run the canonical repo_hash extracted from git-data itself, so
+# the harness can never drift from the producer's hash function.
+HASH=$(bash -c "$(sed -n '/^repo_hash() {/,/^}/p' "$ROOT/prompt/git-data"); repo_hash \"\$1\"" _ "$REPO")
+[[ "$HASH" =~ ^[0-9a-f]{12}$ ]] || {
+  echo "ERROR: repo_hash extraction from prompt/git-data failed" >&2
+  exit 2
+}
 
 T=$(mktemp -d "${TMPDIR:-/tmp}/vg.XXXXXX")
 trap 'rm -rf "$T"' EXIT

@@ -24,9 +24,9 @@ set -euo pipefail
 
 # ── Inlined cache-path helper (self-contained: no shared/ sourcing) ──
 #
-# Cache filename hash: first 12 chars of SHA-256 of the repo toplevel (or cwd
-# when outside a repo). macOS `shasum -a 256`, Linux `sha256sum`. prompt-render
-# and statusline compute the same hash so all three agree on the cache file.
+# Cache filename hash: 12 hex chars of FNV-1a over the repo toplevel (or cwd
+# when outside a repo). prompt-render and hooks/user-prompt-submit inline the
+# identical function so producer and consumers agree on the cache file.
 
 # xdg_cache_home — $XDG_CACHE_HOME or $HOME/.cache fallback.
 xdg_cache_home() {
@@ -37,13 +37,23 @@ xdg_cache_home() {
   fi
 }
 
-# repo_hash PATH — first 12 hex chars of SHA-256 of PATH (no trailing newline).
+# repo_hash PATH [OUTVAR] — 12-hex cache key: FNV-1a 64-bit over the path
+# characters, low 48 bits, pure bash (no fork — this replaced a shasum|cut
+# pipeline so prompt-render stays subprocess-free). With OUTVAR the result is
+# assigned via printf -v instead of printed. prompt-render and
+# hooks/user-prompt-submit inline the IDENTICAL function (bats asserts it).
 repo_hash() {
-  local path="$1"
-  if command -v shasum > /dev/null 2>&1; then
-    printf '%s' "$path" | shasum -a 256 | cut -c1-12
+  local path="$1" out="${2:-}"
+  local -i h=-3750763034362895579 prime=1099511628211 c # 0xcbf29ce484222325
+  local i
+  for ((i = 0; i < ${#path}; i++)); do
+    printf -v c '%d' "'${path:i:1}"
+    ((h ^= c, h *= prime)) || true
+  done
+  if [[ -n "$out" ]]; then
+    printf -v "$out" '%012x' $((h & 0xFFFFFFFFFFFF))
   else
-    printf '%s' "$path" | sha256sum | cut -c1-12
+    printf '%012x' $((h & 0xFFFFFFFFFFFF))
   fi
 }
 
@@ -402,12 +412,18 @@ main() {
   # PR-status freshness: reuse cached values if checked within TTL.
   # read_existing_pr_data sets G_PRIOR_* globals (no tab-joined round-trip —
   # see the note above its definition for the bash 3.2 `read` collapse bug).
+  #
+  # DOT_GIT_DATA_SKIP_PR=1 serves stale PR data unconditionally and never
+  # invokes gh. The zsh precmd sets it on the FOREGROUND refresh (which runs
+  # before the prompt draws — an expired TTL used to mean a ~1s gh call
+  # freezing the prompt right after every commit); the background refresh
+  # runs without it and keeps PR data current.
   if [[ -n "$G_IS_REPO" ]]; then
     local age
     if read_existing_pr_data "$cache_file"; then
       age=$((now - G_PRIOR_CHECKED_AT))
       ((age < 0)) && age=0 # saturating_sub
-      if ((age < PR_TTL_SECS)); then
+      if ((age < PR_TTL_SECS)) || [[ "${DOT_GIT_DATA_SKIP_PR:-}" == "1" ]]; then
         G_PR_STATUS="$G_PRIOR_STATUS"
         G_PR_URL="$G_PRIOR_URL"
         G_PR_NUMBER="$G_PRIOR_NUMBER"
@@ -416,6 +432,9 @@ main() {
         query_pr_status
         G_PR_CHECKED_AT="$now"
       fi
+    elif [[ "${DOT_GIT_DATA_SKIP_PR:-}" == "1" ]]; then
+      : # no prior PR data and the refresh is deferred — defaults stay, and
+      # GIT_PR_CHECKED_AT=0 makes the next background refresh query at once
     else
       query_pr_status
       G_PR_CHECKED_AT="$now"
