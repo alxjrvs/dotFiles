@@ -4,12 +4,14 @@
 # Gathers git state in a single pass and writes a shell-sourceable cache file
 # at $(xdg_cache_home)/git-data/<repo-hash>.sh (mode 600, dir 700). Cache key
 # is the repo toplevel (or cwd if outside a repo). The cache filename hash is
-# computed by shared/git-cache.sh so prompt-render / statusline agree.
+# the inlined repo_hash below — prompt-render inlines the identical function
+# so producer and consumer agree (the statusline gathers its own git state
+# and does not read this cache).
 #
 # Variables emitted (KEY='value', single-quoted):
 #   GIT_IS_REPO, GIT_IS_WORKTREE, GIT_WORKTREE_NAME, GIT_DIR,
-#   GIT_TOPLEVEL, GIT_BRANCH, GIT_REMOTE_URL, GIT_REPO_NAME,
-#   GIT_REPO_HTTPS, GIT_PORCELAIN, GIT_CONFLICT_COUNT, GIT_STAGED_COUNT,
+#   GIT_TOPLEVEL, GIT_BRANCH, GIT_REPO_NAME,
+#   GIT_REPO_HTTPS, GIT_CONFLICT_COUNT, GIT_STAGED_COUNT,
 #   GIT_UNSTAGED_COUNT, GIT_UNTRACKED_COUNT, GIT_STASH_COUNT,
 #   GIT_AHEAD, GIT_BEHIND, GIT_CACHE_TIME,
 #   GIT_PR_STATUS (pass|pending|fail|""), GIT_PR_URL, GIT_PR_NUMBER,
@@ -76,10 +78,8 @@ G_WORKTREE_NAME=""
 G_DIR=""
 G_TOPLEVEL=""
 G_BRANCH=""
-G_REMOTE_URL=""
 G_REPO_NAME=""
 G_REPO_HTTPS=""
-G_PORCELAIN=""
 G_CONFLICT_COUNT=0
 G_STAGED_COUNT=0
 G_UNSTAGED_COUNT=0
@@ -123,30 +123,6 @@ tally() {
   case "$y" in
     M | D) G_UNSTAGED_COUNT=$((G_UNSTAGED_COUNT + 1)) ;;
   esac
-}
-
-# extract_path_after_fields LINE N — return the rest of LINE after N
-# whitespace-separated fields (path may contain spaces). Used for porcelain v2
-# path extraction (field counts 9/10/11).
-extract_path_after_fields() {
-  local line="$1" n="$2"
-  local count=0 i ch
-  for ((i = 0; i < ${#line}; i++)); do
-    ch="${line:i:1}"
-    if [[ "$ch" == " " || "$ch" == $'\t' ]]; then
-      count=$((count + 1))
-      if ((count == n)); then
-        local rest="${line:i+1}"
-        # Trim leading whitespace (Rust .trim_start()).
-        while [[ -n "$rest" && "${rest:0:1}" == [[:space:]] ]]; do
-          rest="${rest:1}"
-        done
-        printf '%s' "$rest"
-        return 0
-      fi
-    fi
-  done
-  return 1
 }
 
 gather() {
@@ -207,62 +183,32 @@ gather() {
     remote="${remote%%$'\n'*}"
     remote="$(trim "$remote")"
     if [[ -n "$remote" ]]; then
-      G_REMOTE_URL="$remote"
       local https="${remote/git@github.com:/https:\/\/github.com\/}"
-      # strip_suffix(".git") — only when present (matches Rust map_or fallback).
+      # strip_suffix(".git") — only when present.
       https="${https%.git}"
       G_REPO_HTTPS="$https"
       G_REPO_NAME="${https##*/}"
     fi
   fi
 
-  # Parse porcelain entries; tally counts in the same pass.
-  local -a porcelain_lines=()
-  local kind xy path
+  # Tally porcelain entries. Only the XY pair matters — nothing consumes the
+  # paths, so they are never extracted (the old char-by-char path walk was the
+  # most expensive code on the prompt hot path for dirty repos).
+  local kind xy
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
     [[ "$line" == "#"* ]] && continue
     kind="${line:0:1}"
     case "$kind" in
-      1)
+      1 | 2 | u)
         xy="${line:2:2}"
-        if path=$(extract_path_after_fields "$line" 8); then
-          porcelain_lines+=("$xy $path")
-          tally "$xy"
-        fi
-        ;;
-      2)
-        xy="${line:2:2}"
-        if path=$(extract_path_after_fields "$line" 9); then
-          porcelain_lines+=("$xy $path")
-          tally "$xy"
-        fi
-        ;;
-      u)
-        xy="${line:2:2}"
-        if path=$(extract_path_after_fields "$line" 10); then
-          porcelain_lines+=("$xy $path")
-          tally "$xy"
-        fi
+        tally "$xy"
         ;;
       '?')
-        path="${line:2}"
-        porcelain_lines+=("?? $path")
         G_UNTRACKED_COUNT=$((G_UNTRACKED_COUNT + 1))
         ;;
     esac
   done <<< "$status"
-
-  # Join porcelain lines with newline (empty when no entries).
-  local joined=""
-  if ((${#porcelain_lines[@]} > 0)); then
-    joined="${porcelain_lines[0]}"
-    local k
-    for ((k = 1; k < ${#porcelain_lines[@]}; k++)); do
-      joined="$joined"$'\n'"${porcelain_lines[k]}"
-    done
-  fi
-  G_PORCELAIN="$joined"
 
   # Stash count (non-empty lines).
   local stash
@@ -422,10 +368,8 @@ write_cache() {
     printf "GIT_DIR='%s'\n" "$(esc "$G_DIR")"
     printf "GIT_TOPLEVEL='%s'\n" "$(esc "$G_TOPLEVEL")"
     printf "GIT_BRANCH='%s'\n" "$(esc "$G_BRANCH")"
-    printf "GIT_REMOTE_URL='%s'\n" "$(esc "$G_REMOTE_URL")"
     printf "GIT_REPO_NAME='%s'\n" "$(esc "$G_REPO_NAME")"
     printf "GIT_REPO_HTTPS='%s'\n" "$(esc "$G_REPO_HTTPS")"
-    printf "GIT_PORCELAIN='%s'\n" "$(esc "$G_PORCELAIN")"
     printf "GIT_CONFLICT_COUNT='%s'\n" "$G_CONFLICT_COUNT"
     printf "GIT_STAGED_COUNT='%s'\n" "$G_STAGED_COUNT"
     printf "GIT_UNSTAGED_COUNT='%s'\n" "$G_UNSTAGED_COUNT"

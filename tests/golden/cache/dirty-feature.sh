@@ -8,12 +8,8 @@ GIT_WORKTREE_NAME=''
 GIT_DIR='.git'
 GIT_TOPLEVEL='/Users/jarvis/Code/dotFiles/.claude/worktrees/dedotctl'
 GIT_BRANCH='feat/shell-rewrite'
-GIT_REMOTE_URL='git@github.com:alxjrvs/dotFiles.git'
 GIT_REPO_NAME='dotFiles'
 GIT_REPO_HTTPS='https://github.com/alxjrvs/dotFiles'
-GIT_PORCELAIN='M. README.md
-.M src/lib.rs
-?? notes.txt'
 GIT_CONFLICT_COUNT='0'
 GIT_STAGED_COUNT='1'
 GIT_UNSTAGED_COUNT='1'
