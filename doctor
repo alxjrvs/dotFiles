@@ -115,7 +115,7 @@ unset _user_name _user_email
 # "dot" replaces "dotctl" in the tool list.
 _tools=(dot git gh mise)
 if [[ "$(os_kind)" == "darwin" ]]; then
-  _tools+=(brew node bun sheldon lefthook hx)
+  _tools+=(brew node bun sheldon lefthook nvim)
 fi
 
 for _tool in "${_tools[@]}"; do
@@ -173,7 +173,7 @@ else
     ".config/bat/config|bat/config"
     ".config/atuin/config.toml|atuin/config.toml"
     ".config/lazygit/config.yml|lazygit/config.yml"
-    ".config/helix/languages.toml|helix/languages.toml"
+    ".config/nvim/init.lua|nvim/init.lua"
     ".config/karabiner/karabiner.json|karabiner/karabiner.json"
     ".ssh/config|ssh/config"
   )
