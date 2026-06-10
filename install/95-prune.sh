@@ -42,12 +42,14 @@ _prune_tags() { printf 'prune\n'; }
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-# Prompt "Delete these X? [Y/n]", default yes. Returns 0=yes, 1=no.
+# Prompt "Delete these X? [Y/n]", default yes on a TTY. On a non-TTY
+# (cron/CI/sandboxed session) the safe answer is NO — same convention as
+# link()'s non-interactive conflict skip. Returns 0=yes, 1=no.
 _prune_ask_yes() {
   local question="$1"
   if [[ ! -t 0 ]]; then
-    printf '\033[2m  - Non-interactive; proceeding (default yes)\033[0m\n'
-    return 0
+    printf '\033[0;33m  \xe2\x9a\xa0 Non-interactive; skipping (run with -y to delete unattended)\033[0m\n' >&2
+    return 1
   fi
   printf '       %s [Y/n]: ' "$question" >&2
   local reply
@@ -56,6 +58,66 @@ _prune_ask_yes() {
     "" | y | yes) return 0 ;;
     *) return 1 ;;
   esac
+}
+
+# Shared list → confirm → apply skeleton for the prune passes.
+# Caller fills the parallel globals _PRUNE_ITEMS (raw values handed to ACTION)
+# and _PRUNE_LABELS (display strings), then calls:
+#   _prune_confirm_apply NOUN QUESTION ACTION [VERB]
+# Empty item list prints a green "No NOUN" and returns. Otherwise the list is
+# shown, PRUNE_MODE gates the apply (auto=yes, dry=no, ask=_prune_ask_yes),
+# and ACTION <raw> runs per item: rc 0 = done, rc 2 = kept (ACTION printed its
+# own reason), anything else = failed. VERB (default "Deleted") labels the
+# summary line.
+_prune_confirm_apply() {
+  local noun="$1" question="$2" action="$3" verb="${4:-Deleted}"
+  local n="${#_PRUNE_ITEMS[@]}"
+
+  if [[ "$n" -eq 0 ]]; then
+    printf '\033[0;32m  \xe2\x9c\x93 No %s\033[0m\n' "$noun"
+    return 0
+  fi
+
+  printf '\033[0;33m  Found %d %s:\033[0m\n' "$n" "$noun"
+  local i
+  for ((i = 0; i < n; i++)); do
+    printf '\033[2m    - %s\033[0m\n' "${_PRUNE_LABELS[$i]}"
+  done
+
+  local go=0
+  case "${PRUNE_MODE:-ask}" in
+    auto) go=1 ;;
+    dry) go=0 ;;
+    *)
+      _prune_ask_yes "$question" && go=1 || go=0
+      ;;
+  esac
+  if [[ "$go" -eq 0 ]]; then
+    printf '\033[2m  - Skipped (nothing removed)\033[0m\n'
+    return 0
+  fi
+
+  local applied=0 failed=0 kept=0 rc
+  for ((i = 0; i < n; i++)); do
+    rc=0
+    "$action" "${_PRUNE_ITEMS[$i]}" || rc=$?
+    case "$rc" in
+      0) applied=$((applied + 1)) ;;
+      2) kept=$((kept + 1)) ;;
+      *)
+        printf '\033[0;33m  \xe2\x86\x92 failed: %s\033[0m\n' "${_PRUNE_LABELS[$i]}" >&2
+        failed=$((failed + 1))
+        ;;
+    esac
+  done
+  if [[ "$failed" -eq 0 ]]; then
+    printf '\033[0;32m  \xe2\x9c\x93 %s %d %s\033[0m\n' "$verb" "$applied" "$noun"
+  else
+    printf '\033[0;33m  \xe2\x86\x92 %s %d, %d failed\033[0m\n' "$verb" "$applied" "$failed"
+  fi
+  if [[ "$kept" -gt 0 ]]; then
+    printf '\033[0;33m  \xe2\x9a\xa0 Kept %d (see reasons above)\033[0m\n' "$kept"
+  fi
 }
 
 # True for a YYYY-MM-DD directory name (10 chars, dashes at 4+7, digits elsewhere).
@@ -181,6 +243,18 @@ _prune_collect_backup() {
   _is_backup_file "$1" && _PRUNE_BACKUPS+=("$1") || true
 }
 
+# Action: delete one .bak, guarded — a .bak whose live sibling is NOT a
+# symlink into the dotfiles repo may be the only copy of a displaced config.
+_prune_rm_backup() {
+  local b="$1"
+  if ! _prune_bak_is_safe "$b"; then
+    printf '\033[0;33m  \xe2\x9a\xa0 keeping %s (sibling not a dotfiles symlink — may be the only copy)\033[0m\n' \
+      "${b/#$HOME\//~/}" >&2
+    return 2
+  fi
+  rm -f "$b" 2> /dev/null
+}
+
 _prune_backups() {
   local home="${1:-$HOME}"
   _PRUNE_BACKUPS=()
@@ -192,64 +266,29 @@ _prune_backups() {
   _prune_walk "${home}/.ssh" 1 _prune_collect_backup
 
   printf '\n==> Backup cleanup\n'
-  if [[ "${#_PRUNE_BACKUPS[@]}" -eq 0 ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 No backups found\033[0m\n'
-    return 0
-  fi
-
-  printf '\033[0;33m  Found %d backup file(s):\033[0m\n' "${#_PRUNE_BACKUPS[@]}"
+  _PRUNE_ITEMS=() _PRUNE_LABELS=()
   local b
-  for b in "${_PRUNE_BACKUPS[@]}"; do
-    local display="${b/#$home\//~/}"
-    printf '\033[2m    - %s\033[0m\n' "$display"
+  for b in "${_PRUNE_BACKUPS[@]+"${_PRUNE_BACKUPS[@]}"}"; do
+    _PRUNE_ITEMS+=("$b")
+    _PRUNE_LABELS+=("${b/#$home\//~/}")
   done
-
-  local do_delete=0
-  case "${PRUNE_MODE:-ask}" in
-    auto) do_delete=1 ;;
-    dry) do_delete=0 ;;
-    *)
-      _prune_ask_yes "Delete these backups?" && do_delete=1 || do_delete=0
-      ;;
-  esac
-
-  if [[ "$do_delete" -eq 0 ]]; then
-    printf '\033[2m  - Skipped (no files removed)\033[0m\n'
-    return 0
-  fi
-
-  local deleted=0 failed=0 skipped=0
-  for b in "${_PRUNE_BACKUPS[@]}"; do
-    # Guard: skip a .bak whose live sibling is NOT a symlink into the dotfiles
-    # repo — it may be the only copy of a displaced config.
-    if ! _prune_bak_is_safe "$b"; then
-      printf '\033[0;33m  \xe2\x9a\xa0 keeping %s (sibling not a dotfiles symlink — may be the only copy)\033[0m\n' \
-        "${b/#$home\//~/}" >&2
-      skipped=$((skipped + 1))
-      continue
-    fi
-    if rm -f "$b" 2> /dev/null; then
-      deleted=$((deleted + 1))
-    else
-      printf '\033[0;33m  \xe2\x86\x92 failed to delete %s\033[0m\n' "$b" >&2
-      failed=$((failed + 1))
-    fi
-  done
-  if [[ "$failed" -eq 0 ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 Deleted %d backup file(s)\033[0m\n' "$deleted"
-  else
-    printf '\033[0;33m  \xe2\x86\x92 Deleted %d, %d failed\033[0m\n' "$deleted" "$failed"
-  fi
-  if [[ "$skipped" -gt 0 ]]; then
-    printf '\033[0;33m  \xe2\x9a\xa0 Kept %d backup(s) with no dotfiles-symlink sibling\033[0m\n' "$skipped"
-  fi
+  _prune_confirm_apply "backup file(s)" "Delete these backups?" _prune_rm_backup
 }
 
 # ── Pass 2: stale worktrees ───────────────────────────────────────────────────
 
 _classify_worktree() {
-  # Returns "clean|reason|path|parent" or "dirty|reason|path|parent" or "active|...|path|parent"
+  # Returns "STATE|reason|path|parent" where STATE is one of:
+  #   skip   — not a git repo at all; NEVER removable (stray data, not a
+  #            stale worktree — "git fails entirely" must not read as clean)
+  #   active — parent repo still lists this worktree
+  #   dirty  — uncommitted changes; listed but never auto-removed
+  #   clean  — genuinely stale and safe to offer for removal
   local wt_path="$1"
+  if ! git -C "$wt_path" rev-parse --git-dir > /dev/null 2>&1; then
+    printf 'skip|not_git|%s|\n' "$wt_path"
+    return 0
+  fi
   local dirty=0
   if git -C "$wt_path" status --porcelain 2> /dev/null | grep -q .; then
     dirty=1
@@ -306,8 +345,9 @@ _prune_stale_worktrees() {
     return 0
   fi
 
-  local -a removable=() dirty_list=()
-  local repo_dir wt_dir result state reason wt parent
+  local -a dirty_list=() skip_list=()
+  local repo_dir wt_dir result state reason parent
+  _PRUNE_ITEMS=() _PRUNE_LABELS=()
 
   for repo_dir in "$root"/*/; do
     [[ -d "$repo_dir" ]] || continue
@@ -315,35 +355,30 @@ _prune_stale_worktrees() {
       [[ -d "$wt_dir" ]] || continue
       wt_dir="${wt_dir%/}"
       result=$(_classify_worktree "$wt_dir" 2> /dev/null || printf 'active||%s|\n' "$wt_dir")
-      IFS='|' read -r state reason wt parent <<< "$result"
-      if [[ "$state" == "active" ]]; then
-        continue
-      elif [[ "$state" == "dirty" ]]; then
-        dirty_list+=("$wt_dir|$reason|$parent")
-      else
-        removable+=("$wt_dir|$reason|$parent")
-      fi
+      IFS='|' read -r state reason _ parent <<< "$result"
+      case "$state" in
+        active) continue ;;
+        skip) skip_list+=("$wt_dir") ;;
+        dirty) dirty_list+=("$wt_dir") ;;
+        *)
+          local reason_str
+          case "$reason" in
+            parent_gone) reason_str="parent gone" ;;
+            not_in_parent) reason_str="not in parent list" ;;
+            *) reason_str="$reason" ;;
+          esac
+          _PRUNE_ITEMS+=("$wt_dir|$parent")
+          _PRUNE_LABELS+=("${wt_dir/#$home\//~/}  [$reason_str]")
+          ;;
+      esac
     done
   done
 
-  if [[ "${#removable[@]}" -eq 0 && "${#dirty_list[@]}" -eq 0 ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 No stale worktrees\033[0m\n'
-    return 0
-  fi
-
-  if [[ "${#removable[@]}" -gt 0 ]]; then
-    printf '\033[0;33m  Found %d stale worktree(s) safe to remove:\033[0m\n' "${#removable[@]}"
+  if [[ "${#skip_list[@]}" -gt 0 ]]; then
+    printf '\033[0;33m  Found %d non-git dir(s) under the worktree root (skipping):\033[0m\n' "${#skip_list[@]}"
     local entry
-    for entry in "${removable[@]}"; do
-      IFS='|' read -r wt reason _ <<< "$entry"
-      local display="${wt/#$home\//~/}"
-      local reason_str
-      case "$reason" in
-        parent_gone) reason_str="parent gone" ;;
-        not_in_parent) reason_str="not in parent list" ;;
-        *) reason_str="$reason" ;;
-      esac
-      printf '\033[2m    - %s  [%s]\033[0m\n' "$display" "$reason_str"
+    for entry in "${skip_list[@]}"; do
+      printf '\033[2m    - %s  [not a git repo — inspect manually]\033[0m\n' "${entry/#$home\//~/}"
     done
   fi
 
@@ -351,56 +386,27 @@ _prune_stale_worktrees() {
     printf '\033[0;33m  Found %d stale worktree(s) with UNCOMMITTED changes (skipping):\033[0m\n' "${#dirty_list[@]}"
     local entry
     for entry in "${dirty_list[@]}"; do
-      IFS='|' read -r wt _ _ <<< "$entry"
-      local display="${wt/#$home\//~/}"
-      printf '\033[2m    - %s  [DIRTY — inspect manually]\033[0m\n' "$display"
+      printf '\033[2m    - %s  [DIRTY — inspect manually]\033[0m\n' "${entry/#$home\//~/}"
     done
   fi
 
-  if [[ "${#removable[@]}" -eq 0 ]]; then
-    return 0
+  _prune_confirm_apply "stale worktree(s)" "Remove these worktrees?" _prune_rm_worktree Removed
+}
+
+# Action: remove one stale worktree. Raw item is "wt_path|parent_path".
+_prune_rm_worktree() {
+  local wt_path parent_path
+  IFS='|' read -r wt_path parent_path <<< "$1"
+  if [[ -n "$parent_path" && -d "$parent_path" ]]; then
+    git -C "$parent_path" worktree remove --force "$wt_path" \
+      > /dev/null 2>&1 || true
+    git -C "$parent_path" worktree prune \
+      > /dev/null 2>&1 || true
   fi
-
-  local do_remove=0
-  case "${PRUNE_MODE:-ask}" in
-    auto) do_remove=1 ;;
-    dry) do_remove=0 ;;
-    *)
-      _prune_ask_yes "Remove these worktrees?" && do_remove=1 || do_remove=0
-      ;;
-  esac
-
-  if [[ "$do_remove" -eq 0 ]]; then
-    printf '\033[2m  - Skipped (no worktrees removed)\033[0m\n'
-    return 0
+  if [[ -d "$wt_path" ]]; then
+    rm -rf "$wt_path" 2> /dev/null || return 1
   fi
-
-  local removed=0 failed=0 entry wt_path parent_path
-  for entry in "${removable[@]}"; do
-    IFS='|' read -r wt_path _ parent_path <<< "$entry"
-    local ok=1
-    if [[ -n "$parent_path" && -d "$parent_path" ]]; then
-      git -C "$parent_path" worktree remove --force "$wt_path" \
-        > /dev/null 2>&1 || true
-      git -C "$parent_path" worktree prune \
-        > /dev/null 2>&1 || true
-    fi
-    if [[ -d "$wt_path" ]]; then
-      rm -rf "$wt_path" 2> /dev/null && ok=1 || ok=0
-    fi
-    if [[ "$ok" -eq 1 ]]; then
-      removed=$((removed + 1))
-    else
-      printf '\033[0;33m  \xe2\x86\x92 failed to remove %s\033[0m\n' "$wt_path" >&2
-      failed=$((failed + 1))
-    fi
-  done
-
-  if [[ "$failed" -eq 0 ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 Removed %d stale worktree(s)\033[0m\n' "$removed"
-  else
-    printf '\033[0;33m  \xe2\x86\x92 Removed %d, %d failed\033[0m\n' "$removed" "$failed"
-  fi
+  return 0
 }
 
 # ── Pass 3: orphan bg-spare workers ──────────────────────────────────────────
@@ -460,47 +466,19 @@ _prune_orphan_workers() {
     fi
   done
 
-  if [[ "${#orphans[@]}" -eq 0 ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 No orphan workers\033[0m\n'
-    return 0
-  fi
-
-  printf '\033[0;33m  Found %d orphan bg-spare worker(s) holding deleted cwds:\033[0m\n' \
-    "${#orphans[@]}"
+  _PRUNE_ITEMS=() _PRUNE_LABELS=()
   local o
-  for o in "${orphans[@]}"; do
+  for o in "${orphans[@]+"${orphans[@]}"}"; do
     IFS='|' read -r p cwd <<< "$o"
-    printf '\033[2m    - PID %s -> %s\033[0m\n' "$p" "$cwd"
+    _PRUNE_ITEMS+=("$p")
+    _PRUNE_LABELS+=("PID $p -> $cwd")
   done
+  _prune_confirm_apply "orphan worker(s)" "Kill these orphan workers?" _prune_kill_worker Killed
+}
 
-  local do_kill=0
-  case "${PRUNE_MODE:-ask}" in
-    auto) do_kill=1 ;;
-    dry) do_kill=0 ;;
-    *)
-      _prune_ask_yes "Kill these orphan workers?" && do_kill=1 || do_kill=0
-      ;;
-  esac
-
-  if [[ "$do_kill" -eq 0 ]]; then
-    printf '\033[2m  - Skipped (no workers killed)\033[0m\n'
-    return 0
-  fi
-
-  local killed=0 failed=0
-  for o in "${orphans[@]}"; do
-    IFS='|' read -r p _ <<< "$o"
-    if kill "$p" 2> /dev/null; then
-      killed=$((killed + 1))
-    else
-      failed=$((failed + 1))
-    fi
-  done
-  if [[ "$failed" -eq 0 ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 Killed %d orphan worker(s)\033[0m\n' "$killed"
-  else
-    printf '\033[0;33m  \xe2\x86\x92 Killed %d, %d failed\033[0m\n' "$killed" "$failed"
-  fi
+# Action: kill one orphan worker by pid.
+_prune_kill_worker() {
+  kill "$1" 2> /dev/null
 }
 
 # ── Pass 4: stale daily-cost dirs ─────────────────────────────────────────────
@@ -532,45 +510,14 @@ _prune_stale_cost_dirs() {
     mapfile -t stale < <(printf '%s\n' "${stale[@]}" | sort)
   fi
 
-  if [[ "${#stale[@]}" -eq 0 ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 No stale cost dirs\033[0m\n'
-    return 0
-  fi
+  _PRUNE_ITEMS=("${stale[@]+"${stale[@]}"}")
+  _PRUNE_LABELS=("${stale[@]+"${stale[@]}"}")
+  _prune_confirm_apply "stale cost dir(s)" "Delete these cost dirs?" _prune_rm_rf
+}
 
-  printf '\033[0;33m  Found %d stale cost dir(s):\033[0m\n' "${#stale[@]}"
-  local d
-  for d in "${stale[@]}"; do
-    printf '\033[2m    - %s\033[0m\n' "$d"
-  done
-
-  local do_delete=0
-  case "${PRUNE_MODE:-ask}" in
-    auto) do_delete=1 ;;
-    dry) do_delete=0 ;;
-    *)
-      _prune_ask_yes "Delete these cost dirs?" && do_delete=1 || do_delete=0
-      ;;
-  esac
-
-  if [[ "$do_delete" -eq 0 ]]; then
-    printf '\033[2m  - Skipped (no dirs removed)\033[0m\n'
-    return 0
-  fi
-
-  local deleted=0 failed=0
-  for d in "${stale[@]}"; do
-    if rm -rf "$d" 2> /dev/null; then
-      deleted=$((deleted + 1))
-    else
-      printf '\033[0;33m  \xe2\x86\x92 failed to delete %s\033[0m\n' "$d" >&2
-      failed=$((failed + 1))
-    fi
-  done
-  if [[ "$failed" -eq 0 ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 Deleted %d stale cost dir(s)\033[0m\n' "$deleted"
-  else
-    printf '\033[0;33m  \xe2\x86\x92 Deleted %d, %d failed\033[0m\n' "$deleted" "$failed"
-  fi
+# Action: rm -rf one path (cost dirs, spills).
+_prune_rm_rf() {
+  rm -rf "$1" 2> /dev/null
 }
 
 # ── Pass 5: unbounded state journals ──────────────────────────────────────────
@@ -656,46 +603,18 @@ _prune_session_shards() {
     mapfile -t stale < <(printf '%s\n' "${stale[@]}" | sort)
   fi
 
-  if [[ "${#stale[@]}" -eq 0 ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 No stale session shards\033[0m\n'
-    return 0
-  fi
-
-  printf '\033[0;33m  Found %d stale session shard(s):\033[0m\n' "${#stale[@]}"
-  local d display
-  for d in "${stale[@]}"; do
-    display="${d/#$home\//~/}"
-    printf '\033[2m    - %s\033[0m\n' "$display"
+  _PRUNE_ITEMS=() _PRUNE_LABELS=()
+  local d
+  for d in "${stale[@]+"${stale[@]}"}"; do
+    _PRUNE_ITEMS+=("$d")
+    _PRUNE_LABELS+=("${d/#$home\//~/}")
   done
+  _prune_confirm_apply "stale session shard(s)" "Delete these session shards?" _prune_rm_f
+}
 
-  local do_delete=0
-  case "${PRUNE_MODE:-ask}" in
-    auto) do_delete=1 ;;
-    dry) do_delete=0 ;;
-    *)
-      _prune_ask_yes "Delete these session shards?" && do_delete=1 || do_delete=0
-      ;;
-  esac
-
-  if [[ "$do_delete" -eq 0 ]]; then
-    printf '\033[2m  - Skipped (no shards removed)\033[0m\n'
-    return 0
-  fi
-
-  local deleted=0 failed=0
-  for d in "${stale[@]}"; do
-    if rm -f "$d" 2> /dev/null; then
-      deleted=$((deleted + 1))
-    else
-      printf '\033[0;33m  \xe2\x86\x92 failed to delete %s\033[0m\n' "$d" >&2
-      failed=$((failed + 1))
-    fi
-  done
-  if [[ "$failed" -eq 0 ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 Deleted %d stale session shard(s)\033[0m\n' "$deleted"
-  else
-    printf '\033[0;33m  \xe2\x86\x92 Deleted %d, %d failed\033[0m\n' "$deleted" "$failed"
-  fi
+# Action: rm -f one file (session shards, journals).
+_prune_rm_f() {
+  rm -f "$1" 2> /dev/null
 }
 
 # ── Pass 6: stale bash-output spills ──────────────────────────────────────────
@@ -724,44 +643,9 @@ _prune_stale_spills() {
     mapfile -t stale < <(printf '%s\n' "${stale[@]}" | sort)
   fi
 
-  if [[ "${#stale[@]}" -eq 0 ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 No stale spills\033[0m\n'
-    return 0
-  fi
-
-  printf '\033[0;33m  Found %d stale spill(s):\033[0m\n' "${#stale[@]}"
-  for entry in "${stale[@]}"; do
-    printf '\033[2m    - %s\033[0m\n' "$entry"
-  done
-
-  local do_delete=0
-  case "${PRUNE_MODE:-ask}" in
-    auto) do_delete=1 ;;
-    dry) do_delete=0 ;;
-    *)
-      _prune_ask_yes "Delete these spills?" && do_delete=1 || do_delete=0
-      ;;
-  esac
-
-  if [[ "$do_delete" -eq 0 ]]; then
-    printf '\033[2m  - Skipped (no spills removed)\033[0m\n'
-    return 0
-  fi
-
-  local deleted=0 failed=0
-  for entry in "${stale[@]}"; do
-    if rm -rf "$entry" 2> /dev/null; then
-      deleted=$((deleted + 1))
-    else
-      printf '\033[0;33m  \xe2\x86\x92 failed to delete %s\033[0m\n' "$entry" >&2
-      failed=$((failed + 1))
-    fi
-  done
-  if [[ "$failed" -eq 0 ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 Deleted %d stale spill(s)\033[0m\n' "$deleted"
-  else
-    printf '\033[0;33m  \xe2\x86\x92 Deleted %d, %d failed\033[0m\n' "$deleted" "$failed"
-  fi
+  _PRUNE_ITEMS=("${stale[@]+"${stale[@]}"}")
+  _PRUNE_LABELS=("${stale[@]+"${stale[@]}"}")
+  _prune_confirm_apply "stale spill(s)" "Delete these spills?" _prune_rm_rf
 }
 
 # ── Main entry ────────────────────────────────────────────────────────────────

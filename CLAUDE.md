@@ -36,7 +36,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `dot sync` | `./sync` | Install/resync. Tag-gated steps (`--only=<tag,...>`). Idempotent. |
 | `dot update` | `./sync --upgrade` | Bump everything. |
 | `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. |
-| `dot prune` | `./sync --only=prune` | `.bak` / stale-worktree / orphan-worker / old-cost cleanup (also runs standalone via `install/95-prune.sh`). |
+| `dot prune` | `./install/95-prune.sh` | `.bak` / stale-worktree / orphan-worker / old-cost cleanup. Flags pass through (`-n` dry-run, `-y` unattended). Also runs at the tail of every full `dot sync`. |
 | `dot render <tpl>` | `./render` | `op://` template resolver. |
 | `dot git-data` | `prompt/git-data` | Hot path: gather git state, write shell-sourceable cache. |
 | `dot prompt-render` | `prompt/prompt-render` | Hot path: read git-data cache, emit zsh PROMPT syntax. |
