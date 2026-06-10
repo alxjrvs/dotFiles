@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # claude-statusline — a self-contained Claude Code statusline.
 #
-# Drop-in: needs only `git` and `jq` on PATH. No Rust, no extra binaries.
+# Drop-in: needs only `git` and `jq` on PATH. No extra binaries.
 # Point Claude Code at it in ~/.claude/settings.json:
 #
 #   "statusLine": { "type": "command", "command": "~/.claude/statusline.sh" }
@@ -18,7 +18,7 @@
 # or they render as tofu boxes. Everything is degrade-gracefully: missing
 # fields just drop their segment.
 #
-# Ported from a Rust statusline; bash 3.2 compatible (macOS system bash).
+# Bash 3.2 compatible (macOS system bash).
 
 # ── Byte-sequence primitives (bash 3.2 has no $'\uXXXX') ──────────────────
 ESC=$(printf '\033')
@@ -211,56 +211,63 @@ if ! command -v jq > /dev/null 2>&1; then
   exit 0
 fi
 
-# Pull every field in one jq pass, one value per line (newline-delimited so
-# empty fields are preserved — IFS=tab `read` would collapse them).
+# Pull every field in one jq pass as name-keyed key=value lines, parsed by
+# `case` (bash 3.2 safe). Name-keyed beats positional: a Claude Code schema
+# addition or a local reorder can't silently shift every field — unknown keys
+# are ignored, missing keys keep their default.
 fields=$(printf '%s' "$input" | jq -r '
-  [
-    .session_id // "",
-    (.context_window.used_percentage // "" | tostring),
-    .worktree.name // "",
-    .workspace.project_dir // "",
-    .workspace.current_dir // "",
-    .model.display_name // "",
-    .effort.level // "",
-    (.cost.total_cost_usd // "" | tostring),
-    (.cost.total_duration_ms // 0 | tostring),
-    (.cost.total_lines_added // 0 | tostring),
-    (.cost.total_lines_removed // 0 | tostring),
-    (.pr.number // "" | tostring),
-    .pr.review_state // "",
-    (if .exceeds_200k_tokens == true then "1" else "" end),
-    (.rate_limits.five_hour.used_percentage // "" | tostring),
-    (.rate_limits.five_hour.resets_at // "" | tostring),
-    (.rate_limits.seven_day.used_percentage // "" | tostring),
-    (.rate_limits.seven_day.resets_at // "" | tostring),
-    ((.columns // .terminal.columns) // "" | tostring)
-  ] | .[]
+  "session_id=\(.session_id // "")",
+  "used_pct=\(.context_window.used_percentage // "" | tostring)",
+  "worktree_name=\(.worktree.name // "")",
+  "project_dir=\(.workspace.project_dir // "")",
+  "cwd=\(.workspace.current_dir // "")",
+  "model_name=\(.model.display_name // "")",
+  "effort_level=\(.effort.level // "")",
+  "cost_usd=\(.cost.total_cost_usd // "" | tostring)",
+  "duration_ms=\(.cost.total_duration_ms // 0 | tostring)",
+  "lines_added=\(.cost.total_lines_added // 0 | tostring)",
+  "lines_removed=\(.cost.total_lines_removed // 0 | tostring)",
+  "pr_number=\(.pr.number // "" | tostring)",
+  "pr_state=\(.pr.review_state // "")",
+  "exceeds_200k=\(if .exceeds_200k_tokens == true then "1" else "" end)",
+  "five_pct=\(.rate_limits.five_hour.used_percentage // "" | tostring)",
+  "five_resets_at=\(.rate_limits.five_hour.resets_at // "" | tostring)",
+  "seven_pct=\(.rate_limits.seven_day.used_percentage // "" | tostring)",
+  "seven_resets_at=\(.rate_limits.seven_day.resets_at // "" | tostring)",
+  "cols=\((.columns // .terminal.columns) // "" | tostring)"
 ' 2> /dev/null)
 
-idx=0
-while IFS= read -r _v || [ -n "$_v" ]; do
-  F[idx]=$_v
-  idx=$((idx + 1))
+session_id="" used_pct="" worktree_name_input="" project_dir="" cwd_input=""
+model_name="" effort_level="" cost_usd="" duration_ms=0 lines_added=0
+lines_removed=0 pr_number="" pr_state="" exceeds_200k="" five_pct=""
+five_resets_at="" seven_pct="" seven_resets_at="" cols=""
+
+while IFS= read -r _kv || [ -n "$_kv" ]; do
+  case "$_kv" in *=*) ;; *) continue ;; esac
+  _k=${_kv%%=*}
+  _v=${_kv#*=}
+  case "$_k" in
+    session_id) session_id=$_v ;;
+    used_pct) used_pct=$_v ;;
+    worktree_name) worktree_name_input=$_v ;;
+    project_dir) project_dir=$_v ;;
+    cwd) cwd_input=$_v ;;
+    model_name) model_name=$_v ;;
+    effort_level) effort_level=$_v ;;
+    cost_usd) cost_usd=$_v ;;
+    duration_ms) duration_ms=$_v ;;
+    lines_added) lines_added=$_v ;;
+    lines_removed) lines_removed=$_v ;;
+    pr_number) pr_number=$_v ;;
+    pr_state) pr_state=$_v ;;
+    exceeds_200k) exceeds_200k=$_v ;;
+    five_pct) five_pct=$_v ;;
+    five_resets_at) five_resets_at=$_v ;;
+    seven_pct) seven_pct=$_v ;;
+    seven_resets_at) seven_resets_at=$_v ;;
+    cols) cols=$_v ;;
+  esac
 done <<< "$fields"
-session_id=${F[0]}
-used_pct=${F[1]}
-worktree_name_input=${F[2]}
-project_dir=${F[3]}
-cwd_input=${F[4]}
-model_name=${F[5]}
-effort_level=${F[6]}
-cost_usd=${F[7]}
-duration_ms=${F[8]}
-lines_added=${F[9]}
-lines_removed=${F[10]}
-pr_number=${F[11]}
-pr_state=${F[12]}
-exceeds_200k=${F[13]}
-five_pct=${F[14]}
-five_resets_at=${F[15]}
-seven_pct=${F[16]}
-seven_resets_at=${F[17]}
-cols=${F[18]}
 
 # Normalize numeric-ish fields.
 duration_ms=$(int_prefix "$duration_ms")
@@ -268,7 +275,10 @@ lines_added=$(int_prefix "$lines_added")
 lines_removed=$(int_prefix "$lines_removed")
 case "$cols" in '' | *[!0-9]*) cols="" ;; esac
 
-# ── Gather git state (replaces dotctl git-data) ─────────────────────────────
+# ── Gather git state (self-contained; deliberately not the git-data cache) ──
+# GIT_OPTIONAL_LOCKS=0: this runs on every refresh in the background — it must
+# never contend for index.lock with the session's own git rebase/add.
+export GIT_OPTIONAL_LOCKS=0
 git_is_repo=0 branch="" repo_https="" repo_name="" git_worktree_name=""
 ahead=0 behind=0 staged=0 unstaged=0 untracked=0 conflict=0 stash=0
 

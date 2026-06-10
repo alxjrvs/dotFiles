@@ -51,7 +51,7 @@
 #   compact:  42 / 1k / 1M    (integer, no decimal)
 #   normal:   42 / 1.0k / 1.0M
 #
-# Ported from dotctl/src/subagent_statusline.rs. Bash 3.2 compatible.
+# Bash 3.2 compatible (macOS system bash).
 
 set -euo pipefail
 
@@ -129,7 +129,7 @@ map_status_to_state() {
     complete | completed | succeeded | success) printf 'success' ;;
     failed | error) printf 'error' ;;
     inactive | idle) printf 'inactive' ;;
-    *) printf 'success' ;; # running / unknown -> success (mirrors Rust _ arm)
+    *) printf 'success' ;; # running / unknown -> success
   esac
 }
 
@@ -142,8 +142,16 @@ fi
 
 input=$(cat)
 
+# Validate up front: malformed/non-object input must degrade to an empty
+# panel, not abort under set -e and blank it (same spirit as the jq-missing
+# fallback above).
+if ! printf '%s' "$input" | jq -e 'type == "object"' > /dev/null 2>&1; then
+  printf '{"tasks":[]}\n'
+  exit 0
+fi
+
 # Extract columns; compact when < 100.
-cols=$(printf '%s' "$input" | jq -r '.columns // ""')
+cols=$(printf '%s' "$input" | jq -r '.columns // ""' 2> /dev/null || printf '')
 compact=0
 case "$cols" in
   '' | *[!0-9]*) compact=0 ;;
@@ -152,37 +160,41 @@ esac
 
 now=$(now_ms)
 
-# Extract task count to iterate by index.
-task_count=$(printf '%s' "$input" | jq '.tasks | length // 0')
+# Extract task count to iterate by index (0 when .tasks is missing or not an
+# array — never abort under set -e).
+task_count=$(printf '%s' "$input" | jq '(.tasks // []) | if type == "array" then length else 0 end' 2> /dev/null || printf '0')
+case "$task_count" in '' | *[!0-9]*) task_count=0 ;; esac
 
 # Build tasks_out JSON array by iterating over each task.
 tasks_out='[]'
 i=0
 while [ "$i" -lt "$task_count" ]; do
-  # Extract fields for task $i in one jq pass.
+  # Extract fields for task $i in one jq pass, as name-keyed key=value lines
+  # parsed by `case` (bash 3.2 safe) — a CC schema addition or reorder can't
+  # silently shift fields; unknown keys are ignored.
   task_fields=$(printf '%s' "$input" | jq -r --argjson idx "$i" '
     .tasks[$idx] |
-    [
-      .id // "",
-      .status // "running",
-      (.tokenCount // 0 | tostring),
-      (.startTime // 0 | tostring),
-      (.tokenSamples // [] | tojson)
-    ] | .[]
-  ')
+    "id=\(.id // "")",
+    "status=\(.status // "running")",
+    "token_count=\(.tokenCount // 0 | tostring)",
+    "start_time=\(.startTime // 0 | tostring)",
+    "token_samples=\(.tokenSamples // [] | tojson)"
+  ' 2> /dev/null || printf '')
 
-  # Read fields into variables.
-  t_idx=0
-  while IFS= read -r _v || [ -n "$_v" ]; do
-    TF[t_idx]=$_v
-    t_idx=$((t_idx + 1))
+  task_id="" task_status="running" task_token_count=0 task_start_time=0
+  task_token_samples='[]'
+  while IFS= read -r _kv || [ -n "$_kv" ]; do
+    case "$_kv" in *=*) ;; *) continue ;; esac
+    _k=${_kv%%=*}
+    _v=${_kv#*=}
+    case "$_k" in
+      id) task_id=$_v ;;
+      status) task_status=$_v ;;
+      token_count) task_token_count=$_v ;;
+      start_time) task_start_time=$_v ;;
+      token_samples) task_token_samples=$_v ;;
+    esac
   done <<< "$task_fields"
-
-  task_id=${TF[0]}
-  task_status=${TF[1]}
-  task_token_count=${TF[2]}
-  task_start_time=${TF[3]}
-  task_token_samples=${TF[4]}
 
   # Validate numeric fields; default to 0 on garbage.
   case "$task_token_count" in '' | *[!0-9]*) task_token_count=0 ;; esac

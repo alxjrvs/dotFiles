@@ -110,7 +110,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dot hook lock-file-guard",
+            "command": "~/.local/bin/dot hook lock-file-guard",
             "timeout": 5
           }
         ]
@@ -120,7 +120,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dot hook mcp-guard",
+            "command": "~/.local/bin/dot hook mcp-guard",
             "timeout": 5
           }
         ]
@@ -132,7 +132,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dot hook format-on-save",
+            "command": "~/.local/bin/dot hook format-on-save",
             "timeout": 10
           }
         ]
@@ -142,7 +142,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dot hook trim-bash-output",
+            "command": "~/.local/bin/dot hook trim-bash-output",
             "timeout": 5
           }
         ]
@@ -154,7 +154,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dot hook precompact",
+            "command": "~/.local/bin/dot hook precompact",
             "timeout": 5
           }
         ]
@@ -166,7 +166,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dot hook subagent-stop",
+            "command": "~/.local/bin/dot hook subagent-stop",
             "timeout": 5
           }
         ]
@@ -178,7 +178,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dot hook user-prompt-submit",
+            "command": "~/.local/bin/dot hook user-prompt-submit",
             "timeout": 5
           }
         ]
@@ -190,7 +190,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "dot hook stop",
+            "command": "~/.local/bin/dot hook stop",
             "timeout": 5
           }
         ]
@@ -205,13 +205,13 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "dot statusline",
+    "command": "~/.local/bin/dot statusline",
     "padding": 0,
     "refreshInterval": 10
   },
   "subagentStatusLine": {
     "type": "command",
-    "command": "dot subagent-statusline"
+    "command": "~/.local/bin/dot subagent-statusline"
   },
   "enabledPlugins": {
     "github@claude-plugins-official": true,
