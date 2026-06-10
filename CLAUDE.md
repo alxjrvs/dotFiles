@@ -214,4 +214,13 @@ Pause and confirm with the user before doing any of these:
   expanded. Any socket the sandbox must reach needs a stable literal path
   (this is why git signing uses a dedicated agent at
   `~/.ssh/agent/signing.sock`, not Apple's per-boot-random launchd socket).
-  `dot doctor` lints for dead glob entries.
+  `dot doctor` lints for dead glob entries. Three sockets are allow-listed
+  for required tools: the signing agent above, the 1Password SSH **auth**
+  agent (`~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock`),
+  and pueue (`~/Library/Application Support/pueue/pueue_jarvis.socket`).
+  The 1Password socket additionally needs an `allowRead` leaf carve-out,
+  because its whole group container is `denyRead` — same proven
+  leaf-under-denyRead pattern as `~/Library/Keychains/login.keychain-db`.
+  Without these, sandboxed `dot doctor` / SSH-auth / `pueue status` fail
+  with "Operation not permitted" even though the daemons are up — a
+  sandbox-visibility false negative, not a real outage.

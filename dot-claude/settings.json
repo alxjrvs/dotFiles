@@ -252,7 +252,9 @@
         "127.0.0.1"
       ],
       "allowUnixSockets": [
-        "~/.ssh/agent/signing.sock"
+        "~/.ssh/agent/signing.sock",
+        "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock",
+        "~/Library/Application Support/pueue/pueue_jarvis.socket"
       ],
       "allowLocalBinding": true,
       "allowMachLookup": [
@@ -321,10 +323,12 @@
         "~/.ssh/config",
         "~/.ssh/known_hosts*",
         "~/.ssh/agent",
+        "~/.ssh/allowed_signers",
         "~/Library/Keychains/login.keychain-db",
-        "**/.env.example",
-        "**/.env.template",
-        "**/.env.sample"
+        "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock",
+        "/**/.env.example",
+        "/**/.env.template",
+        "/**/.env.sample"
       ]
     },
     "excludedCommands": [
