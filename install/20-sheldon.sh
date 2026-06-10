@@ -14,9 +14,13 @@ _sheldon_run() {
     printf '\033[0;31m  \xe2\x9c\x97 Sheldon not found — should have been installed by brew bundle\033[0m\n' >&2
   elif [[ "$(os_kind)" == "linux" ]]; then
     printf '\033[0;33m  \xe2\x86\x92 Installing Sheldon...\033[0m\n'
-    curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh |
-      bash -s -- --repo rossmacarthur/sheldon --to ~/.local/bin
-    printf '\033[0;32m  \xe2\x9c\x93 Sheldon installed\033[0m\n'
+    if curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh |
+      bash -s -- --repo rossmacarthur/sheldon --to ~/.local/bin; then
+      printf '\033[0;32m  \xe2\x9c\x93 Sheldon installed\033[0m\n'
+    else
+      printf '\033[0;31m  \xe2\x9c\x97 Sheldon install failed\033[0m\n' >&2
+      return 1
+    fi
   fi
 
   printf '\n==> Sheldon plugins\n'

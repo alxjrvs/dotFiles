@@ -261,37 +261,35 @@ _run_module() {
     return 0
   fi
 
-  # Check if this module should run.
+  # Check if this module should run. Tags arrive one-per-line from the tags
+  # fn; word-splitting them into should_run (the single exported matcher) is
+  # deliberate.
   local module_tags
   module_tags=$("$tags_fn")
-  local should=0
-  if [[ -z "${SYNC_ONLY_TAGS:-}" ]]; then
-    should=1
-  else
-    local t o
-    while IFS= read -r t; do
-      [[ -z "$t" ]] && continue
-      for o in ${SYNC_ONLY_TAGS}; do
-        if [[ "$t" == "$o" ]]; then
-          should=1
-          break 2
-        fi
-      done
-    done <<< "$module_tags"
-  fi
-
-  if [[ "$should" -eq 1 ]]; then
+  # shellcheck disable=SC2086
+  if should_run $module_tags; then
+    _MATCHED_MODULES=$((_MATCHED_MODULES + 1))
     # Run the module in-process (NOT a subshell) so PATH/env exports — e.g.
     # the mise shims prepend from 30-mise — propagate to later modules.
-    # Trade-off: `set +e` here suspends errexit inside the run fn too (errexit
-    # is shell-global), so a module's failure status is that of its LAST
-    # command. Accepted so one module's failure can't abort the whole sync;
-    # the caller records the exit code and reports at the end.
-    local rc=0
-    set +e
+    # The caller invokes us bare inside a set +e window (NOT as an if
+    # condition — bash suppresses ERR traps through a condition's whole call
+    # tree), so a module's exit status alone is that of its LAST command — a
+    # mid-module failure (brew bundle, mise install) would read as success.
+    # The ERR trap latches any bare failing command (errtrace makes it fire
+    # inside the run fn); commands guarded by if/&&/|| are exempt, exactly
+    # like errexit semantics.
+    local rc=0 module_err=0
+    set -o errtrace
+    trap 'module_err=1' ERR
     "$run_fn"
     rc=$?
-    set -e
+    trap - ERR
+    set +o errtrace
+    if [[ "$rc" -eq 0 && "$module_err" -eq 1 ]]; then
+      printf '\033[0;31m  \xe2\x9c\x97 %s: a command failed mid-run (masked by a later success)\033[0m\n' \
+        "$(basename "$module")" >&2
+      rc=1
+    fi
     return "$rc"
   fi
   return 0
@@ -301,6 +299,7 @@ _run_module() {
 # recorded (name + exit code) and the remaining modules still run; sync exits
 # non-zero at the end if any module failed.
 _FAILED_MODULES=()
+_MATCHED_MODULES=0
 for _module in "${_SYNC_DIR}/install"/[0-9][0-9]-*.sh; do
   [[ -f "$_module" ]] || continue
   # 95-prune.sh defines _prune_run but must execute exactly once, at the tail
@@ -312,14 +311,28 @@ for _module in "${_SYNC_DIR}/install"/[0-9][0-9]-*.sh; do
     source "$_module"
     continue
   fi
-  if _run_module "$_module"; then
-    :
-  else
-    _rc=$? # status of the failed condition, NOT inverted by `!`
+  # Bare invocation in a set +e window — NOT `if _run_module`, which would
+  # put the whole module call tree in an errexit-exempt context and disarm
+  # the ERR latch inside _run_module.
+  set +e
+  _run_module "$_module"
+  _rc=$?
+  set -e
+  if [[ "$_rc" -ne 0 ]]; then
     _FAILED_MODULES+=("$(basename "$_module"):${_rc}")
   fi
 done
 unset _module _rc
+
+# ── --only typo guard ─────────────────────────────────────────────────────────
+# `--only=foo` with a tag no module declares silently runs nothing — the
+# documented gotcha. Fail loudly instead. The prune tag matches no module
+# (prune runs from the tail block below), so it counts as a match here.
+if [[ -n "${SYNC_ONLY_TAGS:-}" && "$_MATCHED_MODULES" -eq 0 ]] && ! should_run prune; then
+  printf '\033[0;31m==> \xe2\x9c\x97 --only=%s matched no module — check the tag spelling\033[0m\n' \
+    "${SYNC_ONLY_TAGS// /,}" >&2
+  exit 1
+fi
 
 # ── Prune pass at the tail ────────────────────────────────────────────────────
 # Gated by the prune tag so `--only=brew` (etc.) does not trigger the full

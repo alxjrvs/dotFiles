@@ -13,9 +13,12 @@ _linux_run() {
 
   printf '\n==> System packages\n'
   printf '\033[0;33m  \xe2\x86\x92 Updating apt and installing packages...\033[0m\n'
-  sudo apt update -y
-  sudo apt install -y zsh git curl
-  printf '\033[0;32m  \xe2\x9c\x93 System packages installed\033[0m\n'
+  if sudo apt update -y && sudo apt install -y zsh git curl; then
+    printf '\033[0;32m  \xe2\x9c\x93 System packages installed\033[0m\n'
+  else
+    printf '\033[0;31m  \xe2\x9c\x97 apt update/install failed\033[0m\n' >&2
+    return 1
+  fi
 
   printf '\n==> Default shell\n'
   local current_shell

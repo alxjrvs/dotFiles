@@ -43,8 +43,12 @@ _brew_run() {
   fi
 
   printf '\033[0;33m  \xe2\x86\x92 Installing Brewfile dependencies (skipping upgrades)...\033[0m\n'
-  brew bundle --file="${DOTFILES_DIR}/Brewfile" --no-upgrade
-  printf '\033[0;32m  \xe2\x9c\x93 Brewfile dependencies up to date\033[0m\n'
+  if brew bundle --file="${DOTFILES_DIR}/Brewfile" --no-upgrade; then
+    printf '\033[0;32m  \xe2\x9c\x93 Brewfile dependencies up to date\033[0m\n'
+  else
+    printf '\033[0;31m  \xe2\x9c\x97 brew bundle failed — system is partially provisioned\033[0m\n' >&2
+    return 1
+  fi
 
   # Per-host overlay.
   local host_id_val
@@ -53,8 +57,12 @@ _brew_run() {
     local overlay="${DOTFILES_DIR}/Brewfile.${host_id_val}"
     if [[ -f "$overlay" ]]; then
       printf '\033[0;33m  \xe2\x86\x92 Installing host overlay (Brewfile.%s)...\033[0m\n' "$host_id_val"
-      brew bundle --file="$overlay" --no-upgrade
-      printf '\033[0;32m  \xe2\x9c\x93 Brewfile.%s dependencies up to date\033[0m\n' "$host_id_val"
+      if brew bundle --file="$overlay" --no-upgrade; then
+        printf '\033[0;32m  \xe2\x9c\x93 Brewfile.%s dependencies up to date\033[0m\n' "$host_id_val"
+      else
+        printf '\033[0;31m  \xe2\x9c\x97 brew bundle (Brewfile.%s) failed\033[0m\n' "$host_id_val" >&2
+        return 1
+      fi
     fi
   fi
 

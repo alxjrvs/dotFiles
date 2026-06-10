@@ -17,7 +17,10 @@ _claude_run() {
     if bash -c "$(curl -fsSL https://claude.ai/install.sh)"; then
       printf '\033[0;32m  \xe2\x9c\x93 Claude Code CLI installed\033[0m\n'
     else
-      printf '\033[0;31m  \xe2\x9c\x97 Claude Code CLI install failed — re-run or install manually\033[0m\n' >&2
+      # claude.ai is not in the sandbox allowedDomains, so an in-session
+      # reinstall dies at DNS with a generic curl error — name the cause.
+      printf '\033[0;31m  \xe2\x9c\x97 Claude Code CLI install failed — if this ran inside a Claude Code session, the installer domain is sandbox-blocked; run from a regular terminal\033[0m\n' >&2
+      return 1
     fi
   fi
 }

@@ -17,7 +17,7 @@ _symlinks_run() {
   printf '\n==> Symlinks\n'
 
   # ── Git config ────────────────────────────────────────────────────────
-  if _should_run_tags "symlinks git"; then
+  if should_run symlinks git; then
     for name in .gitconfig .gitmessage .gitignore .editorconfig .ripgreprc .fdignore; do
       link "${df}/${name}" "${HOME}/${name}"
     done
@@ -37,13 +37,13 @@ _symlinks_run() {
   fi
 
   # ── dot dispatcher ────────────────────────────────────────────────────
-  if _should_run_tags "symlinks shell"; then
+  if should_run symlinks shell; then
     mkdir -p "${HOME}/.local/bin"
     link "${df}/dot" "${HOME}/.local/bin/dot"
   fi
 
   # ── SSH config ────────────────────────────────────────────────────────
-  if _should_run_tags "symlinks ssh"; then
+  if should_run symlinks ssh; then
     mkdir -p "${HOME}/.ssh"
     chmod 700 "${HOME}/.ssh"
     link "${df}/ssh/config" "${HOME}/.ssh/config"
@@ -57,7 +57,7 @@ _symlinks_run() {
   fi
 
   # ── Shell config ──────────────────────────────────────────────────────
-  if _should_run_tags "symlinks shell"; then
+  if should_run symlinks shell; then
     for f in .zshrc .zprofile .zshenv .hushlogin; do
       link "${df}/${f}" "${HOME}/${f}"
     done
@@ -65,50 +65,50 @@ _symlinks_run() {
 
   # Darwin-only symlinks.
   if [[ "$os" == "darwin" ]]; then
-    if _should_run_tags "symlinks mise"; then
+    if should_run symlinks mise; then
       mkdir -p "${HOME}/.config/mise"
       link "${df}/mise.toml" "${HOME}/.config/mise/config.toml"
     fi
   fi
 
-  if _should_run_tags "symlinks sheldon"; then
+  if should_run symlinks sheldon; then
     mkdir -p "${HOME}/.config/sheldon"
     link "${df}/sheldon/plugins.toml" "${HOME}/.config/sheldon/plugins.toml"
   fi
 
   if [[ "$os" == "darwin" ]]; then
-    if _should_run_tags "symlinks ghostty"; then
+    if should_run symlinks ghostty; then
       mkdir -p "${HOME}/.config/ghostty"
       link "${df}/ghostty/config" "${HOME}/.config/ghostty/config"
     fi
 
-    if _should_run_tags "symlinks bat"; then
+    if should_run symlinks bat; then
       mkdir -p "${HOME}/.config/bat"
       link "${df}/bat/config" "${HOME}/.config/bat/config"
     fi
 
-    if _should_run_tags "symlinks atuin"; then
+    if should_run symlinks atuin; then
       mkdir -p "${HOME}/.config/atuin"
       link "${df}/atuin/config.toml" "${HOME}/.config/atuin/config.toml"
     fi
 
-    if _should_run_tags "symlinks lazygit"; then
+    if should_run symlinks lazygit; then
       mkdir -p "${HOME}/.config/lazygit"
       link "${df}/lazygit/config.yml" "${HOME}/.config/lazygit/config.yml"
     fi
 
-    if _should_run_tags "symlinks nvim"; then
+    if should_run symlinks nvim; then
       mkdir -p "${HOME}/.config/nvim"
       link "${df}/nvim/init.lua" "${HOME}/.config/nvim/init.lua"
     fi
 
-    if _should_run_tags "symlinks karabiner"; then
+    if should_run symlinks karabiner; then
       mkdir -p "${HOME}/.config/karabiner"
       link "${df}/karabiner/karabiner.json" "${HOME}/.config/karabiner/karabiner.json"
     fi
 
     # zsh fragments — numeric-prefixed *.zsh only.
-    if _should_run_tags "symlinks zsh"; then
+    if should_run symlinks zsh; then
       mkdir -p "${HOME}/.config/zsh"
       local f
       for f in "${df}/zsh"/[0-9]*.zsh; do
@@ -121,13 +121,13 @@ _symlinks_run() {
   fi
 
   # ── GitHub CLI ────────────────────────────────────────────────────────
-  if _should_run_tags "symlinks gh"; then
+  if should_run symlinks gh; then
     mkdir -p "${HOME}/.config/gh"
     link "${df}/gh/config.yml" "${HOME}/.config/gh/config.yml"
   fi
 
   # ── Claude Code ───────────────────────────────────────────────────────
-  if _should_run_tags "symlinks claude"; then
+  if should_run symlinks claude; then
     mkdir -p "${HOME}/.claude"
     link "${df}/dot-claude/CLAUDE.md" "${HOME}/.claude/CLAUDE.md"
     link "${df}/dot-claude/settings.json" "${HOME}/.claude/settings.json"
@@ -152,31 +152,14 @@ _symlinks_run() {
 
     # The compiled dotctl binary predates the shell rewrite; nothing
     # references it anymore. Remove the leftover (plain file only — never
-    # follow a symlink someone re-pointed).
+    # follow a symlink someone re-pointed). A sandboxed sync can't write
+    # ~/.local/bin — warn instead of false-reporting removal.
     if [[ -f "${HOME}/.local/bin/dotctl" && ! -L "${HOME}/.local/bin/dotctl" ]]; then
-      rm -f "${HOME}/.local/bin/dotctl"
-      printf '\033[2m  - removed legacy dotctl binary\033[0m\n'
+      if rm -f "${HOME}/.local/bin/dotctl" 2> /dev/null; then
+        printf '\033[2m  - removed legacy dotctl binary\033[0m\n'
+      else
+        printf '\033[0;33m  \xe2\x86\x92 legacy ~/.local/bin/dotctl not removable here — rm it from a regular terminal\033[0m\n'
+      fi
     fi
   fi
-}
-
-# Helper: return true if any tag in the space-separated list TAGS_STR is in
-# SYNC_ONLY_TAGS (or SYNC_ONLY_TAGS is empty = run everything).
-# Called as: _should_run_tags "tag1 tag2 ..."
-_should_run_tags() {
-  local tags_str="$1"
-  # If SYNC_ONLY_TAGS is unset/empty, everything runs.
-  if [[ -z "${SYNC_ONLY_TAGS:-}" ]]; then
-    return 0
-  fi
-  local t
-  for t in $tags_str; do
-    local o
-    for o in ${SYNC_ONLY_TAGS}; do
-      if [[ "$t" == "$o" ]]; then
-        return 0
-      fi
-    done
-  done
-  return 1
 }

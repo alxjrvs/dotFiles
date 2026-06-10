@@ -34,7 +34,8 @@ _mise_run() {
   fi
 
   printf '\033[0;33m  \xe2\x86\x92 Installing tools from mise.toml...\033[0m\n'
-  mise install
+  local install_rc=0
+  mise install || install_rc=$?
 
   # mise install creates ~/.local/share/mise/shims on a fresh machine.
   # sync's PATH setup ran before this module and gated on the dir's
@@ -51,5 +52,9 @@ _mise_run() {
     export PATH
   fi
 
+  if [[ "$install_rc" -ne 0 ]]; then
+    printf '\033[0;31m  \xe2\x9c\x97 mise install failed (rc=%s) — toolchain incomplete\033[0m\n' "$install_rc" >&2
+    return 1
+  fi
   printf '\033[0;32m  \xe2\x9c\x93 mise tools up to date\033[0m\n'
 }
