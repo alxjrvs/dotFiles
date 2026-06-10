@@ -61,8 +61,7 @@ esac
 # Case-insensitive match against the destructive substrings.
 TOOL_LC=$(printf '%s' "$TOOL_NAME" | tr '[:upper:]' '[:lower:]')
 
-if [[ "$TOOL_LC" == *delete_file* ]] ||
-  [[ "$TOOL_LC" == *delete_* ]]; then
+if [[ "$TOOL_LC" == *delete_* ]]; then
   REASON="mcp-guard: destructive MCP write '${TOOL_NAME}' is blocked. Run the equivalent operation manually (e.g. via gh/git) after confirming intent."
   emit_deny "$REASON"
 fi

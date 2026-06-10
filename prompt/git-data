@@ -103,6 +103,9 @@ G_PR_NUMBER=0
 G_PR_CHECKED_AT=0
 
 # git ARGS... — echo stdout, return non-zero on failure (no stderr).
+# GIT_OPTIONAL_LOCKS=0: background refreshes must never contend for
+# index.lock with the session's own git rebase/add.
+export GIT_OPTIONAL_LOCKS=0
 git_cmd() {
   git "$@" 2> /dev/null
 }

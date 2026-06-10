@@ -16,10 +16,17 @@ set -uo pipefail
 # ---------------------------------------------------------------------------
 INPUT=$(cat)
 
+# Best-effort logger: without jq there is nothing useful to record — exit
+# silently rather than erroring on every session stop (the guard its sibling
+# loggers already carry).
+if ! command -v jq > /dev/null 2>&1; then
+  exit 0
+fi
+
 TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || echo "")
-SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // ""')
-CWD_VAL=$(printf '%s' "$INPUT" | jq -r '.cwd // ""')
-TRANSCRIPT=$(printf '%s' "$INPUT" | jq -r '.transcript_path // ""')
+SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // ""' 2> /dev/null || true)
+CWD_VAL=$(printf '%s' "$INPUT" | jq -r '.cwd // ""' 2> /dev/null || true)
+TRANSCRIPT=$(printf '%s' "$INPUT" | jq -r '.transcript_path // ""' 2> /dev/null || true)
 
 # ---------------------------------------------------------------------------
 # Append JSONL record to a per-session shard
@@ -51,6 +58,6 @@ jq -cn \
   --arg cwd "$CWD_VAL" \
   --arg transcript_path "$TRANSCRIPT" \
   '{ts:$ts,session_id:$session_id,cwd:$cwd,transcript_path:$transcript_path}' \
-  >> "$LEDGER"
+  >> "$LEDGER" 2> /dev/null || true
 
 exit 0
