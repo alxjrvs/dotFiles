@@ -28,6 +28,11 @@ brew "openssl@3"
 brew "moreutils"
 brew "coreutils"
 
+# bash 4+: a system layer with no mise equivalent (the shell itself).
+# Apple ships 3.2 forever; render (declare -A) and 95-prune.sh (mapfile)
+# need 4+, and on a fresh machine `env bash` must not resolve to 3.2.
+brew "bash"
+
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"
 cask "1password"

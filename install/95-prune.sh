@@ -13,6 +13,17 @@
 
 set -euo pipefail
 
+# mapfile below needs bash 4+; Apple's /bin/bash is 3.2 forever, so a fresh
+# machine running this standalone must fail with a real message instead of
+# aborting mid-clean (brew "bash" is in the Brewfile).
+if ((BASH_VERSINFO[0] < 4)); then
+  printf '95-prune: bash >= 4 required (this is %s) — brew install bash\n' \
+    "${BASH_VERSION}" >&2
+  # return when sourced (sync), exit when standalone.
+  # shellcheck disable=SC2317
+  return 1 2> /dev/null || exit 1
+fi
+
 # ── Self-contained helpers ────────────────────────────────────────────────────
 if [[ -z "${__DOT_SYNC_SOURCED:-}" ]]; then
   _PRUNE_SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)

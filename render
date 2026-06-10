@@ -12,6 +12,15 @@
 # {{   op  "op://..."   }} all match.
 set -euo pipefail
 
+# declare -A below needs bash 4+; Apple's /bin/bash is 3.2 forever, so fail
+# with a real message instead of a cryptic syntax error (brew "bash" is in
+# the Brewfile).
+if ((BASH_VERSINFO[0] < 4)); then
+  printf 'render: bash >= 4 required (this is %s) — brew install bash\n' \
+    "${BASH_VERSION}" >&2
+  exit 1
+fi
+
 # ---------------------------------------------------------------------------
 # Args
 # ---------------------------------------------------------------------------
