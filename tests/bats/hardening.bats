@@ -332,3 +332,54 @@ sjq() { jq -e "$1" "$SETTINGS" > /dev/null; }
       || { echo "missing Edit() mirror for denyWrite entry: $e" >&2; false; }
   done < <(jq -r '.sandbox.filesystem.denyWrite[]' "$SETTINGS")
 }
+
+# Reverse mirror: enforcement above is one-directional (sandbox → permission
+# mirror). The reverse closes the loop: every Read()/Edit() deny must have a
+# sandbox counterpart, so a permission deny can't silently lose its
+# Bash-subprocess backstop. Two Edit() rules are intentional extras with NO
+# denyWrite twin: per-repo .git config/hooks (denyWrite would break sandboxed
+# clone/init, but the Edit tool has no business writing them).
+EDIT_ONLY_ALLOWLIST='["Edit(~/**/.git/config)","Edit(~/**/.git/hooks/**)"]'
+
+@test "settings: every Read() deny has a sandbox denyRead counterpart" {
+  local rule path
+  while IFS= read -r rule; do
+    # Strip Read( ... ) and the directory /** suffix to recover the sandbox form.
+    path="${rule#Read(}"
+    path="${path%)}"
+    path="${path%/\*\*}"
+    jq -e --arg p "$path" \
+      '.sandbox.filesystem.denyRead | index($p)' "$SETTINGS" > /dev/null ||
+      { echo "Read() deny without denyRead counterpart: $rule" >&2; false; }
+  done < <(jq -r '.permissions.deny[] | select(startswith("Read("))' "$SETTINGS")
+}
+
+@test "settings: every Edit() deny has a denyWrite counterpart (allowlisted extras aside)" {
+  local rule path
+  while IFS= read -r rule; do
+    # Intentional Edit-only extras are allowlisted above.
+    if jq -e --arg r "$rule" --argjson a "$EDIT_ONLY_ALLOWLIST" \
+      '$a | index($r)' > /dev/null <<< 'null'; then
+      continue
+    fi
+    path="${rule#Edit(}"
+    path="${path%)}"
+    path="${path%/\*\*}"
+    # Absolute-anchor Edit(//x) rules map to sandbox /x.
+    case "$path" in
+      //*) path="${path#/}" ;;
+    esac
+    jq -e --arg p "$path" \
+      '.sandbox.filesystem.denyWrite | index($p)' "$SETTINGS" > /dev/null ||
+      { echo "Edit() deny without denyWrite counterpart: $rule" >&2; false; }
+  done < <(jq -r '.permissions.deny[] | select(startswith("Edit("))' "$SETTINGS")
+}
+
+# Doctor carries the live-scope merge audit: scope allows that defeat tracked
+# ask/deny gates (exact-rule duplicates and shell-wrapper allows) must warn.
+@test "doctor: audits live permission scopes against tracked gates" {
+  grep -q 'Claude permission scopes' "$ROOT/doctor"
+  grep -q 'defeats every tracked Bash ask/deny gate' "$ROOT/doctor"
+  grep -q 'duplicates a tracked ask/deny rule' "$ROOT/doctor"
+  grep -q 'settings.local.json exists' "$ROOT/doctor"
+}
