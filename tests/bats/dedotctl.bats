@@ -276,11 +276,12 @@ init_repo() {
   git -C "$repo" config commit.gpgsign false
   git -C "$repo" config core.hooksPath /dev/null
 }
-# Cache file path uses git's own --show-toplevel (may resolve /private symlinks).
+# Cache file path uses git's own --show-toplevel (may resolve /private
+# symlinks) and the canonical repo_hash extracted from git-data itself.
 cache_path() {
   local repo="$1" top hash
   top=$(cd "$repo" && git rev-parse --show-toplevel)
-  hash=$(printf '%s' "$top" | shasum -a 256 | cut -c1-12)
+  hash=$(bash -c "$(sed -n '/^repo_hash() {/,/^}/p' "$ROOT/prompt/git-data"); repo_hash \"\$1\"" _ "$top")
   printf '%s/.cache/git-data/%s.sh' "$TDIR" "$hash"
 }
 
