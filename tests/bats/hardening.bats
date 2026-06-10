@@ -236,8 +236,16 @@ sjq() { jq -e "$1" "$SETTINGS" > /dev/null; }
   sjq '.permissions.deny | index("Edit(~/.ssh/**)")'
 }
 
-@test "settings: per-repo .git config/hooks are NOT denyWrite (clone/init must work)" {
+@test "settings: per-repo .git config/hooks carry NO deny of any kind (clone/init/lefthook must work)" {
+  # Not in sandbox denyWrite (would break clone/init), AND not as Edit()
+  # rules either: Claude Code MERGES Edit(...) deny paths into the sandbox
+  # denyWrite (settings schema: \"Merged with paths from Edit(...) deny
+  # permission rules\"), so an Edit() deny here blocked lefthook's hook-stub
+  # sync and git maintenance/clone .git/config writes despite the
+  # deliberately-clean sandbox list. Verified live 2026-06-09.
   run jq -e '.sandbox.filesystem.denyWrite | any(. == "~/**/.git/config" or . == "~/**/.git/hooks/**")' "$SETTINGS"
+  [ "$status" -ne 0 ]
+  run jq -e '.permissions.deny | any(test("\\.git/(config|hooks)"))' "$SETTINGS"
   [ "$status" -ne 0 ]
 }
 
@@ -337,10 +345,12 @@ sjq() { jq -e "$1" "$SETTINGS" > /dev/null; }
 # Reverse mirror: enforcement above is one-directional (sandbox → permission
 # mirror). The reverse closes the loop: every Read()/Edit() deny must have a
 # sandbox counterpart, so a permission deny can't silently lose its
-# Bash-subprocess backstop. Two Edit() rules are intentional extras with NO
-# denyWrite twin: per-repo .git config/hooks (denyWrite would break sandboxed
-# clone/init, but the Edit tool has no business writing them).
-EDIT_ONLY_ALLOWLIST='["Edit(~/**/.git/config)","Edit(~/**/.git/hooks/**)"]'
+# Bash-subprocess backstop. There are no \"Edit-only\" rules: Claude Code
+# merges Edit() deny paths into the sandbox denyWrite, so an unmirrored
+# Edit() rule is really an undocumented sandbox rule (the .git config/hooks
+# pair was removed for exactly that reason — see the test above). The
+# allowlist stays as the mechanism for any future deliberate exception.
+EDIT_ONLY_ALLOWLIST='[]'
 
 @test "settings: every Read() deny has a sandbox denyRead counterpart" {
   local rule path

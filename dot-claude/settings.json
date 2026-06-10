@@ -68,8 +68,6 @@
       "Edit(~/.claude/.credentials.json)",
       "Edit(~/.gitconfig)",
       "Edit(~/.config/git/config)",
-      "Edit(~/**/.git/config)",
-      "Edit(~/**/.git/hooks/**)",
       "Edit(~/.ssh/**)",
       "Edit(~/.claude.json)",
       "Edit(~/.cargo/credentials.toml)",
