@@ -11,6 +11,7 @@ JQDIR="$(dirname "$(mise which jq 2> /dev/null || command -v jq)")"
 # dirs on PATH and the hook reaches the tools via its command -v fallback.
 SHFMTDIR="$(dirname "$(mise which shfmt 2> /dev/null || command -v shfmt 2> /dev/null || echo /nonexistent/shfmt)")"
 SHELLCHECKDIR="$(dirname "$(mise which shellcheck 2> /dev/null || command -v shellcheck 2> /dev/null || echo /nonexistent/shellcheck)")"
+PRETTIERDIR="$(dirname "$(mise which prettier 2> /dev/null || command -v prettier 2> /dev/null || echo /nonexistent/prettier)")"
 
 load 'helpers'
 
@@ -191,4 +192,71 @@ run_hook() {
   [ -z "$output" ]
   run cat "$f"
   [[ "$output" == "payload" ]]
+}
+
+# ── format-on-save: prettier is project-config-aware ────────────────────────
+# Regression for the churn bug: the hook used `prettier --no-config`, which
+# reformatted every edited file to prettier DEFAULTS (double quotes + semis),
+# fighting repos whose own .prettierrc demands single quotes / no semis. The
+# hook must honor the edited file's OWN data-format config, skip entirely when
+# there is none (never apply bare defaults), refuse to execute a JS config
+# file, and honor .prettierignore.
+
+@test "format-on-save: honors a project .prettierrc.json (single quotes / no semi), not bare defaults" {
+  [ -x "$PRETTIERDIR/prettier" ] || skip "prettier unavailable"
+  export PATH="$PRETTIERDIR:$PATH"
+  mkdir -p "$TDIR/proj/src"
+  printf '%s\n' '{ "singleQuote": true, "semi": false }' > "$TDIR/proj/.prettierrc.json"
+  local f="$TDIR/proj/src/f.ts"
+  printf 'const x = "a";\n' > "$f"
+  run run_hook format-on-save "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$f\"}}"
+  [ "$status" -eq 0 ]
+  run cat "$f"
+  # Config wins: single quotes, no trailing semicolon. (Defaults would yield
+  # `const x = "a";` — double quotes + semi.)
+  [[ "$output" == "const x = 'a'" ]]
+}
+
+@test "format-on-save: skips formatting when the project has no prettier config (no bare defaults)" {
+  [ -x "$PRETTIERDIR/prettier" ] || skip "prettier unavailable"
+  export PATH="$PRETTIERDIR:$PATH"
+  mkdir -p "$TDIR/noconf"
+  local f="$TDIR/noconf/f.ts"
+  # Deliberately un-prettier-default spacing: if defaults were applied this
+  # collapses to `const x = "a";`. Absence of config must leave it untouched.
+  printf 'const   x   =   "a"\n' > "$f"
+  run run_hook format-on-save "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$f\"}}"
+  [ "$status" -eq 0 ]
+  run cat "$f"
+  [[ "$output" == 'const   x   =   "a"' ]]
+}
+
+@test "format-on-save: refuses to execute a JS prettier config (code-exec vector), leaves file untouched" {
+  [ -x "$PRETTIERDIR/prettier" ] || skip "prettier unavailable"
+  export PATH="$PRETTIERDIR:$PATH"
+  mkdir -p "$TDIR/jsconf"
+  # A .js config is a code-exec vector in the (unsandboxed) hook; the hook must
+  # neither load it nor fall back to defaults — it must skip entirely.
+  printf '%s\n' 'module.exports = { singleQuote: true, semi: false }' > "$TDIR/jsconf/prettier.config.js"
+  local f="$TDIR/jsconf/f.ts"
+  printf 'const   x   =   "a"\n' > "$f"
+  run run_hook format-on-save "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$f\"}}"
+  [ "$status" -eq 0 ]
+  run cat "$f"
+  [[ "$output" == 'const   x   =   "a"' ]]
+}
+
+@test "format-on-save: honors .prettierignore" {
+  [ -x "$PRETTIERDIR/prettier" ] || skip "prettier unavailable"
+  export PATH="$PRETTIERDIR:$PATH"
+  mkdir -p "$TDIR/ign/src"
+  printf '%s\n' '{ "singleQuote": true, "semi": false }' > "$TDIR/ign/.prettierrc.json"
+  printf '%s\n' 'src/f.ts' > "$TDIR/ign/.prettierignore"
+  local f="$TDIR/ign/src/f.ts"
+  printf 'const x = "a";\n' > "$f"
+  run run_hook format-on-save "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$f\"}}"
+  [ "$status" -eq 0 ]
+  run cat "$f"
+  # Ignored: original double-quote/semi content is preserved despite the config.
+  [[ "$output" == 'const x = "a";' ]]
 }

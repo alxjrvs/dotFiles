@@ -167,6 +167,7 @@ else
     ".config/sheldon/plugins.toml|sheldon/plugins.toml"
     ".config/mise/config.toml|mise.toml"
     ".config/gh/config.yml|gh/config.yml"
+    ".local/bin/gh-mcp-auth-header|gh/gh-mcp-auth-header"
     ".config/ghostty/config|ghostty/config"
     ".config/bat/config|bat/config"
     ".config/atuin/config.toml|atuin/config.toml"

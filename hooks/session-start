@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# hooks/session-start — SessionStart: append a session-start JSONL record.
+#
+# Reads session_id, source (startup|resume|clear|compact), model, cwd,
+# transcript_path from CC JSON on stdin. Appends
+# {ts, event:"session-start", ...} to the same per-session shard the stop
+# hook writes (~/.claude/state/sessions/<session_id>.jsonl), so one shard
+# carries the session's full start/stop bookends.
+#
+# Emits NOTHING on stdout: SessionStart plain stdout is injected into
+# Claude's context, and this hook is a journal, not a context source.
+# Always exits 0 — failures are best-effort (don't break session startup).
+#
+# Self-contained: no shared/ sourcing. All helpers defined inline.
+set -uo pipefail
+
+# ---------------------------------------------------------------------------
+# Read stdin JSON
+# ---------------------------------------------------------------------------
+INPUT=$(cat)
+
+# Best-effort logger: without jq there is nothing useful to record.
+if ! command -v jq > /dev/null 2>&1; then
+  exit 0
+fi
+
+TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || echo "")
+SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // ""' 2> /dev/null || true)
+SOURCE=$(printf '%s' "$INPUT" | jq -r '.source // ""' 2> /dev/null || true)
+MODEL=$(printf '%s' "$INPUT" | jq -r '.model // ""' 2> /dev/null || true)
+CWD_VAL=$(printf '%s' "$INPUT" | jq -r '.cwd // ""' 2> /dev/null || true)
+TRANSCRIPT=$(printf '%s' "$INPUT" | jq -r '.transcript_path // ""' 2> /dev/null || true)
+
+# ---------------------------------------------------------------------------
+# Append JSONL record to the per-session shard (same scheme as hooks/stop)
+# ---------------------------------------------------------------------------
+SESSIONS_DIR="${HOME}/.claude/state/sessions"
+mkdir -p "$SESSIONS_DIR"
+
+SHARD_ID="$SESSION_ID"
+if [[ -z "$SHARD_ID" && -n "$TRANSCRIPT" ]]; then
+  SHARD_ID=$(basename "$TRANSCRIPT")
+  SHARD_ID="${SHARD_ID%.*}"
+fi
+SHARD_ID=$(printf '%s' "$SHARD_ID" | tr -c 'A-Za-z0-9._-' '_')
+[[ -z "$SHARD_ID" ]] && SHARD_ID="unknown"
+
+LEDGER="${SESSIONS_DIR}/${SHARD_ID}.jsonl"
+# Secrets-at-rest: lock the shard to the owner on first creation.
+if [[ ! -e "$LEDGER" ]]; then
+  : >> "$LEDGER"
+  chmod 600 "$LEDGER" 2> /dev/null || true
+fi
+
+jq -cn \
+  --arg ts "$TS" \
+  --arg session_id "$SESSION_ID" \
+  --arg source "$SOURCE" \
+  --arg model "$MODEL" \
+  --arg cwd "$CWD_VAL" \
+  --arg transcript_path "$TRANSCRIPT" \
+  '{ts:$ts,event:"session-start",session_id:$session_id,source:$source,model:$model,cwd:$cwd,transcript_path:$transcript_path}' \
+  >> "$LEDGER" 2> /dev/null || true
+
+exit 0

@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# hooks/config-change — ConfigChange: append an anti-tamper JSONL record.
+#
+# Reads session_id, config_source (user_settings|project_settings|
+# local_settings|policy_settings|skills), cwd from CC JSON on stdin and
+# appends {ts, session_id, config_source, cwd} to a flat ledger at
+# ~/.claude/state/config-changes.jsonl (same shape as the precompact ledger).
+#
+# Telemetry ONLY: this hook never blocks a change (no exit 2, no
+# {decision:"block"}). The repo's stance is that tampering with tracked
+# config is git-visible; this ledger makes it session-visible too. A
+# blocking ConfigChange hook would also fire on every legitimate
+# settings.json edit made from inside a session — self-lock territory.
+# Always exits 0.
+#
+# Self-contained: no shared/ sourcing. All helpers defined inline.
+set -uo pipefail
+
+# ---------------------------------------------------------------------------
+# Read stdin JSON
+# ---------------------------------------------------------------------------
+INPUT=$(cat)
+
+# Best-effort logger: without jq there is nothing useful to record.
+if ! command -v jq > /dev/null 2>&1; then
+  exit 0
+fi
+
+TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || echo "")
+SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // ""' 2> /dev/null || true)
+CONFIG_SOURCE=$(printf '%s' "$INPUT" | jq -r '.config_source // ""' 2> /dev/null || true)
+CWD_VAL=$(printf '%s' "$INPUT" | jq -r '.cwd // ""' 2> /dev/null || true)
+
+# ---------------------------------------------------------------------------
+# Append JSONL record to the flat ledger
+# ---------------------------------------------------------------------------
+STATE_DIR="${HOME}/.claude/state"
+mkdir -p "$STATE_DIR"
+
+LEDGER="${STATE_DIR}/config-changes.jsonl"
+# Secrets-at-rest: lock the ledger to the owner on first creation.
+if [[ ! -e "$LEDGER" ]]; then
+  : >> "$LEDGER"
+  chmod 600 "$LEDGER" 2> /dev/null || true
+fi
+
+jq -cn \
+  --arg ts "$TS" \
+  --arg session_id "$SESSION_ID" \
+  --arg config_source "$CONFIG_SOURCE" \
+  --arg cwd "$CWD_VAL" \
+  '{ts:$ts,session_id:$session_id,config_source:$config_source,cwd:$cwd}' \
+  >> "$LEDGER" 2> /dev/null || true
+
+exit 0

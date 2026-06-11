@@ -10,6 +10,16 @@
 #
 # Install (idempotent; dot sync runs this automatically):
 #   lefthook install
+#
+# no_auto_install: dot sync owns hook installation (install/85-lefthook.sh
+# runs `lefthook install` on every sync). lefthook's own on-run resync is
+# disabled because Claude Code's sandbox hardcodes a denyWrite on .git/hooks:
+# when this config changes, the checksum drifts and lefthook tries to rewrite
+# .git/hooks/pre-commit on the next (sandboxed) git op, fails with "operation
+# not permitted", and nags "Run 'lefthook install' manually" on every commit
+# until an unsandboxed `lefthook install` refreshes the checksum. Disabling
+# the implicit install stops the nag and routes all install through dot sync.
+no_auto_install: true
 
 pre-commit:
   parallel: true

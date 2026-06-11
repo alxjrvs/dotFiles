@@ -72,6 +72,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `ssh/config` | `~/.ssh/config` (mode 600) |
 | `ssh/1password-agent.toml` | `~/.config/1Password/ssh/agent.toml` |
 | `ssh/git-ssh-sign` | `~/.local/bin/git-ssh-sign` (gpg.ssh.program wrapper) |
+| `gh/gh-mcp-auth-header` | `~/.local/bin/gh-mcp-auth-header` (github MCP headersHelper → `gh auth token`) |
 | `git-template/hooks/pre-commit` | `~/.config/git/template/hooks/pre-commit` (referenced by `core.hooksPath`) |
 | `dot` | `~/.local/bin/dot` |
 | `dot-claude/{CLAUDE.md, settings.json}` | `~/.claude/` (individually) |
@@ -203,7 +204,7 @@ Pause and confirm with the user before doing any of these:
 - **dot-claude vs .claude**: source of truth is `dot-claude/` in this repo. The `.claude/` directory at repo root holds machine-local overrides (gitignored) — don't confuse it with project-local Claude config.
 - **Sheldon plugin order matters**: `fast-syntax-highlighting` must be last in `sheldon/plugins.toml`. It wraps every existing ZLE widget at load time, so anything that registers a widget must run before sheldon's `eval` line in `zsh/30-plugins.zsh`.
 - **`dot` self-locates**: `dot` resolves `DOTFILES_DIR` from its own resolved symlink target, so the repo is relocatable. To move it: `mv` the repo, then run `DOTFILES_DIR=<new> <new>/dot sync --force` once to relink (or just re-run `bootstrap.sh`).
-- **settings.json excludedCommands is for unsandboxable tools only**: most allowed commands run fine *inside* the sandbox (bun/npm/cargo/mise/lefthook/gitleaks were tested and re-sandboxed 2026-06). Reserve `excludedCommands` for tools with hard unsandboxable dependencies: `git`/`gh` (signing socket, keychain), `brew` (Mach IPC), `open` (OS handoff), `dot` (hook dispatch), `pbcopy` (clipboard, deliberately exiled from the sandbox). If a newly-allowed command fails sandboxed, check which resource it needs (denyRead path? socket? domain?) before reaching for exclusion. **IMPORTANT (verified 2026-06-07):** commands run *sandboxed first* and are bound by `denyWrite`/`denyRead`/network rules — `excludedCommands` does NOT pre-emptively unsandbox them. The only thing that can unsandbox is `allowUnsandboxedCommands`, and it is **`false` (strict / closed)**: the `dangerouslyDisableSandbox` retry is ignored, so a sandbox-blocked command hard-fails instead of silently retrying unsandboxed. The hatch is operator-only — flip to `true` for a named tool, run it, flip back. Nothing needs it open: gh resolves its token from the macOS login keychain in-sandbox (see the gh entry below), so HTTPS push via the gh credential helper now works on the first sandboxed attempt (SSH still can't — no raw TCP). Still true that `github.com` must stay in `allowedDomains` (the sandboxed first attempt + any sandboxed fetch needs it) and `~/.gitconfig` writes are blocked in-sandbox; per-repo `.git/config`/`.git/hooks` are deliberately writable (clone/init/lefthook hook-sync/`git maintenance` need them — and note `Edit(...)` deny rules MERGE into the sandbox denyWrite, so an Edit-only deny there would re-block them; verified 2026-06-09). Treat `excludedCommands` as "still runs sandboxed-first, just routes through the permission flow" (**exclusion ≠ unsandboxed**); treat `allowUnsandboxedCommands` as "closed by default; operator-triggered escape only."
+- **settings.json excludedCommands is for unsandboxable tools only**: most allowed commands run fine *inside* the sandbox (bun/npm/cargo/mise/lefthook/gitleaks were tested and re-sandboxed 2026-06). Reserve `excludedCommands` for tools with hard unsandboxable dependencies: `git`/`gh` (signing socket, keychain), `brew` (Mach IPC), `open` (OS handoff), `dot` (hook dispatch), `pbcopy` (clipboard, deliberately exiled from the sandbox). If a newly-allowed command fails sandboxed, check which resource it needs (denyRead path? socket? domain?) before reaching for exclusion. **IMPORTANT (verified 2026-06-07):** commands run *sandboxed first* and are bound by `denyWrite`/`denyRead`/network rules — `excludedCommands` does NOT pre-emptively unsandbox them. The only thing that can unsandbox is `allowUnsandboxedCommands`, and it is **`false` (strict / closed)**: the `dangerouslyDisableSandbox` retry is ignored, so a sandbox-blocked command hard-fails instead of silently retrying unsandboxed. The hatch is operator-only — flip to `true` for a named tool, run it, flip back. Nothing needs it open: gh resolves its token from the macOS login keychain in-sandbox (see the gh entry below), so HTTPS push via the gh credential helper now works on the first sandboxed attempt (SSH still can't — no raw TCP). Still true that `github.com` must stay in `allowedDomains` (the sandboxed first attempt + any sandboxed fetch needs it) and `~/.gitconfig` writes are blocked in-sandbox; per-repo `.git/config`/`.git/hooks` writes are HARDCODED-DENIED in-sandbox (re-verified 2026-06-10: `.git` root and `refs/` writable, `hooks/` and `config` EPERM — a built-in protection, not a settings rule, so there is nothing to relax; this supersedes the 2026-06-09 "deliberately writable" finding). lefthook is engineered around it: `no_auto_install: true` + `dot sync` owns `lefthook install`, which must run from a regular terminal after lefthook.yml changes (the sandboxed resync EPERMs and skips — benign-but-scary "sync hooks: ❌" line). Treat `excludedCommands` as "still runs sandboxed-first, just routes through the permission flow" (**exclusion ≠ unsandboxed**); treat `allowUnsandboxedCommands` as "closed by default; operator-triggered escape only."
 - **settings.json denyRead + Read-deny mirrors**: `sandbox.filesystem.denyRead` constrains Bash subprocesses only; the built-in Read tool bypasses the sandbox entirely. Every credential path added to `denyRead` needs a matching `Read(...)` rule in `permissions.deny`, or the protection is half-open. The companion is `denyWrite` (also Bash-only; Read/Edit tools bypass it) for anti-tamper of credential/exec files — mirror sensitive *write* targets with `Edit(...)` denies the same way. **Never `denyWrite` (or `Edit()`-deny) a git-tracked file in this repo** (`dot-claude/settings.json`, `hooks/*`, `dot`): because git runs sandboxed, `denyWrite` blocks `git checkout`/`rebase` on it, and an `Edit()` deny on the live `~/.claude/settings.json` (or its repo symlink target) self-locks the file against every in-session edit path — recoverable only from an external unsandboxed shell.
 - **`gh` reads `~/.config/gh/hosts.yml` at startup, and resolves its token from the keychain** (changed 2026-06-07): `hosts.yml` is sandbox-readable (it carries only non-secret host metadata — host/protocol/username, no `oauth_token`); the OAuth token lives in the macOS login keychain (gh secure storage). Sandboxed gh works because `hosts.yml` is no longer `denyRead` AND `~/Library/Keychains/login.keychain-db` is in `sandbox.filesystem.allowRead` (so the legacy keychain search finds gh's item; securityd still gates decryption per-item by code signature). So `gh auth status`/`token`/`git-credential` all succeed in-sandbox. If a future `gh auth login` ever uses `--insecure-storage` it will dump the token plaintext into `hosts.yml` — don't; re-login with default (secure) storage. `gh auth status` should show `(keyring)`.
 - **`dot sync --only=<tag>` requires the tag to exist**: a module's declared tag and the `--only=` value must agree, or `--only=foo` silently runs nothing.
@@ -223,3 +224,42 @@ Pause and confirm with the user before doing any of these:
   Without these, sandboxed `dot doctor` / SSH-auth / `pueue status` fail
   with "Operation not permitted" even though the daemons are up — a
   sandbox-visibility false negative, not a real outage.
+- **Linked-worktree shared `.git` carve-out (docs) vs background-job reality
+  (observed 2026-06-10)**: the docs say that when the cwd is a linked git
+  worktree, the sandbox auto-allows writes to the main repository's shared
+  `.git` (refs/index; `hooks/` and `config` stay denied as hardcoded
+  behavior). **In background-job sessions this carve-out did NOT apply**: a
+  worktree session's `git commit` failed with EPERM on the main repo's
+  `.git/worktrees/<name>/index.lock`. Root cause of the wider incident:
+  **filesystem `allowWrite` globs compile literally, same as
+  `allowUnixSockets`** — `~/**/.git` and `~/**/node_modules` in the global
+  sandbox block are dead entries (verified by probe: a repo's `.git` outside
+  the session's cwd root is unwritable; the cwd "." root is why git normally
+  works). Policy (settled 2026-06-10): NO per-repo carve-outs and NO broad
+  `~/Code` allowWrite (proposed and rejected as too wide — it would let any
+  sandboxed command tamper with this repo's unsandboxed exec surfaces:
+  `dot`, `hooks/*`, `ssh/git-ssh-sign`). The glob entries stay as written
+  for interactive sessions (unverified there), but assume they grant
+  nothing in background jobs. Consequence: **launch worktree background
+  jobs from the REPO ROOT, not the worktree** — the `.claude/worktrees/`
+  layout keeps the worktree inside the repo, so the cwd root covers both
+  the worktree and the main `.git`, and commits work with zero config. The
+  docs' built-in linked-worktree carve-out failing to fire in a
+  worktree-cwd jobs session is an upstream bug candidate (observed
+  v2.1.172). Also disproven along the way: the `com.apple.provenance`
+  xattr does NOT block sandboxed writes inside an allowed root (probed) —
+  when you see EPERM, suspect the allowlist before TCC. Filesystem sandbox
+  paths document NO glob support (only `/`, `~/`, `./` prefixes) — don't
+  add new `*` entries to these arrays.
+- **Domain-fronting residual (accepted, documented 2026-06-10)**: the sandbox
+  proxy makes its allow/deny decision from the client-supplied hostname
+  WITHOUT TLS inspection, so any allowed broad domain (`github.com`, the
+  `*.githubusercontent.com`/`*.npmjs.org` wildcards) is a theoretical
+  exfiltration path for a prompt-injected command. The documented mitigation —
+  a TLS-terminating proxy via `sandbox.network.httpProxyPort` with its CA
+  installed in-sandbox — is deliberately NOT adopted (daily-driver friction
+  outweighs the threat model). Revisit if first-party TLS-aware isolation
+  lands. (`@anthropic-ai/sandbox-runtime` was evaluated and dropped
+  2026-06-10 — this stack is claude-native; the built-in sandbox is the
+  boundary. Known accepted residual: hooks and MCP servers run as separate
+  processes outside the Bash sandbox.)

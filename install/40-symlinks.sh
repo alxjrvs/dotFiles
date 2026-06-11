@@ -124,6 +124,11 @@ _symlinks_run() {
   if should_run symlinks gh; then
     mkdir -p "${HOME}/.config/gh"
     link "${df}/gh/config.yml" "${HOME}/.config/gh/config.yml"
+    # headersHelper for the user-scope github MCP server (registered by
+    # install/60-claude.sh) — resolves the bearer token from the gh keychain
+    # on demand, so no PAT is exported into the shell env.
+    mkdir -p "${HOME}/.local/bin"
+    link "${df}/gh/gh-mcp-auth-header" "${HOME}/.local/bin/gh-mcp-auth-header"
   fi
 
   # ── Claude Code ───────────────────────────────────────────────────────

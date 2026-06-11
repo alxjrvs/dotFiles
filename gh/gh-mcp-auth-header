@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# gh-mcp-auth-header — emit the GitHub MCP Authorization header as JSON.
+#
+# Used as the `headersHelper` for the user-scope `github` HTTP MCP server
+# (registered by install/60-claude.sh into ~/.claude.json). Claude Code runs
+# this at MCP connection time and merges the JSON it prints to stdout into the
+# request headers, so the bearer token is resolved on demand from the gh
+# keychain — never exported into the shell env (which would leak it into every
+# Bash subprocess Claude Code spawns) and never written to disk.
+#
+# This is what makes the .zprofile claim — "the github MCP authenticates via
+# the gh keychain directly, so no env export is needed" — actually true: the
+# official github plugin's MCP hard-codes `Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}`,
+# which is empty here on purpose, so that plugin is disabled in favour of this.
+#
+# Contract: print a JSON object of headers to stdout. On any failure, print an
+# empty object so the connection fails cleanly (no Authorization header) rather
+# than sending a malformed `Bearer ` with an empty value.
+set -euo pipefail
+
+token="$(gh auth token 2> /dev/null)" || {
+  printf '{}\n'
+  exit 0
+}
+
+[[ -n "${token}" ]] || {
+  printf '{}\n'
+  exit 0
+}
+
+# gh tokens are [A-Za-z0-9_]; no JSON escaping required.
+printf '{"Authorization":"Bearer %s"}\n' "${token}"

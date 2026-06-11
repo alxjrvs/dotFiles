@@ -2,15 +2,24 @@
 # hooks/format-on-save — PostToolUse: auto-format edited files by extension.
 #
 # Routes on file extension:
-#   .sh               -> shfmt -w -i 2          (format)
-#   .ts/.tsx/.js/.jsx -> prettier --write --no-config   (format)
-#   .css              -> prettier --write --no-config   (format)
+#   .sh               -> shfmt -w -i 2                    (format)
+#   .ts/.tsx/.js/.jsx -> prettier --write --config <cfg>  (format, see below)
+#   .css              -> prettier --write --config <cfg>  (format, see below)
 #   other             -> no-op
 #
-# Formatters never execute repo-local config: prettier runs --no-config so a
-# hostile repo's prettier.config.js / plugins cannot run as code. The eslint
-# --fix arm was removed entirely — it auto-exec'd project-local eslint
-# (eslint.config.js) UNSANDBOXED, a code-exec vector.
+# prettier is project-config-aware but never executes repo config AS CODE.
+# Hooks run UNSANDBOXED, so a JS config (prettier.config.js, .prettierrc.cjs,
+# …) — or the eslint --fix arm that used to live here (eslint.config.js) — is a
+# code-exec vector. The rule:
+#   - resolve the edited file's own config via `prettier --find-config-path`;
+#   - NO config            -> skip entirely (never apply bare prettier defaults,
+#                             which churn repos to double-quote+semi style);
+#   - JS config (*.js/.cjs/.mjs/.ts/.mts/.cts) -> skip (would run as code);
+#   - data config (.prettierrc, *.json/.json5/.yaml/.yml/.toml, package.json)
+#                          -> format with `--config <that file>`.
+# Run from the config's directory so `.prettierignore` is honored. A data
+# config can still *name* a plugin (prettier loads it) — executing a JS config
+# FILE is the vector this blocks; that boundary was a deliberate choice.
 #
 # Non-gating lint-as-context arm (single-file scope, NEVER blocks):
 #   .sh      -> shellcheck
@@ -75,6 +84,55 @@ _run_tool() {
 }
 
 # ---------------------------------------------------------------------------
+# _prettier_format <file>
+# Config-aware prettier: format the file with its OWN project config, but only
+# when that config is a pure-data file. Skips silently when no config exists
+# (never applies bare defaults) or when the config is a JS file (code-exec
+# vector — hooks run unsandboxed). Runs from the config's directory so a
+# project .prettierignore is honored.
+# ---------------------------------------------------------------------------
+_prettier_format() {
+  local file="$1"
+  local fdir fbase cfg cfg_abs cfg_dir cfg_base cfg_ext
+
+  fdir=$(dirname "$file")
+  fbase=$(basename "$file")
+
+  # Resolve the config that prettier itself would use for this file. Exits
+  # non-zero (and prints to stderr) when none is found -> empty cfg -> skip.
+  cfg=$(cd "$fdir" && _run_tool prettier --find-config-path "$fbase" 2> /dev/null) || return 0
+  [[ -z "$cfg" ]] && return 0
+
+  # Resolve to an absolute path (find-config-path prints it relative to cwd).
+  case "$cfg" in
+    /*) cfg_abs="$cfg" ;;
+    *) cfg_abs="$fdir/$cfg" ;;
+  esac
+  # pwd -P (physical): prettier realpath()s the target file before matching it
+  # against .prettierignore, so cwd and the file arg must both be resolved
+  # through symlinks or the ignore patterns anchor at the wrong root.
+  cfg_dir=$(cd "$(dirname "$cfg_abs")" 2> /dev/null && pwd -P) || return 0
+  cfg_base=$(basename "$cfg_abs")
+  cfg_abs="$cfg_dir/$cfg_base"
+
+  # Reject JS-family config files — loading them executes arbitrary code.
+  cfg_ext="${cfg_base##*.}"
+  case "$cfg_ext" in
+    js | cjs | mjs | ts | mts | cts) return 0 ;;
+  esac
+
+  # Data config: format honoring it. Run from the config dir so .prettierignore
+  # (resolved relative to cwd) applies. cfg_dir was physicalized via `pwd -P`,
+  # so the file must be too — otherwise a symlinked path (e.g. macOS /var ->
+  # /private/var) leaves cwd and the file arg with mismatched prefixes and
+  # prettier can't anchor the ignore patterns. Best-effort, never blocks.
+  local file_dir file_phys
+  file_dir=$(cd "$fdir" 2> /dev/null && pwd -P) || return 0
+  file_phys="$file_dir/$fbase"
+  (cd "$cfg_dir" && _run_tool prettier --write --config "$cfg_abs" "$file_phys") > /dev/null 2>&1 || true
+}
+
+# ---------------------------------------------------------------------------
 # Format by extension (mutating, best-effort, never blocks)
 # ---------------------------------------------------------------------------
 case "$EXT" in
@@ -87,10 +145,10 @@ case "$EXT" in
     ;;
 
   ts | tsx | js | jsx | css)
-    # --no-config: never load (and thus never execute) repo-local prettier
-    # config or plugins.
+    # Config-aware: honor the file's own data-format prettier config, skip when
+    # absent (no bare defaults) or when it's a JS config (code-exec vector).
     if _have_tool prettier; then
-      _run_tool prettier --write --no-config "$FILE_PATH" > /dev/null 2>&1 || true
+      _prettier_format "$FILE_PATH"
     fi
     ;;
 

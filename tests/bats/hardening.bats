@@ -272,6 +272,19 @@ sjq() { jq -e "$1" "$SETTINGS" > /dev/null; }
   sjq '.permissions.deny | index("Read(~/.docker/config.json)")'
 }
 
+@test "settings: .env templates are carved back IN for read (allowRead within the .env.* deny)" {
+  # The broad `**/.env.*` denyRead also catches non-secret templates
+  # (.env.example/.template/.sample). Those must be readable or sandboxed
+  # tooling (e.g. `git status` over a repo that tracks apps/*/.env.example)
+  # fails with "Operation not permitted". Claude compiles these allowRead
+  # entries into the profile's read.allowWithinDeny list; this pins that the
+  # carve-outs are declared and can't be silently dropped by a future edit.
+  sjq '.sandbox.filesystem.denyRead  | index("**/.env.*")'
+  sjq '.sandbox.filesystem.allowRead | index("/**/.env.example")'
+  sjq '.sandbox.filesystem.allowRead | index("/**/.env.template")'
+  sjq '.sandbox.filesystem.allowRead | index("/**/.env.sample")'
+}
+
 @test "settings: destructive dev ops are ask-gated, not hard-denied" {
   for rule in "Bash(git reset --hard *)" "Bash(git clean *)" "Bash(git commit --amend*)" \
               "Bash(gh release delete*)" "Bash(npm publish*)" "Bash(bun publish*)"; do

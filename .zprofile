@@ -11,11 +11,14 @@ export PATH="$HOME/.local/bin:$PATH"
 # keychain) so the github MCP server could inherit it at fork time. But that
 # also placed the token in the env of every Bash subprocess Claude Code spawns
 # (CLAUDE_CODE_SUBPROCESS_ENV_SCRUB only strips Anthropic/cloud creds, not a
-# GitHub PAT), making it a low-friction exfiltration target. The github plugin
-# MCP server authenticates via the `gh` keychain directly, so no env export is
-# needed. Anything that genuinely needs the token should resolve it on demand
-# with `gh auth token` (keychain-backed) rather than inheriting a long-lived
-# copy from the login shell.
+# GitHub PAT, and its list is not user-extensible), making it a low-friction
+# exfiltration target. Instead the github MCP server resolves the token on
+# demand from the gh keychain: the stock github plugin (which hard-codes
+# `Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}` and so can't, leaving it empty) is
+# disabled, replaced by a user-scope `github` server whose `headersHelper`
+# (gh/gh-mcp-auth-header -> ~/.local/bin) runs `gh auth token` at connect time.
+# Anything else that genuinely needs the token should likewise resolve it on
+# demand with `gh auth token` rather than inheriting a long-lived copy here.
 
 # Git signing -> dedicated ssh-agent at a FIXED socket path (silent signing,
 # no per-commit prompts). Fixed path because the Claude sandbox compiles

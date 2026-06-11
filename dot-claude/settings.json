@@ -2,7 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
     "EDITOR": "nvim",
-    "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1"
+    "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
     "allow": [
@@ -193,6 +194,54 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/dot hook session-start",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/dot hook session-end",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/dot hook config-change",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/dot hook permission-request",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   },
   "worktree": {
@@ -212,9 +261,10 @@
     "command": "~/.local/bin/dot subagent-statusline"
   },
   "enabledPlugins": {
-    "github@claude-plugins-official": true,
+    "github@claude-plugins-official": false,
     "commit-commands@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": true
+    "superpowers@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -338,7 +388,23 @@
       "pbcopy"
     ]
   },
+  "skipWorkflowUsageWarning": true,
   "editorMode": "vim",
   "inputNeededNotifEnabled": true,
-  "skipWorkflowUsageWarning": true
+  "model": "claude-opus-4-8",
+  "fallbackModel": ["claude-opus-4-7", "claude-sonnet-4-6"],
+  "teammateMode": "in-process",
+  "attribution": {
+    "commit": "Co-Authored-By: Claude <noreply@anthropic.com>"
+  },
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "high",
+  "autoMode": {
+    "soft_deny": [
+      "$defaults",
+      "Never edit dependency lockfiles by hand",
+      "Never delete the base branch of an open pull request",
+      "Never write a plaintext secret or token into any file; secrets resolve through 1Password (op://) or the system keychain"
+    ]
+  }
 }
