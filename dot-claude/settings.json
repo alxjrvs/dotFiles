@@ -389,6 +389,7 @@
     ]
   },
   "skipWorkflowUsageWarning": true,
+  "skipAutoPermissionPrompt": true,
   "editorMode": "vim",
   "inputNeededNotifEnabled": true,
   "model": "claude-opus-4-8",
