@@ -141,14 +141,22 @@ run_sl() {
   local f="$1"
   rm -rf "$T/.claude/state/cost"
   mkdir -p "$T/.claude/state/cost"
-  (cd "$T/nonrepo" && HOME="$T" XDG_CACHE_HOME="$T/.cache" COLUMNS=120 \
-    CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80 PATH="$TOOLPATH" \
-    bash "$ROOT/share/claude-statusline/statusline.sh" < "$GOLDEN/json/${f}.json" 2> /dev/null)
+  # Unset git-discovery env vars so the statusline git segment reflects the
+  # non-repo cwd, not an ambient repo. git honors GIT_DIR/GIT_INDEX_FILE over
+  # the working directory, and a `git push` pre-push hook exports both — without
+  # this the fixtures render the live repo and every statusline golden mismatches.
+  (cd "$T/nonrepo" &&
+    unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_COMMON_DIR GIT_PREFIX &&
+    HOME="$T" XDG_CACHE_HOME="$T/.cache" COLUMNS=120 \
+      CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80 PATH="$TOOLPATH" \
+      bash "$ROOT/share/claude-statusline/statusline.sh" < "$GOLDEN/json/${f}.json" 2> /dev/null)
 }
 run_sub() {
   local f="$1"
-  (cd "$T/nonrepo" && HOME="$T" XDG_CACHE_HOME="$T/.cache" COLUMNS=168 PATH="$TOOLPATH" \
-    bash "$ROOT/share/claude-statusline/subagent-statusline.sh" < "$GOLDEN/subagent/${f}.json" 2> /dev/null)
+  (cd "$T/nonrepo" &&
+    unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_COMMON_DIR GIT_PREFIX &&
+    HOME="$T" XDG_CACHE_HOME="$T/.cache" COLUMNS=168 PATH="$TOOLPATH" \
+      bash "$ROOT/share/claude-statusline/subagent-statusline.sh" < "$GOLDEN/subagent/${f}.json" 2> /dev/null)
 }
 
 for f in clean-main dirty-feature worktree pr-pass; do
