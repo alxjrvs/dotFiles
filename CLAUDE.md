@@ -232,18 +232,28 @@ Pause and confirm with the user before doing any of these:
   worktree session's `git commit` failed with EPERM on the main repo's
   `.git/worktrees/<name>/index.lock`. Root cause of the wider incident:
   **filesystem `allowWrite` globs compile literally, same as
-  `allowUnixSockets`** — `~/**/.git` and `~/**/node_modules` in the global
-  sandbox block are dead entries (verified by probe: a repo's `.git` outside
-  the session's cwd root is unwritable; the cwd "." root is why git normally
-  works). Policy (settled 2026-06-10): NO per-repo carve-outs and NO broad
+  `allowUnixSockets`** — `~/**/.git` and `~/**/node_modules` were dead
+  entries (verified by probe: a repo's `.git` outside the session's cwd
+  root is unwritable; the cwd "." root is why git normally works). **Both
+  globs were REMOVED 2026-06-11** (re-probed dead in a background job: a
+  `node_modules`/`.git` path outside the cwd root still EPERMs without
+  them) — they granted nothing and falsely implied *external* worktrees
+  (`git worktree add` to a sibling path outside the repo) were supported.
+  They never could be: no glob can express "the `.git` of whatever repo
+  this external worktree belongs to," and the only entries that would work
+  are the ones policy rejects. `tests/bats/hardening.bats` now asserts
+  `allowWrite` carries no `**` glob, so the dead entries can't creep back.
+  Policy (settled 2026-06-10): NO per-repo carve-outs and NO broad
   `~/Code` allowWrite (proposed and rejected as too wide — it would let any
   sandboxed command tamper with this repo's unsandboxed exec surfaces:
-  `dot`, `hooks/*`, `ssh/git-ssh-sign`). The glob entries stay as written
-  for interactive sessions (unverified there), but assume they grant
-  nothing in background jobs. Consequence: **launch worktree background
-  jobs from the REPO ROOT, not the worktree** — the `.claude/worktrees/`
-  layout keeps the worktree inside the repo, so the cwd root covers both
-  the worktree and the main `.git`, and commits work with zero config. The
+  `dot`, `hooks/*`, `ssh/git-ssh-sign`). **External worktrees are
+  unsupported; use the nested `.claude/worktrees/<name>` layout** (the
+  EnterWorktree tool / Agent `isolation: worktree`), whose writes work via
+  the cwd "." root — a spawned worktree agent commits to the shared `.git`
+  with zero config (re-verified 2026-06-11). Consequence: **launch worktree
+  background jobs from the REPO ROOT, not the worktree** — the
+  `.claude/worktrees/` layout keeps the worktree inside the repo, so the cwd
+  root covers both the worktree and the main `.git`, and commits work. The
   docs' built-in linked-worktree carve-out failing to fire in a
   worktree-cwd jobs session is an upstream bug candidate (observed
   v2.1.172). Also disproven along the way: the `com.apple.provenance`

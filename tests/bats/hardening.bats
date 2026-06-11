@@ -207,10 +207,23 @@ SETTINGS="$ROOT/dot-claude/settings.json"
 sjq() { jq -e "$1" "$SETTINGS" > /dev/null; }
 
 @test "settings: ~/.gitconfig is not sandbox-writable (no allowWrite entry)" {
-  # Broad allows for ~/.cargo/**, ~/**/.git/**, /opt/homebrew are intentional —
-  # they keep tools working and are carved by denyWrite below. But ~/.gitconfig
-  # has no legit sandboxed writer, so it stays out of allowWrite entirely.
+  # The cwd "." root keeps in-project writes working (incl. nested
+  # .claude/worktrees/<name> and the enclosing repo .git); ~/.cargo and
+  # /opt/homebrew are the only broad allows, carved by denyWrite below.
+  # ~/.gitconfig has no legit sandboxed writer, so it stays out of allowWrite.
   run jq -e '.sandbox.filesystem.allowWrite | index("~/.gitconfig")' "$SETTINGS"
+  [ "$status" -ne 0 ]
+}
+
+@test "settings: allowWrite carries no '**' glob (they compile literally = dead grants)" {
+  # Filesystem sandbox paths support only /, ~/, ./ prefixes — '**' is matched
+  # as literal characters, never expanded. Past attempts to bridge external
+  # worktree .git writes with ~/**/.git and ~/**/node_modules were dead entries
+  # (probe-verified): they granted nothing and falsely implied external
+  # worktrees were supported. The supported path is the nested
+  # .claude/worktrees/<name> layout, writable via the cwd "." root. Keep
+  # allowWrite glob-free so no dead entry re-creates that false expectation.
+  run jq -e '.sandbox.filesystem.allowWrite | any(test("\\*\\*"))' "$SETTINGS"
   [ "$status" -ne 0 ]
 }
 
