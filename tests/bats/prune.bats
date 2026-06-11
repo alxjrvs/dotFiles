@@ -36,10 +36,12 @@ _setup_prune() {
 @test "prune ask-mode pass leaves files in place on non-TTY" {
   _setup_prune
   export PRUNE_MODE=ask
-  mkdir -p "$TDIR/.claude/state/cost/2020-01-01"
-  run _prune_stale_cost_dirs "$TDIR" < /dev/null
+  mkdir -p "$TDIR/.claude/state/sessions"
+  echo '{}' > "$TDIR/.claude/state/sessions/old.jsonl"
+  touch -t 202001010000 "$TDIR/.claude/state/sessions/old.jsonl"
+  run _prune_session_shards "$TDIR" < /dev/null
   [ "$status" -eq 0 ]
-  [ -d "$TDIR/.claude/state/cost/2020-01-01" ]
+  [ -e "$TDIR/.claude/state/sessions/old.jsonl" ]
 }
 
 # ── worktree classification: git failure is NOT "clean" ─────────────────────
@@ -65,25 +67,15 @@ _setup_prune() {
 }
 
 # ── pass effects under auto / dry ────────────────────────────────────────────
-@test "prune cost dirs: auto deletes stale, keeps today" {
-  _setup_prune
-  export PRUNE_MODE=auto
-  local today
-  today=$(date +%Y-%m-%d)
-  mkdir -p "$TDIR/.claude/state/cost/2020-01-01" "$TDIR/.claude/state/cost/$today"
-  run _prune_stale_cost_dirs "$TDIR"
-  [ "$status" -eq 0 ]
-  [ ! -d "$TDIR/.claude/state/cost/2020-01-01" ]
-  [ -d "$TDIR/.claude/state/cost/$today" ]
-}
-
-@test "prune cost dirs: dry mode deletes nothing" {
+@test "prune session shards: dry mode deletes nothing" {
   _setup_prune
   export PRUNE_MODE=dry
-  mkdir -p "$TDIR/.claude/state/cost/2020-01-01"
-  run _prune_stale_cost_dirs "$TDIR"
+  mkdir -p "$TDIR/.claude/state/sessions"
+  echo '{}' > "$TDIR/.claude/state/sessions/old.jsonl"
+  touch -t 202001010000 "$TDIR/.claude/state/sessions/old.jsonl"
+  run _prune_session_shards "$TDIR"
   [ "$status" -eq 0 ]
-  [ -d "$TDIR/.claude/state/cost/2020-01-01" ]
+  [ -e "$TDIR/.claude/state/sessions/old.jsonl" ]
 }
 
 @test "prune backups: auto deletes guarded-safe .bak, keeps unsafe" {
@@ -117,11 +109,13 @@ _setup_prune() {
 
 # ── standalone flag plumbing (dot prune must preserve these) ─────────────────
 @test "prune standalone: --dry-run flag reaches PRUNE_MODE" {
-  mkdir -p "$TDIR/.claude/state/cost/2020-01-01"
+  mkdir -p "$TDIR/.claude/state/sessions"
+  echo '{}' > "$TDIR/.claude/state/sessions/old.jsonl"
+  touch -t 202001010000 "$TDIR/.claude/state/sessions/old.jsonl"
   export DOTFILES_DIR="$ROOT"
   run "$ROOT/install/95-prune.sh" --dry-run
   [ "$status" -eq 0 ]
-  [ -d "$TDIR/.claude/state/cost/2020-01-01" ]
+  [ -e "$TDIR/.claude/state/sessions/old.jsonl" ]
 }
 
 @test "dot prune dispatches to 95-prune.sh directly (flags survive)" {

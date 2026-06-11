@@ -22,9 +22,8 @@
 #   "[Xh Ym left]" time label computed from `resets_at - now`. These are
 #   NOT strictly comparable — the harness strips them before diffing.
 #
-#   Statusline line 6 ("today $X") appears ONLY when cross-session cost
-#   files exist. The harness uses a clean temp HOME so only the per-session
-#   "$cost" portion appears — that IS strictly comparable.
+#   Statusline line 6 ("$cost") is rendered purely from the stdin JSON
+#   (cost.total_cost_usd / total_duration_ms) — strictly comparable.
 #
 #   Subagent "elapsed" fields are computed from `startTime - now_ms`. These
 #   are NOT strictly comparable. The harness strips the elapsed field from
@@ -73,8 +72,7 @@ TMPDIR_TEST="${TMPDIR:-/tmp}/golden-harness-$$"
 mkdir -p "$TMPDIR_TEST"
 trap 'rm -rf "$TMPDIR_TEST"' EXIT
 
-mkdir -p "$TMPDIR_TEST/.cache/git-data"
-mkdir -p "$TMPDIR_TEST/.claude/state/cost"
+mkdir -p "$TMPDIR_TEST/.cache/git-data" "$TMPDIR_TEST/.claude"
 cat > "$TMPDIR_TEST/.claude/settings.json" << 'EOF'
 {
   "advisorModel": "claude-haiku-4-5"
@@ -131,10 +129,6 @@ run_statusline() {
     echo "SKIP: json fixture $fixture_name not found"
     return
   }
-
-  # Clean cost dir so each run starts fresh (no cross-session "today" total).
-  rm -rf "$TMPDIR_TEST/.claude/state/cost"
-  mkdir -p "$TMPDIR_TEST/.claude/state/cost"
 
   local nonrepo_dir="$TMPDIR_TEST/nonrepo"
   mkdir -p "$nonrepo_dir"

@@ -29,7 +29,6 @@ PIP_OVERFLOW='!'                        # burn-projection overflow marker (rende
 GLYPH_BRANCH=$(printf '\xee\x82\xa0')   #   U+E0A0  powerline branch
 GLYPH_WORKTREE=$(printf '\xef\x83\xa8') #  U+F0E8  fa sitemap
 GLYPH_PR=$(printf '\xef\x90\x87')       #   U+F407  octicon git-pull-request
-MIDDOT=$(printf '\xc2\xb7')             # ·  U+00B7
 EMDASH=$(printf '\xe2\x80\x94')         # —  U+2014
 
 # ── Style primitives ──────────────────────────────────────────────────────
@@ -216,7 +215,6 @@ fi
 # addition or a local reorder can't silently shift every field — unknown keys
 # are ignored, missing keys keep their default.
 fields=$(printf '%s' "$input" | jq -r '
-  "session_id=\(.session_id // "")",
   "used_pct=\(.context_window.used_percentage // "" | tostring)",
   "worktree_name=\(.worktree.name // "")",
   "project_dir=\(.workspace.project_dir // "")",
@@ -237,7 +235,7 @@ fields=$(printf '%s' "$input" | jq -r '
   "cols=\((.columns // .terminal.columns) // "" | tostring)"
 ' 2> /dev/null)
 
-session_id="" used_pct="" worktree_name_input="" project_dir="" cwd_input=""
+used_pct="" worktree_name_input="" project_dir="" cwd_input=""
 model_name="" effort_level="" cost_usd="" duration_ms=0 lines_added=0
 lines_removed=0 pr_number="" pr_state="" exceeds_200k="" five_pct=""
 five_resets_at="" seven_pct="" seven_resets_at="" cols=""
@@ -247,7 +245,6 @@ while IFS= read -r _kv || [ -n "$_kv" ]; do
   _k=${_kv%%=*}
   _v=${_kv#*=}
   case "$_k" in
-    session_id) session_id=$_v ;;
     used_pct) used_pct=$_v ;;
     worktree_name) worktree_name_input=$_v ;;
     project_dir) project_dir=$_v ;;
@@ -500,16 +497,5 @@ if [ -n "$cost_display" ]; then
     if (c ~ /^[0-9]+(\.[0-9]+)?$/ && c+0 > 0 && d+0 >= 60000)
       printf "$%.2f/h", (c+0) / ((d+0)/3600000.0) }')
   [ -n "$burn" ] && money="${money} (${burn})"
-
-  # Cross-session daily total under ~/.claude/state/cost/<date>/<session>.
-  if [ -n "$session_id" ] && printf '%s' "$cost_usd" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
-    date_dir="$HOME/.claude/state/cost/$(date +%Y-%m-%d)"
-    mkdir -p "$date_dir" 2> /dev/null
-    fname=$(printf '%s' "$session_id" | tr '/\\.' '_')
-    printf '%s' "$cost_usd" > "$date_dir/$fname" 2> /dev/null
-    day_total=$(awk 'FNR==1{ if ($1 ~ /^[0-9.]+$/ && $1+0>=0) s+=$1 } END{ printf "%.6f", s+0 }' "$date_dir"/* 2> /dev/null)
-    today=$(awk -v day="$day_total" -v self="$cost_usd" 'BEGIN{ if (day > self+0.005) printf "%.2f", day }')
-    [ -n "$today" ] && money="${money}${MUTED} ${MIDDOT} today ${RST}${GREEN}\$${today}"
-  fi
   printf '%s[%s%s%s%s]%s\n' "$MUTED" "$RST" "$GREEN" "$money" "$MUTED" "$RST"
 fi

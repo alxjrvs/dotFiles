@@ -97,8 +97,8 @@ The pre-seeded cache file overrides live git state for the duration of the run.
 
 **statusline**: runs from a scratch non-repo directory (`$TMPDIR/.../nonrepo`)
 so `git_data::run()` finds no repo and writes an empty cache. Line 1 shows only
-the `project_dir` from the JSON (no live git counters). The cost state dir is
-cleared before each run so no cross-session "today $X" total appears.
+the `project_dir` from the JSON (no live git counters). The cost line is
+rendered purely from the stdin JSON — the statusline writes nothing to disk.
 
 **subagent-statusline**: pure JSON transform; no git or filesystem access. Runs
 from the same non-repo scratch dir.
@@ -126,8 +126,7 @@ behavior is invisible (cache is regenerated on next `git-data` run). Both
 | `statusline-*.txt` line 3 | autocompact marker pos | YES (pinned CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80) | byte-for-byte diff |
 | `statusline-*.txt` lines 4-5 | bar fill, %, delta | YES | byte-for-byte diff (after strip) |
 | `statusline-*.txt` lines 4-5 | `[Xh Ym left]` time label | **NO** — depends on `now - resets_at` | `strip_time_labels()` strips before diff |
-| `statusline-*.txt` line 6 | `$cost` | YES (single session, no cross-session total) | byte-for-byte diff |
-| `statusline-*.txt` line 6 | `today $X` | YES (isolated HOME → no other sessions) | byte-for-byte diff |
+| `statusline-*.txt` line 6 | `$cost` | YES (rendered from stdin JSON) | byte-for-byte diff |
 | `subagent-*.txt` | `state`, `tokenText`, `tokenSamples` | YES | byte-for-byte diff (after strip) |
 | `subagent-*.txt` | `elapsed` | **NO** — depends on `now - startTime` | `strip_elapsed()` replaces value with `"ELAPSED"` before diff |
 

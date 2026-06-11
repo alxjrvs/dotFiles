@@ -4,11 +4,11 @@
 # Only fires when tool_name == "Bash".
 # Threshold: 20 000 bytes. Below threshold -> silent no-op.
 # Above threshold:
-#   1. Spill full stdout to /tmp/claude/spills/<session_id>/<ts_ms>.txt
-#   2. Trim to 200 head + 100 tail lines (with elision message), or fall
+#   1. Trim to 200 head + 100 tail lines (with elision message), or fall
 #      back to 8000 head + 4000 tail chars when there aren't that many lines.
-#   3. Emit hookSpecificOutput.updatedToolOutput {stdout,stderr,interrupted,isImage}
+#   2. Emit hookSpecificOutput.updatedToolOutput {stdout,stderr,interrupted,isImage}
 #
+# Trimmed output is dropped, not archived — nothing is written to disk.
 # JSON manipulation is done entirely with jq.
 #
 # Self-contained: no shared/ sourcing. All helpers defined inline.
@@ -39,34 +39,6 @@ fi
 STDERR=$(printf '%s' "$INPUT" | jq -r '.tool_response.stderr // ""')
 INTERRUPTED=$(printf '%s' "$INPUT" | jq -r '.tool_response.interrupted // false')
 IS_IMAGE=$(printf '%s' "$INPUT" | jq -r '.tool_response.isImage // false')
-SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // ""')
-
-# ---------------------------------------------------------------------------
-# Spill full stdout to /tmp/claude/spills/<session>/<ts_ms>.txt (best-effort)
-# ---------------------------------------------------------------------------
-SPILL_HINT=""
-# Sanitize session_id before using it as a path segment (mirrors hooks/stop):
-# strip anything outside [A-Za-z0-9._-] so a crafted id like '../escape' cannot
-# traverse out of the spills dir.
-SESSION_DIR=$(printf '%s' "${SESSION_ID:-no-session}" | tr -c 'A-Za-z0-9._-' '_')
-SPILL_DIR="/tmp/claude/spills/${SESSION_DIR}"
-if mkdir -p "$SPILL_DIR" 2> /dev/null; then
-  if command -v gdate > /dev/null 2>&1; then
-    TS_MS=$(gdate +%s%3N)
-  elif date +%s%3N > /dev/null 2>&1; then
-    TS_MS=$(date +%s%3N)
-  else
-    TS_MS=$(date +%s)000
-  fi
-  SPILL_PATH="${SPILL_DIR}/${TS_MS}.txt"
-  # Secrets-at-rest: create owner-only, then write the (possibly sensitive) spill.
-  if (umask 177 && : > "$SPILL_PATH") 2> /dev/null; then
-    chmod 600 "$SPILL_PATH" 2> /dev/null || true
-    if printf '%s' "$STDOUT" > "$SPILL_PATH" 2> /dev/null; then
-      SPILL_HINT=" — full output spilled to ${SPILL_PATH}"
-    fi
-  fi
-fi
 
 # ---------------------------------------------------------------------------
 # Trim logic: 200 head + 100 tail lines, or 8000+4000 chars fallback
@@ -85,7 +57,7 @@ if [[ "$TOTAL_LINES" -gt $((HEAD_LINES + TAIL_LINES)) ]]; then
   TAIL_PART=$(printf '%s' "$STDOUT" | tail -n "$TAIL_LINES")
   ELIDED=$((TOTAL_LINES - HEAD_LINES - TAIL_LINES))
   TRIMMED="${HEAD_PART}
-... [trim-bash-output: elided ${ELIDED} lines / ~${KB}KB to save context${SPILL_HINT}] ...
+... [trim-bash-output: elided ${ELIDED} lines / ~${KB}KB to save context] ...
 ${TAIL_PART}"
 else
   # Byte-based trim (single huge line fallback). Use head -c / tail -c so the
@@ -98,7 +70,7 @@ else
     ELIDED=0
   fi
   TRIMMED="${HEAD_PART}
-... [trim-bash-output: elided ${ELIDED} chars (single huge line)${SPILL_HINT}] ...
+... [trim-bash-output: elided ${ELIDED} chars (single huge line)] ...
 ${TAIL_PART}"
 fi
 

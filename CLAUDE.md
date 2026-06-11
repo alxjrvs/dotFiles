@@ -18,7 +18,7 @@ dot sync --upgrade      # Same + brew update/upgrade/cleanup + mise upgrade.
 dot sync --only=brew,mise   # Only the listed section tags.
 dot update              # Bump everything (equivalent to sync --upgrade).
 dot doctor              # Read-only health check; exits non-zero on failures.
-dot prune               # Find + delete .bak files, stale worktrees, orphan workers, old cost dirs.
+dot prune               # Find + delete .bak files, stale worktrees, orphan workers; bound state journals; age out session shards.
 bats tests/bats/        # Run the shell unit-test suite.
 lefthook run pre-commit # shellcheck + shfmt -i 2 -ci -sr over staged shell files.
 ```
@@ -36,7 +36,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `dot sync` | `./sync` | Install/resync. Tag-gated steps (`--only=<tag,...>`). Idempotent. |
 | `dot update` | `./sync --upgrade` | Bump everything. |
 | `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. |
-| `dot prune` | `./install/95-prune.sh` | `.bak` / stale-worktree / orphan-worker / old-cost cleanup. Flags pass through (`-n` dry-run, `-y` unattended). Also runs at the tail of every full `dot sync`. |
+| `dot prune` | `./install/95-prune.sh` | `.bak` / stale-worktree / orphan-worker cleanup + state-journal bounding + stale session-shard removal. Flags pass through (`-n` dry-run, `-y` unattended). Also runs at the tail of every full `dot sync`. |
 | `dot render <tpl>` | `./render` | `op://` template resolver. |
 | `dot git-data` | `prompt/git-data` | Hot path: gather git state, write shell-sourceable cache. |
 | `dot prompt-render` | `prompt/prompt-render` | Hot path: read git-data cache, emit zsh PROMPT syntax. |
@@ -95,7 +95,7 @@ There is no `agents/` or `commands/` directory — custom subagents and slash co
 | PreToolUse (Edit\|Write) | `hooks/lock-file-guard` | defender |
 | PreToolUse (mcp__.*) | `hooks/mcp-guard` | defender |
 | PostToolUse (Edit\|Write) | `hooks/format-on-save` | formatter |
-| PostToolUse (Bash) | `hooks/trim-bash-output` | output spill |
+| PostToolUse (Bash) | `hooks/trim-bash-output` | output trim |
 | UserPromptSubmit | `hooks/user-prompt-submit` | git cache pre-warm |
 | Stop | `hooks/stop` | session JSONL journal |
 | PreCompact (—) | `hooks/precompact` | snapshot |

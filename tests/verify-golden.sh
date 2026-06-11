@@ -41,7 +41,7 @@ HASH=$(bash -c "$(sed -n '/^repo_hash() {/,/^}/p' "$ROOT/prompt/git-data"); repo
 
 T=$(mktemp -d "${TMPDIR:-/tmp}/vg.XXXXXX")
 trap 'rm -rf "$T"' EXIT
-mkdir -p "$T/.cache/git-data" "$T/.claude/state/cost" "$T/nonrepo"
+mkdir -p "$T/.cache/git-data" "$T/.claude" "$T/nonrepo"
 printf '{\n  "advisorModel": "claude-haiku-4-5"\n}\n' > "$T/.claude/settings.json"
 
 PASS=0

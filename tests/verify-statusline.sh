@@ -33,7 +33,7 @@ TOOLPATH="$(dirname "$JQBIN"):/opt/homebrew/bin:/usr/bin:/bin"
 
 T=$(mktemp -d "${TMPDIR:-/tmp}/vsl.XXXXXX")
 trap 'rm -rf "$T"' EXIT
-mkdir -p "$T/.cache/git-data" "$T/.claude/state/cost" "$T/nonrepo"
+mkdir -p "$T/.cache/git-data" "$T/.claude" "$T/nonrepo"
 printf '{\n  "advisorModel": "claude-haiku-4-5"\n}\n' > "$T/.claude/settings.json"
 
 # Strip the time-dependent 5h/7d rate-limit rows by exact ANSI prefix, via
@@ -65,8 +65,6 @@ FAIL=0
 declare -a UPDATED=()
 
 for f in low-ctx high-ctx-near-ac rate-limits-high with-pr narrow-60 wide-200; do
-  rm -rf "$T/.claude/state/cost"
-  mkdir -p "$T/.claude/state/cost"
   actual=$(cd "$T/nonrepo" && HOME="$T" XDG_CACHE_HOME="$T/.cache" COLUMNS=120 \
     CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80 PATH="$TOOLPATH" \
     bash "$ROOT/share/claude-statusline/statusline.sh" < "$GOLDEN/json/${f}.json" 2> /dev/null)

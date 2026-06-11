@@ -187,17 +187,19 @@ EOF
   [ ! -e "$sentinel" ]
 }
 
-# ── trim-bash-output: session_id cannot traverse out of the spills dir ───────
-@test "trim-bash-output: sanitizes a traversal session_id in the spill path" {
+# ── trim-bash-output: trims oversized output and writes nothing to disk ──────
+@test "trim-bash-output: trims oversized output without spilling to a file" {
   local big
   big=$(printf 'x%.0s' $(seq 1 25000))
   local json
   json=$(jq -n --arg s "$big" '{tool_name:"Bash",session_id:"../escape",tool_response:{stdout:$s,stderr:"",interrupted:false,isImage:false}}')
   run run_hook trim-bash-output "$json"
   [ "$status" -eq 0 ]
-  # The reported spill path must stay under spills/ — no "spills/../" traversal.
-  [[ "$output" != *"spills/../"* ]]
-  [[ "$output" == *"spills/.._escape/"* ]]
+  # Output is trimmed (elision marker present)...
+  [[ "$output" == *"trim-bash-output: elided"* ]]
+  # ...and the archive is gone — no spill file is written or referenced.
+  [[ "$output" != *"spill"* ]]
+  [[ "$output" != *"/tmp/claude/spills"* ]]
 }
 
 # ── settings.json: hardening invariants ─────────────────────────────────────

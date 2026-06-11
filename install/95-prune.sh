@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # install/95-prune.sh — cleanup: .bak files, stale worktrees, orphan workers,
-# stale cost dirs.
+# state journals, stale session shards.
 #
 # Modes (env vars or flags when run standalone):
 #   PRUNE_MODE=auto   — delete without prompting (AutoYes)
@@ -129,19 +129,6 @@ _prune_confirm_apply() {
   if [[ "$kept" -gt 0 ]]; then
     printf '\033[0;33m  \xe2\x9a\xa0 Kept %d (see reasons above)\033[0m\n' "$kept"
   fi
-}
-
-# True for a YYYY-MM-DD directory name (10 chars, dashes at 4+7, digits elsewhere).
-_is_date_dir() {
-  local name="$1"
-  [[ "${#name}" -eq 10 ]] || return 1
-  [[ "${name:4:1}" == "-" && "${name:7:1}" == "-" ]] || return 1
-  local i c
-  for i in 0 1 2 3 5 6 8 9; do
-    c="${name:$i:1}"
-    [[ "$c" =~ ^[0-9]$ ]] || return 1
-  done
-  return 0
 }
 
 # True for a backup filename.
@@ -492,46 +479,7 @@ _prune_kill_worker() {
   kill "$1" 2> /dev/null
 }
 
-# ── Pass 4: stale daily-cost dirs ─────────────────────────────────────────────
-
-_prune_stale_cost_dirs() {
-  local home="${1:-$HOME}"
-  printf '\n==> Stale daily-cost dirs\n'
-
-  local root="${home}/.claude/state/cost"
-  local today
-  today=$(date +%Y-%m-%d)
-
-  if [[ ! -d "$root" ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 No stale cost dirs\033[0m\n'
-    return 0
-  fi
-
-  local -a stale=()
-  local entry name
-  while IFS= read -r -d '' entry; do
-    [[ -d "$entry" ]] || continue
-    name=$(basename "$entry")
-    if _is_date_dir "$name" && [[ "$name" < "$today" ]]; then
-      stale+=("$entry")
-    fi
-  done < <(find "$root" -maxdepth 1 -mindepth 1 -print0 2> /dev/null)
-  # Sort for deterministic output.
-  if [[ "${#stale[@]}" -gt 0 ]]; then
-    mapfile -t stale < <(printf '%s\n' "${stale[@]}" | sort)
-  fi
-
-  _PRUNE_ITEMS=("${stale[@]+"${stale[@]}"}")
-  _PRUNE_LABELS=("${stale[@]+"${stale[@]}"}")
-  _prune_confirm_apply "stale cost dir(s)" "Delete these cost dirs?" _prune_rm_rf
-}
-
-# Action: rm -rf one path (cost dirs, spills).
-_prune_rm_rf() {
-  rm -rf "$1" 2> /dev/null
-}
-
-# ── Pass 5: unbounded state journals ──────────────────────────────────────────
+# ── Pass 4: unbounded state journals ──────────────────────────────────────────
 
 # Bound an append-only JSONL journal: if it exceeds HARD lines, truncate to the
 # last KEEP lines in place (atomic via temp file). Idempotent: a file already
@@ -587,8 +535,8 @@ _prune_state_journals() {
 
 # ── Pass 5b: stale per-session shards ─────────────────────────────────────────
 # hooks/stop now writes per-session shards under state/sessions/<id>.jsonl
-# (replacing the single sessions.jsonl). Age them out the same way as cost dirs
-# / spills: a shard last modified before midnight today is stale.
+# (replacing the single sessions.jsonl). A shard last modified before midnight
+# today is stale.
 _prune_session_shards() {
   local home="${1:-$HOME}"
   printf '\n==> Stale session shards\n'
@@ -628,47 +576,14 @@ _prune_rm_f() {
   rm -f "$1" 2> /dev/null
 }
 
-# ── Pass 6: stale bash-output spills ──────────────────────────────────────────
-
-_prune_stale_spills() {
-  printf '\n==> Stale bash-output spills\n'
-
-  local -a roots=("/tmp/claude/spills" "/private/tmp/claude/spills")
-  local -a stale=()
-  local root entry display
-  # Match the cost-dir convention: an entry is stale once its date precedes
-  # today. Spill files carry no date in their name, so use mtime: anything
-  # last modified before midnight today (older than today) is stale.
-  local today
-  today=$(date +%Y-%m-%d)
-  for root in "${roots[@]}"; do
-    [[ -d "$root" ]] || continue
-    while IFS= read -r -d '' entry; do
-      local mday
-      mday=$(date -r "$entry" +%Y-%m-%d 2> /dev/null || true)
-      [[ -n "$mday" && "$mday" < "$today" ]] && stale+=("$entry")
-    done < <(find "$root" -mindepth 1 -print0 2> /dev/null)
-  done
-
-  if [[ "${#stale[@]}" -gt 0 ]]; then
-    mapfile -t stale < <(printf '%s\n' "${stale[@]}" | sort)
-  fi
-
-  _PRUNE_ITEMS=("${stale[@]+"${stale[@]}"}")
-  _PRUNE_LABELS=("${stale[@]+"${stale[@]}"}")
-  _prune_confirm_apply "stale spill(s)" "Delete these spills?" _prune_rm_rf
-}
-
 # ── Main entry ────────────────────────────────────────────────────────────────
 
 _prune_run() {
   _prune_backups "${HOME}"
   _prune_stale_worktrees "${HOME}"
   _prune_orphan_workers
-  _prune_stale_cost_dirs "${HOME}"
   _prune_state_journals "${HOME}"
   _prune_session_shards "${HOME}"
-  _prune_stale_spills
 }
 
 # ── Standalone execution (dot prune / ./install/95-prune.sh) ─────────────────

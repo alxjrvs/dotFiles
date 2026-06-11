@@ -20,7 +20,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `dot sync --only=brew,mise` | Only the listed sections (tags: `brew mise sheldon symlinks claude gh git shell ssh ghostty bat atuin lazygit zsh git-template nvim karabiner lefthook macos linux prune`). |
 | `dot update` | Bump everything to current — equivalent to `dot sync --upgrade`. |
 | `dot doctor` | Read-only diagnostics: tool presence, symlink integrity, drift. Exits non-zero on failures. |
-| `dot prune` | Delete `.bak` files, stale worktrees, orphan workers, old cost dirs. |
+| `dot prune` | Delete `.bak` files, stale worktrees, orphan workers; bound state journals; age out stale session shards. |
 
 ## What's here
 
