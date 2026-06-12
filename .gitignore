@@ -11,7 +11,7 @@
 .idea/
 .vscode/
 
-# Backups (e.g. harness-tuneup .bak-<ISO> files)
+# Stray editor/tool backups — never committed
 *.bak
 *.bak-*
 
@@ -27,8 +27,8 @@ yarn-error.log*
 # is gitignored to avoid drift.
 .claude/
 
-# `.secrets` was decommissioned in favor of op-run / op:// (see CLAUDE.md).
-# `.npmrc` is gitignored at the user-config level because per-project
+# Secrets resolve through `op run --` / op:// references, never a file (see
+# CLAUDE.md). `.npmrc` is gitignored at the user-config level because per-project
 # `.npmrc`s belong to those projects' repos (with op:// refs if they need
 # credentials). A user-level `.npmrc` would mostly hold registry-auth
 # state we don't want bleeding across projects.

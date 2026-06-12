@@ -1,6 +1,11 @@
-# Dotfiles root — referenced by scripts/, prompt code, statusline, hooks.
-# Exported here so all shell contexts (subprocesses, sh-invoked scripts) inherit it.
-export DOTFILES_DIR="${DOTFILES_DIR:-$HOME/Code/dotFiles}"
+# Dotfiles root — used by dot/doctor/sync and the `dots` alias. Self-locating:
+# resolves this (symlinked) file back to its source, so any clone location works
+# with no hardcoded path. Exported so every shell context inherits it.
+export DOTFILES_DIR="${DOTFILES_DIR:-${${(%):-%x}:A:h}}"
+
+# Dedup PATH/path entries and keep the first (highest-priority) occurrence, so
+# the mise shims prepend below survives macOS path_helper and nested shells.
+typeset -U path PATH
 
 # mise shims — available in all shell contexts (hooks, editors, subprocesses)
 export PATH="$HOME/.local/share/mise/shims:$PATH"

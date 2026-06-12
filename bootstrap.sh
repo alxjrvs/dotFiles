@@ -5,7 +5,7 @@
 # mise toolchains, sheldon, gh extensions, fzf, lefthook, claude CLI,
 # applies macOS defaults, creates symlinks.
 #
-# Pre-reqs: git + curl. That's it. No Rust toolchain required.
+# Pre-reqs: git + curl. That's it.
 #
 # Usage from a fresh machine:
 #   git clone https://github.com/alxjrvs/dotFiles ~/dotFiles

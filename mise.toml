@@ -24,13 +24,12 @@ sheldon = "latest"      # zsh plugin manager — loaded in zsh/30-plugins.zsh
                         # NOTE: links against /opt/homebrew/opt/openssl@3/lib —
                         # ensure `openssl@3` is in Brewfile or the binary segfaults.
 atuin = "latest"        # shell history sync — loaded in zsh/30-plugins.zsh
-direnv = "latest"       # per-dir env hook — loaded in zsh/30-plugins.zsh
 fzf = "latest"          # `fzf --zsh` integration loaded in zsh/60-tools.zsh
 starship = "latest"     # prompt — `starship init zsh` loaded in zsh/50-prompt.zsh
 
 # ── Git surface (used by prompt, lefthook, pre-commit) ────────────────
 gh = "latest"           # GH CLI; also feeds the GitHub MCP auth header
-delta = "latest"        # syntax-aware git pager (was brew "git-delta")
+delta = "latest"        # syntax-aware git pager
 gitleaks = "latest"     # gitleaks protect — global pre-commit hook
 lefthook = "latest"     # repo-local pre-commit/pre-push runner
 
@@ -41,10 +40,9 @@ ripgrep = "latest"
 jq = "latest"
 eza = "latest"
 
-# ── Linters / formatters + test runner ───────────────────────────────
+# ── Linters / formatters ─────────────────────────────────────────────
 shfmt = "latest"
 shellcheck = "latest"
-bats = "latest"           # Bash Automated Testing System — unit tests for shell scripts
 
 # ── Neovim language servers (nvim/init.lua wires these in) ────────────
 # rust-analyzer is not global — it comes with a per-project `rust` toolchain,

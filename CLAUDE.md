@@ -4,22 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A macOS dotfiles repository owned end-to-end by a handful of **shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, and apply macOS defaults. The shell prompt is [starship](https://starship.rs) (config in `starship.toml`). The Claude Code statusline lives in its own repo (`github.com/alxjrvs/claude-statusline`). No Rust, no compiled binary: just `bash`, `git`, and `jq`.
+A macOS dotfiles repository owned end-to-end by a handful of **shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, and apply macOS defaults. The shell prompt is [starship](https://starship.rs) (config in `starship.toml`). The Claude Code statusline lives in its own repo (`github.com/alxjrvs/claude-statusline`). Just `bash`, `git`, and `jq`.
 
-There is no `dotctl/` crate anymore — it was replaced by these shell scripts. Each subsystem lives in its own topic folder. The two helpers shared by the standalone scripts (`os_kind`, `resolve_dotfiles_dir`) live in one small **`lib/common.sh`**, sourced by `sync`, `doctor`, and `install/95-prune.sh`.
+Each subsystem lives in its own topic folder. The two helpers shared by the standalone scripts (`os_kind`, `resolve_dotfiles_dir`) live in one small **`lib/common.sh`**, sourced by `sync` and `doctor`.
 
 Source of truth for setup behavior is `sync` + `install/*.sh`. The shell prompt is starship (`starship.toml`, symlinked to `~/.config/starship.toml`). The Claude Code statusline is a separate project (`github.com/alxjrvs/claude-statusline`). `install/60-claude.sh` (claude tag) clones it to `~/Code/claude-statusline` and runs its `install.sh`, which symlinks `claude-statusline` + `claude-subagent-statusline` into `~/.local/bin`; `dot-claude/settings.json` references those paths.
 
 ## Key Commands
 
 ```bash
-dot sync                # Idempotent install/resync. Fast on no-op. Prompts to clean .bak files at the end (default yes).
+dot sync                # Idempotent install/resync. Fast on no-op.
 dot sync --upgrade      # Same + brew update/upgrade/cleanup + mise upgrade.
 dot sync --only=brew,mise   # Only the listed section tags.
 dot update              # Bump everything (equivalent to sync --upgrade).
 dot doctor              # Read-only health check; exits non-zero on failures.
-dot prune               # Find + delete stale .bak backups (guarded). Default yes on a TTY.
-bats tests/bats/        # Run the shell unit-test suite.
 lefthook run pre-commit # shellcheck + shfmt -i 2 -ci -sr over staged shell files.
 ```
 
@@ -29,24 +27,23 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 
 ### The `dot` dispatcher + topic folders
 
-`dot` (repo root) is a ~40-line bash script — the single command symlinked onto `PATH` at `~/.local/bin/dot`. It resolves `DOTFILES_DIR` once, then execs the matching topic script, passing args through:
+`dot` (repo root) is a short bash script — the single command symlinked onto `PATH` at `~/.local/bin/dot`. It resolves `DOTFILES_DIR` once, then execs the matching topic script, passing args through:
 
 | Subcommand | Execs | Purpose |
 |------------|-------|---------|
 | `dot sync` | `./sync` | Install/resync. Tag-gated steps (`--only=<tag,...>`). Idempotent. |
 | `dot update` | `./sync --upgrade` | Bump everything. |
 | `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. |
-| `dot prune` | `./install/95-prune.sh` | Guarded `.bak` backup cleanup. Flags pass through (`-n` dry-run, `-y` unattended). Also runs at the tail of every full `dot sync`. |
 
-`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → legacy `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` sources `lib/common.sh` and defines `link()`, then exports those helpers (`os_kind`, `resolve_dotfiles_dir`, `link`) before sourcing each module, so the modules carry no helpers of their own. The sole exception is `install/95-prune.sh`, which also runs standalone (`./install/95-prune.sh` / `dot prune`) — when not sync-sourced it sources `lib/common.sh` itself in a guard block.
+`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → fallback `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` sources `lib/common.sh` and defines `link()`, then exports those helpers (`os_kind`, `resolve_dotfiles_dir`, `link`) before sourcing each module, so the modules carry no helpers of their own.
 
 ### sync / install modules
 
-`sync` sources `install/NN-*.sh` modules in numeric order; each declares its tags and a `run` function, gated by a tag filter (`--only=<tags>`). Modules: `00-brew 30-mise 40-symlinks 45-ssh 60-claude 70-gh 85-lefthook 90-macos 95-prune`. To add a sync section, add an `install/NN-name.sh` module, give it a tag, and `sync` will pick it up. macOS defaults data + `audit` live in `90-macos.sh`. (`30-mise` also locks sheldon plugins — sheldon is a mise tool, so its binary only exists after `mise install`.)
+`sync` sources `install/NN-*.sh` modules in numeric order; each declares its tags and a `run` function, gated by a tag filter (`--only=<tags>`). Modules: `00-brew 30-mise 40-symlinks 45-ssh 60-claude 85-lefthook 90-macos`. To add a sync section, add an `install/NN-name.sh` module, give it a tag, and `sync` will pick it up. macOS defaults data + `audit` live in `90-macos.sh`. (`30-mise` also locks sheldon plugins — sheldon is a mise tool, so its binary only exists after `mise install`.)
 
 ### Symlink Model
 
-`link()` (defined in `sync`, exported to the install modules) creates idempotent symlinks. On conflict, behavior depends on `$LINK_MODE`: `overwrite` (move existing to `.bak`, then link, set via `-f`), `skip` (`-s`), or default `interactive` (prompt). Mapping:
+`link()` (defined in `sync`, exported to the install modules) creates idempotent symlinks. On conflict, behavior depends on `$LINK_MODE`: `overwrite` (replace, set via `-f`), `skip` (`-s`), or default `interactive` (prompt). Overwrite does not back up the displaced file — the canonical content is in this git repo. Mapping:
 
 | Source | Destination |
 |--------|-------------|
@@ -65,39 +62,38 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `gh/config.yml` | `~/.config/gh/config.yml` |
 | `ssh/config` | `~/.ssh/config` (mode 600) |
 | `ssh/1password-agent.toml` | `~/.config/1Password/ssh/agent.toml` |
-| `gh/gh-mcp-auth-header` | `~/.local/bin/gh-mcp-auth-header` (github MCP headersHelper → `gh auth token`) |
-| `git-template/hooks/pre-commit` | `~/.config/git/template/hooks/pre-commit` (referenced by `core.hooksPath`) |
+| `gh/gh-mcp-auth-header` | `~/.local/bin/gh-mcp-auth-header` (github MCP headersHelper → `op read`) |
+| `git-template/hooks/pre-commit` | `~/.config/git/template/hooks/pre-commit` (copied into new repos via `init.templateDir`) |
 | `dot` | `~/.local/bin/dot` |
 | `dot-claude/{CLAUDE.md, settings.json}` | `~/.claude/` (individually) |
 
-Everything is symlinked; there are no read-in-place or compiled-in files.
+Everything is symlinked — every destination traces back to a file in this repo.
 
 ### Claude Code Configuration (`dot-claude/`)
 
 Each entry is symlinked individually into `~/.claude/` by `dot sync` (claude tag):
 
 - `CLAUDE.md` — user-level global instructions (identity, preferences).
-- `settings.json` — **deliberately minimal**: agent teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` + `teammateMode`), `editorMode: vim`, `statusLine`/`subagentStatusLine` (→ `~/.local/bin/claude-statusline`, from the separate `claude-statusline` repo), `permissions.defaultMode: auto`, the attribution trailer, and input-needed notifications. Don't add settings without asking.
+- `settings.json` — **deliberately minimal**; it carries only deliberate divergences from Claude Code defaults, enumerated in `dot-claude/CLAUDE.md` (the canonical list — don't restate it here). Don't add settings without asking.
 
-There is no `agents/`, `commands/`, or `hooks/` directory — custom subagents, slash commands, and hook scripts were all dropped (unused).
+Don't add `agents/`, `commands/`, or `hooks/` directories without asking — `dot-claude/` stays at these two symlinked files plus `REFERENCE.md`.
 
-### Tests
+### Linting
 
-Shell unit tests run under `bats` (a managed mise tool) in `tests/bats/`. The suite is deliberately small: `prune.bats` guards the only subsystem that deletes files (`install/95-prune.sh`'s guarded `.bak` cleanup) — non-TTY never deletes, the `.bak` safety guard (never delete a backup that's the only copy), dry/auto effects. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` + gitleaks + a `settings.json` validity check pre-commit, and `bats tests/bats/` pre-push. There is no golden-snapshot harness and no CI — rendering changes are eyeballed, not byte-diffed (this is a personal repo, not a published library).
+`lefthook.yml` runs a pre-commit gate over staged shell files: `shellcheck` + `shfmt -i 2 -ci -sr` + `gitleaks protect` + a `settings.json` validity check. `dot sync` (lefthook tag) installs the hooks. No test suite and no CI — this is a personal repo; the lint gate is the only automation.
 
 ## Packaging policy: Lean A (brew = casks, mise = dev CLIs)
 
 Brewfile holds **only**: `mise` (chicken-and-egg bootstrap), casks (GUI apps, fonts), and any system library that has no mise equivalent.
 
-`mise.toml` holds: all language toolchains AND all dev CLIs (including `jq`, `bats`, `shellcheck`, `shfmt`). Use the registry short-name where it resolves; fall back to `aqua:` then `github:` backends.
+`mise.toml` holds: all language toolchains AND all dev CLIs (including `jq`, `shellcheck`, `shfmt`). Use the registry short-name where it resolves; fall back to `aqua:` then `github:` backends.
 
 If you're about to add a CLI to `Brewfile`, stop — put it in `mise.toml` unless it's `mise` itself or it's a cask.
 
 ## Terminal: Ghostty
 
-Ghostty is the chosen terminal emulator. The cask installs the .app; you
-launch the app directly (no `~/.local/bin/ghostty` CLI shim — that was a
-convenience wrapper, now removed). `dot sync` symlinks `ghostty/config`
+Ghostty is the chosen terminal emulator. The cask installs the .app;
+launch the app directly. `dot sync` symlinks `ghostty/config`
 to `~/.config/ghostty/config`, which `dot doctor` validates via the
 symlink integrity check.
 
@@ -113,44 +109,45 @@ there is no host detection and no per-host overlay. `Brewfile`,
 `mise.toml`, the macOS defaults in `install/90-macos.sh`, symlinks, and zsh
 fragments are identical everywhere. If a genuine per-machine divergence
 ever appears, add the smallest possible guard at that point — don't
-reintroduce a host-overlay system preemptively.
+add a host-overlay system preemptively.
 
 ## Secrets management
 
-1Password CLI (`op`) is the source of truth. There is no `.secrets` file. Use the patterns below in priority order; drop down a tier only when the one above doesn't apply.
+1Password CLI (`op`) is the source of truth for secrets. Use the patterns below in priority order; drop down a tier only when the one above doesn't apply.
 
 ### Patterns
 
-**1. `op-run` wrapper — one-shot CLI injection** (`zsh/80-functions.zsh`)
+**1. `op run -- <cmd>` — one-shot CLI injection**
 ```sh
-op-run npm publish               # = op run -- npm publish   (masking left ON)
+op run -- npm publish            # resolves op:// refs at exec time; masking ON
 ```
-For any CLI invocation that reads a token from env. Nothing is exported to the shell session; `op` resolves `op://` references at exec time only. Masking is deliberately **on** (no `--no-masking`): the child gets the real resolved value but 1Password redacts it from the child's stdout/stderr, so secrets don't leak into output an agent/transcript could capture. If a tool genuinely breaks under masked output, add a one-off wrapper and document why rather than weakening this default.
+For any CLI invocation that reads a token from env. Nothing is exported to the shell session; `op` resolves `op://` references at exec time only. Masking is on by default (no `--no-masking`): the child gets the real resolved value but 1Password redacts it from the child's stdout/stderr, so secrets don't leak into output an agent/transcript could capture. If a tool genuinely breaks under masked output, pass `--no-masking` for that one call and note why rather than making it the default.
 
 **2. `op://` references in config files**
 ```ini
 # .npmrc
 //registry.npmjs.org/:_authToken=op://Personal/npm/credential
 ```
-Pair with `op-run` (pattern 1) — the wrapper resolves the references just for the child process.
+Pair with `op run --` (pattern 1) — it resolves the references just for the child process.
 
 **3. `gh auth token` keychain resolution — GitHub specifically**
 The token lives in the macOS keychain (managed by `gh auth login`, secure storage), never on disk, and is NOT exported to the environment (a standing export would leak it into every subprocess). Resolve it on demand — `GITHUB_TOKEN="$(gh auth token)" some-tool` — only when a tool actually needs it.
 
-**4. `direnv` + `op read` — project-local inheritance**
-For values a project's subprocesses must inherit at fork time, use a per-project `.envrc` that resolves through `op read`:
-```sh
-# .envrc
-export STRIPE_KEY="$(op read 'op://Personal/stripe/credential')"
+**4. `mise` `[env]` — project-local inheritance**
+For values a project's subprocesses must inherit at fork time, put them in the project's `mise.toml` `[env]`, resolving secrets through `op` at activation:
+```toml
+# mise.toml
+[env]
+STRIPE_KEY = "{{ exec(command='op read op://Personal/stripe/credential') }}"
 ```
-`direnv` (already hooked in `zsh/30-plugins.zsh`) resolves on `cd`. Pair with a checked-in `.envrc.template`.
+mise activates on `cd` (its shims are already on PATH via `.zshenv`). For one-off commands, `op run -- <cmd>` (pattern 1) is simpler.
 
 ### Rules
 
-- **Never commit a plaintext token** to any file. Use `op://` references or `op-run` instead.
-- **Never add a token to a config file as plaintext.** If `.npmrc`-shape tools need credentials, use `op://` refs + `op-run`.
+- **Never commit a plaintext token** to any file. Use `op://` references or `op run --` instead.
+- **Never add a token to a config file as plaintext.** If `.npmrc`-shape tools need credentials, use `op://` refs + `op run --`.
 - **If you find a plaintext token anywhere**, revoke first, then migrate to `op` or a keychain CLI.
-- `gitleaks` runs as a global pre-commit hook (`git-template/hooks/pre-commit`); it's a backstop, not the policy.
+- `gitleaks` runs from the pre-commit hook template (`git-template/hooks/pre-commit`, copied into new repos via `init.templateDir`); it's a backstop, not the policy.
 
 ## Guardrails
 
@@ -158,9 +155,9 @@ Pause and confirm with the user before doing any of these:
 
 - **Dependency lockfiles** (any file matching `*-lock*` or `*.lock*`): never edit by hand.
 - **`link()` symlink semantics**: the `link()` function prompts on conflict (interactive `$LINK_MODE`) unless `-f` or `-s` is passed. Do not change the default behavior to auto-overwrite.
-- **The prompt is starship**: configured by `starship.toml` (symlinked to `~/.config/starship.toml`), initialized via `eval "$(starship init zsh)"` in `zsh/50-prompt.zsh`. Keep the config minimal — there is no bespoke prompt renderer to maintain.
-- **Shared helpers live in `lib/common.sh`**: `os_kind` + `resolve_dotfiles_dir`, sourced by `sync`, `doctor`, and `install/95-prune.sh` (callers set `_DOTFILES_SELF_DIR` first). Don't re-inline them.
-- **Neovim is plugin-free**: the editor is configured by a single `nvim/init.lua` (sensible defaults + native LSP via `vim.lsp.config`/`vim.lsp.enable`, requires Neovim 0.11+). There is no plugin manager (lazy.nvim, packer) and no AstroNvim/LazyVim distro — don't propose adding one; keep the config to a single self-contained `init.lua`. (Historical: this stack used helix before; if you see `helix`/`hx`, it's gone.)
+- **The prompt is starship**: configured by `starship.toml` (symlinked to `~/.config/starship.toml`), initialized via `eval "$(starship init zsh)"` in `zsh/50-prompt.zsh`. Keep the config minimal.
+- **Shared helpers live in `lib/common.sh`**: `os_kind` + `resolve_dotfiles_dir`, sourced by `sync` and `doctor` (callers set `_DOTFILES_SELF_DIR` first). Don't re-inline them.
+- **Neovim is plugin-free**: the editor is configured by a single `nvim/init.lua` (sensible defaults + native LSP via `vim.lsp.config`/`vim.lsp.enable`, requires Neovim 0.11+). There is no plugin manager (lazy.nvim, packer) and no AstroNvim/LazyVim distro — don't propose adding one; keep the config to a single self-contained `init.lua`.
 
 ## Important Gotchas
 

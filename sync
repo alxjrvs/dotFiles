@@ -7,7 +7,7 @@
 # Flags:
 #   --upgrade         brew update/upgrade/cleanup + mise upgrade
 #   --only=TAGS       comma-separated tag filter; only matching steps run
-#   -f, --force       LINK_MODE=overwrite (backup + replace on conflict)
+#   -f, --force       LINK_MODE=overwrite (replace on conflict)
 #   -s, --skip        LINK_MODE=skip (leave conflicts untouched)
 #   default           LINK_MODE=interactive (prompt on conflict)
 
@@ -15,7 +15,7 @@ set -euo pipefail
 
 # Raise the soft file-descriptor limit. macOS hands GUI-launched apps (and the
 # shells they spawn — e.g. `dot sync` run via `!` from inside Claude Code) a low
-# soft RLIMIT_NOFILE (~256), which the prune pass can exhaust ("Too many open
+# soft RLIMIT_NOFILE (~256); brew/mise children can exhaust it ("Too many open
 # files") when the parent already holds many fds. The hard limit is unlimited,
 # so this raise always succeeds; it's a no-op when the limit is already higher.
 ulimit -Sn 4096 2> /dev/null || true
@@ -95,9 +95,11 @@ link() {
 
   case "$(printf '%s' "$choice" | tr '[:upper:]' '[:lower:]')" in
     o | overwrite)
-      mv "$dst" "${dst}.bak"
+      # No backup — the canonical content lives in this git repo. A displaced
+      # pre-existing file is the user's to recover (it isn't tracked here).
+      rm -rf -- "$dst"
       ln -s "$src" "$dst"
-      printf '\033[0;33m  \xe2\x86\x92 %s overwritten (backup at %s.bak)\033[0m\n' "$label" "$dst"
+      printf '\033[0;33m  \xe2\x86\x92 %s overwritten\033[0m\n' "$label"
       ;;
     *)
       printf '\033[0;32m  \xe2\x9c\x93 %s skipped\033[0m\n' "$label"
@@ -107,10 +109,6 @@ link() {
 
 # Export helpers for use by sourced modules.
 export -f os_kind resolve_dotfiles_dir link
-
-# ── Signal to install/* modules that helpers are already defined ──────────────
-__DOT_SYNC_SOURCED=1
-export __DOT_SYNC_SOURCED
 
 # ── Prepend mise shims to PATH ────────────────────────────────────────────────
 _mise_shims="${HOME}/.local/share/mise/shims"
@@ -246,15 +244,6 @@ _FAILED_MODULES=()
 _MATCHED_MODULES=0
 for _module in "${_SYNC_DIR}/install"/[0-9][0-9]-*.sh; do
   [[ -f "$_module" ]] || continue
-  # 95-prune.sh defines _prune_run but must execute exactly once, at the tail
-  # block below (which derives PRUNE_MODE first). _run_module would run it a
-  # second time here, doubling the work and the fd pressure. Source it for its
-  # function definitions only, then skip the run.
-  if [[ "$(basename "$_module")" == "95-prune.sh" ]]; then
-    # shellcheck source=/dev/null
-    source "$_module"
-    continue
-  fi
   # Bare invocation in a set +e window — NOT `if _run_module`, which would
   # put the whole module call tree in an errexit-exempt context and disarm
   # the ERR latch inside _run_module.
@@ -270,30 +259,11 @@ unset _module _rc
 
 # ── --only typo guard ─────────────────────────────────────────────────────────
 # `--only=foo` with a tag no module declares silently runs nothing — the
-# documented gotcha. Fail loudly instead. The prune tag matches no module
-# (prune runs from the tail block below), so it counts as a match here.
-if [[ -n "${SYNC_ONLY_TAGS:-}" && "$_MATCHED_MODULES" -eq 0 ]] && ! should_run prune; then
+# documented gotcha. Fail loudly instead.
+if [[ -n "${SYNC_ONLY_TAGS:-}" && "$_MATCHED_MODULES" -eq 0 ]]; then
   printf '\033[0;31m==> \xe2\x9c\x97 --only=%s matched no module — check the tag spelling\033[0m\n' \
     "${SYNC_ONLY_TAGS// /,}" >&2
   exit 1
-fi
-
-# ── Prune pass at the tail ────────────────────────────────────────────────────
-# Gated by the prune tag so `--only=brew` (etc.) does not trigger the full
-# 4-section prune pass. The PRUNE_MODE derivation stays inside the gate.
-if should_run prune; then
-  # Set PRUNE_MODE based on link mode (Interactive→ask, others→auto).
-  if [[ "$LINK_MODE" == "interactive" ]]; then
-    PRUNE_MODE="ask"
-  else
-    PRUNE_MODE="auto"
-  fi
-  export PRUNE_MODE
-
-  # 95-prune.sh was already sourced above; call _prune_run directly.
-  if declare -f _prune_run > /dev/null 2>&1; then
-    _prune_run
-  fi
 fi
 
 # ── Failure summary ───────────────────────────────────────────────────────────

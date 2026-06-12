@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # install/40-symlinks.sh — the symlink mapping, single source of truth.
 # Tags: symlinks
-# Sourced by sync (apply) and doctor (audit); both export link() and set
-# __DOT_SYNC_SOURCED. doctor reads _symlink_pairs to audit the exact list this
-# applies, so the two can never drift. macOS-only repo — no per-OS gating.
+# Sourced by sync (apply) and doctor (audit). doctor reads _symlink_pairs to
+# audit the exact list this applies, so the two can never drift. macOS-only
+# repo — no per-OS gating.
 
 _symlinks_tags() { printf 'symlinks\n'; }
 

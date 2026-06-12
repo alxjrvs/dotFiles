@@ -4,21 +4,29 @@
 # Used as the `headersHelper` for the user-scope `github` HTTP MCP server
 # (registered by install/60-claude.sh into ~/.claude.json). Claude Code runs
 # this at MCP connection time and merges the JSON it prints to stdout into the
-# request headers, so the bearer token is resolved on demand from the gh
-# keychain — never exported into the shell env (which would leak it into every
-# Bash subprocess Claude Code spawns) and never written to disk.
+# request headers, so the bearer token is resolved on demand — never exported
+# into the shell env (which would leak it into every Bash subprocess Claude Code
+# spawns) and never written to disk.
 #
-# This is what makes the .zprofile claim — "the github MCP authenticates via
-# the gh keychain directly, so no env export is needed" — actually true: the
-# official github plugin's MCP hard-codes `Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}`,
-# which is empty here on purpose, so that plugin is disabled in favour of this.
+# The token comes from 1Password, matching the rest of the GitHub stack: auth
+# and signing already go through the 1Password agent (op-ssh-sign). OP_REF points
+# at a secure note holding a GitHub PAT with repo/read:org scopes for the MCP
+# server. `op read` resolves at connect time and will prompt to unlock if
+# 1Password is locked.
 #
 # Contract: print a JSON object of headers to stdout. On any failure, print an
 # empty object so the connection fails cleanly (no Authorization header) rather
 # than sending a malformed `Bearer ` with an empty value.
 set -euo pipefail
 
-token="$(gh auth token 2> /dev/null)" || {
+OP_REF="op://Personal/Claude Github PAT/notesPlain"
+
+command -v op > /dev/null 2>&1 || {
+  printf '{}\n'
+  exit 0
+}
+
+token="$(op read "${OP_REF}" 2> /dev/null)" || {
   printf '{}\n'
   exit 0
 }
@@ -28,5 +36,5 @@ token="$(gh auth token 2> /dev/null)" || {
   exit 0
 }
 
-# gh tokens are [A-Za-z0-9_]; no JSON escaping required.
+# GitHub PATs are [A-Za-z0-9_]; no JSON escaping required.
 printf '{"Authorization":"Bearer %s"}\n' "${token}"
