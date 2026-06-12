@@ -246,65 +246,30 @@ unset _dotfiles2
 
 # ── 8. brew doctor (Darwin, external) ─────────────────────────────────────────
 if [[ "$(os_kind)" == "darwin" && -z "$skip_external" ]]; then
-  _brew_out=$(brew doctor 2>&1 || true)
-  if printf '%s\n' "$_brew_out" | grep -q "ready to brew"; then
+  if brew doctor 2>&1 | grep -q "ready to brew"; then
     _ok "brew doctor: ready to brew"
   else
-    _brew_warns=$(printf '%s\n' "$_brew_out" | grep -c '^\s*Warning:' || true)
-    _brew_warns=$((_brew_warns > 0 ? _brew_warns : 1))
-    _warn "brew doctor: ${_brew_warns} warning(s) — run \`brew doctor\` for details"
-    printf '%s\n' "$_brew_out" | grep '^\s*Warning:' | head -3 | while IFS= read -r _wl; do
-      printf '\033[0;33m  \xe2\x86\x92   %s\033[0m\n' "${_wl## }"
-    done
-    # Counter already bumped by _warn above; add extra for multi-warning.
-    if [[ "$_brew_warns" -gt 1 ]]; then
-      _WARNS=$((_WARNS + _brew_warns - 1))
-    fi
+    _warn "brew doctor: warnings — run \`brew doctor\` for details"
   fi
-  unset _brew_out _brew_warns
 fi
 
 # ── 9. mise doctor (external) ────────────────────────────────────────────────
 if [[ -z "$skip_external" ]]; then
-  # Strip shims from PATH for this one call so mise doesn't complain about
-  # "mise tool paths are not first in PATH" (the shims are first because WE
-  # put them there; the user's interactive shell has them via .zshenv).
+  # Strip shims from PATH for this one call so mise doesn't complain that its
+  # tool paths aren't first (they're first only because WE put them there; the
+  # interactive shell has them via .zshenv).
   _saved_path="$PATH"
-  _shims_prefix="${HOME}/.local/share/mise/shims:"
-  _stripped_path="${PATH#"$_shims_prefix"}"
-  export PATH="$_stripped_path"
-
+  export PATH="${PATH#"${HOME}/.local/share/mise/shims:"}"
   _mise_out=$(mise doctor 2>&1 || true)
-
   export PATH="$_saved_path"
-  unset _saved_path _shims_prefix _stripped_path
+  unset _saved_path
 
-  # Parse "N warning(s) found:" from mise output.
-  _mise_warns=0
-  while IFS= read -r _ml; do
-    _trimmed="${_ml## }"
-    _trimmed="${_trimmed%% }"
-    if [[ "$_trimmed" == *"warning found:"* || "$_trimmed" == *"warnings found:"* ]]; then
-      _n="${_trimmed%% warning*}"
-      _n="${_n## }"
-      if [[ "$_n" =~ ^[0-9]+$ ]]; then
-        _mise_warns="$_n"
-      fi
-    fi
-  done <<< "$_mise_out"
-
-  if [[ "$_mise_warns" -eq 0 ]] && printf '%s\n' "$_mise_out" | grep -q "No problems found"; then
+  if printf '%s\n' "$_mise_out" | grep -q "No problems found"; then
     _ok "mise doctor: no problems found"
-  elif [[ "$_mise_warns" -gt 0 ]]; then
-    _warn "mise doctor: ${_mise_warns} warning(s) — run \`mise doctor\` for details"
-    # _warn already bumped _WARNS once; add extra for multi-warning.
-    if [[ "$_mise_warns" -gt 1 ]]; then
-      _WARNS=$((_WARNS + _mise_warns - 1))
-    fi
   else
-    _warn "mise doctor: output unparseable — run \`mise doctor\` manually"
+    _warn "mise doctor: problems found — run \`mise doctor\` for details"
   fi
-  unset _mise_out _mise_warns _ml _trimmed _n
+  unset _mise_out
 fi
 
 # ── 10. claude doctor (external) ─────────────────────────────────────────────
