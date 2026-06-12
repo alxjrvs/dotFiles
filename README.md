@@ -1,6 +1,6 @@
 # dotFiles
 
-macOS dotfiles for [alxjrvs](https://github.com/alxjrvs). Owned end-to-end by a set of **self-contained shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, apply macOS defaults, and power the prompt + statusline + Claude Code hooks. No Rust, no compiled binary; just `bash`, `git`, and `jq`.
+macOS dotfiles for [alxjrvs](https://github.com/alxjrvs). Owned end-to-end by a set of **self-contained shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, apply macOS defaults, and power the prompt + Claude Code statusline. No Rust, no compiled binary; just `bash`, `git`, and `jq`.
 
 ## Setup (fresh machine)
 
@@ -20,7 +20,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `dot sync --only=brew,mise` | Only the listed sections (tags: `brew mise sheldon symlinks claude gh git shell ssh ghostty bat atuin lazygit zsh git-template nvim karabiner lefthook macos linux prune`). |
 | `dot update` | Bump everything to current — equivalent to `dot sync --upgrade`. |
 | `dot doctor` | Read-only diagnostics: tool presence, symlink integrity, drift. Exits non-zero on failures. |
-| `dot prune` | Delete `.bak` files, stale worktrees, orphan workers; bound state journals; age out stale session shards. |
+| `dot prune` | Delete `.bak` files, stale worktrees, orphan workers. |
 
 ## What's here
 
@@ -32,7 +32,6 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `install/` | Numbered `NN-*.sh` sync modules (brew, mise, symlinks, macos, prune, …), sourced by `sync` in order |
 | `prompt/` | `git-data` (git-state → cache) + `prompt-render` (cache → zsh PROMPT). Hot path. |
 | `share/claude-statusline/` | Self-contained, curl-installable Claude Code statusline (`statusline.sh` + `subagent-statusline.sh`) with its own README |
-| `hooks/` | One self-contained script per Claude Code hook event |
 | `tests/` | `bats/` unit tests + `golden/` fixtures (byte-exact prompt/statusline references) |
 | `.zshrc` | Thin loader — sources fragments from `~/.config/zsh/*.zsh` |
 | `zsh/` | Numbered zsh fragments (exports, options, vi, plugins, completions, prompt, tools, aliases, functions) |
@@ -45,7 +44,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `bat/config` | Bat config |
 | `ssh/config` | SSH client config (1Password agent, ControlMaster) |
 | `karabiner/karabiner.json` | Karabiner-Elements rules (Caps Lock → Control) |
-| `dot-claude/` | Claude Code: `CLAUDE.md`, `settings.json` (hooks dispatch via `dot hook <event>`) |
+| `dot-claude/` | Claude Code: `CLAUDE.md`, `settings.json` (minimal: agent teams, vim input, statusline) |
 | `Brewfile` | `brew "mise"` + casks (GUI apps, fonts). All dev CLIs live in mise.toml. |
 | `mise.toml` | Language toolchains + every dev CLI. Single update path via `mise upgrade`. |
 | `sheldon/plugins.toml` | Zsh plugin config |
@@ -56,14 +55,9 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 `dot-claude/` is symlinked into `~/.claude/` by `dot sync`. Contents:
 
 - `CLAUDE.md` — user-level global instructions
-- `settings.json` — permissions, env, hook commands (all `dot hook <event>`), `statusLine` → `dot statusline`, `subagentStatusLine` → `dot subagent-statusline`
+- `settings.json` — deliberately minimal: agent teams, `editorMode: vim`, `statusLine` → `dot statusline`, `subagentStatusLine` → `dot subagent-statusline`
 
 The statusline is the self-contained `share/claude-statusline/statusline.sh` (context bar + Pro/Max rate-limit windows from native `rate_limits` JSON), reached via `dot statusline`. It's a drop-in you can `curl` onto any machine — see `share/claude-statusline/README.md`.
-
-The wired Claude Code hook events route through `dot hook <event>`; the
-event name maps 1:1 to a script in `hooks/`. The authoritative
-event/script table lives in [CLAUDE.md](CLAUDE.md) under **Hook
-dispatch** — one table, not two drifting copies.
 
 ## Tests
 

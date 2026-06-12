@@ -60,9 +60,8 @@ taplo = "latest"                          # TOML LSP + formatter (`taplo lsp std
 
 # ── Misc ──────────────────────────────────────────────────────────────
 uv = "latest"           # Python project / venv manager
-heroku = "latest"       # Heroku CLI (npm:heroku). Sandbox: api/git.heroku.com
-                        # allow-listed; auth via `op-run heroku` (no plaintext
-                        # ~/.netrc — it stays denyRead).
+heroku = "latest"       # Heroku CLI (npm:heroku); auth via `op-run heroku`
+                        # (no plaintext ~/.netrc).
 "cargo:tealdeer" = "latest"  # `tldr` pager; not in mise registry. Aqua dropped binary releases (only completions remain), so we build from crates.io.
 
 # ── Pre-existing entries: Tier 3 escapees from Brewfile (kept) ────────

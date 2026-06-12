@@ -25,8 +25,8 @@ _setup_prune() {
 }
 
 # ── confirm default: non-TTY must NOT mean yes ───────────────────────────────
-# A cron/CI/sandboxed run with no terminal answering "yes" to every delete is
-# the opposite of link()'s safe non-interactive skip.
+# A cron/CI run with no terminal answering "yes" to every delete is the
+# opposite of link()'s safe non-interactive skip.
 @test "prune ask: non-TTY defaults to skip, not delete" {
   _setup_prune
   run _prune_ask_yes "Delete everything?" < /dev/null
@@ -36,12 +36,12 @@ _setup_prune() {
 @test "prune ask-mode pass leaves files in place on non-TTY" {
   _setup_prune
   export PRUNE_MODE=ask
-  mkdir -p "$TDIR/.claude/state/sessions"
-  echo '{}' > "$TDIR/.claude/state/sessions/old.jsonl"
-  touch -t 202001010000 "$TDIR/.claude/state/sessions/old.jsonl"
-  run _prune_session_shards "$TDIR" < /dev/null
+  echo tracked > "$DOTFILES_DIR/.zshrc"
+  ln -s "$DOTFILES_DIR/.zshrc" "$TDIR/.zshrc"
+  echo backup > "$TDIR/.zshrc.bak"
+  run _prune_backups "$TDIR" < /dev/null
   [ "$status" -eq 0 ]
-  [ -e "$TDIR/.claude/state/sessions/old.jsonl" ]
+  [ -e "$TDIR/.zshrc.bak" ]
 }
 
 # ── worktree classification: git failure is NOT "clean" ─────────────────────
@@ -67,15 +67,15 @@ _setup_prune() {
 }
 
 # ── pass effects under auto / dry ────────────────────────────────────────────
-@test "prune session shards: dry mode deletes nothing" {
+@test "prune backups: dry mode deletes nothing" {
   _setup_prune
   export PRUNE_MODE=dry
-  mkdir -p "$TDIR/.claude/state/sessions"
-  echo '{}' > "$TDIR/.claude/state/sessions/old.jsonl"
-  touch -t 202001010000 "$TDIR/.claude/state/sessions/old.jsonl"
-  run _prune_session_shards "$TDIR"
+  echo tracked > "$DOTFILES_DIR/.zshrc"
+  ln -s "$DOTFILES_DIR/.zshrc" "$TDIR/.zshrc"
+  echo backup > "$TDIR/.zshrc.bak"
+  run _prune_backups "$TDIR"
   [ "$status" -eq 0 ]
-  [ -e "$TDIR/.claude/state/sessions/old.jsonl" ]
+  [ -e "$TDIR/.zshrc.bak" ]
 }
 
 @test "prune backups: auto deletes guarded-safe .bak, keeps unsafe" {
@@ -94,28 +94,15 @@ _setup_prune() {
   [ -e "$TDIR/.vimrc.bak" ]
 }
 
-@test "prune session shards: auto deletes old shard, keeps today's" {
-  _setup_prune
-  export PRUNE_MODE=auto
-  mkdir -p "$TDIR/.claude/state/sessions"
-  echo '{}' > "$TDIR/.claude/state/sessions/old.jsonl"
-  touch -t 202001010000 "$TDIR/.claude/state/sessions/old.jsonl"
-  echo '{}' > "$TDIR/.claude/state/sessions/fresh.jsonl"
-  run _prune_session_shards "$TDIR"
-  [ "$status" -eq 0 ]
-  [ ! -e "$TDIR/.claude/state/sessions/old.jsonl" ]
-  [ -e "$TDIR/.claude/state/sessions/fresh.jsonl" ]
-}
-
 # ── standalone flag plumbing (dot prune must preserve these) ─────────────────
 @test "prune standalone: --dry-run flag reaches PRUNE_MODE" {
-  mkdir -p "$TDIR/.claude/state/sessions"
-  echo '{}' > "$TDIR/.claude/state/sessions/old.jsonl"
-  touch -t 202001010000 "$TDIR/.claude/state/sessions/old.jsonl"
+  echo tracked > "$TDIR/tracked"
+  ln -s "$ROOT/Brewfile" "$TDIR/.zshrc"
+  echo backup > "$TDIR/.zshrc.bak"
   export DOTFILES_DIR="$ROOT"
   run "$ROOT/install/95-prune.sh" --dry-run
   [ "$status" -eq 0 ]
-  [ -e "$TDIR/.claude/state/sessions/old.jsonl" ]
+  [ -e "$TDIR/.zshrc.bak" ]
 }
 
 @test "dot prune dispatches to 95-prune.sh directly (flags survive)" {

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# install/95-prune.sh — cleanup: .bak files, stale worktrees, orphan workers,
-# state journals, stale session shards.
+# install/95-prune.sh — cleanup: .bak files, stale worktrees, orphan workers.
 #
 # Modes (env vars or flags when run standalone):
 #   PRUNE_MODE=auto   — delete without prompting (AutoYes)
@@ -54,7 +53,7 @@ _prune_tags() { printf 'prune\n'; }
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 # Prompt "Delete these X? [Y/n]", default yes on a TTY. On a non-TTY
-# (cron/CI/sandboxed session) the safe answer is NO — same convention as
+# (cron/CI session) the safe answer is NO — same convention as
 # link()'s non-interactive conflict skip. Returns 0=yes, 1=no.
 _prune_ask_yes() {
   local question="$1"
@@ -479,111 +478,12 @@ _prune_kill_worker() {
   kill "$1" 2> /dev/null
 }
 
-# ── Pass 4: unbounded state journals ──────────────────────────────────────────
-
-# Bound an append-only JSONL journal: if it exceeds HARD lines, truncate to the
-# last KEEP lines in place (atomic via temp file). Idempotent: a file already
-# under HARD is left untouched.
-_prune_bound_jsonl() {
-  local file="$1" keep="$2" hard="$3" home="$4"
-  [[ -f "$file" ]] || return 0
-  local lines
-  lines=$(wc -l < "$file" 2> /dev/null | tr -d ' ')
-  [[ "$lines" =~ ^[0-9]+$ ]] || return 0
-
-  local display="${file/#$home\//~/}"
-  if [[ "$lines" -le "$hard" ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 %s (%d lines, within bound)\033[0m\n' "$display" "$lines"
-    return 0
-  fi
-
-  printf '\033[0;33m  %s has %d lines (> %d); will trim to last %d\033[0m\n' \
-    "$display" "$lines" "$hard" "$keep"
-
-  local do_trim=0
-  case "${PRUNE_MODE:-ask}" in
-    auto) do_trim=1 ;;
-    dry) do_trim=0 ;;
-    *)
-      _prune_ask_yes "Trim ${display}?" && do_trim=1 || do_trim=0
-      ;;
-  esac
-
-  if [[ "$do_trim" -eq 0 ]]; then
-    printf '\033[2m  - Skipped (left unbounded)\033[0m\n'
-    return 0
-  fi
-
-  local tmp="${file}.prune.$$"
-  if tail -n "$keep" "$file" > "$tmp" 2> /dev/null && mv "$tmp" "$file" 2> /dev/null; then
-    printf '\033[0;32m  \xe2\x9c\x93 Trimmed %s to %d lines\033[0m\n' "$display" "$keep"
-  else
-    rm -f "$tmp" 2> /dev/null || true
-    printf '\033[0;33m  \xe2\x86\x92 failed to trim %s\033[0m\n' "$display" >&2
-  fi
-}
-
-_prune_state_journals() {
-  local home="${1:-$HOME}"
-  printf '\n==> State journal bounding\n'
-  # Keep the last 500 entries once a journal grows past ~1000 lines.
-  _prune_bound_jsonl "${home}/.claude/state/hook-timings.jsonl" 500 1000 "$home"
-  # P3 ledgers — same line-bound treatment as hook-timings.jsonl.
-  _prune_bound_jsonl "${home}/.claude/state/precompact-snapshots.jsonl" 500 1000 "$home"
-  _prune_bound_jsonl "${home}/.claude/state/subagent-ledger.jsonl" 500 1000 "$home"
-}
-
-# ── Pass 5b: stale per-session shards ─────────────────────────────────────────
-# hooks/stop now writes per-session shards under state/sessions/<id>.jsonl
-# (replacing the single sessions.jsonl). A shard last modified before midnight
-# today is stale.
-_prune_session_shards() {
-  local home="${1:-$HOME}"
-  printf '\n==> Stale session shards\n'
-
-  local root="${home}/.claude/state/sessions"
-  if [[ ! -d "$root" ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 No stale session shards\033[0m\n'
-    return 0
-  fi
-
-  local today
-  today=$(date +%Y-%m-%d)
-
-  local -a stale=()
-  local entry mday
-  while IFS= read -r -d '' entry; do
-    [[ -f "$entry" ]] || continue
-    mday=$(date -r "$entry" +%Y-%m-%d 2> /dev/null || true)
-    [[ -n "$mday" && "$mday" < "$today" ]] && stale+=("$entry")
-  done < <(find "$root" -maxdepth 1 -mindepth 1 -name '*.jsonl' -print0 2> /dev/null)
-
-  if [[ "${#stale[@]}" -gt 0 ]]; then
-    mapfile -t stale < <(printf '%s\n' "${stale[@]}" | sort)
-  fi
-
-  _PRUNE_ITEMS=() _PRUNE_LABELS=()
-  local d
-  for d in "${stale[@]+"${stale[@]}"}"; do
-    _PRUNE_ITEMS+=("$d")
-    _PRUNE_LABELS+=("${d/#$home\//~/}")
-  done
-  _prune_confirm_apply "stale session shard(s)" "Delete these session shards?" _prune_rm_f
-}
-
-# Action: rm -f one file (session shards, journals).
-_prune_rm_f() {
-  rm -f "$1" 2> /dev/null
-}
-
 # ── Main entry ────────────────────────────────────────────────────────────────
 
 _prune_run() {
   _prune_backups "${HOME}"
   _prune_stale_worktrees "${HOME}"
   _prune_orphan_workers
-  _prune_state_journals "${HOME}"
-  _prune_session_shards "${HOME}"
 }
 
 # ── Standalone execution (dot prune / ./install/95-prune.sh) ─────────────────

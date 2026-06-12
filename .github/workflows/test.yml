@@ -25,7 +25,7 @@ jobs:
         run: |
           {
             find . -name '*.sh' -not -path '*/tests/golden/cache/*' -not -path './.git/*' -not -path './.claude/*'
-            for f in dot sync doctor render prompt/* hooks/* git-template/hooks/*; do
+            for f in dot sync doctor render prompt/* git-template/hooks/*; do
               [ -f "$f" ] && printf '%s\n' "$f"
             done
           } > "$RUNNER_TEMP/targets.txt"

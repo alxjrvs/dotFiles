@@ -13,12 +13,9 @@
 #
 # no_auto_install: dot sync owns hook installation (install/85-lefthook.sh
 # runs `lefthook install` on every sync). lefthook's own on-run resync is
-# disabled because Claude Code's sandbox hardcodes a denyWrite on .git/hooks:
-# when this config changes, the checksum drifts and lefthook tries to rewrite
-# .git/hooks/pre-commit on the next (sandboxed) git op, fails with "operation
-# not permitted", and nags "Run 'lefthook install' manually" on every commit
-# until an unsandboxed `lefthook install` refreshes the checksum. Disabling
-# the implicit install stops the nag and routes all install through dot sync.
+# disabled so hook installation happens in exactly one place; after a
+# lefthook.yml change, re-run `dot sync` (or `lefthook install`) to refresh
+# the checksum.
 no_auto_install: true
 
 pre-commit:
@@ -28,11 +25,11 @@ pre-commit:
       # `*.sh` matches recursively; the extensionless entrypoints (dot, sync,
       # prompt/*, hooks/*, …) are listed explicitly. tests/golden/cache/*.sh are
       # `KEY=value` data fixtures (sourced, not scripts) — excluded.
-      glob: "{*.sh,dot,sync,doctor,render,prompt/*,hooks/*,git-template/hooks/*}"
+      glob: "{*.sh,dot,sync,doctor,render,prompt/*,git-template/hooks/*}"
       exclude: "tests/golden/cache/"
       run: shellcheck -x {staged_files}
     shfmt-check:
-      glob: "{*.sh,dot,sync,doctor,render,prompt/*,hooks/*,git-template/hooks/*}"
+      glob: "{*.sh,dot,sync,doctor,render,prompt/*,git-template/hooks/*}"
       exclude: "tests/golden/cache/"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}

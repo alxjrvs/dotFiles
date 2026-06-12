@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # verify-statusline.sh — diff (or regenerate) statusline golden fixtures against
-# the current shell scripts, using temp files (no process substitution, sandbox-safe).
+# the current shell scripts, using temp files (no process substitution).
 # Strips rate-limit rows exactly like run-golden.sh.
 #
 # Usage:

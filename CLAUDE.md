@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A macOS dotfiles repository owned end-to-end by **self-contained shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, apply macOS defaults, render the shell prompt, drive the Claude Code statusline, and dispatch every Claude Code hook event. No Rust, no compiled binary: just `bash`, `git`, and `jq`.
+A macOS dotfiles repository owned end-to-end by **self-contained shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, apply macOS defaults, render the shell prompt, and drive the Claude Code statusline. No Rust, no compiled binary: just `bash`, `git`, and `jq`.
 
 There is no `dotctl/` crate anymore — it was replaced by these shell scripts (this branch/PR). Each subsystem lives in its own topic folder and every script is **self-contained**: the small helpers it needs (logging, os/host detection, symlink `link()`, jq getters, the git-cache path hash, color/gradient math) are inlined at the top of the script rather than sourced from a shared library. Duplication across scripts is intentional — it keeps each folder isolated and individually shareable.
 
@@ -18,7 +18,7 @@ dot sync --upgrade      # Same + brew update/upgrade/cleanup + mise upgrade.
 dot sync --only=brew,mise   # Only the listed section tags.
 dot update              # Bump everything (equivalent to sync --upgrade).
 dot doctor              # Read-only health check; exits non-zero on failures.
-dot prune               # Find + delete .bak files, stale worktrees, orphan workers; bound state journals; age out session shards.
+dot prune               # Find + delete .bak files, stale worktrees, orphan workers.
 bats tests/bats/        # Run the shell unit-test suite.
 lefthook run pre-commit # shellcheck + shfmt -i 2 -ci -sr over staged shell files.
 ```
@@ -36,13 +36,12 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `dot sync` | `./sync` | Install/resync. Tag-gated steps (`--only=<tag,...>`). Idempotent. |
 | `dot update` | `./sync --upgrade` | Bump everything. |
 | `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. |
-| `dot prune` | `./install/95-prune.sh` | `.bak` / stale-worktree / orphan-worker cleanup + state-journal bounding + stale session-shard removal. Flags pass through (`-n` dry-run, `-y` unattended). Also runs at the tail of every full `dot sync`. |
+| `dot prune` | `./install/95-prune.sh` | `.bak` / stale-worktree / orphan-worker cleanup. Flags pass through (`-n` dry-run, `-y` unattended). Also runs at the tail of every full `dot sync`. |
 | `dot render <tpl>` | `./render` | `op://` template resolver. |
 | `dot git-data` | `prompt/git-data` | Hot path: gather git state, write shell-sourceable cache. |
 | `dot prompt-render` | `prompt/prompt-render` | Hot path: read git-data cache, emit zsh PROMPT syntax. |
 | `dot statusline` | `share/claude-statusline/statusline.sh` | Read Claude Code JSON on stdin, emit 3–6 lines with progress bars. |
 | `dot subagent-statusline` | `share/claude-statusline/subagent-statusline.sh` | Subagent task statusline. |
-| `dot hook <event>` | `hooks/<event>` | Dispatch a Claude Code hook event (event name maps 1:1 to a script in `hooks/`). |
 
 `DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → legacy `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`, `render`, `prompt/git-data`, `prompt/prompt-render`, `share/claude-statusline/*`) are standalone — run them directly (`./prompt/git-data`) for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` defines and exports the shared helpers (`os_kind`, `host_id`, `link`, …) before sourcing each module, so the modules carry no inlined helpers of their own. The sole exception is `install/95-prune.sh`, which keeps its own guard block + helpers because it also runs standalone (`./install/95-prune.sh` / `dot prune`).
 
@@ -83,23 +82,10 @@ Everything is symlinked; there are no read-in-place or compiled-in files.
 
 Each entry is symlinked individually into `~/.claude/` by `dot sync` (claude tag):
 
-- `CLAUDE.md` — user-level global instructions (identity, preferences, coding style).
-- `settings.json` — permissions, env, sandbox, enabled plugins, hook dispatch, `statusLine` (→ `dot statusline`), `subagentStatusLine` (→ `dot subagent-statusline`).
+- `CLAUDE.md` — user-level global instructions (identity, preferences).
+- `settings.json` — **deliberately minimal**: agent teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` + `teammateMode`), `editorMode: vim`, `statusLine` (→ `dot statusline`), `subagentStatusLine` (→ `dot subagent-statusline`). Nothing else — no permissions arrays, no sandbox block, no hook wiring, no plugins. Don't add settings without asking.
 
-There is no `agents/` or `commands/` directory — custom subagents and slash commands were dropped (unused); skills come from plugins instead.
-
-**Hook dispatch:** Claude Code hook events route through `dot hook <event>`, which execs `hooks/<event>`. To add or modify a hook, add/edit the script in `hooks/` and wire it in `settings.json`. The wired set is intentionally minimal:
-
-| Event | Script | Role |
-|-------|--------|------|
-| PreToolUse (Edit\|Write) | `hooks/lock-file-guard` | defender |
-| PreToolUse (mcp__.*) | `hooks/mcp-guard` | defender |
-| PostToolUse (Edit\|Write) | `hooks/format-on-save` | formatter |
-| PostToolUse (Bash) | `hooks/trim-bash-output` | output trim |
-| UserPromptSubmit | `hooks/user-prompt-submit` | git cache pre-warm |
-| Stop | `hooks/stop` | session JSONL journal |
-| PreCompact (—) | `hooks/precompact` | snapshot |
-| SubagentStop (—) | `hooks/subagent-stop` | ledger |
+There is no `agents/`, `commands/`, or `hooks/` directory — custom subagents, slash commands, and hook scripts were all dropped (unused).
 
 ### Tests
 
@@ -190,9 +176,8 @@ export STRIPE_KEY="$(op read 'op://Personal/stripe/credential')"
 
 Pause and confirm with the user before doing any of these:
 
-- **Dependency lockfiles** (any file matching `*-lock*` or `*.lock*`): never edit by hand. The `hooks/lock-file-guard` PreToolUse hook blocks these; do not work around it.
+- **Dependency lockfiles** (any file matching `*-lock*` or `*.lock*`): never edit by hand.
 - **`link()` symlink semantics**: the `link()` function prompts on conflict (interactive `$LINK_MODE`) unless `-f` or `-s` is passed. Do not change the default behavior to auto-overwrite.
-- **`hooks/` dispatcher**: hooks run on every Claude Code action. A crash or hang here degrades the entire interactive surface. Add a bats test for any new hook before wiring it into `settings.json`.
 - **Hot-path scripts** (`prompt/git-data`, `prompt/prompt-render`): these run on every prompt/refresh. Don't add subprocess spawns, network calls, or unbounded loops. `prompt-render` must stay fork-free — read the cache, render, exit.
 - **Self-contained rule**: scripts inline their own helpers; there is no `shared/` library layer. Don't introduce one — keep each topic folder independently runnable and shareable.
 - **Starship references**: replaced by `prompt/prompt-render`. If you see `starship` anywhere, treat it as historical — do not reintroduce.
@@ -204,97 +189,6 @@ Pause and confirm with the user before doing any of these:
 - **dot-claude vs .claude**: source of truth is `dot-claude/` in this repo. The `.claude/` directory at repo root holds machine-local overrides (gitignored) — don't confuse it with project-local Claude config.
 - **Sheldon plugin order matters**: `fast-syntax-highlighting` must be last in `sheldon/plugins.toml`. It wraps every existing ZLE widget at load time, so anything that registers a widget must run before sheldon's `eval` line in `zsh/30-plugins.zsh`.
 - **`dot` self-locates**: `dot` resolves `DOTFILES_DIR` from its own resolved symlink target, so the repo is relocatable. To move it: `mv` the repo, then run `DOTFILES_DIR=<new> <new>/dot sync --force` once to relink (or just re-run `bootstrap.sh`).
-- **settings.json excludedCommands is for unsandboxable tools only**: most allowed commands run fine *inside* the sandbox (bun/npm/cargo/mise/lefthook/gitleaks were tested and re-sandboxed 2026-06). Reserve `excludedCommands` for tools with hard unsandboxable dependencies: `git`/`gh` (signing socket, keychain), `brew` (Mach IPC), `open` (OS handoff), `dot` (hook dispatch), `pbcopy` (clipboard, deliberately exiled from the sandbox). If a newly-allowed command fails sandboxed, check which resource it needs (denyRead path? socket? domain?) before reaching for exclusion. **IMPORTANT (verified 2026-06-07):** commands run *sandboxed first* and are bound by `denyWrite`/`denyRead`/network rules — `excludedCommands` does NOT pre-emptively unsandbox them. The only thing that can unsandbox is `allowUnsandboxedCommands`, and it is **`false` (strict / closed)**: the `dangerouslyDisableSandbox` retry is ignored, so a sandbox-blocked command hard-fails instead of silently retrying unsandboxed. The hatch is operator-only — flip to `true` for a named tool, run it, flip back. Nothing needs it open: gh resolves its token from the macOS login keychain in-sandbox (see the gh entry below), so HTTPS push via the gh credential helper now works on the first sandboxed attempt (SSH still can't — no raw TCP). Still true that `github.com` must stay in `allowedDomains` (the sandboxed first attempt + any sandboxed fetch needs it) and `~/.gitconfig` writes are blocked in-sandbox; per-repo `.git/config`/`.git/hooks` writes are HARDCODED-DENIED in-sandbox (re-verified 2026-06-10: `.git` root and `refs/` writable, `hooks/` and `config` EPERM — a built-in protection, not a settings rule, so there is nothing to relax; this supersedes the 2026-06-09 "deliberately writable" finding). lefthook is engineered around it: `no_auto_install: true` + `dot sync` owns `lefthook install`, which must run from a regular terminal after lefthook.yml changes (the sandboxed resync EPERMs and skips — benign-but-scary "sync hooks: ❌" line). Treat `excludedCommands` as "still runs sandboxed-first, just routes through the permission flow" (**exclusion ≠ unsandboxed**); treat `allowUnsandboxedCommands` as "closed by default; operator-triggered escape only."
-- **settings.json denyRead + Read-deny mirrors**: `sandbox.filesystem.denyRead` constrains Bash subprocesses only; the built-in Read tool bypasses the sandbox entirely. Every credential path added to `denyRead` needs a matching `Read(...)` rule in `permissions.deny`, or the protection is half-open. The companion is `denyWrite` (also Bash-only; Read/Edit tools bypass it) for anti-tamper of credential/exec files — mirror sensitive *write* targets with `Edit(...)` denies the same way. **Never `denyWrite` (or `Edit()`-deny) a git-tracked file in this repo** (`dot-claude/settings.json`, `hooks/*`, `dot`): because git runs sandboxed, `denyWrite` blocks `git checkout`/`rebase` on it, and an `Edit()` deny on the live `~/.claude/settings.json` (or its repo symlink target) self-locks the file against every in-session edit path — recoverable only from an external unsandboxed shell.
-- **`gh` reads `~/.config/gh/hosts.yml` at startup, and resolves its token from the keychain** (changed 2026-06-07): `hosts.yml` is sandbox-readable (it carries only non-secret host metadata — host/protocol/username, no `oauth_token`); the OAuth token lives in the macOS login keychain (gh secure storage). Sandboxed gh works because `hosts.yml` is no longer `denyRead` AND `~/Library/Keychains/login.keychain-db` is in `sandbox.filesystem.allowRead` (so the legacy keychain search finds gh's item; securityd still gates decryption per-item by code signature). So `gh auth status`/`token`/`git-credential` all succeed in-sandbox. If a future `gh auth login` ever uses `--insecure-storage` it will dump the token plaintext into `hosts.yml` — don't; re-login with default (secure) storage. `gh auth status` should show `(keyring)`.
+- **`gh` auth is keychain-backed**: the OAuth token lives in the macOS login keychain (gh secure storage); `~/.config/gh/hosts.yml` carries only non-secret host metadata. If a future `gh auth login` ever uses `--insecure-storage` it will dump the token plaintext into `hosts.yml` — don't; re-login with default (secure) storage. `gh auth status` should show `(keyring)`.
 - **`dot sync --only=<tag>` requires the tag to exist**: a module's declared tag and the `--only=` value must agree, or `--only=foo` silently runs nothing.
 - **Statusline is bash-3.2 compatible**: `share/claude-statusline/statusline.sh` targets macOS system bash (3.2) so it's portable as a standalone drop-in (it has its own README + curl install). The installer/prompt/hook scripts do not carry that constraint and use bash-4+ features.
-- **Sandbox `allowUnixSockets` is literal**: Claude Code compiles entries to
-  seatbelt `subpath` rules — globs are matched as literal characters, never
-  expanded. Any socket the sandbox must reach needs a stable literal path
-  (this is why git signing uses a dedicated agent at
-  `~/.ssh/agent/signing.sock`, not Apple's per-boot-random launchd socket).
-  `dot doctor` lints for dead glob entries. The allow-listed sockets are:
-  the signing agent above; the 1Password SSH **auth** agent
-  (`~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock`);
-  the 1Password **CLI biometric integration** — both the op daemon
-  (`~/.config/op/op-daemon.sock`) and the desktop-app IPC socket
-  (`~/Library/Group Containers/2BUA8C4S2C.com.1password/t/s.sock`); and
-  pueue (`~/Library/Application Support/pueue/pueue_jarvis.socket`). The two
-  group-container sockets (`agent.sock`, `s.sock`) additionally need an
-  `allowRead` leaf carve-out, because the whole container is `denyRead` —
-  same proven leaf-under-denyRead pattern as
-  `~/Library/Keychains/login.keychain-db`. Without these, sandboxed
-  `dot doctor` / SSH-auth / `op item get` / `pueue status` fail with
-  "Operation not permitted" even though the daemons are up — a
-  sandbox-visibility false negative, not a real outage. (`s.sock` was the
-  fix for sandboxed `op` reporting "not currently signed in": with the
-  container `denyRead`, `op` couldn't even *detect* the app socket and gave
-  up before attempting biometric — the instant "not signed in" vs a
-  "couldn't connect to app" timeout is the tell.)
-- **`op` biometric in-sandbox is an accepted broad-scope residual (decided
-  2026-06-11)**: the `s.sock`/`op-daemon.sock` carve-outs let sandboxed `op`
-  reach the desktop-app integration, so `op item get` works in-session via
-  Touch ID. The deliberate trade: 1Password biometric authorization is
-  per-terminal-session and time-bounded (≈10 min idle / 12 h hard cap,
-  revoked on app lock) but covers **all** vaults the user can read — so
-  during an authorized window a prompt-injected sandboxed command can read
-  any secret and, combined with the broad `allowedDomains` domain-fronting
-  residual, potentially exfiltrate it. A vault-scoped **service account**
-  was evaluated as the least-privilege alternative and **rejected**: 1Password
-  categorically forbids service-account access to the Personal/Private vault
-  (`op service-account create` help), so an SA cannot cover "all my vaults."
-  Biometric is the only path to full-vault in-sandbox access; the residual is
-  accepted. Mitigations in place: `op-run` keeps output **masking on**; the
-  token never lands on disk (no standing credential); biometric must already
-  be authorized in that session (a headless background job can't satisfy
-  Touch ID, so it stays fail-closed there).
-- **Linked-worktree shared `.git` carve-out (docs) vs background-job reality
-  (observed 2026-06-10)**: the docs say that when the cwd is a linked git
-  worktree, the sandbox auto-allows writes to the main repository's shared
-  `.git` (refs/index; `hooks/` and `config` stay denied as hardcoded
-  behavior). **In background-job sessions this carve-out did NOT apply**: a
-  worktree session's `git commit` failed with EPERM on the main repo's
-  `.git/worktrees/<name>/index.lock`. Root cause of the wider incident:
-  **filesystem `allowWrite` globs compile literally, same as
-  `allowUnixSockets`** — `~/**/.git` and `~/**/node_modules` were dead
-  entries (verified by probe: a repo's `.git` outside the session's cwd
-  root is unwritable; the cwd "." root is why git normally works). **Both
-  globs were REMOVED 2026-06-11** (re-probed dead in a background job: a
-  `node_modules`/`.git` path outside the cwd root still EPERMs without
-  them) — they granted nothing and falsely implied *external* worktrees
-  (`git worktree add` to a sibling path outside the repo) were supported.
-  They never could be: no glob can express "the `.git` of whatever repo
-  this external worktree belongs to," and the only entries that would work
-  are the ones policy rejects. `tests/bats/hardening.bats` now asserts
-  `allowWrite` carries no `**` glob, so the dead entries can't creep back.
-  Policy (settled 2026-06-10): NO per-repo carve-outs and NO broad
-  `~/Code` allowWrite (proposed and rejected as too wide — it would let any
-  sandboxed command tamper with this repo's unsandboxed exec surfaces:
-  `dot`, `hooks/*`, `ssh/git-ssh-sign`). **External worktrees are
-  unsupported; use the nested `.claude/worktrees/<name>` layout** (the
-  EnterWorktree tool / Agent `isolation: worktree`), whose writes work via
-  the cwd "." root — a spawned worktree agent commits to the shared `.git`
-  with zero config (re-verified 2026-06-11). Consequence: **launch worktree
-  background jobs from the REPO ROOT, not the worktree** — the
-  `.claude/worktrees/` layout keeps the worktree inside the repo, so the cwd
-  root covers both the worktree and the main `.git`, and commits work. The
-  docs' built-in linked-worktree carve-out failing to fire in a
-  worktree-cwd jobs session is an upstream bug candidate (observed
-  v2.1.172). Also disproven along the way: the `com.apple.provenance`
-  xattr does NOT block sandboxed writes inside an allowed root (probed) —
-  when you see EPERM, suspect the allowlist before TCC. Filesystem sandbox
-  paths document NO glob support (only `/`, `~/`, `./` prefixes) — don't
-  add new `*` entries to these arrays.
-- **Domain-fronting residual (accepted, documented 2026-06-10)**: the sandbox
-  proxy makes its allow/deny decision from the client-supplied hostname
-  WITHOUT TLS inspection, so any allowed broad domain (`github.com`, the
-  `*.githubusercontent.com`/`*.npmjs.org` wildcards) is a theoretical
-  exfiltration path for a prompt-injected command. The documented mitigation —
-  a TLS-terminating proxy via `sandbox.network.httpProxyPort` with its CA
-  installed in-sandbox — is deliberately NOT adopted (daily-driver friction
-  outweighs the threat model). Revisit if first-party TLS-aware isolation
-  lands. (`@anthropic-ai/sandbox-runtime` was evaluated and dropped
-  2026-06-10 — this stack is claude-native; the built-in sandbox is the
-  boundary. Known accepted residual: hooks and MCP servers run as separate
-  processes outside the Bash sandbox.)

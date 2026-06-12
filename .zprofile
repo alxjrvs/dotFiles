@@ -21,10 +21,8 @@ export PATH="$HOME/.local/bin:$PATH"
 # demand with `gh auth token` rather than inheriting a long-lived copy here.
 
 # Git signing -> dedicated ssh-agent at a FIXED socket path (silent signing,
-# no per-commit prompts). Fixed path because the Claude sandbox compiles
-# allowUnixSockets to literal seatbelt subpath rules -- Apple's launchd agent
-# socket is per-boot random and can never be allowed. git signs via the
-# agent (-U) and never reads the key file (sandbox denies ~/.ssh/id_*).
+# no per-commit prompts; stable across reboots, unlike Apple's per-boot-random
+# launchd agent socket). git signs via the agent (-U).
 # Auth keys still live in 1Password (ssh/config IdentityAgent ignores
 # SSH_AUTH_SOCK). dot sync (install/45-ssh.sh) provisions key + agent.
 export SSH_AUTH_SOCK="$HOME/.ssh/agent/signing.sock"

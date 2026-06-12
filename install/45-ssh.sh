@@ -5,10 +5,8 @@
 # exports them before sourcing this module.
 #
 # Auth keys live in 1Password (ssh/config IdentityAgent). Signing uses a
-# dedicated agent at a FIXED socket path because the Claude Code sandbox
-# compiles allowUnixSockets entries to literal seatbelt subpath rules —
-# globs never match, so Apple's per-boot-randomized launchd socket cannot
-# be allowed. See docs/superpowers/specs/2026-06-05-ssh-sync-convergence-design.md.
+# dedicated agent at a FIXED socket path — stable across reboots, unlike
+# Apple's per-boot-randomized launchd socket.
 
 _ssh_tags() { printf 'ssh\n'; }
 

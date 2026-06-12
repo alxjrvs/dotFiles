@@ -1,8 +1,7 @@
 #!/usr/bin/env bats
 # Unit tests for the self-contained dedotctl shell port.
-# Covers: policy-guard patterns, lock-file-guard names, porcelain-v2 parse,
-# prompt gradient/bar, macOS expected_read normalization, symlink link() modes,
-# trim-bash-output thresholds, cache hash.
+# Covers: porcelain-v2 parse, prompt gradient/bar, macOS expected_read
+# normalization, symlink link() modes, cache hash.
 
 ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
 JQDIR="$(dirname "$(mise which jq 2> /dev/null || command -v jq)")"
@@ -18,15 +17,6 @@ setup() {
 }
 teardown() { rm -rf "$TDIR"; }
 
-# Helper: run a hook with a JSON payload on stdin.
-run_hook() {
-  local hook="$1" json="$2"
-  printf '%s' "$json" | "$ROOT/hooks/$hook"
-}
-
-# jq pretty-prints deny payloads with a space: "permissionDecision": "deny"
-is_deny() { [[ "$1" == *'"permissionDecision": "deny"'* ]]; }
-
 # link() now lives only in sync (exported to the install/* modules at runtime);
 # the modules no longer inline it. Extract just the link() function from sync
 # into a sourceable file (awk avoids sed's brace-escaping pitfalls) and echo the
@@ -37,83 +27,10 @@ _extract_link() {
   printf '%s\n' "$fnfile"
 }
 
-# NOTE: policy-guard was removed; --no-verify / --no-gpg-sign / force-push are
-# now blocked by permissions.deny in dot-claude/settings.json, not by a hook.
-# Its former bats coverage lived here and was deleted with the hook.
-
-# ── lock-file-guard ─────────────────────────────────────────────────────────
-@test "lock-file-guard: denies all 13 known lock names" {
-  local names=(Brewfile.lock Brewfile.lock.json bun.lock bun.lockb package-lock.json yarn.lock pnpm-lock.yaml Gemfile.lock Cargo.lock composer.lock poetry.lock uv.lock flake.lock)
-  for n in "${names[@]}"; do
-    run run_hook lock-file-guard "{\"tool_input\":{\"file_path\":\"/some/path/$n\"}}"
-    [ "$status" -eq 0 ]
-    is_deny "$output" || {
-      echo "expected deny for $n, got: $output"
-      false
-    }
-  done
-}
-
-@test "lock-file-guard: allows non-lock file" {
-  run run_hook lock-file-guard '{"tool_input":{"file_path":"/some/path/main.rs"}}'
-  [ "$status" -eq 0 ]
-  [[ "$output" != *deny* ]]
-}
-
-@test "lock-file-guard: falls back to .file_path key" {
-  run run_hook lock-file-guard '{"file_path":"/x/Cargo.lock"}'
-  [ "$status" -eq 0 ]
-  is_deny "$output"
-}
-
-@test "lock-file-guard: denies .env and secret-bearing variants" {
-  local names=(.env .env.local .env.production .env.staging .env.test .env.development)
-  for n in "${names[@]}"; do
-    run run_hook lock-file-guard "{\"tool_input\":{\"file_path\":\"/some/path/$n\"}}"
-    [ "$status" -eq 0 ]
-    is_deny "$output" || {
-      echo "expected deny for $n, got: $output"
-      false
-    }
-  done
-}
-
-@test "lock-file-guard: allows .env templates and non-dotenv names" {
-  local names=(.env.example .env.template .env.sample foo.env environment)
-  for n in "${names[@]}"; do
-    run run_hook lock-file-guard "{\"tool_input\":{\"file_path\":\"/some/path/$n\"}}"
-    [ "$status" -eq 0 ]
-    [[ "$output" != *deny* ]] || {
-      echo "expected allow for $n, got: $output"
-      false
-    }
-  done
-}
-
-# ── trim-bash-output thresholds ─────────────────────────────────────────────
-@test "trim-bash-output: under 20k threshold passes through untrimmed" {
-  local small
-  small=$(printf 'x%.0s' $(seq 1 100))
-  run run_hook trim-bash-output "{\"tool_name\":\"Bash\",\"session_id\":\"s1\",\"tool_response\":{\"stdout\":\"$small\"}}"
-  [ "$status" -eq 0 ]
-  # No updatedToolOutput when under threshold.
-  [[ "$output" != *updatedToolOutput* ]]
-}
-
-@test "trim-bash-output: over 20k threshold is trimmed" {
-  local big payload
-  big=$(printf 'yyyyyyyyyy\n%.0s' $(seq 1 3000))
-  # Build valid JSON via jq (raw newlines can't appear unescaped in a string).
-  payload=$(jq -n --arg s "$big" '{tool_name:"Bash",session_id:"s1",tool_response:{stdout:$s}}')
-  run run_hook trim-bash-output "$payload"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *updatedToolOutput* ]] || [[ "$output" == *hookSpecificOutput* ]]
-}
-
 # ── cache hash ──────────────────────────────────────────────────────────────
 # The cache key is FNV-1a (pure bash, no fork) inlined identically in
-# git-data, prompt-render, and user-prompt-submit. These tests pin the
-# deterministic 12-hex shape and cross-file agreement.
+# git-data and prompt-render. These tests pin the deterministic 12-hex
+# shape and cross-file agreement.
 @test "cache hash: git-data repo_hash is deterministic 12-hex" {
   local p="/Users/jarvis/Code/dotFiles/.claude/worktrees/dedotctl"
   local fn a b
@@ -138,17 +55,14 @@ _extract_link() {
   [ "$printed" = "$assigned" ]
 }
 
-@test "cache hash: git-data, prompt-render, user-prompt-submit use identical hash fn" {
+@test "cache hash: git-data and prompt-render use identical hash fn" {
   local p="/tmp/some/repo"
-  local fn_gd fn_pr fn_up a b c
+  local fn_gd fn_pr a b
   fn_gd=$(sed -n '/^repo_hash() {/,/^}/p' "$ROOT/prompt/git-data")
   fn_pr=$(sed -n '/^repo_hash() {/,/^}/p' "$ROOT/prompt/prompt-render")
-  fn_up=$(sed -n '/^repo_hash() {/,/^}/p' "$ROOT/hooks/user-prompt-submit")
   a=$(bash -c "$fn_gd; repo_hash '$p'")
   b=$(bash -c "$fn_pr; repo_hash '$p'")
-  c=$(bash -c "$fn_up; repo_hash '$p'")
   [ "$a" = "$b" ]
-  [ "$a" = "$c" ]
   [ "${#a}" -eq 12 ]
 }
 
@@ -266,7 +180,7 @@ _extract_link() {
 
 # ── porcelain-v2 parse (git-data on a temp repo) ────────────────────────────
 # init_repo: a throwaway git repo with global hooks/signing disabled so the
-# dotfiles repo's core.hooksPath + gpgsign don't fire inside the sandbox.
+# dotfiles repo's core.hooksPath + gpgsign don't fire during tests.
 init_repo() {
   local repo="$1"
   mkdir -p "$repo"

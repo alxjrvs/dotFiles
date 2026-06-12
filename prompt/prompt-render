@@ -25,8 +25,8 @@ set -euo pipefail
 
 # repo_hash PATH [OUTVAR] — 12-hex cache key: FNV-1a 64-bit over the path
 # characters, low 48 bits, pure bash. IDENTICAL to the function in
-# prompt/git-data and hooks/user-prompt-submit (bats asserts it); the render
-# path calls it with OUTVAR so even the hash costs no subshell.
+# prompt/git-data (bats asserts it); the render path calls it with OUTVAR
+# so even the hash costs no subshell.
 repo_hash() {
   local path="$1" out="${2:-}"
   local -i h=-3750763034362895579 prime=1099511628211 c # 0xcbf29ce484222325

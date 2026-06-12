@@ -157,8 +157,8 @@ _symlinks_run() {
 
     # The compiled dotctl binary predates the shell rewrite; nothing
     # references it anymore. Remove the leftover (plain file only — never
-    # follow a symlink someone re-pointed). A sandboxed sync can't write
-    # ~/.local/bin — warn instead of false-reporting removal.
+    # follow a symlink someone re-pointed). If the rm fails, warn instead
+    # of false-reporting removal.
     if [[ -f "${HOME}/.local/bin/dotctl" && ! -L "${HOME}/.local/bin/dotctl" ]]; then
       if rm -f "${HOME}/.local/bin/dotctl" 2> /dev/null; then
         printf '\033[2m  - removed legacy dotctl binary\033[0m\n'

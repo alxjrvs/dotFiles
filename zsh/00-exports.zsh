@@ -20,8 +20,3 @@ export LESS_TERMCAP_se=$'\e[0m'
 export LESS_TERMCAP_so=$'\e[1;33;46m'
 export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;35m'
-
-# Opt in to adoption telemetry. Consumed by the Claude Code Stop hook
-# (hooks/stop) — it no-ops unless this is set; flipping it on here lets a
-# session emit one event per Stop. See hooks/stop for the behavior contract.
-export META_TELEMETRY_ENABLE=1

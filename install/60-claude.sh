@@ -7,14 +7,11 @@
 _claude_tags() { printf 'claude\n'; }
 
 # Register the user-scope `github` HTTP MCP server in ~/.claude.json. It points
-# at the same GitHub Copilot MCP endpoint as the (now-disabled) official github
-# plugin, but resolves its bearer token via a headersHelper that reads the gh
-# keychain on demand — so no PAT is exported into the shell env. User scope =
-# all projects/sandboxes on this machine; idempotent, so safe to re-run.
-#
-# Caveat: ~/.claude.json is denyWrite inside the sandbox, so this only persists
-# when `dot sync` runs from a regular terminal. We verify the write landed and
-# say so plainly rather than trusting add-json's optimistic "Added" message.
+# at the GitHub Copilot MCP endpoint and resolves its bearer token via a
+# headersHelper that reads the gh keychain on demand — so no PAT is exported
+# into the shell env. User scope = all projects on this machine; idempotent,
+# so safe to re-run. We verify the write landed and say so plainly rather
+# than trusting add-json's optimistic "Added" message.
 _claude_register_github_mcp() {
   command -v claude > /dev/null 2>&1 || return 0
   command -v jq > /dev/null 2>&1 || return 0
@@ -38,7 +35,7 @@ _claude_register_github_mcp() {
     [[ "$(jq -r '.mcpServers.github.headersHelper // empty' "${cfg}" 2> /dev/null)" == "${helper}" ]]; then
     printf '\033[0;32m  \xe2\x9c\x93 github MCP server registered (user scope, gh-keychain auth)\033[0m\n'
   else
-    printf '\033[0;33m  \xe2\x86\x92 github MCP server not registered — ~/.claude.json is denyWrite in-sandbox; re-run "dot sync --only=claude" from a regular terminal\033[0m\n' >&2
+    printf '\033[0;33m  \xe2\x86\x92 github MCP server not registered — re-run "dot sync --only=claude" from a regular terminal\033[0m\n' >&2
   fi
 }
 
@@ -53,9 +50,7 @@ _claude_run() {
     if bash -c "$(curl -fsSL https://claude.ai/install.sh)"; then
       printf '\033[0;32m  \xe2\x9c\x93 Claude Code CLI installed\033[0m\n'
     else
-      # claude.ai is not in the sandbox allowedDomains, so an in-session
-      # reinstall dies at DNS with a generic curl error — name the cause.
-      printf '\033[0;31m  \xe2\x9c\x97 Claude Code CLI install failed — if this ran inside a Claude Code session, the installer domain is sandbox-blocked; run from a regular terminal\033[0m\n' >&2
+      printf '\033[0;31m  \xe2\x9c\x97 Claude Code CLI install failed — run from a regular terminal\033[0m\n' >&2
       return 1
     fi
   fi

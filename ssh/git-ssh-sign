@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # git-ssh-sign — gpg.ssh.program wrapper. Pins SSH_AUTH_SOCK to the
 # fixed-path signing agent so commit signing works regardless of session
-# env (launchd-spawned background sessions inherit Apple's per-boot socket,
-# which the Claude Code sandbox cannot allowlist — see install/45-ssh.sh).
+# env (launchd-spawned background sessions inherit Apple's per-boot-random
+# socket, which has no key loaded — see install/45-ssh.sh).
 SSH_AUTH_SOCK="${HOME}/.ssh/agent/signing.sock" exec /usr/bin/ssh-keygen "$@"

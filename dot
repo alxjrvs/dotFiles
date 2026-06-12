@@ -34,7 +34,7 @@ resolve_dir() {
 DIR=$(resolve_dir)
 
 [[ $# -ge 1 ]] || {
-  printf 'usage: dot <sync|update|doctor|prune|render|git-data|prompt-render|statusline|subagent-statusline|hook> [args...]\n' >&2
+  printf 'usage: dot <sync|update|doctor|prune|render|git-data|prompt-render|statusline|subagent-statusline> [args...]\n' >&2
   exit 2
 }
 
@@ -54,42 +54,6 @@ case "$cmd" in
   prompt-render) exec "$DIR/prompt/prompt-render" "$@" ;;
   statusline) exec "$DIR/share/claude-statusline/statusline.sh" "$@" ;;
   subagent-statusline) exec "$DIR/share/claude-statusline/subagent-statusline.sh" "$@" ;;
-  hook)
-    [[ $# -ge 1 ]] || {
-      printf 'dot hook: requires an <event>\n' >&2
-      exit 2
-    }
-    event="$1"
-    shift
-    # Timing wraps the hook: capture start, run, capture rc, append one JSON
-    # line to the timings log (opt-in via DOTFILES_HOOK_TIMING=1), exit rc.
-    # Runs AFTER the hook decision so a hook's own deny/exit is never delayed.
-    # gdate-only: BSD date passes a naive `date +%s%3N` rc probe while
-    # emitting a literal "3N", which then poisoned the arithmetic and failed
-    # every hook event under set -e. Without coreutils, timing is skipped.
-    # Log retention is owned by dot prune (state-journal bounding pass).
-    _hook_start_ms=""
-    if [[ "${DOTFILES_HOOK_TIMING:-}" == "1" ]] && command -v gdate > /dev/null 2>&1; then
-      _hook_start_ms=$(gdate +%s%3N)
-    fi
-
-    _hook_rc=0
-    "$DIR/hooks/$event" "$@" || _hook_rc=$?
-
-    if [[ -n "$_hook_start_ms" ]]; then
-      _hook_end_ms=$(gdate +%s%3N)
-      _hook_elapsed=$((_hook_end_ms - _hook_start_ms))
-      _hook_ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2> /dev/null || printf '')
-      _hook_state_dir="${HOME}/.claude/state"
-      _hook_log="${_hook_state_dir}/hook-timings.jsonl"
-      mkdir -p "$_hook_state_dir" 2> /dev/null || true
-      printf '{"ts":"%s","event":"%s","elapsed_ms":%d,"rc":%d}\n' \
-        "$_hook_ts" "$event" "$_hook_elapsed" "$_hook_rc" \
-        >> "$_hook_log" 2> /dev/null || true
-    fi
-
-    exit "$_hook_rc"
-    ;;
   *)
     printf 'dot: unknown subcommand: %s\n' "$cmd" >&2
     exit 2

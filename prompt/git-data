@@ -25,8 +25,8 @@ set -euo pipefail
 # ── Inlined cache-path helper (self-contained: no shared/ sourcing) ──
 #
 # Cache filename hash: 12 hex chars of FNV-1a over the repo toplevel (or cwd
-# when outside a repo). prompt-render and hooks/user-prompt-submit inline the
-# identical function so producer and consumers agree on the cache file.
+# when outside a repo). prompt-render inlines the identical function so
+# producer and consumer agree on the cache file.
 
 # xdg_cache_home — $XDG_CACHE_HOME or $HOME/.cache fallback.
 xdg_cache_home() {
@@ -40,8 +40,8 @@ xdg_cache_home() {
 # repo_hash PATH [OUTVAR] — 12-hex cache key: FNV-1a 64-bit over the path
 # characters, low 48 bits, pure bash (no fork — this replaced a shasum|cut
 # pipeline so prompt-render stays subprocess-free). With OUTVAR the result is
-# assigned via printf -v instead of printed. prompt-render and
-# hooks/user-prompt-submit inline the IDENTICAL function (bats asserts it).
+# assigned via printf -v instead of printed. prompt-render inlines the
+# IDENTICAL function (bats asserts it).
 repo_hash() {
   local path="$1" out="${2:-}"
   local -i h=-3750763034362895579 prime=1099511628211 c # 0xcbf29ce484222325

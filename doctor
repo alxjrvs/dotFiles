@@ -121,12 +121,9 @@ fi
 for _tool in "${_tools[@]}"; do
   # Presence is what this check is for — probe the binary on PATH, not its
   # --version output. gh in particular loads ~/.config/gh/hosts.yml at startup
-  # and exits non-zero when that file is unreadable — whether from broken perms
-  # (e.g. a root-owned 000 hosts.yml) or, for a sandboxed caller, the denyRead
-  # rule on that path. gh itself is in sandbox.excludedCommands, so a top-level
-  # gh runs unsandboxed; the failure this guards against is a config-read error,
-  # not the sandbox per se. Use `--version` only for the friendly version
-  # string, never as the presence test.
+  # and exits non-zero when that file is unreadable (e.g. a root-owned 000
+  # hosts.yml) — a config-read error, not a missing binary. Use `--version`
+  # only for the friendly version string, never as the presence test.
   if ! command -v "$_tool" > /dev/null 2>&1; then
     _fail "${_tool}: not found"
     continue
@@ -433,81 +430,11 @@ else
 fi
 unset _eff_key _pub_line _sign_key
 
-# Dead-rule lint: seatbelt subpath matching is LITERAL — a glob in
-# allowUnixSockets never matches anything (root cause of the 2026-06-05
-# sandboxed-signing failure; regression guard).
-_dotfiles=$(resolve_dotfiles_dir 2> /dev/null || true)
-if [[ -n "$_dotfiles" ]] && command -v jq > /dev/null 2>&1; then
-  if jq -r '.sandbox.network.allowUnixSockets[]?' "${_dotfiles}/dot-claude/settings.json" 2> /dev/null | grep -q '\*'; then
-    _warn "allowUnixSockets contains a glob — seatbelt subpath is literal; that rule is dead"
-  else
-    _ok "allowUnixSockets entries are literal"
-  fi
-fi
-unset _dotfiles
-
 if [[ -e "${HOME}/.augment/ssh-config" ]]; then
   _ok "\$HOME/.augment/ssh-config include target present"
 else
   _warn "\$HOME/.augment/ssh-config missing (ssh/config Include target; externally managed)"
 fi
-
-# ── 14. Claude permission scopes ──────────────────────────────────────────────
-# The tracked policy lives in dot-claude/settings.json; permission arrays merge
-# across scopes, so an allow added to a project/local scope can quietly defeat
-# a tracked ask/deny gate. Audit the live scope files against the tracked
-# rules. Read-only; jq-gated like the other settings checks.
-printf '\n==> Claude permission scopes\n'
-_dotfiles=$(resolve_dotfiles_dir 2> /dev/null || true)
-if [[ -n "$_dotfiles" ]] && command -v jq > /dev/null 2>&1; then
-  _tracked="${_dotfiles}/dot-claude/settings.json"
-
-  # This repo's policy: no settings.local.json overlay at all.
-  if [[ -e "${_dotfiles}/.claude/settings.local.json" ]]; then
-    _warn ".claude/settings.local.json exists — repo policy is no local overlay; fold deliberate grants into .claude/settings.json and rm it"
-  else
-    _ok "no .claude/settings.local.json overlay"
-  fi
-
-  # Collect allow rules from every live scope (the user scope is the tracked
-  # file via symlink — including it also catches self-inconsistency).
-  _scope_allows=$(
-    for _sf in "${HOME}/.claude/settings.json" \
-      "${_dotfiles}/.claude/settings.json" \
-      "${_dotfiles}/.claude/settings.local.json"; do
-      [[ -f "$_sf" ]] && jq -r '.permissions.allow[]?' "$_sf" 2> /dev/null
-    done | sort -u
-  )
-
-  _gate_hits=0
-  while IFS= read -r _rule; do
-    [[ -n "$_rule" ]] || continue
-    # Shell-wrapper allows smuggle any denied/asked command through a fresh
-    # shell — they defeat every Bash gate at once.
-    case "$_rule" in
-      "Bash(bash *)" | "Bash(sh *)" | "Bash(zsh *)" | "Bash(env *)" | "Bash(eval *)")
-        _warn "scope allow '$_rule' is a shell wrapper — it defeats every tracked Bash ask/deny gate"
-        _gate_hits=$((_gate_hits + 1))
-        continue
-        ;;
-    esac
-    # An allow that duplicates a tracked ask/deny rule string overrides the
-    # gate in the merged policy.
-    if jq -e --arg r "$_rule" \
-      '(.permissions.ask + .permissions.deny) | index($r)' \
-      "$_tracked" > /dev/null 2>&1; then
-      _warn "scope allow '$_rule' duplicates a tracked ask/deny rule — the gate is defeated"
-      _gate_hits=$((_gate_hits + 1))
-    fi
-  done <<< "$_scope_allows"
-  if [[ "$_gate_hits" -eq 0 ]]; then
-    _ok "no scope allow defeats a tracked ask/deny gate"
-  fi
-  unset _tracked _scope_allows _gate_hits _rule _sf
-else
-  _warn "claude scope audit skipped (no dotfiles dir or jq)"
-fi
-unset _dotfiles
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 printf '\n'
