@@ -89,7 +89,7 @@ There is no `agents/`, `commands/`, or `hooks/` directory — custom subagents, 
 
 ### Tests
 
-Shell unit tests run under `bats` (a managed mise tool) in `tests/bats/`. `tests/golden/` holds byte-exact reference fixtures (regenerable snapshots of the current shell scripts) for `prompt/prompt-render`, the statusline, and the subagent statusline — `tests/verify-golden.sh` / `tests/verify-statusline.sh` diff the current scripts against them. Re-baseline after an intentional rendering change with `tests/verify-golden.sh --update` / `tests/verify-statusline.sh --update`, then commit the fixture diff. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` pre-commit and `bats tests/bats/` + `dot doctor` (skip-external) pre-push. CI (`.github/workflows/test.yml`, macOS) runs the lint + bats checks on push to `main` and every PR; it does NOT run `dot doctor` or the golden verifiers (machine-state dependent).
+Shell unit tests run under `bats` (a managed mise tool) in `tests/bats/`. The suite is deliberately small: `prune.bats` guards the only subsystem that wields `rm -rf` (`install/95-prune.sh`) — non-TTY never deletes, the `.bak` safety guard, dry/auto effects. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` + gitleaks + a `settings.json` validity check pre-commit, and `bats tests/bats/` pre-push. There is no golden-snapshot harness and no CI — rendering changes are eyeballed, not byte-diffed (this is a personal repo, not a published library).
 
 ## Packaging policy: Lean A (brew = casks, mise = dev CLIs)
 

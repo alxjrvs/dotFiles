@@ -1,75 +1,34 @@
 # Lefthook config for this repo (dotfiles itself).
 #
-# Owns the pre-commit gate end-to-end: shellcheck + shfmt + JSON validity
-# + gitleaks. Previously gitleaks ran via a global `core.hooksPath` hook,
-# but that conflicted with lefthook ("Skipping hook sync" warning every
-# run). Restructure: removed global core.hooksPath, moved gitleaks into
-# this file. New repos get gitleaks via `init.templateDir`; existing
-# non-lefthook repos need a one-shot
-# `cp ~/.config/git/template/hooks/pre-commit <repo>/.git/hooks/pre-commit`.
-#
-# Install (idempotent; dot sync runs this automatically):
-#   lefthook install
+# pre-commit: lint staged shell + guard secrets and settings.json.
+# pre-push:   run the bats smoke suite (the prune rm -rf safety net).
 #
 # no_auto_install: dot sync owns hook installation (install/85-lefthook.sh
-# runs `lefthook install` on every sync). lefthook's own on-run resync is
-# disabled so hook installation happens in exactly one place; after a
-# lefthook.yml change, re-run `dot sync` (or `lefthook install`) to refresh
-# the checksum.
+# runs `lefthook install` on every sync). After a lefthook.yml change,
+# re-run `dot sync` (or `lefthook install`) to refresh the checksum.
 no_auto_install: true
 
 pre-commit:
   parallel: true
   commands:
     shellcheck:
-      # `*.sh` matches recursively; the extensionless entrypoints (dot, sync,
-      # prompt/*, hooks/*, …) are listed explicitly. tests/golden/cache/*.sh are
-      # `KEY=value` data fixtures (sourced, not scripts) — excluded.
-      glob: "{*.sh,dot,sync,doctor,render,prompt/*,git-template/hooks/*}"
-      exclude: "tests/golden/cache/"
+      # `*.sh` matches recursively; the extensionless entrypoints are listed explicitly.
+      glob: "{*.sh,dot,sync,doctor,prompt/*,git-template/hooks/*}"
       run: shellcheck -x {staged_files}
     shfmt-check:
-      glob: "{*.sh,dot,sync,doctor,render,prompt/*,git-template/hooks/*}"
-      exclude: "tests/golden/cache/"
+      glob: "{*.sh,dot,sync,doctor,prompt/*,git-template/hooks/*}"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}
     gitleaks:
-      # Replaces the former global-hook gitleaks. `protect --staged` only
-      # scans what's about to be committed. `--no-banner --redact` keeps
-      # output tight + safe to share.
       run: gitleaks protect --staged --redact -v --no-banner
     settings-json-validity:
-      # Backstop against committing a broken settings.json. Full
-      # JSON-schema validation against $schema would need ajv/check-
-      # jsonschema in mise.toml; this catches the common case (broken
-      # syntax) without a new dep.
+      # Backstop against committing a broken settings.json (breaks every Claude session).
       glob: "dot-claude/settings*.json"
-      run: jq -e . {staged_files} >/dev/null
+      run: jq -e . {staged_files} > /dev/null
 
-# pre-push: run the shell unit-test suite, then a fast structural sanity
-# check that the box itself is healthy before pushing dotfiles changes.
-# Catches a broken mise/node/bun install, missing git identity, drift
-# between this repo and the machine, plus any regression the bats suite
-# guards. Both stay fast (seconds-scale); the heavy/flaky external audit
-# is deferred (see SKIP_EXTERNAL below).
 pre-push:
-  parallel: true
   commands:
     bats:
-      # Shell unit tests (bats --count for the live number), seconds-scale.
-      # Runs on every push so the documented gate (bats + doctor) is real,
-      # not aspirational.
+      # The one suite worth gating a push on: prune is the only subsystem that
+      # wields `rm -rf`. Seconds-scale, fully offline.
       run: bats tests/bats/
-    doctor:
-      # SKIP_EXTERNAL: a push gate wants the fast structural checks (tool
-      # presence, git identity, symlinks, drift) — NOT the heavy/flaky brew
-      # bundle+doctor / gh / network audit, which is ~minute-scale and can
-      # wedge on Homebrew's global update lock. The full audit stays available
-      # via interactive `dot doctor`.
-      run: DOTFILES_DOCTOR_SKIP_EXTERNAL=1 dot doctor
-    golden:
-      # Byte-exact fixture verification for all three renderers (prompt,
-      # statusline, subagent). Seconds-scale, fully offline. verify-golden.sh
-      # supersedes verify-statusline.sh (its statusline fixtures are a
-      # subset), so only the full verifier runs here.
-      run: tests/verify-golden.sh
