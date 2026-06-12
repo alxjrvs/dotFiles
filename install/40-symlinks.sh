@@ -25,7 +25,6 @@ dot|.local/bin/dot
 git-template/hooks/pre-commit|.config/git/template/hooks/pre-commit
 ssh/config|.ssh/config
 ssh/1password-agent.toml|.config/1Password/ssh/agent.toml
-ssh/git-ssh-sign|.local/bin/git-ssh-sign
 mise.toml|.config/mise/config.toml
 sheldon/plugins.toml|.config/sheldon/plugins.toml
 starship.toml|.config/starship.toml

@@ -208,39 +208,37 @@ printf '\n==> SSH signing\n'
 
 _op_sock="${HOME}/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
 if [[ -S "$_op_sock" ]]; then
-  _ok "1Password agent socket present (auth)"
+  _ok "1Password agent socket present (auth + signing)"
 else
   _warn "1Password agent socket missing — enable Settings -> Developer -> SSH agent"
 fi
 unset _op_sock
 
-_sign_sock="${HOME}/.ssh/agent/signing.sock"
-_sign_key="${HOME}/.ssh/id_ed25519"
-if [[ -S "$_sign_sock" ]] && SSH_AUTH_SOCK="$_sign_sock" ssh-add -l > /dev/null 2>&1; then
-  _sign_fp=$(ssh-keygen -lf "${_sign_key}.pub" 2> /dev/null | awk '{print $2}')
-  if [[ -n "$_sign_fp" ]] && SSH_AUTH_SOCK="$_sign_sock" ssh-add -l 2> /dev/null | grep -qF "$_sign_fp"; then
-    _ok "signing agent up with key loaded"
-  else
-    _warn "signing agent up but signing key not loaded — run: dot sync --only=ssh"
-  fi
+_op_sign="/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+if [[ -x "$_op_sign" ]]; then
+  _ok "op-ssh-sign present"
 else
-  _warn "signing agent unreachable at ~/.ssh/agent/signing.sock — run: dot sync --only=ssh"
+  _warn "op-ssh-sign not found — install 1Password"
 fi
-unset _sign_sock _sign_fp
+if [[ "$(git config gpg.ssh.program 2> /dev/null || true)" == "$_op_sign" ]]; then
+  _ok "gpg.ssh.program -> op-ssh-sign"
+else
+  _warn "gpg.ssh.program not set to op-ssh-sign — run: dot sync --only=ssh"
+fi
+unset _op_sign
 
 _eff_key=$(git config user.signingkey 2> /dev/null || true)
-_pub_line=$(cat "${_sign_key}.pub" 2> /dev/null || true)
-if [[ -n "$_pub_line" && "$_eff_key" == "key::${_pub_line}" ]]; then
-  _ok "user.signingkey matches this machine's pubkey"
+if [[ "$_eff_key" == key::* ]]; then
+  _ok "user.signingkey set (1Password key)"
+  if grep -qF "${_eff_key#key::}" "${HOME}/.ssh/allowed_signers" 2> /dev/null; then
+    _ok "signing key present in allowed_signers"
+  else
+    _warn "signing key missing from ~/.ssh/allowed_signers — run: dot sync --only=ssh"
+  fi
 else
-  _warn "user.signingkey does not match ~/.ssh/id_ed25519.pub — run: dot sync --only=ssh"
+  _warn "user.signingkey not set — run: dot sync --only=ssh (with 1Password unlocked)"
 fi
-if [[ -n "$_pub_line" ]] && grep -qF "$_pub_line" "${HOME}/.ssh/allowed_signers" 2> /dev/null; then
-  _ok "pubkey present in allowed_signers"
-else
-  _warn "pubkey missing from ~/.ssh/allowed_signers — run: dot sync --only=ssh"
-fi
-unset _eff_key _pub_line _sign_key
+unset _eff_key
 
 if [[ -e "${HOME}/.augment/ssh-config" ]]; then
   _ok "\$HOME/.augment/ssh-config include target present"
