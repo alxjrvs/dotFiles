@@ -168,7 +168,6 @@ else
     ".config/ghostty/config|ghostty/config"
     ".config/bat/config|bat/config"
     ".config/atuin/config.toml|atuin/config.toml"
-    ".config/lazygit/config.yml|lazygit/config.yml"
     ".config/nvim/init.lua|nvim/init.lua"
     ".config/karabiner/karabiner.json|karabiner/karabiner.json"
     ".ssh/config|ssh/config"

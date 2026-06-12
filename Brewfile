@@ -29,7 +29,6 @@ cask "1password"
 
 # ── Apps ──────────────────────────────────────────────────────────────
 cask "claude"
-cask "devutils"
 cask "discord"
 
 # OrbStack provides the docker CLI; faster + lighter than Docker Desktop.

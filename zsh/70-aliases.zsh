@@ -14,9 +14,6 @@ alias ga="git add"
 alias gaa="git add --all"
 alias gb="git branch"
 alias gl="git log --oneline -10"
-alias lg="lazygit"
-# git absorb: auto-fixup staged hunks against the right history commit, then squash.
-alias gab="git absorb --and-rebase"
 
 # Navigation
 alias ..="cd .."
@@ -30,13 +27,7 @@ alias ll="eza --icons --group-directories-first -lh --git"
 alias lt="eza --icons --group-directories-first -T --level=2"
 alias tree="eza --icons --group-directories-first -T"
 alias b="bat --style=plain"
-alias btop="btm"  # bottom (rust) covers the top/htop slot via mise (cargo:bottom)
 
 # Editor
-alias v="nvim"
 alias vi="nvim"
 alias vim="nvim"
-
-# System
-alias env-sync='dot sync'
-alias env-doctor='dot doctor'

@@ -17,7 +17,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 |---------|-----|
 | `dot sync` | Idempotent re-sync. Installs missing tools, recreates broken symlinks. Fast on no-op. |
 | `dot sync --upgrade` | Same + brew update/upgrade/cleanup + mise upgrade. |
-| `dot sync --only=brew,mise` | Only the listed sections (tags: `brew mise sheldon symlinks claude gh git shell ssh ghostty bat atuin lazygit zsh git-template nvim karabiner lefthook macos prune`). |
+| `dot sync --only=brew,mise` | Only the listed sections (tags: `brew mise sheldon symlinks claude gh git shell ssh ghostty bat atuin zsh git-template nvim karabiner lefthook macos prune`). |
 | `dot update` | Bump everything to current — equivalent to `dot sync --upgrade`. |
 | `dot doctor` | Read-only diagnostics: tool presence, symlink integrity, drift. Exits non-zero on failures. |
 | `dot prune` | Delete `.bak` files, stale worktrees, orphan workers. |
@@ -40,7 +40,6 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `git-template/hooks/pre-commit` | Global pre-commit hook (gitleaks; referenced by `core.hooksPath`) |
 | `ghostty/config` | Ghostty terminal config |
 | `atuin/config.toml` | Atuin (shell history) config |
-| `lazygit/config.yml` | Lazygit config (Nord theme) |
 | `bat/config` | Bat config |
 | `ssh/config` | SSH client config (1Password agent, ControlMaster) |
 | `karabiner/karabiner.json` | Karabiner-Elements rules (Caps Lock → Control) |
@@ -79,10 +78,6 @@ To disable signing on a given machine, edit `~/.gitconfig.local`.
 
 `lefthook.yml` adds a pre-commit gate on staged shell files (`shellcheck` + `shfmt -i 2 -ci -sr` + gitleaks + `settings.json` validity) plus a `bats tests/bats/` pre-push gate. `dot sync` runs `lefthook install` automatically.
 
-## difftastic
-
-Wired as a git difftool. Run with `git dft` (alias for `git difftool`) — uses [difft](https://difftastic.wilfred.me.uk/) for syntax-aware diffs.
-
 ## Secrets
 
 1Password CLI (`op`) is the source of truth — there is no on-disk `.secrets` file. Patterns:
@@ -92,13 +87,9 @@ Wired as a git difftool. Run with `git dft` (alias for `git difftool`) — uses 
 - **`gh` keychain auth** — the GitHub token lives in the macOS keychain (`gh auth login`, secure storage) and is deliberately NOT exported to the environment (a standing export would leak it into every subprocess). Resolve on demand with `gh auth token` when a tool needs it.
 - **`direnv` + `op read` in `.envrc`** — for project-local env that must inherit at fork time. `direnv` is already hooked in `zsh/30-plugins.zsh`.
 
-## Completions
-
-`carapace` provides multi-shell completions for ~600 CLIs (gh, mise, op, kubectl, …). Loaded via `_zsh_cached_load` in `zsh/40-completions.zsh`, integrated with `fzf-tab` for preview windows. First shell after install regenerates the cache automatically.
-
 ## Packaging: Lean A (brew = casks, mise = dev CLIs)
 
-The Brewfile holds **only** `brew "mise"` + casks (GUI apps, fonts, the 1Password CLI cask, the Claude desktop cask). Every dev CLI — language toolchains, git surface (gh, delta, lazygit, gitleaks, lefthook), file/text tools (bat, fd, ripgrep, jq, eza), linters (shfmt, shellcheck), test tooling (bats), shell-init-time tools (sheldon, atuin, direnv, fzf), plus carapace, git-absorb, and neovim — lives in `mise.toml`.
+The Brewfile holds **only** `brew "mise"` + casks (GUI apps, fonts, the 1Password CLI cask, the Claude desktop cask). Every dev CLI worth installing globally — language toolchains (node, bun), git surface (gh, delta, gitleaks, lefthook), file/text tools (bat, fd, ripgrep, jq, eza), linters (shfmt, shellcheck), test tooling (bats), shell-init-time tools (sheldon, atuin, direnv, fzf), the nvim language servers, and neovim — lives in `mise.toml`. Situational toolchains (rust, python, …) are installed per-project with `mise use`, not globally.
 
 The PATH wiring in `.zshenv` puts `~/.local/share/mise/shims` first so every mise-managed tool resolves in every shell context (interactive, non-interactive, git hooks, editor subprocesses) without waiting for `mise activate`. This makes it safe to ship shell-init dependencies (sheldon, atuin, direnv) from mise — they're on PATH before `.zshrc` fragments load.
 

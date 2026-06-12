@@ -40,10 +40,3 @@ zstyle ':fzf-tab:complete:kill:argument-rest' fzf-preview \
   'ps -p $word -o pid,ppid,user,start,command 2>/dev/null'
 zstyle ':fzf-tab:complete:ssh:argument-rest' fzf-preview \
   'echo "DNS:"; dig +short $word 2>/dev/null; echo; echo "ssh -G:"; ssh -G $word 2>/dev/null | head -20'
-
-# Carapace — drop-in completions for ~600 CLIs. Loads after compinit;
-# the cached-init pattern keeps shell startup fast.
-if command -v carapace &>/dev/null; then
-  export CARAPACE_BRIDGES='zsh,fish,bash,inshellisense'
-  _zsh_cached_load carapace "carapace _carapace" "$(command -v carapace)"
-fi
