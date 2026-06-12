@@ -31,10 +31,6 @@ cask "1password"
 cask "claude"
 cask "discord"
 
-# OrbStack provides the docker CLI; faster + lighter than Docker Desktop.
-# Migration: export needed images/volumes from Docker Desktop before switching.
-cask "orbstack"
-
 # ── Fonts ─────────────────────────────────────────────────────────────
 cask "font-fira-code-nerd-font"
 
