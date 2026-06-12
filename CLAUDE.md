@@ -37,7 +37,6 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `dot update` | `./sync --upgrade` | Bump everything. |
 | `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. |
 | `dot prune` | `./install/95-prune.sh` | `.bak` / stale-worktree / orphan-worker cleanup. Flags pass through (`-n` dry-run, `-y` unattended). Also runs at the tail of every full `dot sync`. |
-| `dot render <tpl>` | `./render` | `op://` template resolver. |
 | `dot git-data` | `prompt/git-data` | Hot path: gather git state, write shell-sourceable cache. |
 | `dot prompt-render` | `prompt/prompt-render` | Hot path: read git-data cache, emit zsh PROMPT syntax. |
 | `dot statusline` | `share/claude-statusline/statusline.sh` | Read Claude Code JSON on stdin, emit 3–6 lines with progress bars. |

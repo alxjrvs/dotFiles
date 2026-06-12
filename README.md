@@ -28,7 +28,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 |------|---------|
 | `bootstrap.sh` | Fresh-machine entry point (exec `dot sync`) |
 | `dot` | Thin dispatcher; the single dotfiles command on PATH. Resolves `DOTFILES_DIR`, execs the matching topic script. |
-| `sync`, `doctor`, `render` | Top-level commands (install/resync, health check, `op://` template resolver) |
+| `sync`, `doctor` | Top-level commands (install/resync, health check) |
 | `install/` | Numbered `NN-*.sh` sync modules (brew, mise, symlinks, macos, prune, …), sourced by `sync` in order |
 | `prompt/` | `git-data` (git-state → cache) + `prompt-render` (cache → zsh PROMPT). Hot path. |
 | `share/claude-statusline/` | Self-contained, curl-installable Claude Code statusline (`statusline.sh` + `subagent-statusline.sh`) with its own README |
