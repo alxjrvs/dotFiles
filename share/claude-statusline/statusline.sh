@@ -8,7 +8,7 @@
 #
 # Reads the Claude Code statusline JSON on stdin and emits 3–6 colored lines:
 #   Line 1: repo/dir [ branch] [ worktree] [ #N: state] [C: counters] [+N/-M]
-#   Line 2: [M: model] [A: advisor] [E: effort]
+#   Line 2: [M: model] [E: effort]
 #   Line 3: CTX  <bar w/ amber autocompact cell> N% [AC] [200k+]
 #   Line 4: 5h   <bar> N% [time left] [delta]
 #   Line 5: 7d   <bar> N% [time left] [delta]
@@ -333,12 +333,6 @@ if topl=$(git rev-parse --show-toplevel 2> /dev/null) && [ -n "$topl" ]; then
   stash=$(git stash list 2> /dev/null | grep -c .)
 fi
 
-# Advisor name (custom .advisorModel in settings.json; empty for most users).
-advisor_name=""
-if [ -f "$HOME/.claude/settings.json" ]; then
-  advisor_name=$(jq -r '.advisorModel // ""' "$HOME/.claude/settings.json" 2> /dev/null)
-fi
-
 # Autocompact threshold (env override, else 80).
 ac=80
 case "$CLAUDE_AUTOCOMPACT_PCT_OVERRIDE" in
@@ -419,10 +413,6 @@ printf '%s\n' "$line1"
 # ── Line 2 ──────────────────────────────────────────────────────────────────
 line2=""
 [ -n "$model_name" ] && line2="${MUTED}[${RST}${CYAN}M: ${model_name}${MUTED}]${RST}"
-if [ -n "$advisor_name" ]; then
-  [ -n "$line2" ] && line2="${line2} "
-  line2="${line2}${MUTED}[${RST}${CYAN}A: ${advisor_name}${MUTED}]${RST}"
-fi
 if [ -n "$effort_level" ]; then
   [ -n "$line2" ] && line2="${line2} "
   line2="${line2}${MUTED}[${RST}${CYAN}E: ${effort_level}${MUTED}]${RST}"
