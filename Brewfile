@@ -18,16 +18,6 @@ brew "mise"
 # installs don't ship a broken sheldon binary.
 brew "openssl@3"
 
-# moreutils + coreutils: GNU userland exceptions to the Lean A policy.
-# - moreutils ships `sponge` (idempotent `jq ... | sponge file`), `ts`,
-#   `chronic`, `parallel`, etc. NO mise registry entry exists.
-# - coreutils ships GNU `date`, `timeout`/`gtimeout`, `realpath`, etc.
-#   under `g`-prefixed names so macOS BSD defaults stay default.
-#   mise has `aqua:uutils/coreutils` but it ships unprefixed names that
-#   would shadow BSD utilities for scripts that expect BSD semantics.
-brew "moreutils"
-brew "coreutils"
-
 # bash 4+: a system layer with no mise equivalent (the shell itself).
 # Apple ships 3.2 forever; 95-prune.sh (mapfile) needs 4+, and on a fresh
 # machine `env bash` must not resolve to 3.2.
