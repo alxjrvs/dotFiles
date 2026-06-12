@@ -1,35 +1,12 @@
 # Homebrew completions
 fpath+=(/opt/homebrew/share/zsh/site-functions)
 
-autoload -Uz add-zsh-hook
-
-# Cached-init helper. Caches the output of a tool's init command (e.g.
-# `mise activate zsh`) and sources it, regenerating only when the tool
-# binary is newer than the cache. Avoids subprocess spawn per shell.
-_zsh_cached_load() {
-  local name="$1" cmd="$2" bin="$3"
-  local cache="${XDG_CACHE_HOME:-$HOME/.cache}/zsh-init/${name}.zsh"
-  # -s also rejects zero-byte caches left behind by a failed init command —
-  # otherwise an empty cache "newer than" the binary sticks forever.
-  if [[ ! -s "$cache" || "$bin" -nt "$cache" ]]; then
-    mkdir -p "${cache:h}"
-    local tmp="${cache}.tmp.$$"
-    if command ${=cmd} > "$tmp" 2>/dev/null && [[ -s "$tmp" ]]; then
-      mv "$tmp" "$cache"
-    else
-      rm -f "$tmp"
-      return 0
-    fi
-  fi
-  source "$cache"
-}
-
 # Sheldon plugins (adds zsh-completions to fpath, loads FSH last)
-_zsh_cached_load sheldon "sheldon source" "$(command -v sheldon)"
+eval "$(sheldon source)"
 
 # Atuin shell history. --disable-up-arrow leaves Up/Down to history-substring-search
 # below; atuin owns Ctrl-R for full-history fuzzy search.
-command -v atuin &>/dev/null && _zsh_cached_load atuin "atuin init zsh --disable-up-arrow" "$(command -v atuin)"
+command -v atuin &> /dev/null && eval "$(atuin init zsh --disable-up-arrow)"
 
 # History substring search keybindings
 bindkey '^[[A' history-substring-search-up
