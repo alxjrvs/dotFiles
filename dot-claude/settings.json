@@ -3,7 +3,8 @@
   "env": {
     "EDITOR": "nvim",
     "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1",
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_CODE_ENABLE_AUTO_MODE": "1"
   },
   "permissions": {
     "allow": [
@@ -296,12 +297,15 @@
         "index.crates.io",
         "static.crates.io",
         "*.brew.sh",
+        "api.heroku.com",
+        "git.heroku.com",
         "localhost",
         "127.0.0.1"
       ],
       "allowUnixSockets": [
         "~/.ssh/agent/signing.sock",
         "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock",
+        "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/s.sock",
         "~/.config/op/op-daemon.sock",
         "~/Library/Application Support/pueue/pueue_jarvis.socket"
       ],
@@ -373,6 +377,7 @@
         "~/.ssh/allowed_signers",
         "~/Library/Keychains/login.keychain-db",
         "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock",
+        "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/s.sock",
         "~/.config/op",
         "~/.config/op/**",
         "/**/.env.example",
@@ -393,7 +398,6 @@
   "skipAutoPermissionPrompt": true,
   "editorMode": "vim",
   "inputNeededNotifEnabled": true,
-  "model": "claude-opus-4-8",
   "fallbackModel": ["claude-opus-4-7", "claude-sonnet-4-6"],
   "teammateMode": "in-process",
   "attribution": {

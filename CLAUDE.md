@@ -157,9 +157,9 @@ shared — divergence there isn't worth the overlay surface today.
 
 **1. `op-run` wrapper — one-shot CLI injection** (`zsh/80-functions.zsh`)
 ```sh
-op-run npm publish               # = op run --no-masking -- npm publish
+op-run npm publish               # = op run -- npm publish   (masking left ON)
 ```
-For any CLI invocation that reads a token from env. Nothing is exported to the shell session; `op` resolves `op://` references at exec time only.
+For any CLI invocation that reads a token from env. Nothing is exported to the shell session; `op` resolves `op://` references at exec time only. Masking is deliberately **on** (no `--no-masking`): the child gets the real resolved value but 1Password redacts it from the child's stdout/stderr, so secrets don't leak into output an agent/transcript could capture. If a tool genuinely breaks under masked output, add a one-off wrapper and document why rather than weakening this default.
 
 **2. `op://` references in config files**
 ```ini
@@ -214,16 +214,41 @@ Pause and confirm with the user before doing any of these:
   expanded. Any socket the sandbox must reach needs a stable literal path
   (this is why git signing uses a dedicated agent at
   `~/.ssh/agent/signing.sock`, not Apple's per-boot-random launchd socket).
-  `dot doctor` lints for dead glob entries. Three sockets are allow-listed
-  for required tools: the signing agent above, the 1Password SSH **auth**
-  agent (`~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock`),
-  and pueue (`~/Library/Application Support/pueue/pueue_jarvis.socket`).
-  The 1Password socket additionally needs an `allowRead` leaf carve-out,
-  because its whole group container is `denyRead` — same proven
-  leaf-under-denyRead pattern as `~/Library/Keychains/login.keychain-db`.
-  Without these, sandboxed `dot doctor` / SSH-auth / `pueue status` fail
-  with "Operation not permitted" even though the daemons are up — a
-  sandbox-visibility false negative, not a real outage.
+  `dot doctor` lints for dead glob entries. The allow-listed sockets are:
+  the signing agent above; the 1Password SSH **auth** agent
+  (`~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock`);
+  the 1Password **CLI biometric integration** — both the op daemon
+  (`~/.config/op/op-daemon.sock`) and the desktop-app IPC socket
+  (`~/Library/Group Containers/2BUA8C4S2C.com.1password/t/s.sock`); and
+  pueue (`~/Library/Application Support/pueue/pueue_jarvis.socket`). The two
+  group-container sockets (`agent.sock`, `s.sock`) additionally need an
+  `allowRead` leaf carve-out, because the whole container is `denyRead` —
+  same proven leaf-under-denyRead pattern as
+  `~/Library/Keychains/login.keychain-db`. Without these, sandboxed
+  `dot doctor` / SSH-auth / `op item get` / `pueue status` fail with
+  "Operation not permitted" even though the daemons are up — a
+  sandbox-visibility false negative, not a real outage. (`s.sock` was the
+  fix for sandboxed `op` reporting "not currently signed in": with the
+  container `denyRead`, `op` couldn't even *detect* the app socket and gave
+  up before attempting biometric — the instant "not signed in" vs a
+  "couldn't connect to app" timeout is the tell.)
+- **`op` biometric in-sandbox is an accepted broad-scope residual (decided
+  2026-06-11)**: the `s.sock`/`op-daemon.sock` carve-outs let sandboxed `op`
+  reach the desktop-app integration, so `op item get` works in-session via
+  Touch ID. The deliberate trade: 1Password biometric authorization is
+  per-terminal-session and time-bounded (≈10 min idle / 12 h hard cap,
+  revoked on app lock) but covers **all** vaults the user can read — so
+  during an authorized window a prompt-injected sandboxed command can read
+  any secret and, combined with the broad `allowedDomains` domain-fronting
+  residual, potentially exfiltrate it. A vault-scoped **service account**
+  was evaluated as the least-privilege alternative and **rejected**: 1Password
+  categorically forbids service-account access to the Personal/Private vault
+  (`op service-account create` help), so an SA cannot cover "all my vaults."
+  Biometric is the only path to full-vault in-sandbox access; the residual is
+  accepted. Mitigations in place: `op-run` keeps output **masking on**; the
+  token never lands on disk (no standing credential); biometric must already
+  be authorized in that session (a headless background job can't satisfy
+  Touch ID, so it stays fail-closed there).
 - **Linked-worktree shared `.git` carve-out (docs) vs background-job reality
   (observed 2026-06-10)**: the docs say that when the cwd is a linked git
   worktree, the sandbox auto-allows writes to the main repository's shared
