@@ -1,8 +1,0 @@
-# Brewfile.air — Air-specific brew/cask additions.
-#
-# Installed AFTER the shared `Brewfile` on the M3 Air. Use for casks /
-# formulae that only the Air needs (e.g. Sidecar-related apps that
-# pair with iPad on the road).
-#
-# To dry-run the Pro's overlay locally:
-#   dot sync --only=brew --host=pro

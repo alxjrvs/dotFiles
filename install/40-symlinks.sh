@@ -2,7 +2,7 @@
 # install/40-symlinks.sh — full symlink mapping table.
 # Tags: symlinks git shell mise sheldon starship ghostty bat atuin zsh
 #       git-template gh claude ssh nvim karabiner
-# Sourced by sync; not standalone — helpers (os_kind, host_id, link) come from
+# Sourced by sync; not standalone — helpers (os_kind, link) come from
 # sync, which exports them before sourcing this module.
 
 _symlinks_tags() {

@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # install/45-ssh.sh — SSH signing convergence.
 # Tags: ssh
-# Sourced by sync; not standalone — helpers (host_id) come from sync, which
-# exports them before sourcing this module.
+# Sourced by sync; not standalone.
 #
 # Auth keys live in 1Password (ssh/config IdentityAgent). Signing uses a
 # dedicated agent at a FIXED socket path — stable across reboots, unlike
@@ -26,7 +25,7 @@ _ssh_ensure_key() {
   mkdir -p "${HOME}/.ssh"
   chmod 700 "${HOME}/.ssh" 2> /dev/null || true
   if [[ ! -e "$key" ]]; then
-    if ssh-keygen -q -t ed25519 -N "" -C "signing-only $(host_id)" -f "$key"; then
+    if ssh-keygen -q -t ed25519 -N "" -C "signing-only $(scutil --get LocalHostName 2> /dev/null || hostname -s)" -f "$key"; then
       printf '\033[0;33m  \xe2\x86\x92 generated signing key %s\033[0m\n' "$key"
     else
       printf '\033[0;33m  \xe2\x86\x92 ssh-keygen failed — skipping signing key setup\033[0m\n'
