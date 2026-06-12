@@ -12,7 +12,7 @@ Settings (`~/.claude/settings.json`, symlinked from the dotFiles repo) are minim
 
 - Agent teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` + in-process `teammateMode`)
 - Vim input mode (`editorMode`)
-- Custom statusline (`dot statusline` / `dot subagent-statusline`)
+- Custom statusline (`~/.local/bin/claude-statusline`, from the separate `claude-statusline` repo)
 - Auto permission mode (`permissions.defaultMode`)
 - Commit attribution trailer + input-needed notifications
 

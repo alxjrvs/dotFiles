@@ -11,13 +11,13 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "~/.local/bin/dot statusline",
+    "command": "~/.local/bin/claude-statusline",
     "padding": 0,
     "refreshInterval": 10
   },
   "subagentStatusLine": {
     "type": "command",
-    "command": "~/.local/bin/dot subagent-statusline"
+    "command": "~/.local/bin/claude-subagent-statusline"
   },
   "editorMode": "vim",
   "teammateMode": "in-process",
