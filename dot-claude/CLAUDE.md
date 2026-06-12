@@ -8,10 +8,12 @@
 
 ## Claude Code setup
 
-Settings (`~/.claude/settings.json`, symlinked from the dotFiles repo) are minimal by design and carry exactly three things:
+Settings (`~/.claude/settings.json`, symlinked from the dotFiles repo) are minimal by design — they carry only deliberate divergences from Claude Code's defaults:
 
-- Agent teams enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, in-process teammates)
-- Vim input mode
+- Agent teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` + in-process `teammateMode`)
+- Vim input mode (`editorMode`)
 - Custom statusline (`dot statusline` / `dot subagent-statusline`)
+- Auto permission mode (`permissions.defaultMode`)
+- Commit attribution trailer + input-needed notifications
 
 Don't add settings beyond these without asking.
