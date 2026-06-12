@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A macOS dotfiles repository owned end-to-end by a handful of **shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, apply macOS defaults, and drive the Claude Code statusline. The shell prompt is [starship](https://starship.rs) (config in `starship.toml`). No Rust, no compiled binary: just `bash`, `git`, and `jq`.
+A macOS dotfiles repository owned end-to-end by a handful of **shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, and apply macOS defaults. The shell prompt is [starship](https://starship.rs) (config in `starship.toml`). The Claude Code statusline lives in its own repo (`github.com/alxjrvs/claude-statusline`). No Rust, no compiled binary: just `bash`, `git`, and `jq`.
 
-There is no `dotctl/` crate anymore — it was replaced by these shell scripts. Each subsystem lives in its own topic folder. The two helpers shared by the standalone scripts (`os_kind`, `resolve_dotfiles_dir`) live in one small **`lib/common.sh`**, sourced by `sync`, `doctor`, and `install/95-prune.sh`. The one deliberate exception is the Claude statusline (`share/claude-statusline/*`): it ships as a curl-installable drop-in, so it stays fully self-contained with no `lib/` dependency.
+There is no `dotctl/` crate anymore — it was replaced by these shell scripts. Each subsystem lives in its own topic folder. The two helpers shared by the standalone scripts (`os_kind`, `resolve_dotfiles_dir`) live in one small **`lib/common.sh`**, sourced by `sync`, `doctor`, and `install/95-prune.sh`.
 
-Source of truth for setup behavior is `sync` + `install/*.sh`. The shell prompt is starship (`starship.toml`, symlinked to `~/.config/starship.toml`). Source of truth for the statusline is `share/claude-statusline/statusline.sh`.
+Source of truth for setup behavior is `sync` + `install/*.sh`. The shell prompt is starship (`starship.toml`, symlinked to `~/.config/starship.toml`). The Claude Code statusline is a separate project (`github.com/alxjrvs/claude-statusline`), installed to `~/.local/bin/claude-statusline` + `~/.local/bin/claude-subagent-statusline` and referenced by `dot-claude/settings.json`.
 
 ## Key Commands
 
@@ -37,10 +37,8 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `dot update` | `./sync --upgrade` | Bump everything. |
 | `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. |
 | `dot prune` | `./install/95-prune.sh` | Guarded `.bak` backup cleanup. Flags pass through (`-n` dry-run, `-y` unattended). Also runs at the tail of every full `dot sync`. |
-| `dot statusline` | `share/claude-statusline/statusline.sh` | Read Claude Code JSON on stdin, emit 3–6 lines with progress bars. |
-| `dot subagent-statusline` | `share/claude-statusline/subagent-statusline.sh` | Subagent task statusline. |
 
-`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → legacy `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`, `share/claude-statusline/*`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` sources `lib/common.sh` and defines `link()`, then exports those helpers (`os_kind`, `resolve_dotfiles_dir`, `link`) before sourcing each module, so the modules carry no helpers of their own. The sole exception is `install/95-prune.sh`, which also runs standalone (`./install/95-prune.sh` / `dot prune`) — when not sync-sourced it sources `lib/common.sh` itself in a guard block.
+`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → legacy `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` sources `lib/common.sh` and defines `link()`, then exports those helpers (`os_kind`, `resolve_dotfiles_dir`, `link`) before sourcing each module, so the modules carry no helpers of their own. The sole exception is `install/95-prune.sh`, which also runs standalone (`./install/95-prune.sh` / `dot prune`) — when not sync-sourced it sources `lib/common.sh` itself in a guard block.
 
 ### sync / install modules
 
@@ -79,7 +77,7 @@ Everything is symlinked; there are no read-in-place or compiled-in files.
 Each entry is symlinked individually into `~/.claude/` by `dot sync` (claude tag):
 
 - `CLAUDE.md` — user-level global instructions (identity, preferences).
-- `settings.json` — **deliberately minimal**: agent teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` + `teammateMode`), `editorMode: vim`, `statusLine` (→ `dot statusline`), `subagentStatusLine` (→ `dot subagent-statusline`). Nothing else — no permissions arrays, no sandbox block, no hook wiring, no plugins. Don't add settings without asking.
+- `settings.json` — **deliberately minimal**: agent teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` + `teammateMode`), `editorMode: vim`, `statusLine`/`subagentStatusLine` (→ `~/.local/bin/claude-statusline`, from the separate `claude-statusline` repo), `permissions.defaultMode: auto`, the attribution trailer, and input-needed notifications. Don't add settings without asking.
 
 There is no `agents/`, `commands/`, or `hooks/` directory — custom subagents, slash commands, and hook scripts were all dropped (unused).
 
@@ -161,15 +159,13 @@ Pause and confirm with the user before doing any of these:
 - **Dependency lockfiles** (any file matching `*-lock*` or `*.lock*`): never edit by hand.
 - **`link()` symlink semantics**: the `link()` function prompts on conflict (interactive `$LINK_MODE`) unless `-f` or `-s` is passed. Do not change the default behavior to auto-overwrite.
 - **The prompt is starship**: configured by `starship.toml` (symlinked to `~/.config/starship.toml`), initialized via `eval "$(starship init zsh)"` in `zsh/50-prompt.zsh`. Keep the config minimal — there is no bespoke prompt renderer to maintain.
-- **Shared helpers live in `lib/common.sh`**: `os_kind` + `resolve_dotfiles_dir`, sourced by `sync`, `doctor`, and `install/95-prune.sh` (callers set `_DOTFILES_SELF_DIR` first). Don't re-inline them. The Claude statusline (`share/claude-statusline/*`) is the deliberate exception — it ships standalone (curl-installable), so keep it self-contained, no `lib/` dependency.
+- **Shared helpers live in `lib/common.sh`**: `os_kind` + `resolve_dotfiles_dir`, sourced by `sync`, `doctor`, and `install/95-prune.sh` (callers set `_DOTFILES_SELF_DIR` first). Don't re-inline them.
 - **Neovim is plugin-free**: the editor is configured by a single `nvim/init.lua` (sensible defaults + native LSP via `vim.lsp.config`/`vim.lsp.enable`, requires Neovim 0.11+). There is no plugin manager (lazy.nvim, packer) and no AstroNvim/LazyVim distro — don't propose adding one; keep the config to a single self-contained `init.lua`. (Historical: this stack used helix before; if you see `helix`/`hx`, it's gone.)
 
 ## Important Gotchas
 
-- **Powerline glyphs (U+E0B0, U+E0B2, U+E0A0, etc.)**: never paste raw glyphs into source. The one place this still matters is the bash-3.2-compatible statusline (`share/claude-statusline/statusline.sh`) — use `printf '\xNN'` byte sequences. Write/Edit silently strips raw codepoints, so the escape form is mandatory. (The prompt is starship now; its glyphs live in starship's own config/defaults.)
 - **dot-claude vs .claude**: source of truth is `dot-claude/` in this repo. The `.claude/` directory at repo root holds machine-local overrides (gitignored) — don't confuse it with project-local Claude config.
 - **Sheldon plugin order matters**: `fast-syntax-highlighting` must be last in `sheldon/plugins.toml`. It wraps every existing ZLE widget at load time, so anything that registers a widget must run before sheldon's `eval` line in `zsh/30-plugins.zsh`.
 - **`dot` self-locates**: `dot` resolves `DOTFILES_DIR` from its own resolved symlink target, so the repo is relocatable. To move it: `mv` the repo, then run `DOTFILES_DIR=<new> <new>/dot sync --force` once to relink (or just re-run `bootstrap.sh`).
 - **`gh` auth is keychain-backed**: the OAuth token lives in the macOS login keychain (gh secure storage); `~/.config/gh/hosts.yml` carries only non-secret host metadata. If a future `gh auth login` ever uses `--insecure-storage` it will dump the token plaintext into `hosts.yml` — don't; re-login with default (secure) storage. `gh auth status` should show `(keyring)`.
 - **`dot sync --only=<tag>` requires the tag to exist**: a module's declared tag and the `--only=` value must agree, or `--only=foo` silently runs nothing.
-- **Statusline is bash-3.2 compatible**: `share/claude-statusline/statusline.sh` targets macOS system bash (3.2) so it's portable as a standalone drop-in (it has its own README + curl install). The installer/prompt/hook scripts do not carry that constraint and use bash-4+ features.

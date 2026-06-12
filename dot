@@ -34,7 +34,7 @@ resolve_dir() {
 DIR=$(resolve_dir)
 
 [[ $# -ge 1 ]] || {
-  printf 'usage: dot <sync|update|doctor|prune|statusline|subagent-statusline> [args...]\n' >&2
+  printf 'usage: dot <sync|update|doctor|prune> [args...]\n' >&2
   exit 2
 }
 
@@ -49,8 +49,6 @@ case "$cmd" in
   # Direct exec (not sync --only=prune) so the script's own flags work:
   # `dot prune -n` dry-runs, `dot prune -y` deletes unattended.
   prune) exec "$DIR/install/95-prune.sh" "$@" ;;
-  statusline) exec "$DIR/share/claude-statusline/statusline.sh" "$@" ;;
-  subagent-statusline) exec "$DIR/share/claude-statusline/subagent-statusline.sh" "$@" ;;
   *)
     printf 'dot: unknown subcommand: %s\n' "$cmd" >&2
     exit 2

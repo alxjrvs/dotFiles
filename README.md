@@ -1,6 +1,6 @@
 # dotFiles
 
-macOS dotfiles for [alxjrvs](https://github.com/alxjrvs). Owned end-to-end by a set of **shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, apply macOS defaults, and drive the Claude Code statusline. The prompt is [starship](https://starship.rs). No Rust, no compiled binary; just `bash`, `git`, and `jq`.
+macOS dotfiles for [alxjrvs](https://github.com/alxjrvs). Owned end-to-end by a set of **shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, and apply macOS defaults. The prompt is [starship](https://starship.rs); the Claude Code statusline lives in its own repo ([claude-statusline](https://github.com/alxjrvs/claude-statusline)). No Rust, no compiled binary; just `bash`, `git`, and `jq`.
 
 ## Setup (fresh machine)
 
@@ -32,7 +32,6 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `install/` | Numbered `NN-*.sh` sync modules (brew, mise, symlinks, macos, prune, …), sourced by `sync` in order |
 | `lib/common.sh` | Shared helpers (`os_kind`, `resolve_dotfiles_dir`) sourced by `sync`/`doctor`/`95-prune` |
 | `starship.toml` | starship prompt config (symlinked to `~/.config/starship.toml`) |
-| `share/claude-statusline/` | Self-contained, curl-installable Claude Code statusline (`statusline.sh` + `subagent-statusline.sh`) with its own README |
 | `tests/` | `bats/` smoke suite — guards `install/95-prune.sh` (the only file-deleting subsystem) |
 | `.zshrc` | Thin loader — sources fragments from `~/.config/zsh/*.zsh` |
 | `zsh/` | Numbered zsh fragments (exports, options, vi, plugins, completions, prompt, tools, aliases, functions) |
@@ -55,9 +54,9 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 `dot-claude/` is symlinked into `~/.claude/` by `dot sync`. Contents:
 
 - `CLAUDE.md` — user-level global instructions
-- `settings.json` — deliberately minimal: agent teams, `editorMode: vim`, `statusLine` → `dot statusline`, `subagentStatusLine` → `dot subagent-statusline`
+- `settings.json` — deliberately minimal: agent teams, `editorMode: vim`, `statusLine`/`subagentStatusLine` → `~/.local/bin/claude-statusline`
 
-The statusline is the self-contained `share/claude-statusline/statusline.sh` (context bar + Pro/Max rate-limit windows from native `rate_limits` JSON), reached via `dot statusline`. It's a drop-in you can `curl` onto any machine — see `share/claude-statusline/README.md`.
+The statusline is a separate project — [claude-statusline](https://github.com/alxjrvs/claude-statusline) — installed via its own `install.sh` (symlinks into `~/.local/bin`). `settings.json` just references the installed path.
 
 ## Tests
 
@@ -115,4 +114,4 @@ Commit signing uses the same 1Password agent via `gpg.format = ssh` + `op-ssh-si
 ## Notes
 
 - `DOTFILES_DIR` is exported from `.zshenv`; the default points to `$HOME/dotFiles`. Override via `DOTFILES_DIR=...` if your clone lives elsewhere. `dot` itself re-resolves it (env → dir of its resolved symlink target → `~/dotFiles`), so the repo is relocatable.
-- The one file with PUA powerline glyphs is `share/claude-statusline/statusline.sh` (bash 3.2), which uses `printf '\xNN'` escape sequences — ASCII source, evaluated at runtime. Safe to edit with the Claude Edit tool. (The prompt is starship; its glyphs live in starship's config.)
+- This repo no longer contains files with raw PUA powerline glyphs (the prompt is starship; the statusline moved to its own repo). If you add one, use escape sequences — Write/Edit silently strips raw codepoints.
