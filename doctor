@@ -49,6 +49,13 @@ _fail() {
   _FAILS=$((_FAILS + 1))
 }
 
+# _vge HAVE MIN — true when version HAVE is >= MIN. Uses `sort -V` (version
+# sort) so there's no hand-rolled dotted-number math: if MIN sorts first or
+# ties, HAVE is at or above the floor.
+_vge() {
+  [[ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -1)" == "$2" ]]
+}
+
 skip_external="${DOTFILES_DOCTOR_SKIP_EXTERNAL:-}"
 
 printf '==> Doctor\n'
@@ -67,8 +74,19 @@ unset _user_name _user_email
 # "dot" replaces "dotctl" in the tool list.
 _tools=(dot git gh mise)
 if [[ "$(os_kind)" == "darwin" ]]; then
-  _tools+=(brew node bun sheldon lefthook nvim)
+  _tools+=(brew bash node bun sheldon lefthook nvim)
 fi
+
+# Tools with a documented, load-bearing minimum version. Below the floor is a
+# hard failure, not cosmetic:
+#   brew < 6.0.0 — newer Brewfile/bundle conventions assumed by this repo
+#   bash < 4     — install/95-prune.sh uses `mapfile` (absent in Apple's 3.2)
+#   nvim < 0.11  — nvim/init.lua uses vim.lsp.config/enable (native LSP)
+declare -A _min_version=(
+  [brew]=6.0.0
+  [bash]=4
+  [nvim]=0.11
+)
 
 for _tool in "${_tools[@]}"; do
   # Presence is what this check is for — probe the binary on PATH, not its
@@ -81,13 +99,27 @@ for _tool in "${_tools[@]}"; do
     continue
   fi
   _ver=$("$_tool" --version 2> /dev/null | head -1 || true)
-  if [[ -n "$_ver" ]]; then
+  _floor=${_min_version[$_tool]:-}
+  if [[ -n "$_floor" ]]; then
+    # Assert the documented minimum. Pull the first dotted-number run out of
+    # the --version line (e.g. "Homebrew 6.0.0", "NVIM v0.11.2", "GNU bash,
+    # version 5.2.21(1)...") and compare against the floor.
+    if [[ "$_ver" =~ ([0-9]+(\.[0-9]+)*) ]]; then
+      if _vge "${BASH_REMATCH[1]}" "$_floor"; then
+        _ok "${_tool}: ${_ver}"
+      else
+        _fail "${_tool}: ${_ver} — below required ${_floor}"
+      fi
+    else
+      _warn "${_tool}: ${_ver} (version unparseable — skipped ${_floor}+ check)"
+    fi
+  elif [[ -n "$_ver" ]]; then
     _ok "${_tool}: ${_ver}"
   else
     _ok "${_tool}: present (version unavailable — config unreadable)"
   fi
 done
-unset _tools _tool _ver
+unset _tools _tool _ver _floor _min_version
 
 # ── 3. Symlink integrity ──────────────────────────────────────────────────────
 _dotfiles=$(resolve_dotfiles_dir 2> /dev/null || true)

@@ -1,20 +1,39 @@
-# starship prompt — minimalist: current directory + git branch + git status.
-#
-# Single line, colours only. Symbols (branch glyph, prompt character) use
-# starship's built-in defaults, so no powerline glyphs ever live in this file.
-# Everything not set here uses starship's defaults. Symlinked to
-# ~/.config/starship.toml by `dot sync`.
+# starship prompt — echoes the Claude statusline's visual grammar:
+# a bold near-white identity (cwd), then muted-bracketed git chips whose
+# colors match the statusline (branch = blue, untracked = cyan, stashes =
+# magenta, additions = green, deletions = red). Nerd-font glyphs throughout.
+# Symlinked to ~/.config/starship.toml by `dot sync`.
 
 add_newline = false
 format = "$directory$git_branch$git_status$character"
 
+# Identity: bold near-white, unbracketed — mirrors statusline line 1, which
+# leads with the repo/dir and brackets only the chips that follow.
 [directory]
 truncate_to_repo = true
 truncation_length = 4
-style = "bold cyan"
+style = "bold white"
+read_only = " "
+read_only_style = "red"
 
+# Branch chip: muted [ ] around a blue   + name (statusline's GLYPH_BRANCH).
 [git_branch]
-style = "bold purple"
+symbol = " "
+style = "blue"
+format = '[\[](bright-black)[$symbol$branch]($style)[\]](bright-black) '
 
+# Status chip: one muted [ ] around per-state glyphs, each colored to match
+# the statusline (untracked cyan, stashes magenta, +/- green/red, branch-blue
+# ahead/behind). The whole chip disappears on a clean tree.
 [git_status]
-style = "bold yellow"
+format = '([\[](bright-black)$conflicted$staged$modified$deleted$renamed$untracked$stashed$ahead$behind$diverged[\]](bright-black) )'
+conflicted = '[~$count](red)'
+staged     = '[+$count](green)'
+modified   = '[!$count](yellow)'
+deleted    = '[-$count](red)'
+renamed    = '[»$count](purple)'
+untracked  = '[?$count](cyan)'
+stashed    = '[*$count](purple)'
+ahead      = '[⇡$count](blue)'
+behind     = '[⇣$count](blue)'
+diverged   = '[⇡$ahead_count⇣$behind_count](blue)'
