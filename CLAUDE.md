@@ -8,7 +8,7 @@ A macOS dotfiles repository owned end-to-end by a handful of **shell scripts** f
 
 There is no `dotctl/` crate anymore — it was replaced by these shell scripts. Each subsystem lives in its own topic folder. The two helpers shared by the standalone scripts (`os_kind`, `resolve_dotfiles_dir`) live in one small **`lib/common.sh`**, sourced by `sync`, `doctor`, and `install/95-prune.sh`.
 
-Source of truth for setup behavior is `sync` + `install/*.sh`. The shell prompt is starship (`starship.toml`, symlinked to `~/.config/starship.toml`). The Claude Code statusline is a separate project (`github.com/alxjrvs/claude-statusline`), installed to `~/.local/bin/claude-statusline` + `~/.local/bin/claude-subagent-statusline` and referenced by `dot-claude/settings.json`.
+Source of truth for setup behavior is `sync` + `install/*.sh`. The shell prompt is starship (`starship.toml`, symlinked to `~/.config/starship.toml`). The Claude Code statusline is a separate project (`github.com/alxjrvs/claude-statusline`). `install/60-claude.sh` (claude tag) clones it to `~/Code/claude-statusline` and runs its `install.sh`, which symlinks `claude-statusline` + `claude-subagent-statusline` into `~/.local/bin`; `dot-claude/settings.json` references those paths.
 
 ## Key Commands
 

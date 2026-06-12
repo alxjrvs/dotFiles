@@ -39,6 +39,29 @@ _claude_register_github_mcp() {
   fi
 }
 
+# The Claude statusline lives in its own repo (github.com/alxjrvs/claude-statusline).
+# Clone it to ~/Code/claude-statusline (fast-forward an existing clone — never
+# clobbers local work), then run its install.sh, which symlinks both scripts into
+# ~/.local/bin. settings.json (symlinked into ~/.claude) points at those paths.
+_claude_install_statusline() {
+  command -v git > /dev/null 2>&1 || return 0
+  local dir="${HOME}/Code/claude-statusline"
+  local repo="https://github.com/alxjrvs/claude-statusline.git"
+  if [[ -d "${dir}/.git" ]]; then
+    git -C "${dir}" pull --ff-only > /dev/null 2>&1 ||
+      printf '\033[0;33m  \xe2\x86\x92 claude-statusline: local changes block fast-forward — pull manually\033[0m\n'
+  else
+    mkdir -p "$(dirname "${dir}")"
+    if ! git clone "${repo}" "${dir}" > /dev/null 2>&1; then
+      printf '\033[0;33m  \xe2\x86\x92 claude-statusline: clone failed (offline?) — skipping\033[0m\n'
+      return 0
+    fi
+  fi
+  if [[ -x "${dir}/install.sh" ]] && "${dir}/install.sh" > /dev/null 2>&1; then
+    printf '\033[0;32m  \xe2\x9c\x93 claude-statusline installed (~/.local/bin)\033[0m\n'
+  fi
+}
+
 _claude_run() {
   printf '\n==> Claude Code\n'
   if command -v claude > /dev/null 2>&1; then
@@ -56,4 +79,5 @@ _claude_run() {
   fi
 
   _claude_register_github_mcp
+  _claude_install_statusline
 }

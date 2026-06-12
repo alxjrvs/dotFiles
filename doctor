@@ -172,10 +172,17 @@ if [[ -n "$_dotfiles2" ]]; then
 fi
 unset _dotfiles2
 
+# ── 8. Claude statusline (separate repo, installed to ~/.local/bin) ──────────
+if [[ -L "${HOME}/.local/bin/claude-statusline" && -L "${HOME}/.local/bin/claude-subagent-statusline" ]]; then
+  _ok "claude-statusline installed (~/.local/bin)"
+else
+  _warn "claude-statusline not installed — run: dot sync --only=claude"
+fi
+
 # Stock-tool health is the stock tools' job: run `brew doctor` / `mise doctor`
 # / `claude doctor` directly. Re-grepping their output here added no signal.
 
-# ── 8. macOS defaults drift (Darwin) ─────────────────────────────────────────
+# ── 9. macOS defaults drift (Darwin) ─────────────────────────────────────────
 if [[ "$(os_kind)" == "darwin" ]]; then
   _matches=0 _drifted=0 _missing=0
   while IFS= read -r _audit_line; do
@@ -203,7 +210,7 @@ if [[ "$(os_kind)" == "darwin" ]]; then
   unset _matches _drifted _missing _audit_line _result _domain _key _expected _actual
 fi
 
-# ── 9. SSH signing chain ─────────────────────────────────────────────────────
+# ── 10. SSH signing chain ────────────────────────────────────────────────────
 printf '\n==> SSH signing\n'
 
 _op_sock="${HOME}/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
