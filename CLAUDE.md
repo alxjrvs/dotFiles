@@ -44,7 +44,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 
 ### sync / install modules
 
-`sync` sources `install/NN-*.sh` modules in numeric order; each declares its tags and a `run` function, gated by a tag filter (`--only=<tags>`). Modules: `00-brew 30-mise 40-symlinks 45-ssh 60-claude 70-gh 80-git-maint 85-lefthook 90-macos 95-prune`. To add a sync section, add an `install/NN-name.sh` module, give it a tag, and `sync` will pick it up. macOS defaults data + `audit` live in `90-macos.sh`. (`30-mise` also locks sheldon plugins — sheldon is a mise tool, so its binary only exists after `mise install`.)
+`sync` sources `install/NN-*.sh` modules in numeric order; each declares its tags and a `run` function, gated by a tag filter (`--only=<tags>`). Modules: `00-brew 30-mise 40-symlinks 45-ssh 60-claude 70-gh 85-lefthook 90-macos 95-prune`. To add a sync section, add an `install/NN-name.sh` module, give it a tag, and `sync` will pick it up. macOS defaults data + `audit` live in `90-macos.sh`. (`30-mise` also locks sheldon plugins — sheldon is a mise tool, so its binary only exists after `mise install`.)
 
 ### Symlink Model
 
