@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# install/30-mise.sh — mise toolchain install/upgrade (Darwin only).
-# Tags: mise
+# install/30-mise.sh — mise toolchain install/upgrade + sheldon plugin lock.
+# Tags: mise sheldon
 # Sourced by sync; not standalone — helpers (os_kind) come from sync, which
 # exports them before sourcing this module.
 
-_mise_tags() { printf 'mise\n'; }
+_mise_tags() { printf 'mise\nsheldon\n'; }
 
 _mise_run() {
   if [[ "$(os_kind)" != "darwin" ]]; then
@@ -57,4 +57,14 @@ _mise_run() {
     return 1
   fi
   printf '\033[0;32m  \xe2\x9c\x93 mise tools up to date\033[0m\n'
+
+  # Sheldon plugins. sheldon is itself a mise tool, so its binary exists only
+  # after the install above — locking here (rather than in a separate earlier
+  # module) is what makes a fresh-machine bootstrap actually lock the plugins.
+  printf '\n==> Sheldon plugins\n'
+  if sheldon lock --update 2> /dev/null; then
+    printf '\033[0;32m  \xe2\x9c\x93 Sheldon plugins up to date\033[0m\n'
+  else
+    printf '\033[0;33m  \xe2\x86\x92 Sheldon lock failed or offline — skipping\033[0m\n'
+  fi
 }

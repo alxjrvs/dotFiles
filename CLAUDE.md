@@ -46,7 +46,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 
 ### sync / install modules
 
-`sync` sources `install/NN-*.sh` modules in numeric order; each declares its tags and a `run` function, gated by a tag filter (`--only=<tags>`) and an OS guard. Modules: `00-brew 10-linux 20-sheldon 30-mise 40-symlinks 45-ssh 50-ghostty 60-claude 70-gh 80-git-maint 85-lefthook 90-macos 95-prune`. To add a sync section, add an `install/NN-name.sh` module, give it a tag, and `sync` will pick it up. macOS defaults data + `audit` live in `90-macos.sh`.
+`sync` sources `install/NN-*.sh` modules in numeric order; each declares its tags and a `run` function, gated by a tag filter (`--only=<tags>`). Modules: `00-brew 30-mise 40-symlinks 45-ssh 60-claude 70-gh 80-git-maint 85-lefthook 90-macos 95-prune`. To add a sync section, add an `install/NN-name.sh` module, give it a tag, and `sync` will pick it up. macOS defaults data + `audit` live in `90-macos.sh`. (`30-mise` also locks sheldon plugins — sheldon is a mise tool, so its binary only exists after `mise install`.)
 
 ### Symlink Model
 
@@ -100,12 +100,11 @@ If you're about to add a CLI to `Brewfile`, stop — put it in `mise.toml` unles
 
 ## Terminal: Ghostty
 
-Ghostty is the chosen terminal emulator. The cask installs the .app;
-`install/50-ghostty.sh` lays down a `~/.local/bin/ghostty` shim
-pointing at `/Applications/Ghostty.app/Contents/MacOS/ghostty` so the
-CLI is uniform with every other managed tool. `dot doctor` runs
-`ghostty --version` like git/mise/lefthook, and validates
-`ghostty/config` indirectly via the symlink integrity check.
+Ghostty is the chosen terminal emulator. The cask installs the .app; you
+launch the app directly (no `~/.local/bin/ghostty` CLI shim — that was a
+convenience wrapper, now removed). `dot sync` symlinks `ghostty/config`
+to `~/.config/ghostty/config`, which `dot doctor` validates via the
+symlink integrity check.
 
 No other terminal emulators (iTerm2, WezTerm, Kitty, Alacritty, Warp)
 are managed by this repo. If you find yourself adding one, stop —

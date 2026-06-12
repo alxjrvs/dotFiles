@@ -13,8 +13,6 @@ _git_maint_run() {
 
   # Seed ~/.gitconfig.local if absent. The tracked .gitconfig unconditionally
   # `[include]`s it, and git maintenance (below) writes maintenance.repo there.
-  # On Linux, install/10-linux.sh creates it; on a fresh Mac nothing else does,
-  # so this module (which owns git setup on the macOS path) owns the seed too.
   # git tolerates a missing include, so this is hygiene rather than a hard dep.
   local gitconfig_local="${HOME}/.gitconfig.local"
   if [[ ! -e "$gitconfig_local" ]]; then
