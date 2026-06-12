@@ -3,7 +3,7 @@
 # Exits non-zero when any hard failure is found.
 #
 # Honors DOTFILES_DOCTOR_SKIP_EXTERNAL=1 to skip slow/network-bound checks
-# (brew bundle, gh auth, brew doctor, mise doctor, claude doctor).
+# (brew bundle drift, gh auth).
 
 set -euo pipefail
 
@@ -172,52 +172,10 @@ if [[ -n "$_dotfiles2" ]]; then
 fi
 unset _dotfiles2
 
-# ── 8. brew doctor (Darwin, external) ─────────────────────────────────────────
-if [[ "$(os_kind)" == "darwin" && -z "$skip_external" ]]; then
-  if brew doctor 2>&1 | grep -q "ready to brew"; then
-    _ok "brew doctor: ready to brew"
-  else
-    _warn "brew doctor: warnings — run \`brew doctor\` for details"
-  fi
-fi
+# Stock-tool health is the stock tools' job: run `brew doctor` / `mise doctor`
+# / `claude doctor` directly. Re-grepping their output here added no signal.
 
-# ── 9. mise doctor (external) ────────────────────────────────────────────────
-if [[ -z "$skip_external" ]]; then
-  # Strip shims from PATH for this one call so mise doesn't complain that its
-  # tool paths aren't first (they're first only because WE put them there; the
-  # interactive shell has them via .zshenv).
-  _saved_path="$PATH"
-  export PATH="${PATH#"${HOME}/.local/share/mise/shims:"}"
-  _mise_out=$(mise doctor 2>&1 || true)
-  export PATH="$_saved_path"
-  unset _saved_path
-
-  if printf '%s\n' "$_mise_out" | grep -q "No problems found"; then
-    _ok "mise doctor: no problems found"
-  else
-    _warn "mise doctor: problems found — run \`mise doctor\` for details"
-  fi
-  unset _mise_out
-fi
-
-# ── 10. claude doctor (external) ─────────────────────────────────────────────
-if [[ -z "$skip_external" ]]; then
-  _claude_ver=$(claude --version 2> /dev/null | head -1 || true)
-  if [[ -n "$_claude_ver" ]]; then
-    if _claude_out=$(claude doctor 2>&1); then
-      _ok "claude doctor: healthy"
-    else
-      _fail "claude doctor: failed — output below"
-      printf '%s\n' "$_claude_out" | head -20 | while IFS= read -r _cl; do
-        printf '  %s\n' "$_cl" >&2
-      done
-    fi
-    unset _claude_out _cl
-  fi
-  unset _claude_ver
-fi
-
-# ── 12. macOS defaults drift (Darwin) ────────────────────────────────────────
+# ── 8. macOS defaults drift (Darwin) ─────────────────────────────────────────
 if [[ "$(os_kind)" == "darwin" ]]; then
   _matches=0 _drifted=0 _missing=0
   while IFS= read -r _audit_line; do
@@ -245,7 +203,7 @@ if [[ "$(os_kind)" == "darwin" ]]; then
   unset _matches _drifted _missing _audit_line _result _domain _key _expected _actual
 fi
 
-# ── 13. SSH signing chain ────────────────────────────────────────────────────
+# ── 9. SSH signing chain ─────────────────────────────────────────────────────
 printf '\n==> SSH signing\n'
 
 _op_sock="${HOME}/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
