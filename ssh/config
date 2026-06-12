@@ -1,7 +1,4 @@
 # ~/.ssh/config — symlinked from dotfiles. Permissions: 600.
-#
-# Augment remote agent SSH connections (externally managed; preserve at top).
-Include ~/.augment/ssh-config
 
 Host *
   # Add keys to ssh-agent on first use; keep passphrase cached.

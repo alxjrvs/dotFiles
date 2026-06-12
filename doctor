@@ -302,12 +302,6 @@ else
 fi
 unset _eff_key
 
-if [[ -e "${HOME}/.augment/ssh-config" ]]; then
-  _ok "\$HOME/.augment/ssh-config include target present"
-else
-  _warn "\$HOME/.augment/ssh-config missing (ssh/config Include target; externally managed)"
-fi
-
 # ── Summary ───────────────────────────────────────────────────────────────────
 printf '\n'
 if [[ "$_FAILS" -eq 0 && "$_WARNS" -eq 0 ]]; then
