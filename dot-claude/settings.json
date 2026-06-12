@@ -28,6 +28,13 @@
     "type": "command",
     "command": "~/.local/bin/claude-subagent-statusline"
   },
+  "enabledPlugins": {
+    "audit@gnar": true,
+    "ideate@gnar": true,
+    "ignite@gnar": true,
+    "spacebase@gnar": true,
+    "toolkit@gnar": true
+  },
   "editorMode": "vim",
   "teammateMode": "in-process",
   "inputNeededNotifEnabled": true
