@@ -9,9 +9,6 @@
   "permissions": {
     "defaultMode": "auto"
   },
-  "worktree": {
-    "baseRef": "fresh"
-  },
   "statusLine": {
     "type": "command",
     "command": "~/.local/bin/dot statusline",
