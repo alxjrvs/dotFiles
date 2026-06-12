@@ -32,6 +32,8 @@ __DOT_SYNC_SOURCED=1
 export __DOT_SYNC_SOURCED
 # shellcheck source=install/90-macos.sh
 source "${_DOCTOR_DIR}/install/90-macos.sh"
+# shellcheck source=install/40-symlinks.sh
+source "${_DOCTOR_DIR}/install/40-symlinks.sh"
 
 # ── Counters ──────────────────────────────────────────────────────────────────
 _FAILS=0
@@ -92,64 +94,13 @@ _dotfiles=$(resolve_dotfiles_dir 2> /dev/null || true)
 if [[ -z "$_dotfiles" ]]; then
   _warn "dotfiles repo not found (\$DOTFILES_DIR / dot target / ~/dotFiles) — symlink + drift audits will be skipped"
 else
-  # Expected symlink pairs: "link_rel|target_rel".
-  # Kept 1:1 in sync with install/40-symlinks.sh. The zsh/[0-9]*.zsh fragment
-  # glob is handled below the static list. Pairs whose source is absent are
-  # skipped silently (see loop).
-  _expected_links=(
-    ".zshrc|.zshrc"
-    ".zprofile|.zprofile"
-    ".zshenv|.zshenv"
-    ".hushlogin|.hushlogin"
-    ".gitconfig|.gitconfig"
-    ".gitmessage|.gitmessage"
-    ".gitignore|.gitignore"
-    ".ripgreprc|.ripgreprc"
-    ".fdignore|.fdignore"
-    ".editorconfig|.editorconfig"
-    ".local/bin/dot|dot"
-    ".config/git/template/hooks/pre-commit|git-template/hooks/pre-commit"
-    ".claude/CLAUDE.md|dot-claude/CLAUDE.md"
-    ".claude/settings.json|dot-claude/settings.json"
-    ".config/sheldon/plugins.toml|sheldon/plugins.toml"
-    ".config/starship.toml|starship.toml"
-    ".config/mise/config.toml|mise.toml"
-    ".config/gh/config.yml|gh/config.yml"
-    ".local/bin/gh-mcp-auth-header|gh/gh-mcp-auth-header"
-    ".config/ghostty/config|ghostty/config"
-    ".config/bat/config|bat/config"
-    ".config/atuin/config.toml|atuin/config.toml"
-    ".config/nvim/init.lua|nvim/init.lua"
-    ".config/karabiner/karabiner.json|karabiner/karabiner.json"
-    ".ssh/config|ssh/config"
-    ".config/1Password/ssh/agent.toml|ssh/1password-agent.toml"
-    ".local/bin/git-ssh-sign|ssh/git-ssh-sign"
-  )
-
-  # zsh fragments are a glob in install/40-symlinks.sh — expand the same
-  # [0-9]*.zsh set into the expected-link list so each fragment is audited.
-  if [[ -d "${_dotfiles}/zsh" ]]; then
-    for _zfrag in "${_dotfiles}"/zsh/[0-9]*.zsh; do
-      [[ -f "$_zfrag" ]] || continue
-      _zname=$(basename "$_zfrag")
-      _expected_links+=(".config/zsh/${_zname}|zsh/${_zname}")
-    done
-    unset _zfrag _zname
-  fi
-
+  # Audit the exact pairs install/40-symlinks.sh applies — _symlink_pairs (from
+  # the module sourced above) is the single source of truth, so this can't drift.
   _checked=0
-  for _pair in "${_expected_links[@]}"; do
-    IFS='|' read -r _link_rel _target_rel <<< "$_pair"
-    local_link="${HOME}/${_link_rel}"
-    expected_target="${_dotfiles}/${_target_rel}"
-
-    # An absent source means the expected-links table drifted from the repo
-    # (a dropped tool whose row wasn't removed) — surface it, don't hide it.
-    if [[ ! -e "$expected_target" && ! -L "$expected_target" ]]; then
-      _warn "expected-links table lists ${_target_rel} but the repo has no such file — remove the stale row"
-      continue
-    fi
-
+  while IFS='|' read -r _src _dst; do
+    [[ -n "$_src" ]] || continue
+    local_link="${HOME}/${_dst}"
+    expected_target="${_dotfiles}/${_src}"
     _checked=$((_checked + 1))
     if [[ ! -e "$local_link" && ! -L "$local_link" ]]; then
       _warn "symlink missing: ${local_link} (expected -> ${expected_target})"
@@ -157,15 +108,12 @@ else
       _warn "${local_link} is not a symlink (expected -> ${expected_target})"
     else
       _actual_target=$(readlink "$local_link" 2> /dev/null || true)
-      if [[ "$_actual_target" == "$expected_target" ]]; then
-        : # silently pass
-      else
+      [[ "$_actual_target" == "$expected_target" ]] ||
         _warn "${local_link} points to ${_actual_target}, expected ${expected_target}"
-      fi
     fi
-  done
+  done < <(DOTFILES_DIR="$_dotfiles" _symlink_pairs)
   _ok "symlinks: ${_checked} checked"
-  unset _expected_links _pair _link_rel _target_rel _checked _actual_target local_link expected_target
+  unset _checked _actual_target local_link expected_target _src _dst
 
   # ── 4. brew bundle drift (Darwin, external) ───────────────────────────────
   if [[ "$(os_kind)" == "darwin" && -z "$skip_external" ]]; then
