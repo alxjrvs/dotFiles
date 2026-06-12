@@ -30,7 +30,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `dot` | Thin dispatcher; the single dotfiles command on PATH. Resolves `DOTFILES_DIR`, execs the matching topic script. |
 | `sync`, `doctor` | Top-level commands (install/resync, health check) |
 | `install/` | Numbered `NN-*.sh` sync modules (brew, mise, symlinks, macos, prune, …), sourced by `sync` in order |
-| `prompt/` | `git-data` (git-state → cache) + `prompt-render` (cache → zsh PROMPT). Hot path. |
+| `starship.toml` | starship prompt config (symlinked to `~/.config/starship.toml`) |
 | `share/claude-statusline/` | Self-contained, curl-installable Claude Code statusline (`statusline.sh` + `subagent-statusline.sh`) with its own README |
 | `tests/` | `bats/` smoke suite — guards `install/95-prune.sh` (the only `rm -rf` subsystem) |
 | `.zshrc` | Thin loader — sources fragments from `~/.config/zsh/*.zsh` |
@@ -114,4 +114,4 @@ Commit signing piggybacks on the same SSH key via `gpg.format = ssh` in `.gitcon
 ## Notes
 
 - `DOTFILES_DIR` is exported from `.zshenv`; the default points to `$HOME/dotFiles`. Override via `DOTFILES_DIR=...` if your clone lives elsewhere. `dot` itself re-resolves it (env → dir of its resolved symlink target → `~/dotFiles`), so the repo is relocatable.
-- Files containing PUA powerline glyphs (`zsh/50-prompt.zsh`, `prompt/prompt-render`, `share/claude-statusline/statusline.sh`) use escape syntax (`$'\uXXXX'` or `printf '\xNN'`) — ASCII source, evaluated at runtime. Safe to edit with the Claude Edit tool.
+- The one file with PUA powerline glyphs is `share/claude-statusline/statusline.sh` (bash 3.2), which uses `printf '\xNN'` escape sequences — ASCII source, evaluated at runtime. Safe to edit with the Claude Edit tool. (The prompt is starship; its glyphs live in starship's config.)

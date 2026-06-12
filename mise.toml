@@ -26,6 +26,7 @@ sheldon = "latest"      # zsh plugin manager — loaded in zsh/30-plugins.zsh
 atuin = "latest"        # shell history sync — loaded in zsh/30-plugins.zsh
 direnv = "latest"       # per-dir env hook — loaded in zsh/30-plugins.zsh
 fzf = "latest"          # `fzf --zsh` integration loaded in zsh/60-tools.zsh
+starship = "latest"     # prompt — `starship init zsh` loaded in zsh/50-prompt.zsh
 
 # ── Git surface (used by prompt, lefthook, pre-commit) ────────────────
 gh = "latest"           # GH CLI; also feeds the GitHub MCP auth header

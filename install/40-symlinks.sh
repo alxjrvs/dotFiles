@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # install/40-symlinks.sh — full symlink mapping table.
-# Tags: symlinks git shell mise sheldon ghostty bat atuin zsh
+# Tags: symlinks git shell mise sheldon starship ghostty bat atuin zsh
 #       git-template gh claude ssh nvim karabiner
 # Sourced by sync; not standalone — helpers (os_kind, host_id, link) come from
 # sync, which exports them before sourcing this module.
 
 _symlinks_tags() {
-  printf 'symlinks\ngit\nshell\nmise\nsheldon\nghostty\nbat\natuin\nzsh\ngit-template\ngh\nclaude\nssh\nnvim\nkarabiner\n'
+  printf 'symlinks\ngit\nshell\nmise\nsheldon\nstarship\nghostty\nbat\natuin\nzsh\ngit-template\ngh\nclaude\nssh\nnvim\nkarabiner\n'
 }
 
 _symlinks_run() {
@@ -74,6 +74,11 @@ _symlinks_run() {
   if should_run symlinks sheldon; then
     mkdir -p "${HOME}/.config/sheldon"
     link "${df}/sheldon/plugins.toml" "${HOME}/.config/sheldon/plugins.toml"
+  fi
+
+  if should_run symlinks starship; then
+    mkdir -p "${HOME}/.config"
+    link "${df}/starship.toml" "${HOME}/.config/starship.toml"
   fi
 
   if [[ "$os" == "darwin" ]]; then

@@ -162,6 +162,7 @@ else
     ".claude/CLAUDE.md|dot-claude/CLAUDE.md"
     ".claude/settings.json|dot-claude/settings.json"
     ".config/sheldon/plugins.toml|sheldon/plugins.toml"
+    ".config/starship.toml|starship.toml"
     ".config/mise/config.toml|mise.toml"
     ".config/gh/config.yml|gh/config.yml"
     ".local/bin/gh-mcp-auth-header|gh/gh-mcp-auth-header"
