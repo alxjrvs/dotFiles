@@ -18,6 +18,7 @@ dot sync --upgrade      # Same + brew update/upgrade/cleanup + mise upgrade.
 dot sync --only=brew,mise   # Only the listed section tags.
 dot update              # Bump everything (equivalent to sync --upgrade).
 dot doctor              # Read-only health check; exits non-zero on failures.
+dot doctor --fix        # Same, plus reap orphaned symlinks (its only mutation).
 lefthook run pre-commit # shellcheck + shfmt -i 2 -ci -sr over staged shell files.
 ```
 
@@ -33,7 +34,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 |------------|-------|---------|
 | `dot sync` | `./sync` | Install/resync. Tag-gated steps (`--only=<tag,...>`). Idempotent. |
 | `dot update` | `./sync --upgrade` | Bump everything. |
-| `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. |
+| `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. `--fix` reaps orphaned symlinks (its only mutation). |
 
 `DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → fallback `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` sources `lib/common.sh` and defines `link()`, then exports those helpers (`os_kind`, `resolve_dotfiles_dir`, `link`) before sourcing each module, so the modules carry no helpers of their own.
 

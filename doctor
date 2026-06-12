@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
-# doctor — read-only dotfiles health check.
+# doctor — dotfiles health check. Read-only by default.
 # Exits non-zero when any hard failure is found.
+#
+# Flags:
+#   --fix   Reap orphaned symlinks (dangling links into the repo whose source
+#           was deleted). This is the only mutation doctor performs, and the
+#           only repair sync's link() never does. All other drift keeps its
+#           read-only "run dot sync --only=X" hint.
 #
 # Honors DOTFILES_DOCTOR_SKIP_EXTERNAL=1 to skip slow/network-bound checks
 # (brew bundle drift, gh auth).
@@ -33,9 +39,27 @@ source "${_DOCTOR_DIR}/install/90-macos.sh"
 # shellcheck source=install/40-symlinks.sh
 source "${_DOCTOR_DIR}/install/40-symlinks.sh"
 
+# ── Flags ─────────────────────────────────────────────────────────────────────
+_FIX=0
+for _arg in "$@"; do
+  case "$_arg" in
+    --fix) _FIX=1 ;;
+    -h | --help)
+      printf 'usage: doctor [--fix]\n  --fix   remove orphaned symlinks (the only mutation; default is read-only)\n'
+      exit 0
+      ;;
+    *)
+      printf 'doctor: unknown argument: %s (try --help)\n' "$_arg" >&2
+      exit 2
+      ;;
+  esac
+done
+unset _arg
+
 # ── Counters ──────────────────────────────────────────────────────────────────
 _FAILS=0
 _WARNS=0
+_FIXED=0
 
 _ok() { printf '\033[0;32m  \xe2\x9c\x93 %s\033[0m\n' "$*"; }
 _warn() {
@@ -45,6 +69,11 @@ _warn() {
 _fail() {
   printf '\033[0;31m  \xe2\x9c\x97 %s\033[0m\n' "$*" >&2
   _FAILS=$((_FAILS + 1))
+}
+# _fixed — a mutation doctor performed under --fix (cyan wrench).
+_fixed() {
+  printf '\033[0;36m  \xe2\x9c\x82 %s\033[0m\n' "$*"
+  _FIXED=$((_FIXED + 1))
 }
 
 # _vge HAVE MIN — true when version HAVE is >= MIN. Uses `sort -V` (version
@@ -161,8 +190,12 @@ else
       [[ "$_tgt" == "${_dotfiles}/"* ]] || continue # only repo-created links
       [[ -e "$_tgt" ]] && continue                  # source still present → fine
       if printf '%s\n' "$_expected" | grep -qxF "$_link"; then continue; fi
-      _warn "orphaned symlink: ${_link} -> ${_tgt} (source removed from repo; safe to rm)"
-      _orphans=$((_orphans + 1))
+      if [[ "$_FIX" -eq 1 ]]; then
+        rm -f "$_link" && _fixed "removed orphaned symlink: ${_link} -> ${_tgt}"
+      else
+        _warn "orphaned symlink: ${_link} -> ${_tgt} (source removed from repo; rm, or run: dot doctor --fix)"
+        _orphans=$((_orphans + 1))
+      fi
     done < <(find "$_mandir" -maxdepth 1 -type l -print0 2> /dev/null)
   done < <(while IFS='|' read -r _s _d; do
     [[ -n "$_d" ]] && dirname "${HOME}/${_d}"
@@ -304,6 +337,7 @@ unset _eff_key
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 printf '\n'
+[[ "$_FIXED" -gt 0 ]] && printf '\033[0;36m  \xe2\x9c\x82 repaired %d orphaned symlink(s)\033[0m\n' "$_FIXED"
 if [[ "$_FAILS" -eq 0 && "$_WARNS" -eq 0 ]]; then
   _ok "All checks passed"
 elif [[ "$_FAILS" -eq 0 ]]; then

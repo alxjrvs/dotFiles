@@ -35,6 +35,7 @@ Everything else is policy, not identity — copy it as-is.
 | `dot sync --only=brew,mise` | Only the listed sections (tags: `brew mise sheldon symlinks ssh claude lefthook macos`). |
 | `dot update` | Bump everything to current — equivalent to `dot sync --upgrade`. |
 | `dot doctor` | Read-only diagnostics: tool presence, symlink integrity (missing *and* orphaned), drift. Exits non-zero on failures. |
+| `dot doctor --fix` | Same diagnostics, plus reap orphaned symlinks (doctor's only mutation; `sync` never removes them). |
 
 ## What's here
 
