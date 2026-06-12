@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A macOS dotfiles repository owned end-to-end by **self-contained shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, apply macOS defaults, render the shell prompt, and drive the Claude Code statusline. No Rust, no compiled binary: just `bash`, `git`, and `jq`.
+A macOS dotfiles repository owned end-to-end by **self-contained shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, apply macOS defaults, and drive the Claude Code statusline. The shell prompt is [starship](https://starship.rs) (config in `starship.toml`). No Rust, no compiled binary: just `bash`, `git`, and `jq`.
 
 There is no `dotctl/` crate anymore — it was replaced by these shell scripts (this branch/PR). Each subsystem lives in its own topic folder and every script is **self-contained**: the small helpers it needs (logging, os/host detection, symlink `link()`, jq getters, the git-cache path hash, color/gradient math) are inlined at the top of the script rather than sourced from a shared library. Duplication across scripts is intentional — it keeps each folder isolated and individually shareable.
 
-Source of truth for setup behavior is `sync` + `install/*.sh`. Source of truth for prompt rendering is `prompt/git-data` + `prompt/prompt-render`. Source of truth for the statusline is `share/claude-statusline/statusline.sh`.
+Source of truth for setup behavior is `sync` + `install/*.sh`. The shell prompt is starship (`starship.toml`, symlinked to `~/.config/starship.toml`). Source of truth for the statusline is `share/claude-statusline/statusline.sh`.
 
 ## Key Commands
 
@@ -37,12 +37,10 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `dot update` | `./sync --upgrade` | Bump everything. |
 | `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. |
 | `dot prune` | `./install/95-prune.sh` | `.bak` / stale-worktree / orphan-worker cleanup. Flags pass through (`-n` dry-run, `-y` unattended). Also runs at the tail of every full `dot sync`. |
-| `dot git-data` | `prompt/git-data` | Hot path: gather git state, write shell-sourceable cache. |
-| `dot prompt-render` | `prompt/prompt-render` | Hot path: read git-data cache, emit zsh PROMPT syntax. |
 | `dot statusline` | `share/claude-statusline/statusline.sh` | Read Claude Code JSON on stdin, emit 3–6 lines with progress bars. |
 | `dot subagent-statusline` | `share/claude-statusline/subagent-statusline.sh` | Subagent task statusline. |
 
-`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → legacy `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`, `render`, `prompt/git-data`, `prompt/prompt-render`, `share/claude-statusline/*`) are standalone — run them directly (`./prompt/git-data`) for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` defines and exports the shared helpers (`os_kind`, `host_id`, `link`, …) before sourcing each module, so the modules carry no inlined helpers of their own. The sole exception is `install/95-prune.sh`, which keeps its own guard block + helpers because it also runs standalone (`./install/95-prune.sh` / `dot prune`).
+`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → legacy `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`, `share/claude-statusline/*`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` defines and exports the shared helpers (`os_kind`, `host_id`, `link`, …) before sourcing each module, so the modules carry no inlined helpers of their own. The sole exception is `install/95-prune.sh`, which keeps its own guard block + helpers because it also runs standalone (`./install/95-prune.sh` / `dot prune`).
 
 ### sync / install modules
 
@@ -61,6 +59,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `bat/config` | `~/.config/bat/config` |
 | `mise.toml` | `~/.config/mise/config.toml` |
 | `sheldon/plugins.toml` | `~/.config/sheldon/plugins.toml` |
+| `starship.toml` | `~/.config/starship.toml` |
 | `ghostty/config` | `~/.config/ghostty/config` |
 | `nvim/init.lua` | `~/.config/nvim/init.lua` |
 | `karabiner/karabiner.json` | `~/.config/karabiner/karabiner.json` |
@@ -175,14 +174,13 @@ Pause and confirm with the user before doing any of these:
 
 - **Dependency lockfiles** (any file matching `*-lock*` or `*.lock*`): never edit by hand.
 - **`link()` symlink semantics**: the `link()` function prompts on conflict (interactive `$LINK_MODE`) unless `-f` or `-s` is passed. Do not change the default behavior to auto-overwrite.
-- **Hot-path scripts** (`prompt/git-data`, `prompt/prompt-render`): these run on every prompt/refresh. Don't add subprocess spawns, network calls, or unbounded loops. `prompt-render` must stay fork-free — read the cache, render, exit.
+- **The prompt is starship**: configured by `starship.toml` (symlinked to `~/.config/starship.toml`), initialized via `eval "$(starship init zsh)"` in `zsh/50-prompt.zsh`. Keep the config minimal — there is no bespoke prompt renderer to maintain.
 - **Self-contained rule**: scripts inline their own helpers; there is no `shared/` library layer. Don't introduce one — keep each topic folder independently runnable and shareable.
-- **Starship references**: replaced by `prompt/prompt-render`. If you see `starship` anywhere, treat it as historical — do not reintroduce.
 - **Neovim is plugin-free**: the editor is configured by a single `nvim/init.lua` (sensible defaults + native LSP via `vim.lsp.config`/`vim.lsp.enable`, requires Neovim 0.11+). There is no plugin manager (lazy.nvim, packer) and no AstroNvim/LazyVim distro — don't propose adding one; keep the config to a single self-contained `init.lua`. (Historical: this stack used helix before; if you see `helix`/`hx`, it's gone.)
 
 ## Important Gotchas
 
-- **Powerline glyphs (U+E0B0, U+E0B2, U+E0A0, U+276F, etc.)**: never paste raw glyphs into source. Use escape syntax — `$'\u{e0b0}'`/`$'❯'` in zsh, `printf '\xNN'` byte sequences in the bash-3.2-compatible statusline (`share/claude-statusline/statusline.sh`). Write/Edit silently strips raw codepoints, so the escape form is mandatory.
+- **Powerline glyphs (U+E0B0, U+E0B2, U+E0A0, etc.)**: never paste raw glyphs into source. The one place this still matters is the bash-3.2-compatible statusline (`share/claude-statusline/statusline.sh`) — use `printf '\xNN'` byte sequences. Write/Edit silently strips raw codepoints, so the escape form is mandatory. (The prompt is starship now; its glyphs live in starship's own config/defaults.)
 - **dot-claude vs .claude**: source of truth is `dot-claude/` in this repo. The `.claude/` directory at repo root holds machine-local overrides (gitignored) — don't confuse it with project-local Claude config.
 - **Sheldon plugin order matters**: `fast-syntax-highlighting` must be last in `sheldon/plugins.toml`. It wraps every existing ZLE widget at load time, so anything that registers a widget must run before sheldon's `eval` line in `zsh/30-plugins.zsh`.
 - **`dot` self-locates**: `dot` resolves `DOTFILES_DIR` from its own resolved symlink target, so the repo is relocatable. To move it: `mv` the repo, then run `DOTFILES_DIR=<new> <new>/dot sync --force` once to relink (or just re-run `bootstrap.sh`).

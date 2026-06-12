@@ -1,0 +1,14 @@
+# starship prompt configuration.
+#
+# Deliberately minimal: current directory, git branch, and git status (the
+# "diff" indicators — modified/staged/untracked/ahead-behind), then the
+# default prompt character. Language/runtime version modules are omitted for
+# a clean, fast prompt. Everything not set here uses starship's defaults.
+#
+# Symlinked to ~/.config/starship.toml by `dot sync`.
+
+format = "$directory$git_branch$git_status$character"
+
+[directory]
+truncate_to_repo = true
+truncation_length = 4
