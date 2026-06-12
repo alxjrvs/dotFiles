@@ -23,29 +23,14 @@ if ((BASH_VERSINFO[0] < 4)); then
   return 1 2> /dev/null || exit 1
 fi
 
-# ── Self-contained helpers ────────────────────────────────────────────────────
+# ── Shared helpers ────────────────────────────────────────────────────────────
+# When sourced by sync, os_kind/resolve_dotfiles_dir are already defined (sync
+# sources lib/common.sh and exports them). Standalone, source the lib directly.
 if [[ -z "${__DOT_SYNC_SOURCED:-}" ]]; then
   _PRUNE_SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-  os_kind() {
-    case "$(uname -s)" in
-      Darwin) printf 'darwin\n' ;;
-      Linux) printf 'linux\n' ;;
-      *) printf 'unknown\n' ;;
-    esac
-  }
-  # resolve_dotfiles_dir: $DOTFILES_DIR → script's parent dir → ~/dotFiles
-  resolve_dotfiles_dir() {
-    local candidates=(
-      "${DOTFILES_DIR:-}"
-      "${_PRUNE_SELF_DIR%/install}"
-      "${HOME}/dotFiles"
-    )
-    local c
-    for c in "${candidates[@]}"; do
-      [[ -n "$c" && -d "$c" && -f "${c}/Brewfile" ]] && printf '%s\n' "$c" && return 0
-    done
-    return 1
-  }
+  # shellcheck source=../lib/common.sh
+  _DOTFILES_SELF_DIR="${_PRUNE_SELF_DIR%/install}"
+  source "${_PRUNE_SELF_DIR%/install}/lib/common.sh"
 fi
 
 _prune_tags() { printf 'prune\n'; }

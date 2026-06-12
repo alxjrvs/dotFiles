@@ -1,6 +1,6 @@
 # dotFiles
 
-macOS dotfiles for [alxjrvs](https://github.com/alxjrvs). Owned end-to-end by a set of **self-contained shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, apply macOS defaults, and power the prompt + Claude Code statusline. No Rust, no compiled binary; just `bash`, `git`, and `jq`.
+macOS dotfiles for [alxjrvs](https://github.com/alxjrvs). Owned end-to-end by a set of **shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, apply macOS defaults, and drive the Claude Code statusline. The prompt is [starship](https://starship.rs). No Rust, no compiled binary; just `bash`, `git`, and `jq`.
 
 ## Setup (fresh machine)
 
@@ -30,6 +30,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `dot` | Thin dispatcher; the single dotfiles command on PATH. Resolves `DOTFILES_DIR`, execs the matching topic script. |
 | `sync`, `doctor` | Top-level commands (install/resync, health check) |
 | `install/` | Numbered `NN-*.sh` sync modules (brew, mise, symlinks, macos, prune, …), sourced by `sync` in order |
+| `lib/common.sh` | Shared helpers (`os_kind`, `resolve_dotfiles_dir`) sourced by `sync`/`doctor`/`95-prune` |
 | `starship.toml` | starship prompt config (symlinked to `~/.config/starship.toml`) |
 | `share/claude-statusline/` | Self-contained, curl-installable Claude Code statusline (`statusline.sh` + `subagent-statusline.sh`) with its own README |
 | `tests/` | `bats/` smoke suite — guards `install/95-prune.sh` (the only `rm -rf` subsystem) |

@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A macOS dotfiles repository owned end-to-end by **self-contained shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, apply macOS defaults, and drive the Claude Code statusline. The shell prompt is [starship](https://starship.rs) (config in `starship.toml`). No Rust, no compiled binary: just `bash`, `git`, and `jq`.
+A macOS dotfiles repository owned end-to-end by a handful of **shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, apply macOS defaults, and drive the Claude Code statusline. The shell prompt is [starship](https://starship.rs) (config in `starship.toml`). No Rust, no compiled binary: just `bash`, `git`, and `jq`.
 
-There is no `dotctl/` crate anymore — it was replaced by these shell scripts (this branch/PR). Each subsystem lives in its own topic folder and every script is **self-contained**: the small helpers it needs (logging, os/host detection, symlink `link()`, jq getters, the git-cache path hash, color/gradient math) are inlined at the top of the script rather than sourced from a shared library. Duplication across scripts is intentional — it keeps each folder isolated and individually shareable.
+There is no `dotctl/` crate anymore — it was replaced by these shell scripts. Each subsystem lives in its own topic folder. The two helpers shared by the standalone scripts (`os_kind`, `resolve_dotfiles_dir`) live in one small **`lib/common.sh`**, sourced by `sync`, `doctor`, and `install/95-prune.sh`. The one deliberate exception is the Claude statusline (`share/claude-statusline/*`): it ships as a curl-installable drop-in, so it stays fully self-contained with no `lib/` dependency.
 
 Source of truth for setup behavior is `sync` + `install/*.sh`. The shell prompt is starship (`starship.toml`, symlinked to `~/.config/starship.toml`). Source of truth for the statusline is `share/claude-statusline/statusline.sh`.
 
@@ -40,7 +40,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `dot statusline` | `share/claude-statusline/statusline.sh` | Read Claude Code JSON on stdin, emit 3–6 lines with progress bars. |
 | `dot subagent-statusline` | `share/claude-statusline/subagent-statusline.sh` | Subagent task statusline. |
 
-`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → legacy `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`, `share/claude-statusline/*`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` defines and exports the shared helpers (`os_kind`, `link`, …) before sourcing each module, so the modules carry no inlined helpers of their own. The sole exception is `install/95-prune.sh`, which keeps its own guard block + helpers because it also runs standalone (`./install/95-prune.sh` / `dot prune`).
+`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → legacy `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`, `share/claude-statusline/*`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` sources `lib/common.sh` and defines `link()`, then exports those helpers (`os_kind`, `resolve_dotfiles_dir`, `link`) before sourcing each module, so the modules carry no helpers of their own. The sole exception is `install/95-prune.sh`, which also runs standalone (`./install/95-prune.sh` / `dot prune`) — when not sync-sourced it sources `lib/common.sh` itself in a guard block.
 
 ### sync / install modules
 
@@ -162,7 +162,7 @@ Pause and confirm with the user before doing any of these:
 - **Dependency lockfiles** (any file matching `*-lock*` or `*.lock*`): never edit by hand.
 - **`link()` symlink semantics**: the `link()` function prompts on conflict (interactive `$LINK_MODE`) unless `-f` or `-s` is passed. Do not change the default behavior to auto-overwrite.
 - **The prompt is starship**: configured by `starship.toml` (symlinked to `~/.config/starship.toml`), initialized via `eval "$(starship init zsh)"` in `zsh/50-prompt.zsh`. Keep the config minimal — there is no bespoke prompt renderer to maintain.
-- **Self-contained rule**: scripts inline their own helpers; there is no `shared/` library layer. Don't introduce one — keep each topic folder independently runnable and shareable.
+- **Shared helpers live in `lib/common.sh`**: `os_kind` + `resolve_dotfiles_dir`, sourced by `sync`, `doctor`, and `install/95-prune.sh` (callers set `_DOTFILES_SELF_DIR` first). Don't re-inline them. The Claude statusline (`share/claude-statusline/*`) is the deliberate exception — it ships standalone (curl-installable), so keep it self-contained, no `lib/` dependency.
 - **Neovim is plugin-free**: the editor is configured by a single `nvim/init.lua` (sensible defaults + native LSP via `vim.lsp.config`/`vim.lsp.enable`, requires Neovim 0.11+). There is no plugin manager (lazy.nvim, packer) and no AstroNvim/LazyVim distro — don't propose adding one; keep the config to a single self-contained `init.lua`. (Historical: this stack used helix before; if you see `helix`/`hx`, it's gone.)
 
 ## Important Gotchas
