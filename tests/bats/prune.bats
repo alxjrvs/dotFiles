@@ -1,7 +1,8 @@
 #!/usr/bin/env bats
-# Behavioral tests for install/95-prune.sh — the one subsystem that wields
-# rm -rf and kill. Pass-level coverage pins filesystem effects (not message
-# text) so the collect/confirm/apply internals can be refactored safely.
+# Behavioral tests for install/95-prune.sh — the one subsystem that deletes
+# files (the guarded .bak cleanup). Pass-level coverage pins filesystem effects
+# (not message text) so the collect/confirm/apply internals can be refactored
+# safely — the .bak guard must never delete a backup that's the only copy.
 # HOME points at a temp dir; tests source the script standalone.
 
 ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
@@ -42,28 +43,6 @@ _setup_prune() {
   run _prune_backups "$TDIR" < /dev/null
   [ "$status" -eq 0 ]
   [ -e "$TDIR/.zshrc.bak" ]
-}
-
-# ── worktree classification: git failure is NOT "clean" ─────────────────────
-# A non-git directory under the worktrees root must never classify as
-# removable — "git fails entirely" used to read as clean|parent_gone.
-@test "prune worktrees: non-git dir classifies as skip, not removable" {
-  _setup_prune
-  mkdir -p "$TDIR/notgit/data"
-  echo "irreplaceable" > "$TDIR/notgit/data/file.txt"
-  run _classify_worktree "$TDIR/notgit"
-  [ "$status" -eq 0 ]
-  [[ "$output" == skip'|'* ]]
-}
-
-@test "prune worktrees: auto mode never deletes a non-git dir" {
-  _setup_prune
-  export PRUNE_MODE=auto
-  mkdir -p "$TDIR/.local/share/cc-worktrees/somerepo/stray-data"
-  echo "irreplaceable" > "$TDIR/.local/share/cc-worktrees/somerepo/stray-data/file.txt"
-  run _prune_stale_worktrees "$TDIR"
-  [ "$status" -eq 0 ]
-  [ -f "$TDIR/.local/share/cc-worktrees/somerepo/stray-data/file.txt" ]
 }
 
 # ── pass effects under auto / dry ────────────────────────────────────────────
