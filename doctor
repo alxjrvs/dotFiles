@@ -20,36 +20,6 @@ os_kind() {
   esac
 }
 
-# host_id: returns "air", "pro", or "unknown"
-host_id() {
-  local forced="${DOTFILES_HOST:-}"
-  if [[ -n "$forced" ]]; then
-    case "$(printf '%s' "$forced" | tr '[:upper:]' '[:lower:]')" in
-      air)
-        printf 'air\n'
-        return 0
-        ;;
-      pro)
-        printf 'pro\n'
-        return 0
-        ;;
-    esac
-  fi
-  local hostname=""
-  if command -v scutil > /dev/null 2>&1; then
-    hostname=$(scutil --get LocalHostName 2> /dev/null || true)
-  fi
-  local lower
-  lower=$(printf '%s' "$hostname" | tr '[:upper:]' '[:lower:]')
-  if [[ "$lower" == *air* ]]; then
-    printf 'air\n'
-  elif [[ "$lower" == *pro* ]]; then
-    printf 'pro\n'
-  else
-    printf 'unknown\n'
-  fi
-}
-
 # resolve_dotfiles_dir: $DOTFILES_DIR → script parent → ~/dotFiles
 resolve_dotfiles_dir() {
   local candidates=(

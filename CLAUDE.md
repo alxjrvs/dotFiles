@@ -40,7 +40,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `dot statusline` | `share/claude-statusline/statusline.sh` | Read Claude Code JSON on stdin, emit 3–6 lines with progress bars. |
 | `dot subagent-statusline` | `share/claude-statusline/subagent-statusline.sh` | Subagent task statusline. |
 
-`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → legacy `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`, `share/claude-statusline/*`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` defines and exports the shared helpers (`os_kind`, `host_id`, `link`, …) before sourcing each module, so the modules carry no inlined helpers of their own. The sole exception is `install/95-prune.sh`, which keeps its own guard block + helpers because it also runs standalone (`./install/95-prune.sh` / `dot prune`).
+`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → legacy `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`, `share/claude-statusline/*`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` defines and exports the shared helpers (`os_kind`, `link`, …) before sourcing each module, so the modules carry no inlined helpers of their own. The sole exception is `install/95-prune.sh`, which keeps its own guard block + helpers because it also runs standalone (`./install/95-prune.sh` / `dot prune`).
 
 ### sync / install modules
 
@@ -109,27 +109,14 @@ are managed by this repo. If you find yourself adding one, stop —
 Ghostty is the answer in this stack; revisit only if Mitchell Hashimoto
 abandons it.
 
-## Multi-host overlays
+## One config, every machine
 
-Two machines (M3 Air + M2 Pro). Host detection is the inlined `host_id`
-helper: `scutil --get LocalHostName` substring match →
-`air|pro|unknown`, with `DOTFILES_HOST=air|pro` env override
-(also exposed as `dot sync --host=<name>` for dry-running the
-other host's config locally).
-
-Per-host surfaces today:
-
-- **macOS defaults** — `install/90-macos.sh` carries the shared baseline;
-  per-host overlays add or override entries by `(domain, key)` and the
-  effective list is merged for the current host. `dot doctor` audits
-  against the current host's effective list.
-- **Brewfile** — shared `Brewfile` installs everywhere; if
-  `Brewfile.<host>` exists, it installs AFTER the shared file (purely
-  additive, brew bundle is idempotent). Use for formulae/casks only
-  one host needs.
-
-Symlinks, mise.toml, sheldon, and zsh fragments are intentionally
-shared — divergence there isn't worth the overlay surface today.
+This repo runs on more than one Mac but is deliberately **single-config**:
+there is no host detection and no per-host overlay. `Brewfile`,
+`mise.toml`, the macOS defaults in `install/90-macos.sh`, symlinks, and zsh
+fragments are identical everywhere. If a genuine per-machine divergence
+ever appears, add the smallest possible guard at that point — don't
+reintroduce a host-overlay system preemptively.
 
 ## Secrets management
 
