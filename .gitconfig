@@ -10,8 +10,8 @@
 	name = alxjrvs
 	email = alxjrvs@gmail.com
 	# user.signingkey is machine-local (~/.gitconfig.local, written by
-	# `dot sync` -> install/45-ssh.sh) -- a literal `key::` pubkey, so git signs
-	# via the fixed-socket signing agent and never reads the private key file.
+	# `dot sync` -> install/45-ssh.sh) -- a `key::` pubkey for the 1Password
+	# "GitHubSSH" key. git signs via op-ssh-sign (1Password), no local key.
 [credential]
 	helper = osxkeychain
 # GitHub HTTPS auth via the gh CLI (keychain-backed). Lets git push resolve a

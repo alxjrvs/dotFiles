@@ -65,9 +65,9 @@ Shell unit tests run under [`bats`](https://github.com/bats-core/bats-core) (a m
 
 ## Git signing
 
-`.gitconfig` configures SSH commit/tag signing but **does not** set `gpgSign = true` directly. The actual toggle lives in machine-local `~/.gitconfig.local` (bootstrapped by `dot sync`). This keeps fresh boxes from failing commits before SSH keys are present.
+Commits and tags are signed by **1Password** via `op-ssh-sign` (`gpg.format = ssh` in `.gitconfig`). `install/45-ssh.sh` reads the 1Password "GitHubSSH" key from the SSH agent and writes the machine-local `~/.gitconfig.local`: `gpgSign = true`, `gpg.ssh.program = op-ssh-sign`, and `user.signingkey = key::<that pubkey>`. There is no local signing key and no second ssh-agent. `gpgSign` stays machine-local so a box without 1Password doesn't fail commits before sync runs.
 
-`dot sync` also bootstraps `~/.ssh/allowed_signers` from `~/.ssh/id_ed25519.pub` so `git log --show-signature` verifies your own commits.
+`dot sync` also appends the signing pubkey to `~/.ssh/allowed_signers` so `git log --show-signature` verifies locally. For GitHub to show **Verified**, register the same key under Settings → SSH and GPG keys → *Signing keys*, and verify your commit email.
 
 To disable signing on a given machine, edit `~/.gitconfig.local`.
 
@@ -110,7 +110,7 @@ Via Karabiner-Elements (Brewfile cask). Config is tracked at `karabiner/karabine
 
 `ssh/config` points `IdentityAgent` at the 1Password 8 agent socket. Enable the agent in 1Password → Settings → Developer → "Use the SSH agent" before pushing this config — otherwise SSH breaks. Keys stored in your 1Password vault are then offered to every SSH host (with touch-to-approve if configured).
 
-Commit signing piggybacks on the same SSH key via `gpg.format = ssh` in `.gitconfig`.
+Commit signing uses the same 1Password agent via `gpg.format = ssh` + `op-ssh-sign` in `.gitconfig` (see Git signing above).
 
 ## Notes
 
