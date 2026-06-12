@@ -32,7 +32,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `install/` | Numbered `NN-*.sh` sync modules (brew, mise, symlinks, macos, prune, …), sourced by `sync` in order |
 | `prompt/` | `git-data` (git-state → cache) + `prompt-render` (cache → zsh PROMPT). Hot path. |
 | `share/claude-statusline/` | Self-contained, curl-installable Claude Code statusline (`statusline.sh` + `subagent-statusline.sh`) with its own README |
-| `tests/` | `bats/` unit tests + `golden/` fixtures (byte-exact prompt/statusline references) |
+| `tests/` | `bats/` smoke suite — guards `install/95-prune.sh` (the only `rm -rf` subsystem) |
 | `.zshrc` | Thin loader — sources fragments from `~/.config/zsh/*.zsh` |
 | `zsh/` | Numbered zsh fragments (exports, options, vi, plugins, completions, prompt, tools, aliases, functions) |
 | `.zprofile`, `.zshenv` | Login env, including `DOTFILES_DIR` export |
@@ -48,7 +48,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `Brewfile` | `brew "mise"` + casks (GUI apps, fonts). All dev CLIs live in mise.toml. |
 | `mise.toml` | Language toolchains + every dev CLI. Single update path via `mise upgrade`. |
 | `sheldon/plugins.toml` | Zsh plugin config |
-| `lefthook.yml` | Pre-commit/pre-push gate (shellcheck + shfmt + bats + doctor) for this repo |
+| `lefthook.yml` | Pre-commit lint gate (shellcheck + shfmt + gitleaks) + `bats` pre-push for this repo |
 
 ## Claude Code integration
 
@@ -61,7 +61,7 @@ The statusline is the self-contained `share/claude-statusline/statusline.sh` (co
 
 ## Tests
 
-Shell unit tests run under [`bats`](https://github.com/bats-core/bats-core) (a managed mise tool) in `tests/bats/`. Golden fixtures in `tests/golden/` hold byte-exact reference output (regenerable snapshots of the current shell scripts) for `prompt/prompt-render`, the statusline, and the subagent statusline. Re-baseline after an intentional rendering change with `tests/verify-golden.sh --update` / `tests/verify-statusline.sh --update`, then commit the fixture diff. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` pre-commit and `bats` + `dot doctor` (skip-external) + `tests/verify-golden.sh` pre-push. CI (`.github/workflows/test.yml`, macOS) mirrors the lint + bats checks on push to `main` and every PR — it skips `dot doctor` and the golden verifiers, which depend on a fully provisioned machine.
+Shell unit tests run under [`bats`](https://github.com/bats-core/bats-core) (a managed mise tool) in `tests/bats/`. The suite is small on purpose: `prune.bats` guards `install/95-prune.sh` — the only subsystem that runs `rm -rf` — so the collect/confirm/apply internals can be refactored safely. `lefthook.yml` runs the lint gate pre-commit and `bats tests/bats/` pre-push. No golden-snapshot harness, no CI: this is a personal repo, so rendering changes are eyeballed rather than byte-diffed.
 
 ## Git signing
 
@@ -77,7 +77,7 @@ To disable signing on a given machine, edit `~/.gitconfig.local`.
 
 ## lefthook (this repo only)
 
-`lefthook.yml` adds a pre-commit gate on staged shell files (`shellcheck` + `shfmt -i 2 -ci -sr` + gitleaks + `settings.json` validity) plus a pre-push gate (`bats tests/bats/` + `dot doctor` with `DOTFILES_DOCTOR_SKIP_EXTERNAL=1` + `tests/verify-golden.sh`). `dot sync` runs `lefthook install` automatically. The same lint + bats checks also run in CI (`.github/workflows/test.yml`).
+`lefthook.yml` adds a pre-commit gate on staged shell files (`shellcheck` + `shfmt -i 2 -ci -sr` + gitleaks + `settings.json` validity) plus a `bats tests/bats/` pre-push gate. `dot sync` runs `lefthook install` automatically.
 
 ## difftastic
 
