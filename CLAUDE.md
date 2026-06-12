@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A macOS dotfiles repository owned end-to-end by a handful of **shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, and apply macOS defaults. The shell prompt is [starship](https://starship.rs) (config in `starship.toml`). The Claude Code statusline lives in its own repo (`github.com/alxjrvs/claude-statusline`). Just `bash`, `git`, and `jq`.
 
-Each subsystem lives in its own topic folder. The two helpers shared by the standalone scripts (`os_kind`, `resolve_dotfiles_dir`) live in one small **`lib/common.sh`**, sourced by `sync` and `doctor`.
+Each subsystem lives in its own topic folder. The helpers shared by the standalone scripts (`os_kind`, `resolve_dotfiles_dir`, and the `link()` symlinker) live in one small **`lib/common.sh`**, sourced by `sync` and `doctor`.
 
 Source of truth for setup behavior is `sync` + `install/*.sh`. The shell prompt is starship (`starship.toml`, symlinked to `~/.config/starship.toml`). The Claude Code statusline is a separate project (`github.com/alxjrvs/claude-statusline`). `install/60-claude.sh` (claude tag) clones it to `~/Code/claude-statusline` and runs its `install.sh`, which symlinks `claude-statusline` + `claude-subagent-statusline` into `~/.local/bin`; `dot-claude/settings.json` references those paths.
 
@@ -18,7 +18,7 @@ dot sync --upgrade      # Same + brew update/upgrade/cleanup + mise upgrade.
 dot sync --only=brew,mise   # Only the listed section tags.
 dot update              # Bump everything (equivalent to sync --upgrade).
 dot doctor              # Read-only health check; exits non-zero on failures.
-dot doctor --fix        # Same, plus reap orphaned symlinks (its only mutation).
+dot doctor --fix        # Same + repair symlinks: reap orphans, relink missing/incorrect.
 lefthook run pre-commit # shellcheck + shfmt -i 2 -ci -sr over staged shell files.
 ```
 
@@ -34,9 +34,9 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 |------------|-------|---------|
 | `dot sync` | `./sync` | Install/resync. Tag-gated steps (`--only=<tag,...>`). Idempotent. |
 | `dot update` | `./sync --upgrade` | Bump everything. |
-| `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. `--fix` reaps orphaned symlinks (its only mutation). |
+| `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. `--fix` repairs the symlink contract (reap orphans + relink missing/incorrect) — doctor's only mutation. |
 
-`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → fallback `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` sources `lib/common.sh` and defines `link()`, then exports those helpers (`os_kind`, `resolve_dotfiles_dir`, `link`) before sourcing each module, so the modules carry no helpers of their own.
+`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → fallback `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` sources `lib/common.sh` (which defines `link()` alongside the other shared helpers), then exports those helpers (`os_kind`, `resolve_dotfiles_dir`, `link`) before sourcing each module, so the modules carry no helpers of their own.
 
 ### sync / install modules
 
@@ -44,7 +44,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 
 ### Symlink Model
 
-`link()` (defined in `sync`, exported to the install modules) creates idempotent symlinks. On conflict, behavior depends on `$LINK_MODE`: `overwrite` (replace, set via `-f`), `skip` (`-s`), or default `interactive` (prompt). Overwrite does not back up the displaced file — the canonical content is in this git repo. Mapping:
+`link()` (defined in `lib/common.sh`, exported by `sync` to the install modules, and reused by `dot doctor --fix`) creates idempotent symlinks. On conflict, behavior depends on `$LINK_MODE`: `overwrite` (replace, set via `-f`), `skip` (`-s`), or default `interactive` (prompt). Overwrite does not back up the displaced file — the canonical content is in this git repo. Mapping:
 
 | Source | Destination |
 |--------|-------------|
@@ -155,9 +155,9 @@ mise activates on `cd` (its shims are already on PATH via `.zshenv`). For one-of
 Pause and confirm with the user before doing any of these:
 
 - **Dependency lockfiles** (any file matching `*-lock*` or `*.lock*`): never edit by hand.
-- **`link()` symlink semantics**: the `link()` function prompts on conflict (interactive `$LINK_MODE`) unless `-f` or `-s` is passed. Do not change the default behavior to auto-overwrite.
+- **`link()` symlink semantics**: the `link()` function prompts on conflict (interactive `$LINK_MODE`) unless `-f` or `-s` is passed. Do not change the default behavior to auto-overwrite. (`dot doctor --fix` deliberately invokes it with `LINK_MODE=overwrite` for its opt-in repair path — that's explicit, not the default.)
 - **The prompt is starship**: configured by `starship.toml` (symlinked to `~/.config/starship.toml`), initialized via `eval "$(starship init zsh)"` in `zsh/50-prompt.zsh`. Keep the config minimal.
-- **Shared helpers live in `lib/common.sh`**: `os_kind` + `resolve_dotfiles_dir`, sourced by `sync` and `doctor` (callers set `_DOTFILES_SELF_DIR` first). Don't re-inline them.
+- **Shared helpers live in `lib/common.sh`**: `os_kind`, `resolve_dotfiles_dir`, and `link()`, sourced by `sync` and `doctor` (callers set `_DOTFILES_SELF_DIR` first). Don't re-inline them.
 - **Neovim is plugin-free**: the editor is configured by a single `nvim/init.lua` (sensible defaults + native LSP via `vim.lsp.config`/`vim.lsp.enable`, requires Neovim 0.11+). There is no plugin manager (lazy.nvim, packer) and no AstroNvim/LazyVim distro — don't propose adding one; keep the config to a single self-contained `init.lua`.
 
 ## Important Gotchas

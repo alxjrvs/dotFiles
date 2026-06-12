@@ -35,7 +35,7 @@ Everything else is policy, not identity — copy it as-is.
 | `dot sync --only=brew,mise` | Only the listed sections (tags: `brew mise sheldon symlinks ssh claude lefthook macos`). |
 | `dot update` | Bump everything to current — equivalent to `dot sync --upgrade`. |
 | `dot doctor` | Read-only diagnostics: tool presence, symlink integrity (missing *and* orphaned), drift. Exits non-zero on failures. |
-| `dot doctor --fix` | Same diagnostics, plus reap orphaned symlinks (doctor's only mutation; `sync` never removes them). |
+| `dot doctor --fix` | Same diagnostics, plus repair the symlink contract: reap orphaned symlinks *and* relink any entry that's missing, a non-symlink file, or pointing at the wrong target (doctor's only mutation). |
 
 ## What's here
 
@@ -45,7 +45,7 @@ Everything else is policy, not identity — copy it as-is.
 | `dot` | Thin dispatcher; the single dotfiles command on PATH. Resolves `DOTFILES_DIR`, execs the matching topic script. |
 | `sync`, `doctor` | Top-level commands (install/resync, health check) |
 | `install/` | Numbered `NN-*.sh` sync modules (brew, mise, symlinks, macos, …), sourced by `sync` in order |
-| `lib/common.sh` | Shared helpers (`os_kind`, `resolve_dotfiles_dir`) sourced by `sync`/`doctor` |
+| `lib/common.sh` | Shared helpers (`os_kind`, `resolve_dotfiles_dir`, `link()`) sourced by `sync`/`doctor` |
 | `starship.toml` | starship prompt config (symlinked to `~/.config/starship.toml`) |
 | `.zshrc` | Thin loader — sources fragments from `~/.config/zsh/*.zsh` |
 | `zsh/` | Numbered zsh fragments (exports, options, vi, plugins, completions, prompt, tools, aliases, functions) |

@@ -3,10 +3,14 @@
 # Exits non-zero when any hard failure is found.
 #
 # Flags:
-#   --fix   Reap orphaned symlinks (dangling links into the repo whose source
-#           was deleted). This is the only mutation doctor performs, and the
-#           only repair sync's link() never does. All other drift keeps its
-#           read-only "run dot sync --only=X" hint.
+#   --fix   Repair the symlink contract — doctor's only mutation. Two parts:
+#             1. reap orphaned symlinks (dangling links into the repo whose
+#                source was deleted; the one repair sync's link() never does);
+#             2. relink any contract path that's missing, a non-symlink file,
+#                or pointing at the wrong target, via the same link() sync uses
+#                (overwrite: rm + relink, no backup — canonical content is here).
+#           Non-symlink drift (brew/mise/macos) keeps its read-only
+#           "run dot sync --only=X" hint.
 #
 # Honors DOTFILES_DOCTOR_SKIP_EXTERNAL=1 to skip slow/network-bound checks
 # (brew bundle drift, gh auth).
@@ -45,7 +49,7 @@ for _arg in "$@"; do
   case "$_arg" in
     --fix) _FIX=1 ;;
     -h | --help)
-      printf 'usage: doctor [--fix]\n  --fix   remove orphaned symlinks (the only mutation; default is read-only)\n'
+      printf 'usage: doctor [--fix]\n  --fix   repair symlinks: reap orphans + relink missing/incorrect (default: read-only)\n'
       exit 0
       ;;
     *)
@@ -162,18 +166,30 @@ else
     local_link="${HOME}/${_dst}"
     expected_target="${_dotfiles}/${_src}"
     _checked=$((_checked + 1))
+    _drift=""
     if [[ ! -e "$local_link" && ! -L "$local_link" ]]; then
-      _warn "symlink missing: ${local_link} (expected -> ${expected_target})"
+      _drift="symlink missing: ${local_link} (expected -> ${expected_target})"
     elif [[ ! -L "$local_link" ]]; then
-      _warn "${local_link} is not a symlink (expected -> ${expected_target})"
+      _drift="${local_link} is not a symlink (expected -> ${expected_target})"
     else
       _actual_target=$(readlink "$local_link" 2> /dev/null || true)
       [[ "$_actual_target" == "$expected_target" ]] ||
-        _warn "${local_link} points to ${_actual_target}, expected ${expected_target}"
+        _drift="${local_link} points to ${_actual_target}, expected ${expected_target}"
+    fi
+    if [[ -n "$_drift" ]]; then
+      if [[ "$_FIX" -eq 1 ]]; then
+        # Repair with the same link() sync uses (overwrite = rm + relink, no
+        # backup; canonical content is in the repo). Fixes all three cases:
+        # missing -> create, wrong-type file -> replace, wrong target -> repoint.
+        LINK_MODE=overwrite link "$expected_target" "$local_link"
+        _FIXED=$((_FIXED + 1))
+      else
+        _warn "${_drift} (run: dot doctor --fix)"
+      fi
     fi
   done < <(DOTFILES_DIR="$_dotfiles" _symlink_pairs)
   _ok "symlinks: ${_checked} checked"
-  unset _checked _actual_target local_link expected_target _src _dst
+  unset _checked _actual_target local_link expected_target _src _dst _drift
 
   # Orphaned symlinks (home→repo direction). The check above verifies every
   # contract entry is linked; this catches the reverse — a symlink in a managed
@@ -337,7 +353,7 @@ unset _eff_key
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 printf '\n'
-[[ "$_FIXED" -gt 0 ]] && printf '\033[0;36m  \xe2\x9c\x82 repaired %d orphaned symlink(s)\033[0m\n' "$_FIXED"
+[[ "$_FIXED" -gt 0 ]] && printf '\033[0;36m  \xe2\x9c\x82 repaired %d symlink issue(s)\033[0m\n' "$_FIXED"
 if [[ "$_FAILS" -eq 0 && "$_WARNS" -eq 0 ]]; then
   _ok "All checks passed"
 elif [[ "$_FAILS" -eq 0 ]]; then
