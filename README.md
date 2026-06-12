@@ -98,7 +98,7 @@ Wired as a git difftool. Run with `git dft` (alias for `git difftool`) — uses 
 
 ## Packaging: Lean A (brew = casks, mise = dev CLIs)
 
-The Brewfile holds **only** `brew "mise"` + casks (GUI apps, fonts, the 1Password CLI cask, the Claude desktop cask). Every dev CLI — language toolchains, git surface (gh, delta, lazygit, gitleaks, lefthook), file/text tools (bat, fd, ripgrep, jq, yq, eza, dust, glow, gdu), linters (shfmt, shellcheck), test tooling (bats), shell-init-time tools (sheldon, atuin, direnv, fzf, zoxide), and the Tier 3 escapees (supabase, carapace, watchexec, bottom, pueue, git-absorb, neovim) — lives in `mise.toml`.
+The Brewfile holds **only** `brew "mise"` + casks (GUI apps, fonts, the 1Password CLI cask, the Claude desktop cask). Every dev CLI — language toolchains, git surface (gh, delta, lazygit, gitleaks, lefthook), file/text tools (bat, fd, ripgrep, jq, eza), linters (shfmt, shellcheck), test tooling (bats), shell-init-time tools (sheldon, atuin, direnv, fzf), plus carapace, git-absorb, and neovim — lives in `mise.toml`.
 
 The PATH wiring in `.zshenv` puts `~/.local/share/mise/shims` first so every mise-managed tool resolves in every shell context (interactive, non-interactive, git hooks, editor subprocesses) without waiting for `mise activate`. This makes it safe to ship shell-init dependencies (sheldon, atuin, direnv) from mise — they're on PATH before `.zshrc` fragments load.
 

@@ -24,7 +24,6 @@ sheldon = "latest"      # zsh plugin manager — loaded in zsh/30-plugins.zsh
 atuin = "latest"        # shell history sync — loaded in zsh/30-plugins.zsh
 direnv = "latest"       # per-dir env hook — loaded in zsh/30-plugins.zsh
 fzf = "latest"          # `fzf --zsh` integration loaded in zsh/60-tools.zsh
-zoxide = "latest"       # `zoxide init zsh` loaded in zsh/60-tools.zsh
 
 # ── Git surface (used by prompt, lefthook, difftool, pre-commit) ──────
 gh = "latest"           # GH CLI; also feeds GITHUB_PERSONAL_ACCESS_TOKEN
@@ -39,11 +38,7 @@ bat = "latest"
 fd = "latest"
 ripgrep = "latest"
 jq = "latest"
-yq = "latest"
 eza = "latest"
-dust = "latest"
-glow = "latest"
-gdu = "latest"
 
 # ── Linters / formatters + test runner ───────────────────────────────
 shfmt = "latest"
@@ -60,17 +55,13 @@ taplo = "latest"                          # TOML LSP + formatter (`taplo lsp std
 
 # ── Misc ──────────────────────────────────────────────────────────────
 uv = "latest"           # Python project / venv manager
-heroku = "latest"       # Heroku CLI (npm:heroku); auth via `op-run heroku`
+heroku = "latest"       # Heroku CLI (npm:heroku); auth via `op run -- heroku`
                         # (no plaintext ~/.netrc).
-"cargo:tealdeer" = "latest"  # `tldr` pager; not in mise registry. Aqua dropped binary releases (only completions remain), so we build from crates.io.
 
-# ── Pre-existing entries: Tier 3 escapees from Brewfile (kept) ────────
+# ── Shell UX ──────────────────────────────────────────────────────────
 carapace = "latest"                    # multi-shell completions (~600 CLIs)
-watchexec = "latest"                   # file-change watcher
-bottom = "latest"                      # top/htop replacement (binary: btm)
-"aqua:Nukesor/pueue/pueue" = "latest"  # persistent task queue daemon
 "aqua:tummychow/git-absorb" = "latest" # auto-fixup staged hunks
-neovim = "latest" # modal editor (binary: nvim)
+neovim = "latest"                      # modal editor (binary: nvim)
 
 [settings]
 trusted_config_paths = ["~/**/.worktrees"]

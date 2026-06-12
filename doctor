@@ -274,16 +274,7 @@ if [[ -n "$_dotfiles2" ]]; then
 fi
 unset _dotfiles2
 
-# ── 8. pueued daemon liveness ─────────────────────────────────────────────────
-if pueued --version > /dev/null 2>&1; then
-  if pueue status > /dev/null 2>&1; then
-    _ok "pueued: daemon responding"
-  else
-    _warn "pueued: daemon not running — start with \`pueued -d\`"
-  fi
-fi
-
-# ── 9. brew doctor (Darwin, external) ─────────────────────────────────────────
+# ── 8. brew doctor (Darwin, external) ─────────────────────────────────────────
 if [[ "$(os_kind)" == "darwin" && -z "$skip_external" ]]; then
   _brew_out=$(brew doctor 2>&1 || true)
   if printf '%s\n' "$_brew_out" | grep -q "ready to brew"; then
@@ -303,7 +294,7 @@ if [[ "$(os_kind)" == "darwin" && -z "$skip_external" ]]; then
   unset _brew_out _brew_warns
 fi
 
-# ── 10. mise doctor (external) ───────────────────────────────────────────────
+# ── 9. mise doctor (external) ────────────────────────────────────────────────
 if [[ -z "$skip_external" ]]; then
   # Strip shims from PATH for this one call so mise doesn't complain about
   # "mise tool paths are not first in PATH" (the shims are first because WE
@@ -346,7 +337,7 @@ if [[ -z "$skip_external" ]]; then
   unset _mise_out _mise_warns _ml _trimmed _n
 fi
 
-# ── 11. claude doctor (external) ─────────────────────────────────────────────
+# ── 10. claude doctor (external) ─────────────────────────────────────────────
 if [[ -z "$skip_external" ]]; then
   _claude_ver=$(claude --version 2> /dev/null | head -1 || true)
   if [[ -n "$_claude_ver" ]]; then
