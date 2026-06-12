@@ -56,7 +56,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 - `CLAUDE.md` — user-level global instructions
 - `settings.json` — deliberately minimal: agent teams, `editorMode: vim`, `statusLine`/`subagentStatusLine` → `~/.local/bin/claude-statusline`
 
-The statusline is a separate project — [claude-statusline](https://github.com/alxjrvs/claude-statusline) — installed via its own `install.sh` (symlinks into `~/.local/bin`). `settings.json` just references the installed path.
+The statusline is a separate project — [claude-statusline](https://github.com/alxjrvs/claude-statusline). `dot sync` (claude tag) clones it to `~/Code/claude-statusline` (fast-forwards an existing clone) and runs its `install.sh`, which symlinks both scripts into `~/.local/bin`; `settings.json` references the installed path. `dot doctor` checks the symlinks are present.
 
 ## Tests
 
