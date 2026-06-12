@@ -1,16 +1,13 @@
 # Editor / pager / locale
 export EDITOR="nvim"
 export VISUAL="$EDITOR"
-export MANPAGER="less -R"
 export LANG=en_US.UTF-8
 export LESS='-RFX'
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 
-# GITHUB_PERSONAL_ACCESS_TOKEN is deliberately NOT exported (see .zprofile for
-# the rationale): exporting it leaked the PAT into every Bash subprocess Claude
-# Code spawns. The github MCP server authenticates via the gh keychain (a
-# user-scope `github` server with a headersHelper that runs `gh auth token` at
-# connect time); resolve the token on demand the same way when a tool needs it.
+# GitHub tokens are never exported into the shell env; anything that needs one
+# resolves it on demand via `gh auth token` (the github MCP server reads its PAT
+# from 1Password through gh/gh-mcp-auth-header). See .zprofile for the rationale.
 
 # Colored man pages (CMYK)
 export LESS_TERMCAP_mb=$'\e[1;35m'

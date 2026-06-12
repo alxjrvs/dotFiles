@@ -18,11 +18,6 @@ brew "mise"
 # installs don't ship a broken sheldon binary.
 brew "openssl@3"
 
-# bash 4+: a system layer with no mise equivalent (the shell itself).
-# Apple ships 3.2 forever; 95-prune.sh (mapfile) needs 4+, and on a fresh
-# machine `env bash` must not resolve to 3.2.
-brew "bash"
-
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"
 cask "1password"
@@ -43,7 +38,6 @@ cask "google-chrome"
 # symlinked by dot sync).
 cask "karabiner-elements"
 
-cask "ngrok"
 cask "notunes"
 
 # Window mgmt + launcher + clipboard (replaces Rectangle + Spotlight).

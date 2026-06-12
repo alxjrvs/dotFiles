@@ -4,7 +4,6 @@
   sw = switch
   st = status -sb
   undo = reset HEAD~1 --mixed
-  sync = "!f() { git fetch --prune && git rebase origin/$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's|origin/||'); }; f"
 
 [user]
 	name = alxjrvs
@@ -31,12 +30,10 @@
 	fsmonitor = false
 	untrackedCache = true
 
-# init.templateDir is the replacement for the previous core.hooksPath
-# global-hook approach. New repos copy template/hooks/pre-commit into
-# their own .git/hooks/ at `git init` time → gitleaks runs per-repo
-# without conflicting with lefthook (which manages .git/hooks/pre-commit
-# directly in lefthook-equipped repos). Older repos initialized before
-# this change need a manual one-shot:
+# New repos copy template/hooks/pre-commit into their own .git/hooks/ at
+# `git init`/`git clone` time → gitleaks runs per-repo without conflicting
+# with lefthook (which owns .git/hooks/pre-commit in lefthook-equipped repos).
+# Repos that predate the template need a one-shot:
 #   cp ~/.config/git/template/hooks/pre-commit <repo>/.git/hooks/pre-commit
 [init]
 	defaultBranch = main

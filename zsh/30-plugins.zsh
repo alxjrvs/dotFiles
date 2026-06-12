@@ -4,15 +4,9 @@ fpath+=(/opt/homebrew/share/zsh/site-functions)
 # Sheldon plugins (adds zsh-completions to fpath, loads FSH last)
 eval "$(sheldon source)"
 
-# Atuin shell history. --disable-up-arrow leaves Up/Down to history-substring-search
-# below; atuin owns Ctrl-R for full-history fuzzy search.
-command -v atuin &> /dev/null && eval "$(atuin init zsh --disable-up-arrow)"
-
-# History substring search keybindings
-bindkey '^[[A' history-substring-search-up
-bindkey '^[[B' history-substring-search-down
-bindkey -M vicmd 'k' history-substring-search-up
-bindkey -M vicmd 'j' history-substring-search-down
+# Atuin shell history — Ctrl-R fuzzy search. --disable-up-arrow keeps Up/Down as
+# plain zsh history navigation instead of opening atuin's search on every Up.
+eval "$(atuin init zsh --disable-up-arrow)"
 
 # Syntax highlighting theme (Jack Kirby CMYK) - F-Sy-H overrides
 typeset -A FAST_HIGHLIGHT_STYLES

@@ -25,11 +25,9 @@ fi
 export PATH
 unset _mise_shims
 
-# ── Source macos module for audit function ────────────────────────────────────
-# We only need macos_audit(); source with __DOT_SYNC_SOURCED set so the
-# module skips re-sourcing helpers it doesn't need.
-__DOT_SYNC_SOURCED=1
-export __DOT_SYNC_SOURCED
+# ── Source modules for their reusable functions ───────────────────────────────
+# doctor reuses macos_audit() (90-macos) and _symlink_pairs() (40-symlinks).
+# lib/common.sh (sourced above) already defines the shared helpers they expect.
 # shellcheck source=install/90-macos.sh
 source "${_DOCTOR_DIR}/install/90-macos.sh"
 # shellcheck source=install/40-symlinks.sh
@@ -71,22 +69,23 @@ fi
 unset _user_name _user_email
 
 # ── 2. Tool presence ──────────────────────────────────────────────────────────
-# "dot" replaces "dotctl" in the tool list.
 _tools=(dot git gh mise)
 if [[ "$(os_kind)" == "darwin" ]]; then
-  _tools+=(brew bash node bun sheldon lefthook nvim)
+  _tools+=(brew node bun sheldon lefthook nvim)
 fi
 
-# Tools with a documented, load-bearing minimum version. Below the floor is a
-# hard failure, not cosmetic:
+# Documented, load-bearing minimum version for a tool, or empty if it has none.
+# Below the floor is a hard failure, not cosmetic:
 #   brew < 6.0.0 — newer Brewfile/bundle conventions assumed by this repo
-#   bash < 4     — install/95-prune.sh uses `mapfile` (absent in Apple's 3.2)
 #   nvim < 0.11  — nvim/init.lua uses vim.lsp.config/enable (native LSP)
-declare -A _min_version=(
-  [brew]=6.0.0
-  [bash]=4
-  [nvim]=0.11
-)
+# A case function (not a `declare -A` map) so this script runs on macOS's stock
+# bash 3.2.
+_min_version() {
+  case "$1" in
+    brew) printf '6.0.0' ;;
+    nvim) printf '0.11' ;;
+  esac
+}
 
 for _tool in "${_tools[@]}"; do
   # Presence is what this check is for — probe the binary on PATH, not its
@@ -99,7 +98,7 @@ for _tool in "${_tools[@]}"; do
     continue
   fi
   _ver=$("$_tool" --version 2> /dev/null | head -1 || true)
-  _floor=${_min_version[$_tool]:-}
+  _floor=$(_min_version "$_tool")
   if [[ -n "$_floor" ]]; then
     # Assert the documented minimum. Pull the first dotted-number run out of
     # the --version line (e.g. "Homebrew 6.0.0", "NVIM v0.11.2", "GNU bash,
@@ -119,7 +118,7 @@ for _tool in "${_tools[@]}"; do
     _ok "${_tool}: present (version unavailable — config unreadable)"
   fi
 done
-unset _tools _tool _ver _floor _min_version
+unset _tools _tool _ver _floor
 
 # ── 3. Symlink integrity ──────────────────────────────────────────────────────
 _dotfiles=$(resolve_dotfiles_dir 2> /dev/null || true)
@@ -146,6 +145,30 @@ else
   done < <(DOTFILES_DIR="$_dotfiles" _symlink_pairs)
   _ok "symlinks: ${_checked} checked"
   unset _checked _actual_target local_link expected_target _src _dst
+
+  # Orphaned symlinks (home→repo direction). The check above verifies every
+  # contract entry is linked; this catches the reverse — a symlink in a managed
+  # directory that points into the repo but whose source was deleted (e.g. a
+  # removed zsh fragment). link() never reaps these, so they dangle silently.
+  _orphans=0
+  _expected=$(while IFS='|' read -r _s _d; do
+    [[ -n "$_d" ]] && printf '%s\n' "${HOME}/${_d}"
+  done < <(DOTFILES_DIR="$_dotfiles" _symlink_pairs))
+  while IFS= read -r _mandir; do
+    [[ -d "$_mandir" ]] || continue
+    while IFS= read -r -d '' _link; do
+      _tgt=$(readlink "$_link" 2> /dev/null || true)
+      [[ "$_tgt" == "${_dotfiles}/"* ]] || continue # only repo-created links
+      [[ -e "$_tgt" ]] && continue                  # source still present → fine
+      if printf '%s\n' "$_expected" | grep -qxF "$_link"; then continue; fi
+      _warn "orphaned symlink: ${_link} -> ${_tgt} (source removed from repo; safe to rm)"
+      _orphans=$((_orphans + 1))
+    done < <(find "$_mandir" -maxdepth 1 -type l -print0 2> /dev/null)
+  done < <(while IFS='|' read -r _s _d; do
+    [[ -n "$_d" ]] && dirname "${HOME}/${_d}"
+  done < <(DOTFILES_DIR="$_dotfiles" _symlink_pairs) | sort -u)
+  [[ "$_orphans" -eq 0 ]] && _ok "no orphaned symlinks"
+  unset _orphans _expected _mandir _link _tgt _s _d
 
   # ── 4. brew bundle drift (Darwin, external) ───────────────────────────────
   if [[ "$(os_kind)" == "darwin" && -z "$skip_external" ]]; then
@@ -212,7 +235,7 @@ else
 fi
 
 # Stock-tool health is the stock tools' job: run `brew doctor` / `mise doctor`
-# / `claude doctor` directly. Re-grepping their output here added no signal.
+# / `claude doctor` directly.
 
 # ── 9. macOS defaults drift (Darwin) ─────────────────────────────────────────
 if [[ "$(os_kind)" == "darwin" ]]; then

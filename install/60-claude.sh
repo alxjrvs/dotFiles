@@ -8,7 +8,7 @@ _claude_tags() { printf 'claude\n'; }
 
 # Register the user-scope `github` HTTP MCP server in ~/.claude.json. It points
 # at the GitHub Copilot MCP endpoint and resolves its bearer token via a
-# headersHelper that reads the gh keychain on demand — so no PAT is exported
+# headersHelper that reads it from 1Password on demand — so no PAT is exported
 # into the shell env. User scope = all projects on this machine; idempotent,
 # so safe to re-run. We verify the write landed and say so plainly rather
 # than trusting add-json's optimistic "Added" message.
@@ -24,7 +24,7 @@ _claude_register_github_mcp() {
   # Already registered with the right helper path → nothing to do.
   if [[ -f "${cfg}" ]] &&
     [[ "$(jq -r '.mcpServers.github.headersHelper // empty' "${cfg}" 2> /dev/null)" == "${helper}" ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 github MCP server registered (user scope, gh-keychain auth)\033[0m\n'
+    printf '\033[0;32m  \xe2\x9c\x93 github MCP server registered (user scope, 1Password auth)\033[0m\n'
     return 0
   fi
 
@@ -33,7 +33,7 @@ _claude_register_github_mcp() {
 
   if [[ -f "${cfg}" ]] &&
     [[ "$(jq -r '.mcpServers.github.headersHelper // empty' "${cfg}" 2> /dev/null)" == "${helper}" ]]; then
-    printf '\033[0;32m  \xe2\x9c\x93 github MCP server registered (user scope, gh-keychain auth)\033[0m\n'
+    printf '\033[0;32m  \xe2\x9c\x93 github MCP server registered (user scope, 1Password auth)\033[0m\n'
   else
     printf '\033[0;33m  \xe2\x86\x92 github MCP server not registered — re-run "dot sync --only=claude" from a regular terminal\033[0m\n' >&2
   fi

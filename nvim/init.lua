@@ -39,7 +39,7 @@ map("n", "gd", vim.lsp.buf.definition, { desc = "LSP definition" })
 map("n", "K", vim.lsp.buf.hover, { desc = "LSP hover" })
 
 -- ── Language servers (native, no lspconfig) ────────────────────────────────
--- Mirrors the previous helix/languages.toml LSP wiring.
+-- One vim.lsp.config block per language server; enabled together below.
 vim.lsp.config("rust_analyzer", {
   cmd = { "rust-analyzer" },
   filetypes = { "rust" },
@@ -73,8 +73,8 @@ vim.lsp.config("taplo", {
 vim.lsp.enable({ "rust_analyzer", "bashls", "ts_ls", "marksman", "taplo" })
 
 -- ── Format on save ─────────────────────────────────────────────────────────
--- External formatters matching the old helix auto-format settings. Buffers are
--- piped through the formatter's stdin; the buffer is left untouched on error.
+-- External formatters per filetype. Buffers are piped through the formatter's
+-- stdin; the buffer is left untouched on error.
 local function pipe_format(cmd)
   local view = vim.fn.winsaveview()
   local input = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")

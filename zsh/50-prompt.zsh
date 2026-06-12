@@ -1,3 +1,2 @@
-# Prompt — starship. Config lives in ~/.config/starship.toml (symlinked by
-# dot sync). Native init; no bespoke renderer, no git cache.
+# Prompt — starship. Config: ~/.config/starship.toml (symlinked by dot sync).
 eval "$(starship init zsh)"

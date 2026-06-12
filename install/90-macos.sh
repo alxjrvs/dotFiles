@@ -2,8 +2,8 @@
 # install/90-macos.sh — macOS defaults apply + audit.
 # Tags: macos
 # Sourced-only — by sync (apply) and doctor (audit). Both define and export
-# os_kind and set __DOT_SYNC_SOURCED before sourcing this module, so this
-# file carries no inlined helpers of its own.
+# os_kind before sourcing this module, so this file carries no inlined helpers
+# of its own.
 
 _macos_tags() { printf 'macos\n'; }
 

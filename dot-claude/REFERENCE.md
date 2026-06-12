@@ -23,6 +23,6 @@ For non-interactive `claude -p` invocations from scripts, pass `--bare` to skip 
 `env` in settings.json sets only `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` (pairs with `teammateMode: "in-process"` — split panes need tmux/iTerm2 and are explicitly unsupported in Ghostty). The knobs below are NOT set and behave per Claude Code defaults; they are not all in the public schema and may change across releases.
 
 - `ENABLE_PROMPT_CACHING_1H=1` — extends prompt-cache TTL to 1 hour (default is shorter). Targets long, multi-turn sessions.
-- `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80` — triggers autocompact at 80% context fill instead of the default ~95% (documented; applies to main conversations AND subagents). (Note: the statusline's AC marker is hardcoded at 80% — if you re-add this with a different value, the marker drifts.)
+- `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80` — triggers autocompact at 80% context fill instead of the default ~95% (documented; applies to main conversations AND subagents). (Note: the statusline's AC marker is hardcoded at 80% — if you set this to a different value, the marker drifts.)
 - `CLAUDE_CODE_AUTO_COMPACT_WINDOW=500000` — the more surgical companion: sets the token capacity the compaction calculation uses (lower-only, capped at the model's real window). E.g. treat a 1M model's window as 500K so compaction triggers earlier. PCT_OVERRIDE is applied as a percentage of this value; aligns with the statusline's `context_window.used_percentage`.
 
