@@ -1,24 +1,10 @@
 [alias]
-  # Show verbose output about tags, branches or remotes
-  tags = tag -l
-  branches = branch -a
-  remotes = remote -v
   # Pretty log output
   hist = log --graph --pretty=format:'%Cred%h%Creset %s%C(yellow)%d%Creset %Cgreen(%cr)%Creset [%an]' --abbrev-commit --date=relative
   sw = switch
   st = status -sb
   undo = reset HEAD~1 --mixed
   sync = "!f() { git fetch --prune && git rebase origin/$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's|origin/||'); }; f"
-  dft = difftool
-
-[color "branch"]
-  current = yellow reverse
-  local = yellow
-  remote = green
-[color "status"]
-  added = yellow
-  changed = green
-  untracked = cyan
 
 [user]
 	name = alxjrvs
@@ -92,11 +78,6 @@
 	algorithm = histogram
 	colorMoved = dimmed-zebra
 	mnemonicPrefix = true
-	tool = difftastic
-[difftool]
-	prompt = false
-[difftool "difftastic"]
-	cmd = difft "$LOCAL" "$REMOTE"
 [rebase]
 	autoSquash = true
 	autoStash = true

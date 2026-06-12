@@ -11,10 +11,12 @@
 # when the registry doesn't cover or the registry alias is broken.
 
 [tools]
+# Only tools worth installing globally on every machine live here. Anything
+# situational (a language toolchain for one project, a one-off CLI) is
+# installed incidentally — `mise use <tool>` in that project, or on demand.
+
 # ── Language toolchains ───────────────────────────────────────────────
 node = "25"
-python = "3.13"
-rust = "1.94"
 bun = "latest"
 
 # ── Shell-init-time tools (need PATH presence before zsh fragments load) ─
@@ -25,11 +27,9 @@ atuin = "latest"        # shell history sync — loaded in zsh/30-plugins.zsh
 direnv = "latest"       # per-dir env hook — loaded in zsh/30-plugins.zsh
 fzf = "latest"          # `fzf --zsh` integration loaded in zsh/60-tools.zsh
 
-# ── Git surface (used by prompt, lefthook, difftool, pre-commit) ──────
-gh = "latest"           # GH CLI; also feeds GITHUB_PERSONAL_ACCESS_TOKEN
+# ── Git surface (used by prompt, lefthook, pre-commit) ────────────────
+gh = "latest"           # GH CLI; also feeds the GitHub MCP auth header
 delta = "latest"        # syntax-aware git pager (was brew "git-delta")
-difftastic = "latest"   # git difftool, syntax-aware diffs
-lazygit = "latest"
 gitleaks = "latest"     # gitleaks protect — global pre-commit hook
 lefthook = "latest"     # repo-local pre-commit/pre-push runner
 
@@ -46,22 +46,16 @@ shellcheck = "latest"
 bats = "latest"           # Bash Automated Testing System — unit tests for shell scripts
 
 # ── Neovim language servers (nvim/init.lua wires these in) ────────────
-# rust-analyzer ships with the `rust` toolchain above; the rest are below.
+# rust-analyzer is not global — it comes with a per-project `rust` toolchain,
+# and nvim/init.lua picks it up automatically when present.
 "npm:bash-language-server" = "latest"
 "npm:typescript-language-server" = "latest"
 "npm:prettier" = "latest"                 # JS/TS/JSX/TSX formatter (nvim/init.lua format-on-save)
 "aqua:artempyanykh/marksman" = "latest"   # markdown LSP
 taplo = "latest"                          # TOML LSP + formatter (`taplo lsp stdio`); registry alias → aqua:tamasfe/taplo (no -cli suffix)
 
-# ── Misc ──────────────────────────────────────────────────────────────
-uv = "latest"           # Python project / venv manager
-heroku = "latest"       # Heroku CLI (npm:heroku); auth via `op run -- heroku`
-                        # (no plaintext ~/.netrc).
-
-# ── Shell UX ──────────────────────────────────────────────────────────
-carapace = "latest"                    # multi-shell completions (~600 CLIs)
-"aqua:tummychow/git-absorb" = "latest" # auto-fixup staged hunks
-neovim = "latest"                      # modal editor (binary: nvim)
+# ── Editor ────────────────────────────────────────────────────────────
+neovim = "latest"                         # modal editor (binary: nvim)
 
 [settings]
 trusted_config_paths = ["~/**/.worktrees"]

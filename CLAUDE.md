@@ -62,7 +62,6 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `mise.toml` | `~/.config/mise/config.toml` |
 | `sheldon/plugins.toml` | `~/.config/sheldon/plugins.toml` |
 | `ghostty/config` | `~/.config/ghostty/config` |
-| `lazygit/config.yml` | `~/.config/lazygit/config.yml` |
 | `nvim/init.lua` | `~/.config/nvim/init.lua` |
 | `karabiner/karabiner.json` | `~/.config/karabiner/karabiner.json` |
 | `atuin/config.toml` | `~/.config/atuin/config.toml` |

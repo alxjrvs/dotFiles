@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # install/40-symlinks.sh — full symlink mapping table.
-# Tags: symlinks git shell mise sheldon ghostty bat atuin lazygit zsh
+# Tags: symlinks git shell mise sheldon ghostty bat atuin zsh
 #       git-template gh claude ssh nvim karabiner
 # Sourced by sync; not standalone — helpers (os_kind, host_id, link) come from
 # sync, which exports them before sourcing this module.
 
 _symlinks_tags() {
-  printf 'symlinks\ngit\nshell\nmise\nsheldon\nghostty\nbat\natuin\nlazygit\nzsh\ngit-template\ngh\nclaude\nssh\nnvim\nkarabiner\n'
+  printf 'symlinks\ngit\nshell\nmise\nsheldon\nghostty\nbat\natuin\nzsh\ngit-template\ngh\nclaude\nssh\nnvim\nkarabiner\n'
 }
 
 _symlinks_run() {
@@ -90,11 +90,6 @@ _symlinks_run() {
     if should_run symlinks atuin; then
       mkdir -p "${HOME}/.config/atuin"
       link "${df}/atuin/config.toml" "${HOME}/.config/atuin/config.toml"
-    fi
-
-    if should_run symlinks lazygit; then
-      mkdir -p "${HOME}/.config/lazygit"
-      link "${df}/lazygit/config.yml" "${HOME}/.config/lazygit/config.yml"
     fi
 
     if should_run symlinks nvim; then
