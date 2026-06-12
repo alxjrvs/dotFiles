@@ -20,7 +20,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `dot sync --only=brew,mise` | Only the listed sections (tags: `brew mise sheldon symlinks ssh claude gh lefthook macos prune`). |
 | `dot update` | Bump everything to current — equivalent to `dot sync --upgrade`. |
 | `dot doctor` | Read-only diagnostics: tool presence, symlink integrity, drift. Exits non-zero on failures. |
-| `dot prune` | Delete `.bak` files, stale worktrees, orphan workers. |
+| `dot prune` | Delete stale `.bak` backups left by `link()` overwrites (guarded). |
 
 ## What's here
 
@@ -33,7 +33,7 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 | `lib/common.sh` | Shared helpers (`os_kind`, `resolve_dotfiles_dir`) sourced by `sync`/`doctor`/`95-prune` |
 | `starship.toml` | starship prompt config (symlinked to `~/.config/starship.toml`) |
 | `share/claude-statusline/` | Self-contained, curl-installable Claude Code statusline (`statusline.sh` + `subagent-statusline.sh`) with its own README |
-| `tests/` | `bats/` smoke suite — guards `install/95-prune.sh` (the only `rm -rf` subsystem) |
+| `tests/` | `bats/` smoke suite — guards `install/95-prune.sh` (the only file-deleting subsystem) |
 | `.zshrc` | Thin loader — sources fragments from `~/.config/zsh/*.zsh` |
 | `zsh/` | Numbered zsh fragments (exports, options, vi, plugins, completions, prompt, tools, aliases, functions) |
 | `.zprofile`, `.zshenv` | Login env, including `DOTFILES_DIR` export |
@@ -61,7 +61,7 @@ The statusline is the self-contained `share/claude-statusline/statusline.sh` (co
 
 ## Tests
 
-Shell unit tests run under [`bats`](https://github.com/bats-core/bats-core) (a managed mise tool) in `tests/bats/`. The suite is small on purpose: `prune.bats` guards `install/95-prune.sh` — the only subsystem that runs `rm -rf` — so the collect/confirm/apply internals can be refactored safely. `lefthook.yml` runs the lint gate pre-commit and `bats tests/bats/` pre-push. No golden-snapshot harness, no CI: this is a personal repo, so rendering changes are eyeballed rather than byte-diffed.
+Shell unit tests run under [`bats`](https://github.com/bats-core/bats-core) (a managed mise tool) in `tests/bats/`. The suite is small on purpose: `prune.bats` guards `install/95-prune.sh` — the only file-deleting subsystem (guarded `.bak` cleanup) — so the collect/confirm/apply internals can be refactored safely. `lefthook.yml` runs the lint gate pre-commit and `bats tests/bats/` pre-push. No golden-snapshot harness, no CI: this is a personal repo, so rendering changes are eyeballed rather than byte-diffed.
 
 ## Git signing
 

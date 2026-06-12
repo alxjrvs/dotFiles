@@ -1,7 +1,7 @@
 # Lefthook config for this repo (dotfiles itself).
 #
 # pre-commit: lint staged shell + guard secrets and settings.json.
-# pre-push:   run the bats smoke suite (the prune rm -rf safety net).
+# pre-push:   run the bats smoke suite (the prune .bak-deletion safety net).
 #
 # no_auto_install: dot sync owns hook installation (install/85-lefthook.sh
 # runs `lefthook install` on every sync). After a lefthook.yml change,
@@ -30,5 +30,5 @@ pre-push:
   commands:
     bats:
       # The one suite worth gating a push on: prune is the only subsystem that
-      # wields `rm -rf`. Seconds-scale, fully offline.
+      # deletes files (guarded `.bak` cleanup). Seconds-scale, fully offline.
       run: bats tests/bats/

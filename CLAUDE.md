@@ -18,7 +18,7 @@ dot sync --upgrade      # Same + brew update/upgrade/cleanup + mise upgrade.
 dot sync --only=brew,mise   # Only the listed section tags.
 dot update              # Bump everything (equivalent to sync --upgrade).
 dot doctor              # Read-only health check; exits non-zero on failures.
-dot prune               # Find + delete .bak files, stale worktrees, orphan workers.
+dot prune               # Find + delete stale .bak backups (guarded). Default yes on a TTY.
 bats tests/bats/        # Run the shell unit-test suite.
 lefthook run pre-commit # shellcheck + shfmt -i 2 -ci -sr over staged shell files.
 ```
@@ -36,7 +36,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `dot sync` | `./sync` | Install/resync. Tag-gated steps (`--only=<tag,...>`). Idempotent. |
 | `dot update` | `./sync --upgrade` | Bump everything. |
 | `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. |
-| `dot prune` | `./install/95-prune.sh` | `.bak` / stale-worktree / orphan-worker cleanup. Flags pass through (`-n` dry-run, `-y` unattended). Also runs at the tail of every full `dot sync`. |
+| `dot prune` | `./install/95-prune.sh` | Guarded `.bak` backup cleanup. Flags pass through (`-n` dry-run, `-y` unattended). Also runs at the tail of every full `dot sync`. |
 | `dot statusline` | `share/claude-statusline/statusline.sh` | Read Claude Code JSON on stdin, emit 3–6 lines with progress bars. |
 | `dot subagent-statusline` | `share/claude-statusline/subagent-statusline.sh` | Subagent task statusline. |
 
@@ -86,7 +86,7 @@ There is no `agents/`, `commands/`, or `hooks/` directory — custom subagents, 
 
 ### Tests
 
-Shell unit tests run under `bats` (a managed mise tool) in `tests/bats/`. The suite is deliberately small: `prune.bats` guards the only subsystem that wields `rm -rf` (`install/95-prune.sh`) — non-TTY never deletes, the `.bak` safety guard, dry/auto effects. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` + gitleaks + a `settings.json` validity check pre-commit, and `bats tests/bats/` pre-push. There is no golden-snapshot harness and no CI — rendering changes are eyeballed, not byte-diffed (this is a personal repo, not a published library).
+Shell unit tests run under `bats` (a managed mise tool) in `tests/bats/`. The suite is deliberately small: `prune.bats` guards the only subsystem that deletes files (`install/95-prune.sh`'s guarded `.bak` cleanup) — non-TTY never deletes, the `.bak` safety guard (never delete a backup that's the only copy), dry/auto effects. `lefthook.yml` runs `shellcheck` + `shfmt -i 2 -ci -sr` + gitleaks + a `settings.json` validity check pre-commit, and `bats tests/bats/` pre-push. There is no golden-snapshot harness and no CI — rendering changes are eyeballed, not byte-diffed (this is a personal repo, not a published library).
 
 ## Packaging policy: Lean A (brew = casks, mise = dev CLIs)
 
