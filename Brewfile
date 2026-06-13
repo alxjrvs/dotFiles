@@ -32,11 +32,11 @@ cask "font-fira-code-nerd-font"
 # ── Terminal ──────────────────────────────────────────────────────────
 cask "ghostty"
 
-# cmux is the sanctioned exception to "no other terminal emulators": a
-# Ghostty-based (libghostty) agent multiplexer for running parallel Claude
-# Code sessions in a vertical-tab sidebar with git-worktree isolation. It
-# reads ~/.config/ghostty/config (already symlinked), so it inherits the
-# Ghostty theme — a complement to Ghostty, not a daily-driver replacement.
+# cmux is the default terminal (TERMINAL=cmux, set in zsh/00-exports.zsh):
+# a libghostty-based agent multiplexer for parallel Claude Code sessions
+# with vertical tabs and git-worktree isolation. It renders with libghostty
+# and reads ~/.config/ghostty/config (already symlinked), so it inherits the
+# Ghostty theme. Ghostty (above) stays as the engine + config source.
 cask "cmux"
 
 cask "google-chrome"

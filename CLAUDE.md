@@ -91,25 +91,27 @@ Brewfile holds **only**: `mise` (chicken-and-egg bootstrap), casks (GUI apps, fo
 
 If you're about to add a CLI to `Brewfile`, stop — put it in `mise.toml` unless it's `mise` itself or it's a cask.
 
-## Terminal: Ghostty
+## Terminal: cmux (built on Ghostty)
 
-Ghostty is the chosen terminal emulator. The cask installs the .app;
-launch the app directly. `dot sync` symlinks `ghostty/config`
-to `~/.config/ghostty/config`, which `dot doctor` validates via the
-symlink integrity check.
+`cmux` is the default terminal — set via `TERMINAL=cmux` in
+`zsh/00-exports.zsh`. It's a libghostty-based agent multiplexer for
+running parallel Claude Code sessions with vertical tabs and git-worktree
+isolation. macOS has no system "default terminal" role, so the env var is
+a declaration of intent (the XDG convention), not a hard switch; launch
+cmux directly (Dock/Raycast).
 
-No other terminal emulators (iTerm2, WezTerm, Kitty, Alacritty, Warp)
-are managed by this repo. If you find yourself adding one, stop —
-Ghostty is the answer in this stack; revisit only if Mitchell Hashimoto
-abandons it.
+Ghostty stays installed as the **engine + config source**, not a separate
+daily driver: cmux renders with libghostty and reads
+`~/.config/ghostty/config`, so it inherits the Ghostty theme/font/colors.
+`dot sync` symlinks `ghostty/config` to `~/.config/ghostty/config` (the
+cask installs Ghostty.app; `dot doctor` validates the symlink). Both casks
+live in the Terminal section of the Brewfile.
 
-The one sanctioned exception is `cmux` (cask, in the Terminal section of
-the Brewfile): a Ghostty-based (libghostty) agent multiplexer for running
-parallel Claude Code sessions with vertical tabs and git-worktree
-isolation. It reads `~/.config/ghostty/config`, so it inherits the same
-theme — a purpose-built complement to Ghostty, not a daily-driver
-terminal replacement. This is not an opening to add general-purpose
-terminals; the rule above still holds for everything else.
+No other terminal emulators (iTerm2, WezTerm, Kitty, Alacritty, Warp) are
+managed by this repo. The stack is exactly two and they are one unit —
+Ghostty (engine + config) and cmux (the default terminal on top of it).
+If you find yourself adding a third, stop; revisit only if Mitchell
+Hashimoto abandons Ghostty.
 
 ## One config, every machine
 
