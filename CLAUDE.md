@@ -55,7 +55,8 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `.ripgreprc`, `.fdignore` | `~/` |
 | `zsh/[0-9]*.zsh` | `~/.config/zsh/` (sourced in numeric order by thin `.zshrc`) |
 | `bat/config` | `~/.config/bat/config` |
-| `mise.toml` | `~/.config/mise/config.toml` |
+| `mise.toml` | `~/.config/mise/config.toml` (tools only) |
+| `mise-settings.toml` | `~/.config/mise/conf.d/settings.toml` (global-only `[settings]`; mise loads `conf.d/*` only as global, so `trusted_config_paths` isn't ignored+warned the way it is when `mise.toml` is read as this repo's project-local config) |
 | `sheldon/plugins.toml` | `~/.config/sheldon/plugins.toml` |
 | `starship.toml` | `~/.config/starship.toml` |
 | `ghostty/config` | `~/.config/ghostty/config` |

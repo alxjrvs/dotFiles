@@ -56,5 +56,7 @@ taplo = "latest"                          # TOML LSP + formatter (`taplo lsp std
 # ── Editor ────────────────────────────────────────────────────────────
 neovim = "latest"                         # modal editor (binary: nvim)
 
-[settings]
-trusted_config_paths = ["~/**/.worktrees"]
+# Global-only [settings] (e.g. trusted_config_paths) live in mise-settings.toml,
+# symlinked to ~/.config/mise/conf.d/. They can't live here: this file is also
+# loaded as the repo's project-local config, where mise ignores+warns on
+# global-only settings.

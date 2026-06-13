@@ -1,0 +1,16 @@
+# mise-settings.toml — global-only mise settings.
+#
+# Symlinked to ~/.config/mise/conf.d/settings.toml, which mise loads ONLY as
+# global config (conf.d files never live in a project's cwd tree, so they're
+# never re-read as a project-local config).
+#
+# Why this isn't in mise.toml: that file pulls double duty — it's the global
+# config (via the ~/.config/mise/config.toml symlink) AND this repo's own
+# project-local config (it sits in the repo). `trusted_config_paths` is a
+# global-only, security-sensitive setting; mise ignores it in any project-local
+# load and warns. Standing inside this repo triggered that warning on every
+# mise invocation. Keeping global-only settings here, tools-only in mise.toml,
+# means each file is legal in every role it's loaded for.
+
+[settings]
+trusted_config_paths = ["~/**/.worktrees"]
