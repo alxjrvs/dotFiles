@@ -33,6 +33,7 @@ bat/config|.config/bat/config
 atuin/config.toml|.config/atuin/config.toml
 gh/config.yml|.config/gh/config.yml
 gh/gh-mcp-auth-header|.local/bin/gh-mcp-auth-header
+render/render-mcp-auth-header|.local/bin/render-mcp-auth-header
 nvim/init.lua|.config/nvim/init.lua
 karabiner/karabiner.json|.config/karabiner/karabiner.json
 dot-claude/CLAUDE.md|.claude/CLAUDE.md
