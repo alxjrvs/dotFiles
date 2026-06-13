@@ -35,12 +35,12 @@
 
 set -euo pipefail
 
-# ── Output helpers (match doctor's palette) ───────────────────────────────────
-_hdr() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
-_ok() { printf '\033[0;32m  \xe2\x9c\x93 %s\033[0m\n' "$*"; }
-_warn() { printf '\033[0;33m  \xe2\x86\x92 %s\033[0m\n' "$*"; }
-_crit() { printf '\033[0;31m  \xe2\x9c\x97 %s\033[0m\n' "$*"; }
-_note() { printf '    %s\n' "$*"; }
+# ── Shared output palette (_hdr/_ok/_warn/_crit/_note) ────────────────────────
+# Sourced from lib/common.sh so the ANSI strings live in exactly one place.
+_WATCHTOWER_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=lib/common.sh
+_DOTFILES_SELF_DIR="$_WATCHTOWER_DIR"
+source "${_WATCHTOWER_DIR}/lib/common.sh"
 
 # ── Flags ─────────────────────────────────────────────────────────────────────
 _VAULT=""
@@ -142,6 +142,7 @@ _withpw=$(awk -F'\t' '$7!="true" && $8!=""' "$DATA" | wc -l | tr -d ' ')
 
 # ── 2. Breached (Have-I-Been-Pwned, k-anonymity over unique non-dev hashes) ───
 _BRK="${_TMP}/breach.tsv"
+_BRKFAIL="${_TMP}/breach.failed" # sentinel: HIBP unreachable for ≥1 hash
 : > "$_BRK"
 if [[ "$_BREACH" -eq 1 ]]; then
   printf '  checking Have-I-Been-Pwned...\n' >&2
@@ -149,27 +150,43 @@ if [[ "$_BREACH" -eq 1 ]]; then
     [[ -z "$_h" ]] && continue
     _pre="${_h:0:5}"
     _suf="${_h:5}"
-    # NB: no early `exit` in awk — exiting closes the pipe, curl takes SIGPIPE,
-    # and under pipefail that non-zero status would clobber a real match to "".
-    _cnt=$(curl -s --max-time 10 "https://api.pwnedpasswords.com/range/${_pre}" < /dev/null |
-      tr -d '\r' | awk -F: -v s="$_suf" 'toupper($1)==s{print $2}') || _cnt=""
+    # Capture curl on its own so a network error (curl exits non-zero) is
+    # distinguished from a clean "no match". Folding both into one pipeline made
+    # an outage look like every password was un-breached — a false clean. On
+    # failure, drop a sentinel (the loop is a pipeline subshell, so a shell var
+    # wouldn't survive) and skip this hash. NB: no early `exit` in the suffix
+    # awk — exiting closes the pipe and would surface as a spurious error.
+    if ! _resp=$(curl -s --max-time 10 "https://api.pwnedpasswords.com/range/${_pre}" < /dev/null); then
+      : > "$_BRKFAIL"
+      continue
+    fi
+    _cnt=$(printf '%s' "$_resp" | tr -d '\r' | awk -F: -v s="$_suf" 'toupper($1)==s{print $2}')
+    # `if` (no else) returns 0 when there's no match, so the loop body never
+    # trips errexit on its last command — no `|| true` masking needed.
     if [[ -n "$_cnt" ]]; then
       printf '%s\t%s\n' "$_h" "$_cnt" >> "$_BRK"
     fi
-  done || true
+  done
 fi
 
 # ── 3. Report ─────────────────────────────────────────────────────────────────
 _hdr "Breached passwords (Have-I-Been-Pwned)"
 if [[ "$_BREACH" -eq 0 ]]; then
   _note "(skipped — --no-breach)"
-elif [[ -s "$_BRK" ]]; then
-  while IFS=$'\t' read -r _h _cnt; do
-    _crit "password in ${_cnt} known breaches:"
-    awk -F'\t' -v H="$_h" '$7!="true" && $8==H{printf "    [%s] %s  (%s)\n",$1,$2,$3}' "$DATA"
-  done < "$_BRK"
 else
-  _ok "none of your passwords appear in HiBP"
+  if [[ -s "$_BRK" ]]; then
+    while IFS=$'\t' read -r _h _cnt; do
+      _crit "password in ${_cnt} known breaches:"
+      awk -F'\t' -v H="$_h" '$7!="true" && $8==H{printf "    [%s] %s  (%s)\n",$1,$2,$3}' "$DATA"
+    done < "$_BRK"
+  elif [[ ! -f "$_BRKFAIL" ]]; then
+    # Only a true all-clean (every hash checked, none matched) earns this line.
+    _ok "none of your passwords appear in HiBP"
+  fi
+  # A network failure for any hash means the result is incomplete — never let
+  # that read as "clean".
+  [[ -f "$_BRKFAIL" ]] &&
+    _warn "HIBP breach check incomplete — could not reach api.pwnedpasswords.com for some passwords; results are partial"
 fi
 unset _h _cnt
 

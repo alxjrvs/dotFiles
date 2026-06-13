@@ -10,10 +10,6 @@
 
 _ssh_tags() { printf 'ssh\n'; }
 
-_OP_AGENT_SOCK="${HOME}/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
-_OP_SSH_SIGN="/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
-_SIGNING_KEY_NAME="GitHubSSH"
-
 # Read the signing key's public line from the 1Password agent and echo just
 # "<type> <data>" (no comment). Empty if the agent is down or the key absent.
 _ssh_signing_pubkey() {
@@ -27,6 +23,20 @@ _ssh_signing_pubkey() {
 
 _ssh_run() {
   printf '\n==> SSH signing (1Password / op-ssh-sign)\n'
+
+  # Config constants, assigned at run time (not module-source time) so sourcing
+  # this module has no side effects — consistent with every other install
+  # module. Plain (not `local`) so _ssh_signing_pubkey, called below, sees them
+  # via bash dynamic scope. Customize the 1Password signing-key item name here:
+  _SIGNING_KEY_NAME="GitHubSSH"
+  _OP_AGENT_SOCK="${HOME}/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+  _OP_SSH_SIGN="/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    printf '\033[0;36m  ~ [dry-run] would converge signing in ~/.gitconfig.local + ~/.ssh/allowed_signers\033[0m\n'
+    return 0
+  fi
+
   mkdir -p "${HOME}/.ssh"
   chmod 700 "${HOME}/.ssh" 2> /dev/null || true
 

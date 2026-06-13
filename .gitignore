@@ -37,6 +37,9 @@ yarn-error.log*
 # Transient/generated
 Brewfile.lock.json
 
+# Generated audit reports (gnar audit plugin) — regenerate on demand, not tracked.
+audit/
+
 # Machine-specific overrides
 dot-claude/settings.local.json
 **/.claude/settings.local.json

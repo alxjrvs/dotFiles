@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # doctor — dotfiles health check. Read-only by default.
-# Exits non-zero when any hard failure is found.
+#
+# Exit codes (so callers — CI, bootstrap, cron — can act on the result):
+#   0   clean: no failures, no warnings
+#   1   one or more hard failures
+#   2   warnings only (degraded but not broken: symlink drift, brew/mise drift,
+#       unconfigured signing, …). Distinct from 0 so "clean" is machine-checkable.
 #
 # Flags:
 #   --fix   Repair the symlink contract — doctor's only mutation. Two parts:
@@ -11,6 +16,9 @@
 #                (overwrite: rm + relink, no backup — canonical content is here).
 #           Non-symlink drift (brew/mise/macos) keeps its read-only
 #           "run dot sync --only=X" hint.
+#   --full  Also run a full-history secret scan (gitleaks detect) over the
+#           dotfiles repo. Off by default because it's slow; the pre-commit
+#           hook already guards new commits.
 #
 # Honors DOTFILES_DOCTOR_SKIP_EXTERNAL=1 to skip slow/network-bound checks
 # (brew bundle drift, gh auth).
@@ -45,11 +53,16 @@ source "${_DOCTOR_DIR}/install/40-symlinks.sh"
 
 # ── Flags ─────────────────────────────────────────────────────────────────────
 _FIX=0
+_FULL=0
 for _arg in "$@"; do
   case "$_arg" in
     --fix) _FIX=1 ;;
+    --full) _FULL=1 ;;
     -h | --help)
-      printf 'usage: doctor [--fix]\n  --fix   repair symlinks: reap orphans + relink missing/incorrect (default: read-only)\n'
+      printf 'usage: doctor [--fix] [--full]\n'
+      printf '  --fix    repair symlinks: reap orphans + relink missing/incorrect (default: read-only)\n'
+      printf '  --full   also run a full-history gitleaks scan of the repo (slow)\n'
+      printf '  exit codes: 0 clean, 1 failures, 2 warnings only\n'
       exit 0
       ;;
     *)
@@ -65,18 +78,20 @@ _FAILS=0
 _WARNS=0
 _FIXED=0
 
-_ok() { printf '\033[0;32m  \xe2\x9c\x93 %s\033[0m\n' "$*"; }
+# Output: _ok is the shared pure printer (from lib/common.sh). _warn/_fail/_fixed
+# wrap the shared raw printers (_p_*) to also tally the counters that drive the
+# exit code — so the ANSI strings still live in exactly one place (lib/common.sh).
 _warn() {
-  printf '\033[0;33m  \xe2\x86\x92 %s\033[0m\n' "$*"
+  _p_warn "$*"
   _WARNS=$((_WARNS + 1))
 }
 _fail() {
-  printf '\033[0;31m  \xe2\x9c\x97 %s\033[0m\n' "$*" >&2
+  _p_fail "$*"
   _FAILS=$((_FAILS + 1))
 }
 # _fixed — a mutation doctor performed under --fix (cyan wrench).
 _fixed() {
-  printf '\033[0;36m  \xe2\x9c\x82 %s\033[0m\n' "$*"
+  _p_fixed "$*"
   _FIXED=$((_FIXED + 1))
 }
 
@@ -233,7 +248,7 @@ else
     unset _brewfile
   fi
 fi
-unset _dotfiles
+# NB: _dotfiles is resolved once (above) and reused through §7 — don't unset here.
 
 # ── 5. gh auth status (external) ─────────────────────────────────────────────
 if [[ -z "$skip_external" ]]; then
@@ -260,9 +275,9 @@ fi
 unset _mise_missing _missing_count
 
 # ── 7. lefthook hook installed ────────────────────────────────────────────────
-_dotfiles2=$(resolve_dotfiles_dir 2> /dev/null || true)
-if [[ -n "$_dotfiles2" ]]; then
-  _lh_hook="${_dotfiles2}/.git/hooks/pre-commit"
+# Reuses _dotfiles resolved in §3 (single resolution across §3–§7).
+if [[ -n "$_dotfiles" ]]; then
+  _lh_hook="${_dotfiles}/.git/hooks/pre-commit"
   if [[ ! -f "$_lh_hook" ]]; then
     _warn "lefthook: pre-commit hook not installed in dotfiles repo — run \`lefthook install\`"
   else
@@ -274,7 +289,22 @@ if [[ -n "$_dotfiles2" ]]; then
   fi
   unset _lh_hook
 fi
-unset _dotfiles2
+
+# ── 7b. Full-history secret scan (opt-in, --full) ─────────────────────────────
+# The pre-commit hook guards new commits; this catches anything already in
+# history. Slow, so it only runs on demand.
+if [[ "$_FULL" -eq 1 ]]; then
+  if [[ -z "$_dotfiles" ]]; then
+    _warn "gitleaks --full: dotfiles repo not found — skipping"
+  elif ! command -v gitleaks > /dev/null 2>&1; then
+    _warn "gitleaks --full: gitleaks not on PATH — run \`dot sync --only=mise\`"
+  elif gitleaks detect --source "$_dotfiles" --redact --no-banner > /dev/null 2>&1; then
+    _ok "gitleaks: full-history scan clean"
+  else
+    _fail "gitleaks: full-history scan found leaks — run \`gitleaks detect --source ${_dotfiles} -v\`"
+  fi
+fi
+unset _dotfiles
 
 # ── 8. Claude statusline (separate repo, installed to ~/.local/bin) ──────────
 if [[ -L "${HOME}/.local/bin/claude-statusline" && -L "${HOME}/.local/bin/claude-subagent-statusline" ]]; then
@@ -351,14 +381,33 @@ else
 fi
 unset _eff_key
 
+# ── 11. SSH ControlPath socket dir (must be user-private) ────────────────────
+# ssh/config keeps multiplexing sockets under ~/.ssh/cm (not world-writable
+# /tmp). If the dir exists it must be 700, or another local user could race it.
+_cmdir="${HOME}/.ssh/cm"
+if [[ -d "$_cmdir" ]]; then
+  _perms=$(stat -f '%Lp' "$_cmdir" 2> /dev/null || true)
+  if [[ "$_perms" == "700" ]]; then
+    _ok "ssh ControlPath dir ~/.ssh/cm is 700"
+  else
+    _warn "ssh ControlPath dir ~/.ssh/cm is ${_perms:-unknown}, expected 700 — run: chmod 700 ~/.ssh/cm"
+  fi
+  unset _perms
+fi
+unset _cmdir
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 printf '\n'
 [[ "$_FIXED" -gt 0 ]] && printf '\033[0;36m  \xe2\x9c\x82 repaired %d symlink issue(s)\033[0m\n' "$_FIXED"
 if [[ "$_FAILS" -eq 0 && "$_WARNS" -eq 0 ]]; then
   _ok "All checks passed"
+  exit 0
 elif [[ "$_FAILS" -eq 0 ]]; then
-  printf '\033[0;33m  \xe2\x86\x92 %d warning(s) — see above\033[0m\n' "$_WARNS"
+  # Warnings only — degraded but not broken. Exit 2 so "clean" is distinct from
+  # "drifted" for any caller that checks the status (CI, bootstrap, cron).
+  _p_warn "$_WARNS warning(s) — see above (degraded, not broken)"
+  exit 2
 else
-  printf '\033[0;31m  \xe2\x9c\x97 %d error(s), %d warning(s)\033[0m\n' "$_FAILS" "$_WARNS" >&2
+  _p_fail "$_FAILS error(s), $_WARNS warning(s)"
   exit 1
 fi

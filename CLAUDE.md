@@ -35,10 +35,13 @@ dot sync                # Idempotent install/resync. Fast on no-op.
 dot sync --upgrade      # Same + brew update/upgrade/cleanup + mise upgrade.
 dot sync --only=brew,mise   # Only the listed section tags.
 dot update              # Bump everything (equivalent to sync --upgrade).
-dot doctor              # Read-only health check; exits non-zero on failures.
+dot sync --dry-run      # Mutate nothing; print what each module WOULD do.
+dot doctor              # Read-only health check. Exit: 0 clean, 1 failures, 2 warnings only.
 dot doctor --fix        # Same + repair symlinks: reap orphans, relink missing/incorrect.
+dot doctor --full       # Same + a full-history gitleaks scan (slow, on-demand).
 dot watchtower          # Local 1Password security audit via the op CLI (foreground only).
 lefthook run pre-commit # shellcheck + shfmt -i 2 -ci -sr over staged shell files.
+mise x -- bats test/    # Run the lib/common.sh unit tests.
 ```
 
 Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot sync`).
@@ -101,9 +104,15 @@ Each entry is symlinked individually into `~/.claude/` by `dot sync` (claude tag
 
 Don't add `agents/`, `commands/`, or `hooks/` directories without asking — `dot-claude/` stays at these two symlinked files plus `REFERENCE.md`.
 
-### Linting
+### Linting & tests
 
-`lefthook.yml` runs a pre-commit gate over staged shell files: `shellcheck` + `shfmt -i 2 -ci -sr` + `gitleaks protect` + a `settings.json` validity check. `dot sync` (lefthook tag) installs the hooks. No test suite and no CI — this is a personal repo; the lint gate is the only automation.
+Three lightweight automation layers:
+
+- **pre-commit** (`lefthook.yml`, installed by `dot sync` lefthook tag): `shellcheck` + `shfmt -i 2 -ci -sr` + `gitleaks protect` + a `settings.json` validity check over staged shell files.
+- **commit-msg** (`lefthook.yml`): rejects throwaway subjects (bare `WIP`/`wip` or a single character) so they don't enter permanent history. Commit convention is `scope: summary` or `type(scope): summary` (e.g. `feat(mcp): …`, `docs+chore: …`). Bypass once with `git commit --no-verify`.
+- **CI** (`.github/workflows/lint.yml`): mirrors the pre-commit gate (shellcheck/shfmt/gitleaks/settings) and runs the `bats` unit tests on push to `main` and on PRs. Lint only — never runs `dot sync` or mutates anything.
+
+Tests live in `test/` (`bats`): `test/common.bats` covers the `lib/common.sh` helpers (`link`, `os_kind`, `resolve_dotfiles_dir`). Run locally with `mise x -- bats test/`. The surface is deliberately small — `lib/common.sh` has the highest fan-in (sourced by `sync`, `doctor`, `watchtower`), so that's where a unit test earns its weight; the installer modules stay verified by `dot sync --dry-run` rather than a heavier harness.
 
 ## Packaging policy: Lean A (brew = casks, mise = dev CLIs)
 
@@ -198,4 +207,4 @@ Pause and confirm with the user before doing any of these:
 - **Sheldon plugin order matters**: `fast-syntax-highlighting` must be last in `sheldon/plugins.toml`. It wraps every existing ZLE widget at load time, so anything that registers a widget must run before sheldon's `eval` line in `zsh/30-plugins.zsh`.
 - **`dot` self-locates**: `dot` resolves `DOTFILES_DIR` from its own resolved symlink target, so the repo is relocatable. To move it: `mv` the repo, then run `DOTFILES_DIR=<new> <new>/dot sync --force` once to relink (or just re-run `bootstrap.sh`).
 - **`gh` auth is keychain-backed**: the OAuth token lives in the macOS login keychain (gh secure storage); `~/.config/gh/hosts.yml` carries only non-secret host metadata. If a future `gh auth login` ever uses `--insecure-storage` it will dump the token plaintext into `hosts.yml` — don't; re-login with default (secure) storage. `gh auth status` should show `(keyring)`.
-- **`dot sync --only=<tag>` requires the tag to exist**: a module's declared tag and the `--only=` value must agree, or `--only=foo` silently runs nothing.
+- **`dot sync --only=<tag>` requires the tag to exist**: a module's declared tag and the `--only=` value must agree. A tag no module declares fails loudly (`==> ✗ --only=foo matched no module`, exit 1) — it does not silently run nothing.

@@ -1,0 +1,45 @@
+name: lint
+
+# Mirrors the local lefthook pre-commit gate (shellcheck + shfmt + gitleaks +
+# settings.json validity) plus the bats unit tests, on every push to main and
+# every PR. Lint only — never runs `dot sync` or mutates anything.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Set mise up (PATH + shims) but skip the full `mise install` — we only
+      # need the five lint tools, not the whole toolchain (node, bun, neovim…).
+      - uses: jdx/mise-action@v2
+        with:
+          install: false
+      - name: Install lint tools
+        run: mise install shellcheck shfmt gitleaks jq bats
+
+      # Same file set as lefthook.yml's shell globs, resolved via git.
+      - name: shellcheck
+        run: shellcheck -x $(git ls-files '*.sh' dot sync doctor watchtower bootstrap.sh 'git-template/hooks/*')
+      - name: shfmt
+        run: shfmt -d -i 2 -ci -sr $(git ls-files '*.sh' dot sync doctor watchtower bootstrap.sh 'git-template/hooks/*')
+
+      # Scan the current tree (not full history) — mirrors the intent of the
+      # pre-commit secret gate without risking flaky failures on old history.
+      # Deep-history scanning is available on demand via `dot doctor --full`.
+      - name: gitleaks
+        run: gitleaks detect --no-git --redact --no-banner
+
+      - name: settings.json validity
+        run: jq -e . dot-claude/settings.json > /dev/null
+
+      - name: bats unit tests
+        run: bats test/
