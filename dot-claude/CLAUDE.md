@@ -3,7 +3,7 @@
 ## Identity
 
 - Name: alxjrvs
-- Editor: neovim (`nvim`); vim input everywhere (Claude Code runs `editorMode: vim`)
+- Editor: neovim (`nvim`, vim keys); Claude Code uses its default `normal` input mode (no `editorMode` override)
 - Package managers: bun (preferred for JS), brew (system)
 
 ## Claude Code setup
@@ -12,7 +12,7 @@ Settings (`~/.claude/settings.json`, symlinked from the dotFiles repo) are minim
 
 - Agent teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` + in-process `teammateMode`)
 - Agents view disabled (`disableAgentView: true`) — turns off the `claude agents` view / `--bg` / `/background` on-demand dispatch. Independent of Agent teams above (teams stay on; only the view is off).
-- Vim input mode (`editorMode`)
+- Quieter UI (`showTurnDuration: false`, `terminalProgressBarEnabled: false`) — no per-turn duration line, no terminal progress bar
 - Custom statusline (`~/.local/bin/claude-statusline`, from the separate `claude-statusline` repo)
 - Auto permission mode (`permissions.defaultMode`)
 - Commit attribution trailer + input-needed notifications

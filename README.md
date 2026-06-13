@@ -68,7 +68,7 @@ Everything else is policy, not identity — copy it as-is.
 `dot-claude/` is symlinked into `~/.claude/` by `dot sync`. Contents:
 
 - `CLAUDE.md` — user-level global instructions
-- `settings.json` — deliberately minimal (agent teams, vim input, statusline, auto mode); the full list lives in `dot-claude/CLAUDE.md`
+- `settings.json` — deliberately minimal (agent teams, statusline, auto mode, quieter UI); the full list lives in `dot-claude/CLAUDE.md`
 
 The statusline is a separate project — [claude-statusline](https://github.com/alxjrvs/claude-statusline). `dot sync` (claude tag) clones it to `~/Code/claude-statusline` (fast-forwards an existing clone) and runs its `install.sh`, which symlinks both scripts into `~/.local/bin`; `settings.json` references the installed path. `dot doctor` checks the symlinks are present.
 
