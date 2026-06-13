@@ -10,6 +10,24 @@ Each subsystem lives in its own topic folder. The helpers shared by the standalo
 
 Source of truth for setup behavior is `sync` + `install/*.sh`. The shell prompt is starship (`starship.toml`, symlinked to `~/.config/starship.toml`). The Claude Code statusline is a separate project (`github.com/alxjrvs/claude-statusline`). `install/60-claude.sh` (claude tag) clones it to `~/Code/claude-statusline` and runs its `install.sh`, which symlinks `claude-statusline` + `claude-subagent-statusline` into `~/.local/bin`; `dot-claude/settings.json` references those paths.
 
+## Northern Principles
+
+One North Star: **small, exemplary, easily shareable — a senior engineer's showpiece, not an over-engineered personal artifact.** The principles below are the compass headings that point there; every concrete rule, policy, and guardrail in this file is downstream of one of them. They are the *why* behind the *what* — when you face a decision no rule covers, derive the answer from these. When a specific rule and a principle appear to collide, **surface the tradeoff to the owner rather than silently keeping the bespoke thing.**
+
+1. **Native over special.** Prefer a tool's stock behavior to bespoke machinery wrapped around it; deleting custom code in favor of a built-in is the highest-value change you can make here. Configs carry only *intentional divergences* from defaults, in the idiomatic form — never a line that merely restates a default. (This is why the prompt is stock starship, the editor is a single plugin-free `init.lua`, and `settings.json` is deliberately minimal.)
+
+2. **Guilty until proven load-bearing.** Every dependency, wrapper, convention, and line of config must earn its weight on a *personal* repo. Nothing stays because it's "best practice" — ceremony justifies itself by what it prevents, or it goes. When in doubt, cut and see what breaks. Protected, never cut without asking: `brew`, `neovim`, `ghostty`.
+
+3. **No gratuitous wrappers.** Don't wrap a command just to re-expose it — call tools natively (`op run --`, `eval "$(starship init zsh)"`). Keep *only* the shims an external program execs by path with no native alternative: `git-ssh-sign` (1Password commit signing) and `gh-mcp-auth-header` (GitHub MCP `headersHelper`). A shim that merely forwards is a smell.
+
+4. **One config, every machine.** No host detection, no per-host overlay. If a genuine per-machine divergence appears, add the *smallest possible guard at that point* — never a host-overlay system built preemptively. (Machine-local escape hatches that already exist: `~/.gitconfig.local` for signing, `DOTFILES_DIR` for relocation.)
+
+5. **Standard, and agentic-enabled.** 1Password, Git, SSH, `gh`, and the MCP wiring stay stock installs — but wired for agents end-to-end (op MCP, op SSH agent, GitHub MCP, the on-demand auth shims). Secrets resolve through `op` on demand, never plaintext, never exported to env or written to disk.
+
+6. **Keep it legible.** Plain integer ops over clever math; if the math turns obscure, drop the feature instead. One small shared `lib/common.sh` over duplicated inline helpers. Docs explain the *decision and the gotcha* — the *what* is already in the code, so don't restate it.
+
+The sections that follow (Packaging policy, Terminal stack, One config, Secrets, Guardrails) are this repo's de-facto ADRs — each is a principle made concrete. There are no separate ADR files by design: the decision lives next to the thing it governs.
+
 ## Key Commands
 
 ```bash

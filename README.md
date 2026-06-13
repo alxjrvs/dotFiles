@@ -2,6 +2,10 @@
 
 macOS dotfiles for [alxjrvs](https://github.com/alxjrvs). Owned end-to-end by a set of **shell scripts** fronted by a thin [`dot`](dot) dispatcher — they install base dependencies, create symlinks, and apply macOS defaults. The prompt is [starship](https://starship.rs); the Claude Code statusline lives in its own repo ([claude-statusline](https://github.com/alxjrvs/claude-statusline)). Just `bash`, `git`, and `jq`.
 
+## Philosophy
+
+Small, native, and legible by intent. Configs carry only deliberate divergences from a tool's defaults — never a line that restates one — so what's here is what's *opinionated*, and the rest is stock. Every dependency is guilty until proven load-bearing; bespoke machinery gets cut the moment a built-in can do the job. One config runs on every machine with no host overlays. The agentic plumbing (1Password, Git/SSH signing, MCP wiring) stays standard but fully wired. The full set of headings these follow lives in [`CLAUDE.md`](CLAUDE.md#northern-principles).
+
 ## Setup (fresh machine)
 
 ```bash
