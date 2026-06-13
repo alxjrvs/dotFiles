@@ -18,6 +18,7 @@
   "permissions": {
     "defaultMode": "auto"
   },
+  "disableAgentView": true,
   "statusLine": {
     "type": "command",
     "command": "~/.local/bin/claude-statusline",
@@ -33,11 +34,11 @@
     "ideate@gnar": true,
     "ignite@gnar": true,
     "spacebase@gnar": true,
-    "toolkit@gnar": true
+    "toolkit@gnar": true,
+    "typescript-lsp@claude-plugins-official": true
   },
+  "skipWorkflowUsageWarning": true,
   "editorMode": "vim",
   "teammateMode": "in-process",
-  "disableAgentView": true,
-  "inputNeededNotifEnabled": true,
-  "skipWorkflowUsageWarning": true
+  "inputNeededNotifEnabled": true
 }
