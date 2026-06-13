@@ -32,6 +32,13 @@ cask "font-fira-code-nerd-font"
 # ── Terminal ──────────────────────────────────────────────────────────
 cask "ghostty"
 
+# cmux is the sanctioned exception to "no other terminal emulators": a
+# Ghostty-based (libghostty) agent multiplexer for running parallel Claude
+# Code sessions in a vertical-tab sidebar with git-worktree isolation. It
+# reads ~/.config/ghostty/config (already symlinked), so it inherits the
+# Ghostty theme — a complement to Ghostty, not a daily-driver replacement.
+cask "cmux"
+
 cask "google-chrome"
 
 # Caps Lock → Control via Karabiner (rule lives in karabiner/karabiner.json,

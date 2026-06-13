@@ -103,6 +103,14 @@ are managed by this repo. If you find yourself adding one, stop —
 Ghostty is the answer in this stack; revisit only if Mitchell Hashimoto
 abandons it.
 
+The one sanctioned exception is `cmux` (cask, in the Terminal section of
+the Brewfile): a Ghostty-based (libghostty) agent multiplexer for running
+parallel Claude Code sessions with vertical tabs and git-worktree
+isolation. It reads `~/.config/ghostty/config`, so it inherits the same
+theme — a purpose-built complement to Ghostty, not a daily-driver
+terminal replacement. This is not an opening to add general-purpose
+terminals; the rule above still holds for everything else.
+
 ## One config, every machine
 
 This repo runs on more than one Mac but is deliberately **single-config**:
