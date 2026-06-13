@@ -2,13 +2,15 @@
 # sync — dotfiles installer/syncer.
 #
 # Usage:
-#   sync [--upgrade] [--only=tag1,tag2] [-f|--force] [-s|--skip]
+#   sync [--upgrade] [--only=tag1,tag2] [-f|--force] [-s|--skip] [--dry-run]
 #
 # Flags:
 #   --upgrade         brew update/upgrade/cleanup + mise upgrade
 #   --only=TAGS       comma-separated tag filter; only matching steps run
 #   -f, --force       LINK_MODE=overwrite (replace on conflict)
 #   -s, --skip        LINK_MODE=skip (leave conflicts untouched)
+#   --dry-run         mutate nothing — print what each module WOULD do. Safe to
+#                     run on a fresh machine; writes no files outside the repo.
 #   default           LINK_MODE=interactive (prompt on conflict)
 
 set -euo pipefail
@@ -68,6 +70,7 @@ unset _mise_shims
 SYNC_UPGRADE=0
 SYNC_ONLY_TAGS=""
 LINK_MODE="interactive"
+DRY_RUN=0
 
 for _arg in "$@"; do
   case "$_arg" in
@@ -84,11 +87,18 @@ for _arg in "$@"; do
     -s | --skip)
       LINK_MODE="skip"
       ;;
+    --dry-run)
+      DRY_RUN=1
+      ;;
   esac
 done
 unset _arg
 
-export SYNC_UPGRADE SYNC_ONLY_TAGS LINK_MODE
+export SYNC_UPGRADE SYNC_ONLY_TAGS LINK_MODE DRY_RUN
+
+if [[ "$DRY_RUN" == "1" ]]; then
+  printf '\033[0;36m==> ~ dry run — no changes will be made\033[0m\n'
+fi
 
 # ── Acquire lock ──────────────────────────────────────────────────────────────
 acquire_lock "${TMPDIR:-/tmp}/dotfiles-sync.lock"

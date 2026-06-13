@@ -57,19 +57,35 @@ _claude_install_statusline() {
       return 0
     fi
   fi
-  if [[ -x "${dir}/install.sh" ]] && "${dir}/install.sh" > /dev/null 2>&1; then
+  if [[ ! -x "${dir}/install.sh" ]]; then
+    printf '\033[0;33m  \xe2\x86\x92 claude-statusline: install.sh missing or not executable — skipping\033[0m\n' >&2
+  elif "${dir}/install.sh" > /dev/null 2>&1; then
     printf '\033[0;32m  \xe2\x9c\x93 claude-statusline installed (~/.local/bin)\033[0m\n'
+  else
+    # Don't let a failed install.sh read as success — sync printed nothing here
+    # before, leaving ~/.local/bin/claude-statusline silently absent.
+    printf '\033[0;33m  \xe2\x86\x92 claude-statusline: install.sh failed — run "%s/install.sh" manually\033[0m\n' "${dir}" >&2
   fi
 }
 
 _claude_run() {
   printf '\n==> Claude Code\n'
+
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    printf '\033[0;36m  ~ [dry-run] would install Claude Code CLI (if absent), register github MCP, install claude-statusline\033[0m\n'
+    return 0
+  fi
+
   if command -v claude > /dev/null 2>&1; then
     local ver
     ver=$(claude --version 2> /dev/null | head -1 || true)
     printf '\033[0;32m  \xe2\x9c\x93 Claude Code CLI installed (%s)\033[0m\n' "$ver"
   else
     printf '\033[0;33m  \xe2\x86\x92 Installing Claude Code CLI (native installer)...\033[0m\n'
+    # Accepted residual risk: the installer is piped to bash without a checksum.
+    # Upstream publishes no stable per-release hash for install.sh, so pinning
+    # isn't possible; trust is anchored in HTTPS to claude.ai. Runs once, only
+    # when `claude` is absent.
     if bash -c "$(curl -fsSL https://claude.ai/install.sh)"; then
       printf '\033[0;32m  \xe2\x9c\x93 Claude Code CLI installed\033[0m\n'
     else

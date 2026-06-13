@@ -8,6 +8,12 @@ _lefthook_tags() { printf 'lefthook\n'; }
 
 _lefthook_run() {
   printf '\n==> Lefthook (this repo)\n'
+
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    printf '\033[0;36m  ~ [dry-run] would run lefthook install in %s\033[0m\n' "${DOTFILES_DIR}"
+    return 0
+  fi
+
   if ! command -v lefthook > /dev/null 2>&1; then
     printf '\033[0;33m  \xe2\x86\x92 lefthook not found — should have been installed by mise (mise.toml)\033[0m\n'
     return 0

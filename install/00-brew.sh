@@ -13,10 +13,19 @@ _brew_run() {
 
   printf '\n==> Homebrew\n'
 
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    printf '\033[0;36m  ~ [dry-run] would ensure Homebrew and run brew bundle (--upgrade also updates/upgrades/cleans)\033[0m\n'
+    return 0
+  fi
+
   if command -v brew > /dev/null 2>&1; then
     printf '\033[0;32m  \xe2\x9c\x93 Homebrew installed\033[0m\n'
   else
     printf '\033[0;33m  \xe2\x86\x92 Installing Homebrew...\033[0m\n'
+    # Accepted residual risk: the upstream installer is piped to bash without a
+    # checksum. Homebrew publishes no stable per-release hash for install.sh (the
+    # HEAD URL moves), so pinning isn't possible; trust is anchored in HTTPS +
+    # GitHub. Runs once on a fresh machine, only when `brew` is absent.
     bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   fi
 

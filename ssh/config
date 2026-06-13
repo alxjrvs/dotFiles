@@ -15,8 +15,10 @@ Host *
 
   # Connection multiplexing — second `git push` reuses the first connection.
   ControlMaster auto
-  # Sockets live in /tmp (user-private 600) — avoids ~/.ssh/ if its perms ever drift.
-  ControlPath /tmp/ssh-cm-%r@%h:%p
+  # Sockets live under ~/.ssh/cm (user-private 700, created by `dot sync`), not
+  # world-writable /tmp — which is a symlink-race surface on multi-user hosts.
+  # %C is a hash of (local host, remote host, port, user): short, collision-free.
+  ControlPath ~/.ssh/cm/%C
   # 4h: repeated pushes in a work session reuse one authenticated connection,
   # so the 1Password agent isn't re-consulted.
   ControlPersist 4h

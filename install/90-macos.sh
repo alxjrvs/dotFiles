@@ -54,6 +54,11 @@ _macos_run() {
 
   printf '\n==> macOS defaults\n'
 
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    printf '\033[0;36m  ~ [dry-run] would write %d macOS defaults and restart Dock/Finder\033[0m\n' "${#_MACOS_DEFAULTS[@]}"
+    return 0
+  fi
+
   local applied=0
   local entry domain key kind raw flag
   for entry in "${_MACOS_DEFAULTS[@]}"; do
@@ -88,6 +93,10 @@ _macos_run() {
 #   "match|domain|key"            — actual == expected
 #   "drift|domain|key|expected|actual"
 #   "missing|domain|key|expected"
+#
+# Public API: doctor sources this module and calls macos_audit() directly (§9)
+# to render the read-only drift report — so its output contract (the lines
+# above) is consumed outside this file; keep it stable.
 macos_audit() {
   if [[ "$(os_kind)" != "darwin" ]]; then
     return 0

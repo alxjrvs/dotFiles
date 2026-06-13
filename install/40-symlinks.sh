@@ -9,6 +9,10 @@ _symlinks_tags() { printf 'symlinks\n'; }
 
 # _symlink_pairs: emit "src|dst" lines — src relative to the repo, dst relative
 # to $HOME. This list IS the symlink contract.
+#
+# Public API: consumed by both _symlinks_run() here (apply) and doctor (audit +
+# --fix), which sources this module and reads _symlink_pairs to check/repair the
+# exact set this applies. Keep the "src|dst" output shape stable.
 _symlink_pairs() {
   cat << 'PAIRS'
 .zshrc|.zshrc
@@ -58,7 +62,13 @@ _symlinks_run() {
     link "${df}/${src}" "${HOME}/${dst}"
   done < <(_symlink_pairs)
 
-  # SSH needs tight perms.
-  chmod 700 "${HOME}/.ssh" 2> /dev/null || true
-  chmod 600 "${HOME}/.ssh/config" 2> /dev/null || true
+  # SSH needs tight perms. Skipped under --dry-run (these create/chmod ~/.ssh).
+  if [[ "${DRY_RUN:-0}" != "1" ]]; then
+    chmod 700 "${HOME}/.ssh" 2> /dev/null || true
+    chmod 600 "${HOME}/.ssh/config" 2> /dev/null || true
+    # ControlMaster sockets live here (ssh/config: ControlPath ~/.ssh/cm/%C),
+    # kept out of world-writable /tmp. Must stay user-private (doctor checks 700).
+    mkdir -p "${HOME}/.ssh/cm"
+    chmod 700 "${HOME}/.ssh/cm" 2> /dev/null || true
+  fi
 }

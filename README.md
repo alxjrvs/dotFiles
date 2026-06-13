@@ -15,6 +15,8 @@ git clone https://github.com/alxjrvs/dotFiles ~/dotFiles
 
 `bootstrap.sh` is a few lines of shell: it `exec`s `~/dotFiles/dot sync`, which installs everything and symlinks `dot` onto your `PATH` at `~/.local/bin/dot`. After that everything is `dot <subcommand>`.
 
+_Last tested on macOS 26 (Tahoe) / Darwin 25, June 2026._ To preview without touching the machine first: `dot sync --dry-run`.
+
 ## Making it yours
 
 Everything here is policy except a handful of identity values a copier edits:
@@ -36,10 +38,12 @@ Everything else is policy, not identity — copy it as-is.
 |---------|-----|
 | `dot sync` | Idempotent re-sync. Installs missing tools, recreates broken symlinks. Fast on no-op. |
 | `dot sync --upgrade` | Same + brew update/upgrade/cleanup + mise upgrade. |
-| `dot sync --only=brew,mise` | Only the listed sections (tags: `brew mise sheldon symlinks ssh claude lefthook macos`). |
+| `dot sync --only=brew,mise` | Only the listed sections (tags: `brew mise sheldon symlinks ssh claude lefthook macos`). A tag no module declares fails loudly (exit 1), not silently. |
+| `dot sync --dry-run` | Mutate nothing; print what each module *would* do. Safe on a fresh machine. |
 | `dot update` | Bump everything to current — equivalent to `dot sync --upgrade`. |
-| `dot doctor` | Read-only diagnostics: tool presence, symlink integrity (missing *and* orphaned), drift. Exits non-zero on failures. |
+| `dot doctor` | Read-only diagnostics: tool presence, symlink integrity (missing *and* orphaned), drift. Exit codes: `0` clean, `1` failures, `2` warnings only. |
 | `dot doctor --fix` | Same diagnostics, plus repair the symlink contract: reap orphaned symlinks *and* relink any entry that's missing, a non-symlink file, or pointing at the wrong target (doctor's only mutation). |
+| `dot doctor --full` | Same diagnostics, plus a full-history `gitleaks` scan of the repo (slow; on-demand). |
 
 ## What's here
 
@@ -65,7 +69,10 @@ Everything else is policy, not identity — copy it as-is.
 | `Brewfile` | `brew "mise"` + casks (GUI apps, fonts). All dev CLIs live in mise.toml. |
 | `mise.toml` | Language toolchains + every dev CLI. Single update path via `mise upgrade`. |
 | `sheldon/plugins.toml` | Zsh plugin config |
-| `lefthook.yml` | Pre-commit lint gate (shellcheck + shfmt + gitleaks) for this repo |
+| `lefthook.yml` | Pre-commit lint gate (shellcheck + shfmt + gitleaks) + commit-msg WIP guard for this repo |
+| `test/` | `bats` unit tests for `lib/common.sh` (run in CI and via `mise x -- bats test/`) |
+| `.github/workflows/lint.yml` | CI: shellcheck + shfmt + gitleaks + bats on push to `main` and PRs |
+| `LICENSE` | MIT |
 
 ## Claude Code integration
 
@@ -73,12 +80,16 @@ Everything else is policy, not identity — copy it as-is.
 
 - `CLAUDE.md` — user-level global instructions
 - `settings.json` — deliberately minimal (agent teams, statusline, auto mode, quieter UI); the full list lives in `dot-claude/CLAUDE.md`
+- `REFERENCE.md` — a load-on-demand Claude Code cheatsheet (built-in slash commands, experimental env vars). Not symlinked into `~/.claude/` and not auto-loaded — read it when you need it.
 
 The statusline is a separate project — [claude-statusline](https://github.com/alxjrvs/claude-statusline). `dot sync` (claude tag) clones it to `~/Code/claude-statusline` (fast-forwards an existing clone) and runs its `install.sh`, which symlinks both scripts into `~/.local/bin`; `settings.json` references the installed path. `dot doctor` checks the symlinks are present.
 
-## Linting
+## Linting & tests
 
-`lefthook.yml` runs a pre-commit gate on staged shell files: `shellcheck`, `shfmt -i 2 -ci -sr`, `gitleaks protect`, and a `settings.json` validity check. `dot sync` installs the hooks. No test suite and no CI — this is a personal repo; the lint gate is the only automation.
+- **pre-commit** (`lefthook.yml`, installed by `dot sync`): `shellcheck`, `shfmt -i 2 -ci -sr`, `gitleaks protect`, and a `settings.json` validity check on staged shell files.
+- **commit-msg** (`lefthook.yml`): rejects throwaway subjects (bare `WIP` or a single character). Convention: `scope: summary` / `type(scope): summary`. Bypass once with `git commit --no-verify`.
+- **CI** (`.github/workflows/lint.yml`): the same lint set plus `bats` unit tests, on push to `main` and PRs. Lint only — never runs `dot sync`.
+- **tests** (`test/`): `bats` coverage of the `lib/common.sh` helpers (`link`, `os_kind`, `resolve_dotfiles_dir`). Run with `mise x -- bats test/`.
 
 ## Git signing
 

@@ -12,10 +12,10 @@ pre-commit:
   commands:
     shellcheck:
       # `*.sh` matches recursively; the extensionless entrypoints are listed explicitly.
-      glob: "{*.sh,dot,sync,doctor,git-template/hooks/*}"
+      glob: "{*.sh,dot,sync,doctor,watchtower,git-template/hooks/*}"
       run: shellcheck -x {staged_files}
     shfmt-check:
-      glob: "{*.sh,dot,sync,doctor,git-template/hooks/*}"
+      glob: "{*.sh,dot,sync,doctor,watchtower,git-template/hooks/*}"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}
     gitleaks:
@@ -24,3 +24,17 @@ pre-commit:
       # Backstop against committing a broken settings.json (breaks every Claude session).
       glob: "dot-claude/settings*.json"
       run: jq -e . {staged_files} > /dev/null
+
+# commit-msg: forward-only hygiene guard. Rejects throwaway subjects (bare
+# "WIP"/"wip" or a single character) so they don't land in permanent history.
+# Existing history is untouched. Convention: `scope: summary` or
+# `type(scope): summary` (see CLAUDE.md). Bypass once with: git commit --no-verify
+commit-msg:
+  commands:
+    no-wip:
+      run: |
+        subject=$(head -1 "{1}")
+        if printf '%s' "$subject" | grep -qiE '^(wip|.)$'; then
+          printf 'commit-msg: refusing throwaway subject "%s" — write a real summary (bypass: --no-verify)\n' "$subject" >&2
+          exit 1
+        fi

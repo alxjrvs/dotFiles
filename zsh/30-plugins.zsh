@@ -1,3 +1,10 @@
+# Startup baseline (measured 2026-06-13, Apple Silicon): `zsh -i -c exit` ≈ 199 ms
+# avg over 10 runs. Per-eval breakdown: sheldon 59, atuin 47, starship 29,
+# mise 29, fzf 22, compinit 11 (ms). No single call is pathological; the only
+# ways to cut the two largest are dropping plugins (sheldon) or deferring atuin
+# init (loses instant Ctrl-R history) — both are UX tradeoffs, so the baseline
+# is accepted as-is. Re-measure with: zsh -i -c exit under `time`.
+
 # Homebrew completions
 fpath+=(/opt/homebrew/share/zsh/site-functions)
 

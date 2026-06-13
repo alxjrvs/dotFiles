@@ -9,6 +9,27 @@
 # symlinks with identical semantics — a single source of truth for the one
 # operation that deletes files at the destination.
 
+# ── Output palette ────────────────────────────────────────────────────────────
+# Single source of the ANSI color/glyph strings, shared by the standalone
+# scripts (doctor, watchtower). The `_p_*` functions are the raw printers — the
+# escape sequences live here exactly once. The unprefixed names are what scripts
+# call: watchtower uses them as-is; doctor re-wraps _warn/_fail/_fixed to also
+# bump its counters (it needs the totals for its exit code — see doctor).
+_p_hdr() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
+_p_ok() { printf '\033[0;32m  \xe2\x9c\x93 %s\033[0m\n' "$*"; }
+_p_warn() { printf '\033[0;33m  \xe2\x86\x92 %s\033[0m\n' "$*"; }
+_p_fail() { printf '\033[0;31m  \xe2\x9c\x97 %s\033[0m\n' "$*" >&2; }
+_p_fixed() { printf '\033[0;36m  \xe2\x9c\x82 %s\033[0m\n' "$*"; }
+_p_note() { printf '    %s\n' "$*"; }
+
+_hdr() { _p_hdr "$@"; }
+_ok() { _p_ok "$@"; }
+_warn() { _p_warn "$@"; }
+_fail() { _p_fail "$@"; }
+_crit() { _p_fail "$@"; } # watchtower's name for a red-x line
+_fixed() { _p_fixed "$@"; }
+_note() { _p_note "$@"; }
+
 # os_kind: "darwin" | "linux" | "unknown"
 os_kind() {
   case "$(uname -s)" in
@@ -47,6 +68,18 @@ link() {
       printf '\033[2m  - %s already linked\033[0m\n' "$label"
       return 0
     fi
+  fi
+
+  # Dry-run: report the action that WOULD be taken and mutate nothing. Must sit
+  # ahead of the create-if-missing branch below — LINK_MODE=skip does NOT stop
+  # that branch from creating a missing link, so this is the only safe gate.
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    if [[ ! -e "$dst" && ! -L "$dst" ]]; then
+      printf '\033[0;36m  ~ %s would be linked\033[0m\n' "$label"
+    else
+      printf '\033[0;36m  ~ %s exists and is not our symlink — would resolve via LINK_MODE\033[0m\n' "$label"
+    fi
+    return 0
   fi
 
   if [[ ! -e "$dst" && ! -L "$dst" ]]; then

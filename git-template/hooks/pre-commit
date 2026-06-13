@@ -13,6 +13,14 @@
 
 set -e
 
-if command -v gitleaks > /dev/null 2>&1; then
-  gitleaks protect --staged --redact -v --no-banner
+# Fail loudly when gitleaks is absent rather than silently no-op'ing — a
+# partially-provisioned machine should not commit unscanned code. On a synced
+# machine gitleaks is on PATH (mise shims via .zshenv), so this never trips.
+if ! command -v gitleaks > /dev/null 2>&1; then
+  printf 'pre-commit: gitleaks not on PATH — cannot scan staged changes for secrets.\n' >&2
+  printf '  Provision it with:  dot sync   (or: mise install)\n' >&2
+  printf '  Bypass for one commit (only if you are sure):  git commit --no-verify\n' >&2
+  exit 1
 fi
+
+gitleaks protect --staged --redact -v --no-banner

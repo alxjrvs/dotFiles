@@ -13,6 +13,11 @@ _mise_run() {
 
   printf '\n==> mise tools\n'
 
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    printf '\033[0;36m  ~ [dry-run] would run mise install (+ upgrade) and sheldon lock --update\033[0m\n'
+    return 0
+  fi
+
   # Pin mise to the repo's mise.toml explicitly. Nothing in
   # bootstrap.sh -> dot -> sync chdirs to the repo, so CWD-based config
   # discovery finds nothing on a fresh machine. MISE_CONFIG_FILE forces
