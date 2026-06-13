@@ -37,6 +37,14 @@
     "toolkit@gnar": true,
     "typescript-lsp@claude-plugins-official": true
   },
+  "extraKnownMarketplaces": {
+    "gnar": {
+      "source": {
+        "source": "github",
+        "repo": "thegnarco/agent-skills"
+      }
+    }
+  },
   "skipWorkflowUsageWarning": true,
   "showTurnDuration": false,
   "terminalProgressBarEnabled": false,
