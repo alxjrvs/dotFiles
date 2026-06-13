@@ -38,7 +38,9 @@
     "typescript-lsp@claude-plugins-official": true
   },
   "skipWorkflowUsageWarning": true,
-  "editorMode": "vim",
+  "editorMode": "normal",
+  "showTurnDuration": false,
+  "terminalProgressBarEnabled": false,
   "teammateMode": "in-process",
   "inputNeededNotifEnabled": true
 }
