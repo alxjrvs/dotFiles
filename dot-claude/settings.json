@@ -37,6 +37,7 @@
   },
   "editorMode": "vim",
   "teammateMode": "in-process",
+  "disableAgentView": true,
   "inputNeededNotifEnabled": true,
   "skipWorkflowUsageWarning": true
 }

@@ -11,6 +11,7 @@
 Settings (`~/.claude/settings.json`, symlinked from the dotFiles repo) are minimal by design — they carry only deliberate divergences from Claude Code's defaults:
 
 - Agent teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` + in-process `teammateMode`)
+- Agents view disabled (`disableAgentView: true`) — turns off the `claude agents` view / `--bg` / `/background` on-demand dispatch. Independent of Agent teams above (teams stay on; only the view is off).
 - Vim input mode (`editorMode`)
 - Custom statusline (`~/.local/bin/claude-statusline`, from the separate `claude-statusline` repo)
 - Auto permission mode (`permissions.defaultMode`)
