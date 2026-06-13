@@ -5,7 +5,10 @@
 # Symlinked to ~/.config/starship.toml by `dot sync`.
 
 add_newline = false
-format = "$directory$git_branch$git_status$character"
+# One space after the directory "title", then chips append flush (no gaps) —
+# mirrors statusline.sh line 1 ("bracket groups below append flush"). A single
+# space precedes the prompt character.
+format = "$directory$git_branch$git_status $character"
 
 # Identity: bold near-white, unbracketed — mirrors statusline line 1, which
 # leads with the repo/dir and brackets only the chips that follow.
@@ -16,24 +19,28 @@ style = "bold white"
 read_only = " "
 read_only_style = "red"
 
-# Branch chip: muted [ ] around a blue   + name (statusline's GLYPH_BRANCH).
+# Branch chip: muted [ ] around a blue   + name. The statusline uses an ASCII
+# '@' sigil here (cmux safety); starship keeps the nerd-font branch glyph, same
+# blue. No leading space — the `directory` module already trails one space after
+# the title; no trailing space either, so the status chip butts up flush.
 [git_branch]
 symbol = " "
 style = "blue"
-format = '[\[](bright-black)[$symbol$branch]($style)[\]](bright-black) '
+format = '[\[](bright-black)[$symbol$branch]($style)[\]](bright-black)'
 
-# Status chip: one muted [ ] around per-state glyphs, each colored to match
-# the statusline (untracked cyan, stashes magenta, +/- green/red, branch-blue
-# ahead/behind). The whole chip disappears on a clean tree.
+# Status chip: one muted [ ] around per-state glyphs, each colored to match the
+# statusline's counters (untracked cyan, modified yellow, staged green, stashes
+# magenta, conflict bold red, ahead green / behind red). No surrounding space —
+# it sits flush against the branch chip. The whole chip vanishes on a clean tree.
 [git_status]
-format = '([\[](bright-black)$conflicted$staged$modified$deleted$renamed$untracked$stashed$ahead$behind$diverged[\]](bright-black) )'
-conflicted = '[~$count](red)'
+format = '([\[](bright-black)$conflicted$staged$modified$deleted$renamed$untracked$stashed$ahead$behind$diverged[\]](bright-black))'
+conflicted = '[~$count](bold red)'
 staged     = '[+$count](green)'
 modified   = '[!$count](yellow)'
 deleted    = '[-$count](red)'
 renamed    = '[»$count](purple)'
 untracked  = '[?$count](cyan)'
 stashed    = '[*$count](purple)'
-ahead      = '[⇡$count](blue)'
-behind     = '[⇣$count](blue)'
-diverged   = '[⇡$ahead_count⇣$behind_count](blue)'
+ahead      = '[⇡$count](green)'
+behind     = '[⇣$count](red)'
+diverged   = '[⇡$ahead_count](green)[⇣$behind_count](red)'
