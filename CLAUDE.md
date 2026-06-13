@@ -66,6 +66,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `ssh/config` | `~/.ssh/config` (mode 600) |
 | `ssh/1password-agent.toml` | `~/.config/1Password/ssh/agent.toml` |
 | `gh/gh-mcp-auth-header` | `~/.local/bin/gh-mcp-auth-header` (github MCP headersHelper → `op read`) |
+| `render/render-mcp-auth-header` | `~/.local/bin/render-mcp-auth-header` (Render MCP headersHelper → `op read`) |
 | `git-template/hooks/pre-commit` | `~/.config/git/template/hooks/pre-commit` (copied into new repos via `init.templateDir`) |
 | `dot` | `~/.local/bin/dot` |
 | `dot-claude/{CLAUDE.md, settings.json}` | `~/.claude/` (individually) |
