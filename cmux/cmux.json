@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json",
+  "schemaVersion": 1,
+
+  // cmux app config (sidebar, shortcuts, automation, notifications). JSONC.
+  // Intentional divergences from cmux's built-in defaults ONLY — any key left
+  // out falls back to the in-app default, so this file stays small. Terminal
+  // rendering (theme/font/colors) is NOT here: cmux reads that from
+  // ghostty/config (it embeds libghostty). Reload in-app with cmd+shift+,.
+  "app": {
+    // Opt out of anonymous usage telemetry (defaults to true upstream).
+    "sendAnonymousTelemetry": false
+  }
+}

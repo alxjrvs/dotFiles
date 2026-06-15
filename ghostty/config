@@ -1,3 +1,10 @@
+# Terminal-rendering config for cmux (the daily driver), which embeds
+# libghostty and reads this file from ~/.config/ghostty/config — a fixed path,
+# no override. cmux honors only the visual subset (theme/font/colors/opacity/
+# splits/scrollback), so keybinds and the quick-terminal visor live nowhere
+# here. cmux app behavior is in cmux/cmux.json; standalone Ghostty.app, if
+# launched, also reads this.
+
 # Theme
 theme = Nord
 
@@ -36,16 +43,3 @@ copy-on-select = true
 scrollback-limit = 10000
 
 shell-integration = zsh
-
-# Quick terminal — drop-down visor toggled by a global hotkey. Pairs with
-# Raycast for zero-latency context switching; no app launch needed for a
-# 10-second command. `global:` makes the keybind work even when Ghostty
-# isn't focused.
-quick-terminal-position = top
-quick-terminal-screen = mouse
-quick-terminal-autohide = true
-quick-terminal-animation-duration = 0.15
-
-# Keybindings
-keybind = ctrl+shift+w=close_surface
-keybind = global:ctrl+grave_accent=toggle_quick_terminal

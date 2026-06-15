@@ -1,0 +1,348 @@
+#!/usr/bin/env bash
+# cmux/mirror — mirror ~/Code into cmux workspaces (one workspace per git repo).
+# Run via `dot cmux`. Lives in the cmux/ topic folder beside cmux.json; it is a
+# dispatcher target (like sync/doctor), not a symlinked or sourced module.
+#
+# Each top-level entry of $CODE_DIR (default ~/Code) maps to the sidebar:
+#   - a git repo                      → a flat workspace.
+#   - a folder containing repos       → one cmux group named after the folder;
+#     (at any depth)                    every repo under it (found by crawling
+#                                       until we hit repos) becomes a workspace
+#                                       in that one group. cmux groups are flat,
+#                                       so nested folders collapse into the
+#                                       top-level group — they aren't sub-groups.
+#                                       cmux groups need an "anchor" workspace
+#                                       (the header), so a new group gets a
+#                                       terminal at the folder as its anchor.
+# A repo is a LEAF: the crawl stops there and never descends into it, so a
+# repo's worktrees/submodules (.claude/worktrees, .worktrees, nested repos)
+# never become workspaces. Hidden dirs are skipped (a repo's innards).
+#
+# Interactive, top-down: a new top-level group folder is asked "group <name>?";
+# a "Legacy" folder defaults to skip. Each new repo then prompts for a name
+# (Enter = the repo dir name, '-' to skip just that repo). Groups that already
+# exist (any repo under them covered) are filled in without asking.
+#
+# Coverage: it first scans the existing workspace config and skips any repo
+# already represented — a workspace sitting AT the repo or anywhere INSIDE it.
+# The prefix match honors hand-made setups (custom name/location, a cwd deeper
+# in the repo, even outside ~/Code), so re-runs only surface what's genuinely
+# new. Groups are created via cmux's workspace-group CLI (cmux has no
+# auto-by-directory grouping); new repos are added to the group for their folder.
+#
+# Modes:
+#   (default)     interactive prompts, top-down.
+#   --headless    no prompts: create every new workspace, skip "Legacy" folders.
+#   --hard        force the sidebar to match ~/Code: move ALL existing workspaces
+#                 into an "Archive" group, then mirror non-interactively while
+#                 ignoring coverage (recreate the full canonical set fresh).
+#                 "Legacy" is still skipped (an existing rule).
+#   -n/--dry-run  list what an accept-the-defaults run would do; change nothing.
+#
+# Per-machine by design: it reads THIS machine's own ~/Code and drives the
+# running cmux over its control socket, so the layout lives nowhere in the repo.
+#
+# Flags:
+#   --hard          archive existing, then mirror ~/Code exactly (implies no prompts)
+#   --headless      non-interactive: create all new, skip Legacy
+#   -n, --dry-run   list what would happen; change nothing
+#   -h, --help
+set -euo pipefail
+shopt -s nullglob # an empty dir glob expands to nothing, not a literal '*/'
+
+# Script sits at <repo>/cmux/mirror — repo root is one level up.
+_REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+_DOTFILES_SELF_DIR="$_REPO_DIR"
+# shellcheck source=lib/common.sh
+source "${_REPO_DIR}/lib/common.sh"
+
+# ── Flags ─────────────────────────────────────────────────────────────────────
+_DRY=0
+_HEADLESS=0
+_HARD=0
+for _arg in "$@"; do
+  case "$_arg" in
+    -n | --dry-run) _DRY=1 ;;
+    --headless) _HEADLESS=1 ;;
+    --hard) _HARD=1 ;;
+    -h | --help)
+      printf 'usage: dot cmux [--hard] [--headless] [--dry-run]\n'
+      printf '  Mirror ~/Code into cmux workspaces (one per git repo). Each\n'
+      printf '  top-level folder of repos becomes one flat cmux group; repos at\n'
+      printf '  any depth inside join it. A repo is a leaf (its worktrees never\n'
+      printf '  become workspaces). New groups are asked "group?"; "Legacy"\n'
+      printf '  defaults to skip; each new repo prompts for a name. Repos already\n'
+      printf '  covered by any existing workspace are skipped.\n'
+      printf '  --hard          archive existing into "Archive", then mirror exactly\n'
+      printf '  --headless      no prompts: create all new, skip Legacy\n'
+      printf '  -n, --dry-run   show what would happen; change nothing\n'
+      # shellcheck disable=SC2016  # $CODE_DIR is a literal env-var name in the message
+      printf '  Honors $CODE_DIR (default ~/Code).\n'
+      exit 0
+      ;;
+    *)
+      _p_fail "cmux: unknown argument: $_arg"
+      exit 2
+      ;;
+  esac
+done
+
+# ── Preconditions: a code dir, a cmux on PATH, and a reachable cmux socket ─────
+_code="${CODE_DIR:-}"
+if [[ -z "$_code" ]]; then
+  if [[ -d "${HOME}/Code" ]]; then
+    _code="${HOME}/Code"
+  elif [[ -d "${HOME}/code" ]]; then
+    _code="${HOME}/code"
+  else
+    _p_fail "cmux: no ~/Code directory found (set \$CODE_DIR)"
+    exit 1
+  fi
+fi
+
+command -v cmux > /dev/null 2>&1 || {
+  _p_fail "cmux: the cmux CLI is not on PATH"
+  exit 1
+}
+if [[ "$(cmux ping 2> /dev/null || true)" != "PONG" ]]; then
+  _p_fail "cmux: control socket not reachable — open the cmux app first"
+  exit 1
+fi
+
+# Thin wrappers — every cmux call is quiet (no deprecation notices on stdout).
+_cmux() { CMUX_QUIET=1 cmux "$@"; }
+
+# ── Scan the existing workspace config ────────────────────────────────────────
+# Record the resolved current_directory of every open workspace. `pwd -P` in a
+# subshell resolves symlinks so matches survive a symlinked path vs its real one.
+_seen=""
+_seen_count=0
+while IFS= read -r _d; do
+  [[ -n "$_d" ]] || continue
+  _rp=$(cd "$_d" 2> /dev/null && pwd -P) || _rp="$_d"
+  _seen+="${_rp}"$'\n'
+  _seen_count=$((_seen_count + 1))
+done < <(_cmux workspace list --json 2> /dev/null |
+  jq -r '.workspaces[].current_directory // empty')
+
+# _is_covered <repo-path>: true if some existing workspace sits AT the repo or
+# anywhere INSIDE it. --hard ignores coverage so it recreates the full set.
+_is_covered() {
+  [[ "$_HARD" == "1" ]] && return 1
+  local r="$1" d
+  while IFS= read -r d; do
+    [[ -n "$d" ]] || continue
+    [[ "$d" == "$r" || "$d" == "$r"/* ]] && return 0
+  done <<< "$_seen"
+  return 1
+}
+
+# A "Legacy" folder (case-insensitive) defaults to skip.
+_is_legacy() { [[ "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" == "legacy" ]]; }
+
+# True only when we should actually prompt: a real interactive run on a TTY.
+_interactive() {
+  [[ "$_HEADLESS" != "1" && "$_HARD" != "1" && "$_DRY" != "1" && -t 0 && -e /dev/tty ]]
+}
+
+# _group_ref <name>: print the workspace_group ref for an existing group of that
+# exact name (empty if none). Queried live so it reflects groups made this run.
+_group_ref() {
+  _cmux workspace-group list --json 2> /dev/null |
+    jq -r --arg n "$1" 'first(.groups[]? | select(.name == $n) | .ref) // empty'
+}
+
+# ── Counters ──────────────────────────────────────────────────────────────────
+_created=0
+_covered=0
+_declined=0
+_LAST_REF="" # ref of the workspace _make_workspace just created ("" if none)
+
+# _repo_leaves <dir>: print every repo-leaf dir below <dir> — the FIRST repo on
+# each path (stop at a repo, never descend into it), non-hidden dirs only.
+_repo_leaves() {
+  local d
+  for d in "$1"/*/; do
+    d="${d%/}"
+    if [[ -e "$d/.git" ]]; then
+      printf '%s\n' "$d"
+    else
+      _repo_leaves "$d"
+    fi
+  done
+}
+
+# _prompt_name <base> <label>: ask for a workspace name (default <base>); '-'
+# skips this repo (empty stdout). Prompt + reply go through /dev/tty so stdout
+# is ONLY the chosen name. Non-interactive → the default, no prompt.
+_prompt_name() {
+  local base="$1" label="$2" reply=""
+  if _interactive; then
+    printf '\033[0;36m  ? workspace %s\033[0m name [%s] (- to skip): ' "$label" "$base" > /dev/tty
+    IFS= read -r reply < /dev/tty || reply=""
+  fi
+  [[ "$reply" == "-" ]] && return 0
+  printf '%s' "${reply:-$base}"
+}
+
+# _ask <kind> <label> <default>: y/n, <default> is "y"/"n". Prompts only on a
+# real interactive run; otherwise takes the default. Returns 0=yes, 1=no.
+_ask() {
+  local kind="$1" label="$2" def="$3" reply="" hint
+  if _interactive; then
+    [[ "$def" == "n" ]] && hint="[y/N]" || hint="[Y/n]"
+    printf '\033[0;36m  ? %s %s?\033[0m %s: ' "$kind" "$label" "$hint" > /dev/tty
+    IFS= read -r reply < /dev/tty || reply=""
+  fi
+  [[ -n "$reply" ]] || reply="$def"
+  case "$reply" in
+    [yY]*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# _make_workspace <repo-path> <label>: skip if covered, else (dry-run) report or
+# (otherwise) name + create. Sets _LAST_REF to the new workspace ref, or "".
+_make_workspace() {
+  local path="$1" label="$2" rp title
+  _LAST_REF=""
+  rp=$(cd "$path" 2> /dev/null && pwd -P) || rp="$path"
+
+  if _is_covered "$rp"; then
+    _note "skip (covered): ${label}"
+    _covered=$((_covered + 1))
+    return
+  fi
+  if [[ "$_DRY" == "1" ]]; then
+    _warn "would create: ${label}  → ${path}"
+    _created=$((_created + 1))
+    return
+  fi
+  title=$(_prompt_name "$(basename "$path")" "$label")
+  if [[ -z "$title" ]]; then
+    _note "skip: ${label}"
+    _declined=$((_declined + 1))
+    return
+  fi
+  _LAST_REF=$(_cmux workspace create --name "$title" --cwd "$path" --json 2> /dev/null |
+    jq -r '.workspace_ref // empty')
+  if [[ -n "$_LAST_REF" ]]; then
+    _ok "created: ${title}  (${label})"
+    _created=$((_created + 1))
+  else
+    _p_fail "failed to create workspace for ${path}"
+  fi
+}
+
+# _add_to_group <name> <folder-path> <comma-refs>: ensure a group named <name>
+# holds the given new workspaces — add to it if it exists, else create it. cmux
+# groups need an "anchor" workspace (the group's sidebar header), so a freshly
+# created group is anchored with a terminal at the folder itself, matching the
+# pattern cmux already uses for the groups in your sidebar.
+_add_to_group() {
+  local name="$1" path="$2" members="$3" gref m
+  [[ -n "$members" ]] || return 0
+  gref=$(_group_ref "$name")
+  if [[ -n "$gref" ]]; then
+    while IFS= read -r m; do
+      [[ -n "$m" ]] || continue
+      _cmux workspace-group add --group "$gref" --workspace "$m" > /dev/null 2>&1 ||
+        _p_fail "failed to add ${m} to group ${name}"
+    done < <(printf '%s' "$members" | tr ',' '\n')
+  else
+    _cmux workspace-group create --name "$name" --cwd "$path" --from "$members" > /dev/null 2>&1 ||
+      _p_fail "failed to create group ${name}"
+  fi
+}
+
+# _process_group <folder-path> <folder-name>: a top-level folder of repos → one
+# group. Decide (existing groups fill in silently; new ones ask, Legacy default
+# skip), then create each new repo as a member.
+_process_group() {
+  local path="$1" name="$2" leaves new=0 covered=0 def members="" L label rp
+  leaves=$(_repo_leaves "$path")
+  [[ -n "$leaves" ]] || return 0 # not a group (no repos below)
+
+  while IFS= read -r L; do
+    [[ -n "$L" ]] || continue
+    rp=$(cd "$L" 2> /dev/null && pwd -P) || rp="$L"
+    if _is_covered "$rp"; then covered=$((covered + 1)); else new=$((new + 1)); fi
+  done <<< "$leaves"
+  [[ "$new" -gt 0 ]] || return 0 # nothing new → quiet
+
+  if [[ "$covered" -eq 0 ]]; then # brand-new group → ask (Legacy defaults skip)
+    _is_legacy "$name" && def="n" || def="y"
+    if ! _ask "group" "$name" "$def"; then
+      _note "skip (group): ${name}"
+      _declined=$((_declined + new))
+      return 0
+    fi
+  fi
+
+  while IFS= read -r L; do
+    [[ -n "$L" ]] || continue
+    label="${L#"${_code}"/}"
+    _make_workspace "$L" "$label"
+    [[ -n "$_LAST_REF" ]] && members="${members:+${members},}${_LAST_REF}"
+  done <<< "$leaves"
+
+  _add_to_group "$name" "$path" "$members"
+}
+
+# _archive_existing (--hard): move every existing workspace into an "Archive"
+# group so the fresh mirror starts from a clean sidebar without losing anything.
+_archive_existing() {
+  local refs count aref r csv
+  refs=$(_cmux workspace list --json 2> /dev/null | jq -r '.workspaces[].ref // empty')
+  [[ -n "$refs" ]] || return 0
+  count=$(printf '%s\n' "$refs" | grep -c . || true)
+
+  if [[ "$_DRY" == "1" ]]; then
+    _warn "would archive ${count} existing workspace(s) into 'Archive'"
+    return 0
+  fi
+  aref=$(_group_ref "Archive")
+  if [[ -n "$aref" ]]; then
+    while IFS= read -r r; do
+      [[ -n "$r" ]] || continue
+      _cmux workspace-group add --group "$aref" --workspace "$r" > /dev/null 2>&1 || true
+    done <<< "$refs"
+  else
+    csv=$(printf '%s' "$refs" | paste -sd, -)
+    _cmux workspace-group create --name Archive --from "$csv" > /dev/null 2>&1 ||
+      _p_fail "failed to create Archive group"
+  fi
+  _note "archived ${count} existing workspace(s) into 'Archive'"
+}
+
+# ── Walk top-level: repos → flat workspaces, folders-of-repos → groups ────────
+_walk() {
+  local entry name
+  for entry in "$_code"/*/; do
+    entry="${entry%/}"
+    name=$(basename "$entry")
+    if [[ -e "$entry/.git" ]]; then
+      _make_workspace "$entry" "$name" # top-level repo → flat workspace
+    else
+      _process_group "$entry" "$name" # folder of repos → one group
+    fi
+  done
+}
+
+if [[ "$_HARD" == "1" ]]; then
+  _mode=" (hard)"
+elif [[ "$_HEADLESS" == "1" ]]; then
+  _mode=" (headless)"
+else
+  _mode=""
+fi
+_hdr "cmux workspaces ← ${_code}${_mode}"
+[[ "$_HARD" == "1" ]] || _note "matched against ${_seen_count} existing workspace(s)"
+[[ "$_HARD" == "1" ]] && _archive_existing
+_walk
+
+if [[ "$_DRY" == "1" ]]; then
+  _ok "dry-run: ${_created} would be created, ${_covered} already covered, ${_declined} skipped"
+else
+  _ok "done: ${_created} created, ${_covered} already covered, ${_declined} skipped"
+fi

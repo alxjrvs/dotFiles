@@ -33,6 +33,7 @@ mise.toml|.config/mise/config.toml
 mise-settings.toml|.config/mise/conf.d/settings.toml
 sheldon/plugins.toml|.config/sheldon/plugins.toml
 starship.toml|.config/starship.toml
+cmux/cmux.json|.config/cmux/cmux.json
 ghostty/config|.config/ghostty/config
 bat/config|.config/bat/config
 atuin/config.toml|.config/atuin/config.toml

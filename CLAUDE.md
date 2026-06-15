@@ -58,6 +58,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `dot update` | `./sync --upgrade` | Bump everything. |
 | `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. `--fix` repairs the symlink contract (reap orphans + relink missing/incorrect) — doctor's only mutation. |
 | `dot watchtower` | `./watchtower` | Local "Watchtower"-style 1Password audit (breached/reused/weak/unsecured) built on the `op` CLI. Reads passwords locally, emits only hashes/metadata. Dev creds (localhost/`.local`/LAN URL, or the `watchtower-ignore` tag) are listed separately, never flagged. Foreground only (op desktop-auth needs the calling session); `--vault=NAME`, `--no-breach`. |
+| `dot cmux` | `./cmux/mirror` | Mirror `~/Code` into cmux workspaces: crawl until repos, repos become workspaces (a repo is a leaf — worktrees never become workspaces), each top-level folder of repos becomes one flat cmux group (created via the `workspace-group` CLI — cmux has no auto-by-directory grouping; the group is anchored with a terminal at the folder). Interactive top-down (`workspace?`/`group?`); repos already *covered* by any existing workspace (at or inside the repo, incl. custom setups) are skipped, `Legacy` folders default-skip. `--headless` (create all new, skip Legacy), `--hard` (archive existing into an "Archive" group, then mirror exactly), `--dry-run`. Needs a running cmux (drives it over the control socket). |
 
 `DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → fallback `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` sources `lib/common.sh` (which defines `link()` alongside the other shared helpers), then exports those helpers (`os_kind`, `resolve_dotfiles_dir`, `link`) before sourcing each module, so the modules carry no helpers of their own.
 
@@ -80,7 +81,8 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `mise-settings.toml` | `~/.config/mise/conf.d/settings.toml` (global-only `[settings]`; mise loads `conf.d/*` only as global, so `trusted_config_paths` isn't ignored+warned the way it is when `mise.toml` is read as this repo's project-local config) |
 | `sheldon/plugins.toml` | `~/.config/sheldon/plugins.toml` |
 | `starship.toml` | `~/.config/starship.toml` |
-| `ghostty/config` | `~/.config/ghostty/config` |
+| `cmux/cmux.json` | `~/.config/cmux/cmux.json` (cmux app config; rendering comes from `ghostty/config`) |
+| `ghostty/config` | `~/.config/ghostty/config` (cmux's terminal-rendering layer; fixed path) |
 | `nvim/init.lua` | `~/.config/nvim/init.lua` |
 | `karabiner/karabiner.json` | `~/.config/karabiner/karabiner.json` |
 | `atuin/config.toml` | `~/.config/atuin/config.toml` |
@@ -122,27 +124,58 @@ Brewfile holds **only**: `mise` (chicken-and-egg bootstrap), casks (GUI apps, fo
 
 If you're about to add a CLI to `Brewfile`, stop — put it in `mise.toml` unless it's `mise` itself or it's a cask.
 
-## Terminal: cmux (built on Ghostty)
+## Terminal: cmux (canonical), Ghostty (embedded engine)
 
-`cmux` is the default terminal — set via `TERMINAL=cmux` in
+`cmux` is the canonical terminal — set via `TERMINAL=cmux` in
 `zsh/00-exports.zsh`. It's a libghostty-based agent multiplexer for
 running parallel Claude Code sessions with vertical tabs and git-worktree
 isolation. macOS has no system "default terminal" role, so the env var is
 a declaration of intent (the XDG convention), not a hard switch; launch
 cmux directly (Dock/Raycast).
 
-Ghostty stays installed as the **engine + config source**, not a separate
-daily driver: cmux renders with libghostty and reads
-`~/.config/ghostty/config`, so it inherits the Ghostty theme/font/colors.
-`dot sync` symlinks `ghostty/config` to `~/.config/ghostty/config` (the
-cask installs Ghostty.app; `dot doctor` validates the symlink). Both casks
-live in the Terminal section of the Brewfile.
+cmux config is **split across two files, both symlinked by `dot sync`**:
+
+- **`cmux/cmux.json`** → `~/.config/cmux/cmux.json` — cmux's own app config
+  (sidebar, shortcuts, automation, notifications). Carries *intentional
+  divergences only* (currently just `app.sendAnonymousTelemetry = false`);
+  every omitted key falls back to cmux's in-app default, so the file stays
+  small. `settings.json` is a legacy read-only fallback — don't manage it.
+  This is the "portable cmux" piece: it now travels with the repo.
+- **`ghostty/config`** → `~/.config/ghostty/config` — terminal *rendering*
+  (theme/font/colors). cmux embeds libghostty and reads this from a **fixed
+  path with no override**, so the file must live at the Ghostty path even
+  though cmux owns it. cmux honors only the visual subset — keybinds and the
+  quick-terminal visor are Ghostty.app-only and were dropped from the file.
+
+Ghostty is kept installed purely as the **embedded rendering engine** (the
+`ghostty` cask provides libghostty), not a separate daily driver. `dot
+doctor` validates both symlinks via the generic `_symlink_pairs` audit.
+
+The third cmux piece is **`cmux/mirror`** (run as `dot cmux`): it populates the
+sidebar by mirroring `~/Code` — crawling until it hits git repos, turning repos
+into workspaces and each top-level folder of repos into one flat cmux group.
+Groups are created explicitly via the `workspace-group` CLI (cmux has **no**
+auto-by-directory grouping), anchored with a terminal at the folder; cmux
+groups are flat, so nested folders collapse into their top-level group. A repo
+is a **leaf**: the crawl stops there, so worktrees (`.claude/worktrees`,
+`.worktrees`) and submodules never spawn stray workspaces. It's *generated per
+machine, not stored* — it reads the local `~/Code` and drives the running cmux
+over its control socket, so it honors "one config, every machine" without
+baking any host's repo list into the repo (that's why this is a runtime
+command, not portable cmux state). It first scans the existing workspace config
+and skips any repo already *covered* — a workspace at or inside the repo, so
+hand-made/custom setups count, not just exact `~/Code` mirrors. Interactive by
+default (asks `workspace?`/`group?` top-down; `Legacy` folders default-skip; an
+existing group is filled in without asking, so only brand-new groups prompt),
+with `--headless` (create all new, skip Legacy), `--hard` (move every existing
+workspace into an "Archive" group, then mirror `~/Code` exactly, ignoring
+coverage), and `--dry-run`. Lives in `cmux/` beside `cmux.json`; it's a
+dispatcher target, not symlinked.
 
 No other terminal emulators (iTerm2, WezTerm, Kitty, Alacritty, Warp) are
-managed by this repo. The stack is exactly two and they are one unit —
-Ghostty (engine + config) and cmux (the default terminal on top of it).
-If you find yourself adding a third, stop; revisit only if Mitchell
-Hashimoto abandons Ghostty.
+managed by this repo. The stack is exactly cmux (the terminal) plus Ghostty
+(the engine under it) — one unit. If you find yourself adding a third, stop;
+revisit only if Mitchell Hashimoto abandons Ghostty.
 
 ## One config, every machine
 
