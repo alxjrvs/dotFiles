@@ -49,6 +49,14 @@
       }
     }
   },
+  "deniedMcpServers": [
+    {
+      "serverCommand": [
+        "node",
+        "/Users/jarvis/.claude/plugins/cache/gnar/spacebase/0.8.3/mcp/dist/index.js"
+      ]
+    }
+  ],
   "skipWorkflowUsageWarning": true,
   "showTurnDuration": false,
   "terminalProgressBarEnabled": false,
