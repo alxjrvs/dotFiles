@@ -18,7 +18,7 @@ One North Star: **small, exemplary, easily shareable — a senior engineer's sho
 
 2. **Guilty until proven load-bearing.** Every dependency, wrapper, convention, and line of config must earn its weight on a *personal* repo. Nothing stays because it's "best practice" — ceremony justifies itself by what it prevents, or it goes. When in doubt, cut and see what breaks. Protected, never cut without asking: `brew`, `neovim`, `ghostty`.
 
-3. **No gratuitous wrappers.** Don't wrap a command just to re-expose it — call tools natively (`op run --`, `eval "$(starship init zsh)"`). Keep *only* the shims an external program execs by path with no native alternative: `git-ssh-sign` (1Password commit signing) and `gh-mcp-auth-header` (GitHub MCP `headersHelper`). A shim that merely forwards is a smell.
+3. **No gratuitous wrappers.** Don't wrap a command just to re-expose it — call tools natively (`op run --`, `eval "$(starship init zsh)"`). Keep *only* the shims an external program execs by path with no native alternative: `git-ssh-sign` (1Password commit signing), `gh-mcp-auth-header` (GitHub MCP `headersHelper`), and `git-credential-op-claude` (git credential helper resolving the agent's scoped PAT). A shim that merely forwards is a smell.
 
 4. **One config, every machine.** No host detection, no per-host overlay. If a genuine per-machine divergence appears, add the *smallest possible guard at that point* — never a host-overlay system built preemptively. (Machine-local escape hatches that already exist: `~/.gitconfig.local` for signing, `DOTFILES_DIR` for relocation.)
 
@@ -88,6 +88,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `ssh/config` | `~/.ssh/config` (mode 600) |
 | `ssh/1password-agent.toml` | `~/.config/1Password/ssh/agent.toml` |
 | `gh/gh-mcp-auth-header` | `~/.local/bin/gh-mcp-auth-header` (github MCP headersHelper → `op read`) |
+| `gh/git-credential-op-claude` | `~/.local/bin/git-credential-op-claude` (agent git credential helper → `op read` scoped PAT) |
 | `render/render-mcp-auth-header` | `~/.local/bin/render-mcp-auth-header` (Render MCP headersHelper → `op read`) |
 | `git-template/hooks/pre-commit` | `~/.config/git/template/hooks/pre-commit` (copied into new repos via `init.templateDir`) |
 | `dot` | `~/.local/bin/dot` |
@@ -205,6 +206,8 @@ The agent never borrows your biometric session. `dot sync` (the `op-agent` modul
 - its token in the **macOS login keychain** (`op-claude-agent`), never on disk, never in git.
 
 MCP auth is a **`headersHelper` → `op read` shim** (`gh/gh-mcp-auth-header`, `render/render-mcp-auth-header`). Each shim sources the keychain token *inline* (`OP_SERVICE_ACCOUNT_TOKEN="$(security find-generic-password -s op-claude-agent -w)" op read …`), confined to that one `op` process — so neither the service-account token nor the resolved secret reaches a Bash subprocess, the transcript, or OTEL spans. The payoff: **no Touch ID prompt and no desktop-app dependency** (works headless/cron). No `claude()` wrapper. When the keychain item is absent the shim falls back to desktop biometric, so nothing breaks pre-bootstrap. Generalize the shim to any HTTP MCP server needing a bearer token; store each such secret in `claude-agent` and point `OP_REF` at `op://claude-agent/...`.
+
+The **same service-account pattern backs the agent's git auth.** `gh/git-credential-op-claude` is a git credential helper (same inline-keychain → `op read`) that resolves a **fine-grained, all-repos, `Contents:read+write` PAT** from `op://claude-agent/Claude Git PAT/credential`. It's wired in *agent-only* via `dot-claude/settings.json` `GIT_CONFIG_*` (`credential.https://github.com.helper` → `op-claude`, with an empty-string reset first to drop the inherited `gh` helper) — so a Claude session pushes over HTTPS with a least-privilege PAT instead of your broad `gh` OAuth token (perpetual `repo` scope, every repo). Your own terminal git is untouched (it keeps the `gh` helper from `~/.gitconfig`). SSH auth was rejected for the agent: 1Password's SSH agent is interactive-only (per-process biometric, no headless mode), so HTTPS+service-account-token is the headless-safe path both GitHub and 1Password recommend for automation. Bootstrap: mint the PAT and `op item create --category "API Credential" --title "Claude Git PAT" --vault claude-agent credential=<pat>`.
 
 Rotation: delete the service account in the 1Password web UI and re-run `dot sync` — it re-mints whenever the keychain item is missing. Each machine gets its own per-host service account, so a single machine can be revoked without touching the others.
 
