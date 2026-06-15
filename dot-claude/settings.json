@@ -49,16 +49,5 @@
   "showTurnDuration": false,
   "terminalProgressBarEnabled": false,
   "teammateMode": "in-process",
-  "inputNeededNotifEnabled": true,
-  "sandbox": {
-    "enabled": true,                                                       "autoAllowBashIfSandboxed": true,
-    "allowUnsandboxedCommands": false,
-    "network": {
-      "allowedDomains": ["github.com", "api.github.com",
-"*.githubusercontent.com", "registry.npmjs.org"]
-    },
-    "filesystem": {
-      "allowWrite": ["~/.bun", "~/.cache"]
-    }
-  }
+  "inputNeededNotifEnabled": true
 }

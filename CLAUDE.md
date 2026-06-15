@@ -63,7 +63,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 
 ### sync / install modules
 
-`sync` sources `install/NN-*.sh` modules in numeric order; each declares its tags and a `run` function, gated by a tag filter (`--only=<tags>`). Modules: `00-brew 30-mise 40-symlinks 45-ssh 60-claude 85-lefthook 90-macos`. To add a sync section, add an `install/NN-name.sh` module, give it a tag, and `sync` will pick it up. macOS defaults data + `audit` live in `90-macos.sh`. (`30-mise` also locks sheldon plugins — sheldon is a mise tool, so its binary only exists after `mise install`.)
+`sync` sources `install/NN-*.sh` modules in numeric order; each declares its tags and a `run` function, gated by a tag filter (`--only=<tags>`). Modules: `00-brew 30-mise 40-symlinks 45-ssh 47-op-agent 60-claude 85-lefthook 90-macos`. To add a sync section, add an `install/NN-name.sh` module, give it a tag, and `sync` will pick it up. macOS defaults data + `audit` live in `90-macos.sh`. (`30-mise` also locks sheldon plugins — sheldon is a mise tool, so its binary only exists after `mise install`.)
 
 ### Symlink Model
 
@@ -155,9 +155,14 @@ add a host-overlay system preemptively.
 
 ## Secrets management
 
-1Password CLI (`op`) is the source of truth for secrets. Use the patterns below in priority order; drop down a tier only when the one above doesn't apply.
+1Password (`op`) is the source of truth for secrets. The setup follows 1Password's own two-tier model ([secure-ai-access](https://www.1password.dev/get-started/secure-ai-access), [secure-ssh-git-workflows](https://www.1password.dev/get-started/secure-ssh-git-workflows), [developer-quickstart](https://www.1password.dev/get-started/developer-quickstart)):
 
-### Patterns
+- **Interactive dev (you)** — 1Password desktop app + biometric unlock; resolve via `op run` / `op://` references / Environments. Tiered patterns below.
+- **Hands-off agent (Claude, MCP, cron)** — a **service account** scoped to the `claude-agent` vault; no biometric, no desktop-app dependency. See *Agent secrets* below.
+
+### Interactive patterns
+
+(priority order; drop a tier only when the one above doesn't apply)
 
 **1. `op run -- <cmd>` — one-shot CLI injection**
 ```sh
@@ -168,27 +173,47 @@ For any CLI invocation that reads a token from env. Nothing is exported to the s
 **2. `op://` references in config files**
 ```ini
 # .npmrc
-//registry.npmjs.org/:_authToken=op://Personal/npm/credential
+//registry.npmjs.org/:_authToken=op://Private/npm/credential
 ```
 Pair with `op run --` (pattern 1) — it resolves the references just for the child process.
 
-**3. `gh auth token` keychain resolution — GitHub specifically**
+**3. Environments — project-local secret sets**
+1Password Environments (beta) are **app/web-only — the `op` CLI cannot create or mount them** (no `op environment` command), so the CLI-native equivalent we use is: a per-project **vault** of items plus a committed `.env` of `op://` *references* (never values), resolved at launch:
+```sh
+op run --env-file=.env -- npm run dev   # op:// refs → child env only; nothing resolved hits disk
+```
+`op inject -i tpl -o out` does the same for non-`.env` config files. Only references are git-tracked. If you want the literal mounted-`.env` Environment UX, create it in the 1Password app as an optional overlay on top of this.
+
+**4. `gh auth token` keychain resolution — GitHub specifically**
 The token lives in the macOS keychain (managed by `gh auth login`, secure storage), never on disk, and is NOT exported to the environment (a standing export would leak it into every subprocess). Resolve it on demand — `GITHUB_TOKEN="$(gh auth token)" some-tool` — only when a tool actually needs it.
 
-**4. `mise` `[env]` — project-local inheritance**
+**5. `mise` `[env]` — project-local inheritance**
 For values a project's subprocesses must inherit at fork time, put them in the project's `mise.toml` `[env]`, resolving secrets through `op` at activation:
 ```toml
 # mise.toml
 [env]
-STRIPE_KEY = "{{ exec(command='op read op://Personal/stripe/credential') }}"
+STRIPE_KEY = "{{ exec(command='op read op://Private/stripe/credential') }}"
 ```
 mise activates on `cd` (its shims are already on PATH via `.zshenv`). For one-off commands, `op run -- <cmd>` (pattern 1) is simpler.
+
+### Agent secrets (service account)
+
+The agent never borrows your biometric session. `dot sync` (the `op-agent` module, `install/47-op-agent.sh`) provisions, idempotently:
+
+- a dedicated **`claude-agent` vault** — 1Password *forbids* granting a service account access to Personal/Private, so agent secrets **must** live apart; that vault is the entire blast radius;
+- a **service account** (`claude-agent-<host>`) with `read_items` on only that vault;
+- its token in the **macOS login keychain** (`op-claude-agent`), never on disk, never in git.
+
+MCP auth is a **`headersHelper` → `op read` shim** (`gh/gh-mcp-auth-header`, `render/render-mcp-auth-header`). Each shim sources the keychain token *inline* (`OP_SERVICE_ACCOUNT_TOKEN="$(security find-generic-password -s op-claude-agent -w)" op read …`), confined to that one `op` process — so neither the service-account token nor the resolved secret reaches a Bash subprocess, the transcript, or OTEL spans. The payoff: **no Touch ID prompt and no desktop-app dependency** (works headless/cron). No `claude()` wrapper. When the keychain item is absent the shim falls back to desktop biometric, so nothing breaks pre-bootstrap. Generalize the shim to any HTTP MCP server needing a bearer token; store each such secret in `claude-agent` and point `OP_REF` at `op://claude-agent/...`.
+
+Rotation: delete the service account in the 1Password web UI and re-run `dot sync` — it re-mints whenever the keychain item is missing. Each machine gets its own per-host service account, so a single machine can be revoked without touching the others.
 
 ### Rules
 
 - **Never commit a plaintext token** to any file. Use `op://` references or `op run --` instead.
 - **Never add a token to a config file as plaintext.** If `.npmrc`-shape tools need credentials, use `op://` refs + `op run --`.
 - **If you find a plaintext token anywhere**, revoke first, then migrate to `op` or a keychain CLI.
+- **Deliberately not done**: secret injection via PreToolUse hooks (hook tool-I/O flows through OTEL telemetry unredacted — an exfil path), and any 1Password MCP that returns raw secret values to the agent (the official op MCP refuses to by design — which matches our threat model).
 - `gitleaks` runs from the pre-commit hook template (`git-template/hooks/pre-commit`, copied into new repos via `init.templateDir`); it's a backstop, not the policy.
 
 ## Guardrails
@@ -203,7 +228,7 @@ Pause and confirm with the user before doing any of these:
 
 ## Important Gotchas
 
-- **dot-claude vs .claude**: `dot-claude/` is the source of truth for **user/global** Claude config (symlinked into `~/.claude/`). The repo-root `.claude/` is this repo's **project-scoped** config and follows the native Claude Code convention — `.claude/settings.json` is **committed** (currently the `sandbox.enabled:false` relief-valve, since this installer repo can't run under the strict global sandbox) and only `.claude/settings.local.json` is gitignored machine-local. Don't conflate the two: `dot-claude/` is global, `.claude/` is this-repo-only.
+- **dot-claude vs .claude**: `dot-claude/` is the source of truth for **user/global** Claude config (symlinked into `~/.claude/`). The repo-root `.claude/` is this repo's **project-scoped** config and is entirely gitignored — there's no committed project `settings.json` (the repo carries no per-project Claude divergences). Don't conflate the two: `dot-claude/` is global, `.claude/` is this-repo-only and local.
 - **Sheldon plugin order matters**: `fast-syntax-highlighting` must be last in `sheldon/plugins.toml`. It wraps every existing ZLE widget at load time, so anything that registers a widget must run before sheldon's `eval` line in `zsh/30-plugins.zsh`.
 - **`dot` self-locates**: `dot` resolves `DOTFILES_DIR` from its own resolved symlink target, so the repo is relocatable. To move it: `mv` the repo, then run `DOTFILES_DIR=<new> <new>/dot sync --force` once to relink (or just re-run `bootstrap.sh`).
 - **`gh` auth is keychain-backed**: the OAuth token lives in the macOS login keychain (gh secure storage); `~/.config/gh/hosts.yml` carries only non-secret host metadata. If a future `gh auth login` ever uses `--insecure-storage` it will dump the token plaintext into `hosts.yml` — don't; re-login with default (secure) storage. `gh auth status` should show `(keyring)`.

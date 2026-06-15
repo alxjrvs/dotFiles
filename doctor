@@ -396,6 +396,25 @@ if [[ -d "$_cmdir" ]]; then
 fi
 unset _cmdir
 
+# ── 12. On-disk SSH private keys (1Password Watchtower parity) ───────────────
+# 1Password's guidance: SSH keys live IN 1Password (touch-to-sign via the agent),
+# not as plaintext files scattered in ~/.ssh. Flag any private key on disk so it
+# can be imported into 1Password and the local copy removed. Read-only — only
+# reads each file's first line to spot a private-key header.
+_ssh_dir="${HOME}/.ssh"
+if [[ -d "$_ssh_dir" ]]; then
+  _ondisk_keys=0
+  while IFS= read -r -d '' _kf; do
+    if head -1 "$_kf" 2> /dev/null | grep -q 'PRIVATE KEY-----'; then
+      _warn "on-disk SSH private key: ${_kf} — import into 1Password and remove (keys belong in the agent, not on disk)"
+      _ondisk_keys=$((_ondisk_keys + 1))
+    fi
+  done < <(find "$_ssh_dir" -maxdepth 1 -type f ! -name '*.pub' -print0 2> /dev/null)
+  [[ "$_ondisk_keys" -eq 0 ]] && _ok "no on-disk SSH private keys (keys live in 1Password)"
+  unset _ondisk_keys _kf
+fi
+unset _ssh_dir
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 printf '\n'
 [[ "$_FIXED" -gt 0 ]] && printf '\033[0;36m  \xe2\x9c\x82 repaired %d symlink issue(s)\033[0m\n' "$_FIXED"
