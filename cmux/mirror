@@ -19,8 +19,11 @@
 # never become workspaces. Hidden dirs are skipped (a repo's innards).
 #
 # Each top-level item it creates — a group or a flat top-level repo — gets a
-# distinct color cycled from cmux's palette, so the sidebar is scannable. Group
-# members aren't individually colored; they read as one unit under the group.
+# UNIQUE color from cmux's palette (never repeated, never colliding with one
+# already in the sidebar), so the sidebar is scannable. A group's members are
+# then colored as shades of that group's color, so they read as one color family
+# while staying mutually distinguishable. One exception: any "gnar"-named item
+# (the owner's brand) is always themed orange instead of a palette color.
 #
 # Interactive, top-down: a new top-level group folder is asked "group <name>?";
 # a "Legacy" folder defaults to skip. Each new repo then prompts for a name
@@ -37,9 +40,9 @@
 # Modes:
 #   (default)     interactive prompts, top-down.
 #   --headless    no prompts: create every new workspace, skip "Legacy" folders.
-#   --hard        force the sidebar to match ~/Code: move ALL existing workspaces
-#                 into an "Archive" group, then mirror non-interactively while
-#                 ignoring coverage (recreate the full canonical set fresh).
+#   --hard        force the sidebar to match ~/Code: CLOSE all existing
+#                 workspaces, then mirror non-interactively while ignoring
+#                 coverage (recreate the full canonical set fresh).
 #                 "Legacy" is still skipped (an existing rule).
 #   -n/--dry-run  list what an accept-the-defaults run would do; change nothing.
 #
@@ -47,7 +50,7 @@
 # running cmux over its control socket, so the layout lives nowhere in the repo.
 #
 # Flags:
-#   --hard          archive existing, then mirror ~/Code exactly (implies no prompts)
+#   --hard          close existing, then mirror ~/Code exactly (implies no prompts)
 #   --headless      non-interactive: create all new, skip Legacy
 #   -n, --dry-run   list what would happen; change nothing
 #   -h, --help
@@ -77,8 +80,9 @@ for _arg in "$@"; do
       printf '  become workspaces). New groups are asked "group?"; "Legacy"\n'
       printf '  defaults to skip; each new repo prompts for a name. Repos already\n'
       printf '  covered by any existing workspace are skipped. Each new group and\n'
-      printf '  flat top-level repo gets a distinct color from the cmux palette.\n'
-      printf '  --hard          archive existing into "Archive", then mirror exactly\n'
+      printf '  flat top-level repo gets a unique color from the cmux palette; a\n'
+      printf "  group's members are shaded from that group's color.\n"
+      printf '  --hard          close all existing workspaces, then mirror exactly\n'
       printf '  --headless      no prompts: create all new, skip Legacy\n'
       printf '  -n, --dry-run   show what would happen; change nothing\n'
       # shellcheck disable=SC2016  # $CODE_DIR is a literal env-var name in the message
@@ -163,18 +167,103 @@ _covered=0
 _declined=0
 _LAST_REF="" # ref of the workspace _make_workspace just created ("" if none)
 
-# Distinct colors, cycled once per created top-level item (each group and each
-# flat top-level repo) so they're mutually distinguishable. Group members aren't
-# individually colored — they read as one unit under the group. Hexes are cmux's
-# own named-color palette, ordered for early contrast, so they match the app.
+# Colors already worn by existing workspaces/groups, so a freshly created
+# top-level item never collides with what's already in the sidebar. Seeded once;
+# _next_color appends to it as it hands colors out.
+_used_colors=$'\n'
+while IFS= read -r _c; do
+  [[ -n "$_c" ]] || continue
+  _used_colors+="$(printf '%s' "$_c" | tr '[:lower:]' '[:upper:]')"$'\n'
+done < <({
+  _cmux workspace list --json 2> /dev/null | jq -r '.workspaces[].custom_color // empty'
+  _cmux workspace-group list --json 2> /dev/null | jq -r '.groups[].custom_color // empty'
+})
+
+# A distinct color per created top-level item (each group and each flat top-level
+# repo). Hexes are cmux's own named-color palette, ordered for early contrast, so
+# they match the app. _next_color picks the first palette color not already in
+# use — unique across both this run and the pre-existing sidebar — and returns it
+# in $_COLOR. It must NOT print its result: callers used to capture it via
+# $(_next_color), but command substitution runs in a subshell, so the dedup-state
+# mutation (_used_colors/_color_i) was discarded every call and it kept handing
+# back the same first-available color. Returning via a global keeps that state.
 _PALETTE=(
   "#1565C0" "#196F3D" "#A04000" "#6A1B9A" "#006B6B" "#922B21" "#7D6608" "#AD1457"
   "#0E6B8C" "#4A5C18" "#880E4F" "#283593" "#7B3F00" "#1A5276" "#C0392B" "#3E4B5E"
 )
 _color_i=0
+_COLOR=""
 _next_color() {
-  printf '%s' "${_PALETTE[$((_color_i % ${#_PALETTE[@]}))]}"
+  local c U
+  for c in "${_PALETTE[@]}"; do
+    U=$(printf '%s' "$c" | tr '[:lower:]' '[:upper:]')
+    if [[ "$_used_colors" != *$'\n'"$U"$'\n'* ]]; then
+      _used_colors+="${U}"$'\n'
+      _COLOR="$c"
+      return
+    fi
+  done
+  # >16 distinct top-level items: palette exhausted, repeats become unavoidable.
+  _COLOR="${_PALETTE[$((_color_i % ${#_PALETTE[@]}))]}"
   _color_i=$((_color_i + 1))
+}
+
+# gnar is the owner's brand (gnar.dog), orange its color — the same orange the
+# claude-statusline uses. Any top-level item (a group or a flat repo) whose name
+# contains "gnar" is themed orange instead of drawing from the cycling palette,
+# so the brand always reads the same in the sidebar. A gnar group's members then
+# shade from this orange like any other group, so it stays one color family.
+_GNAR_COLOR="#FF8000"
+_is_gnar() { [[ "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" == *gnar* ]]; }
+
+# _pick_color <name>: set $_COLOR for a top-level item named <name> — the brand
+# orange for a gnar item (without consuming a palette slot), else the next unique
+# palette color.
+_pick_color() {
+  if _is_gnar "$1"; then
+    _COLOR="$_GNAR_COLOR"
+  else
+    _next_color
+  fi
+}
+
+# _blend <#RRGGBB> <pct>: lighten (pct>0, toward white) or darken (pct<0, toward
+# black) a hex color by |pct| percent, per RGB channel. Plain integer math.
+_blend() {
+  local hex="${1#\#}" pct="$2" t r g b
+  r=$((16#${hex:0:2}))
+  g=$((16#${hex:2:2}))
+  b=$((16#${hex:4:2}))
+  if [[ "$pct" -ge 0 ]]; then t=255; else
+    t=0
+    pct=$((-pct))
+  fi
+  printf '#%02X%02X%02X' \
+    $((r + (t - r) * pct / 100)) \
+    $((g + (t - g) * pct / 100)) \
+    $((b + (t - b) * pct / 100))
+}
+
+# _theme_members <base-hex> <comma-refs>: color each workspace in <refs> a shade
+# of <base-hex>, spread across a lightness range, so a group's members read as
+# one color family while staying mutually distinguishable. Empty base → no-op.
+_theme_members() {
+  local base="$1" refs="$2" list r i n pct
+  [[ -n "$base" && -n "$refs" ]] || return 0
+  IFS=',' read -r -a list <<< "$refs"
+  n=${#list[@]}
+  for i in "${!list[@]}"; do
+    r="${list[$i]}"
+    [[ -n "$r" ]] || continue
+    if [[ "$n" -le 1 ]]; then pct=0; else pct=$((-30 + 60 * i / (n - 1))); fi
+    _cmux workspace-action --action set-color --workspace "$r" --color "$(_blend "$base" "$pct")" > /dev/null 2>&1 || true
+  done
+}
+
+# _group_color <group-ref>: print a group's current custom_color ("" if unset).
+_group_color() {
+  _cmux workspace-group list --json 2> /dev/null |
+    jq -r --arg r "$1" 'first(.groups[]? | select(.ref == $r) | .custom_color) // empty'
 }
 
 # _repo_leaves <dir>: print every repo-leaf dir below <dir> — the FIRST repo on
@@ -257,9 +346,11 @@ _make_workspace() {
 # holds the given new workspaces — add to it if it exists, else create it. cmux
 # groups need an "anchor" workspace (the group's sidebar header), so a freshly
 # created group is anchored with a terminal at the folder itself, matching the
-# pattern cmux already uses for the groups in your sidebar.
+# pattern cmux already uses for the groups in your sidebar. The members are then
+# colored as shades of the group's base color (a new group gets a fresh unique
+# color; an existing one keeps its own), so each group reads as one color family.
 _add_to_group() {
-  local name="$1" path="$2" members="$3" gref m
+  local name="$1" path="$2" members="$3" gref base m
   [[ -n "$members" ]] || return 0
   gref=$(_group_ref "$name")
   if [[ -n "$gref" ]]; then
@@ -268,14 +359,25 @@ _add_to_group() {
       _cmux workspace-group add --group "$gref" --workspace "$m" > /dev/null 2>&1 ||
         _p_fail "failed to add ${m} to group ${name}"
     done < <(printf '%s' "$members" | tr ',' '\n')
+    base=$(_group_color "$gref")
   else
+    _pick_color "$name"
+    base="$_COLOR"
     if _cmux workspace-group create --name "$name" --cwd "$path" --from "$members" > /dev/null 2>&1; then
       gref=$(_group_ref "$name")
-      [[ -n "$gref" ]] && _cmux workspace-group set-color "$gref" --hex "$(_next_color)" > /dev/null 2>&1 || true
+      [[ -n "$gref" ]] && _cmux workspace-group set-color "$gref" --hex "$base" > /dev/null 2>&1 || true
     else
       _p_fail "failed to create group ${name}"
+      return
     fi
   fi
+  # gnar groups are always the brand orange — recolor even an existing one created
+  # before this rule, so the whole family reads orange (guarded to skip a no-op).
+  if _is_gnar "$name" && [[ "$base" != "$_GNAR_COLOR" ]]; then
+    base="$_GNAR_COLOR"
+    [[ -n "$gref" ]] && _cmux workspace-group set-color "$gref" --hex "$base" > /dev/null 2>&1 || true
+  fi
+  _theme_members "$base" "$members"
 }
 
 # _process_group <folder-path> <folder-name>: a top-level folder of repos → one
@@ -312,30 +414,27 @@ _process_group() {
   _add_to_group "$name" "$path" "$members"
 }
 
-# _archive_existing (--hard): move every existing workspace into an "Archive"
-# group so the fresh mirror starts from a clean sidebar without losing anything.
-_archive_existing() {
-  local refs count aref r csv
+# _drop_existing (--hard): close every existing workspace so the fresh mirror
+# starts from an empty sidebar. We CLOSE rather than archive — parking the old
+# set in an "Archive" group just accumulated stale clutter on every --hard run,
+# and --hard means "make the sidebar match ~/Code", so the prior set is removed
+# outright. Closing a group's anchor dissolves the group, so iterating every
+# workspace ref clears groups too.
+_drop_existing() {
+  local refs count r
   refs=$(_cmux workspace list --json 2> /dev/null | jq -r '.workspaces[].ref // empty')
   [[ -n "$refs" ]] || return 0
   count=$(printf '%s\n' "$refs" | grep -c . || true)
 
   if [[ "$_DRY" == "1" ]]; then
-    _warn "would archive ${count} existing workspace(s) into 'Archive'"
+    _warn "would close ${count} existing workspace(s)"
     return 0
   fi
-  aref=$(_group_ref "Archive")
-  if [[ -n "$aref" ]]; then
-    while IFS= read -r r; do
-      [[ -n "$r" ]] || continue
-      _cmux workspace-group add --group "$aref" --workspace "$r" > /dev/null 2>&1 || true
-    done <<< "$refs"
-  else
-    csv=$(printf '%s' "$refs" | paste -sd, -)
-    _cmux workspace-group create --name Archive --from "$csv" > /dev/null 2>&1 ||
-      _p_fail "failed to create Archive group"
-  fi
-  _note "archived ${count} existing workspace(s) into 'Archive'"
+  while IFS= read -r r; do
+    [[ -n "$r" ]] || continue
+    _cmux close-workspace --workspace "$r" > /dev/null 2>&1 || true
+  done <<< "$refs"
+  _note "closed ${count} existing workspace(s)"
 }
 
 # ── Walk top-level: repos → flat workspaces, folders-of-repos → groups ────────
@@ -346,8 +445,10 @@ _walk() {
     name=$(basename "$entry")
     if [[ -e "$entry/.git" ]]; then
       _make_workspace "$entry" "$name" # top-level repo → flat workspace
-      [[ -n "$_LAST_REF" ]] &&
-        _cmux workspace-action --action set-color --workspace "$_LAST_REF" --color "$(_next_color)" > /dev/null 2>&1 || true
+      if [[ -n "$_LAST_REF" ]]; then
+        _pick_color "$name"
+        _cmux workspace-action --action set-color --workspace "$_LAST_REF" --color "$_COLOR" > /dev/null 2>&1 || true
+      fi
     else
       _process_group "$entry" "$name" # folder of repos → one group
     fi
@@ -363,7 +464,7 @@ else
 fi
 _hdr "cmux workspaces ← ${_code}${_mode}"
 [[ "$_HARD" == "1" ]] || _note "matched against ${_seen_count} existing workspace(s)"
-[[ "$_HARD" == "1" ]] && _archive_existing
+[[ "$_HARD" == "1" ]] && _drop_existing
 _walk
 
 if [[ "$_DRY" == "1" ]]; then
