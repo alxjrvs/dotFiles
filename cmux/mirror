@@ -40,17 +40,17 @@
 # Modes:
 #   (default)     interactive prompts, top-down.
 #   --headless    no prompts: create every new workspace, skip "Legacy" folders.
-#   --hard        force the sidebar to match ~/Code: CLOSE all existing
-#                 workspaces, then mirror non-interactively while ignoring
-#                 coverage (recreate the full canonical set fresh).
-#                 "Legacy" is still skipped (an existing rule).
+#   --hard        force the sidebar to match ~/Code: ARCHIVE all existing
+#                 workspaces into an "Archive" group, then mirror
+#                 non-interactively while ignoring coverage (recreate the
+#                 full canonical set fresh). "Legacy" is still skipped.
 #   -n/--dry-run  list what an accept-the-defaults run would do; change nothing.
 #
 # Per-machine by design: it reads THIS machine's own ~/Code and drives the
 # running cmux over its control socket, so the layout lives nowhere in the repo.
 #
 # Flags:
-#   --hard          close existing, then mirror ~/Code exactly (implies no prompts)
+#   --hard          archive existing into "Archive", then mirror ~/Code exactly (implies no prompts)
 #   --headless      non-interactive: create all new, skip Legacy
 #   -n, --dry-run   list what would happen; change nothing
 #   -h, --help
@@ -82,7 +82,7 @@ for _arg in "$@"; do
       printf '  covered by any existing workspace are skipped. Each new group and\n'
       printf '  flat top-level repo gets a unique color from the cmux palette; a\n'
       printf "  group's members are shaded from that group's color.\n"
-      printf '  --hard          close all existing workspaces, then mirror exactly\n'
+      printf '  --hard          archive existing into "Archive", then mirror exactly\n'
       printf '  --headless      no prompts: create all new, skip Legacy\n'
       printf '  -n, --dry-run   show what would happen; change nothing\n'
       # shellcheck disable=SC2016  # $CODE_DIR is a literal env-var name in the message
@@ -414,27 +414,30 @@ _process_group() {
   _add_to_group "$name" "$path" "$members"
 }
 
-# _drop_existing (--hard): close every existing workspace so the fresh mirror
-# starts from an empty sidebar. We CLOSE rather than archive — parking the old
-# set in an "Archive" group just accumulated stale clutter on every --hard run,
-# and --hard means "make the sidebar match ~/Code", so the prior set is removed
-# outright. Closing a group's anchor dissolves the group, so iterating every
-# workspace ref clears groups too.
-_drop_existing() {
-  local refs count r
+# _archive_existing (--hard): move every existing workspace into an "Archive"
+# group so the fresh mirror starts from a clean sidebar without losing anything.
+_archive_existing() {
+  local refs count aref r csv
   refs=$(_cmux workspace list --json 2> /dev/null | jq -r '.workspaces[].ref // empty')
   [[ -n "$refs" ]] || return 0
   count=$(printf '%s\n' "$refs" | grep -c . || true)
 
   if [[ "$_DRY" == "1" ]]; then
-    _warn "would close ${count} existing workspace(s)"
+    _warn "would archive ${count} existing workspace(s) into 'Archive'"
     return 0
   fi
-  while IFS= read -r r; do
-    [[ -n "$r" ]] || continue
-    _cmux close-workspace --workspace "$r" > /dev/null 2>&1 || true
-  done <<< "$refs"
-  _note "closed ${count} existing workspace(s)"
+  aref=$(_group_ref "Archive")
+  if [[ -n "$aref" ]]; then
+    while IFS= read -r r; do
+      [[ -n "$r" ]] || continue
+      _cmux workspace-group add --group "$aref" --workspace "$r" > /dev/null 2>&1 || true
+    done <<< "$refs"
+  else
+    csv=$(printf '%s' "$refs" | paste -sd, -)
+    _cmux workspace-group create --name Archive --from "$csv" > /dev/null 2>&1 ||
+      _p_fail "failed to create Archive group"
+  fi
+  _note "archived ${count} existing workspace(s) into 'Archive'"
 }
 
 # ── Walk top-level: repos → flat workspaces, folders-of-repos → groups ────────
@@ -464,7 +467,7 @@ else
 fi
 _hdr "cmux workspaces ← ${_code}${_mode}"
 [[ "$_HARD" == "1" ]] || _note "matched against ${_seen_count} existing workspace(s)"
-[[ "$_HARD" == "1" ]] && _drop_existing
+[[ "$_HARD" == "1" ]] && _archive_existing
 _walk
 
 if [[ "$_DRY" == "1" ]]; then
