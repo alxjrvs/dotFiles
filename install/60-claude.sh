@@ -40,12 +40,15 @@ _claude_register_github_mcp() {
 }
 
 # The Claude statusline lives in its own repo (github.com/alxjrvs/claude-statusline).
-# Clone it to ~/Code/claude-statusline (fast-forward an existing clone — never
-# clobbers local work), then run its install.sh, which symlinks both scripts into
-# ~/.local/bin. settings.json (symlinked into ~/.claude) points at those paths.
+# Clone it *beside* the dotfiles repo (sibling of $DOTFILES_DIR) so it travels
+# with it when the repo dir moves, rather than a hardcoded ~/Code path that goes
+# stale after a relocation. Fast-forward an existing clone (never clobbers local
+# work), then run its install.sh, which symlinks both scripts into ~/.local/bin.
+# settings.json (symlinked into ~/.claude) points at those paths.
 _claude_install_statusline() {
   command -v git > /dev/null 2>&1 || return 0
-  local dir="${HOME}/Code/claude-statusline"
+  local dir
+  dir="$(dirname "${DOTFILES_DIR:-${HOME}/Code/dotFiles}")/claude-statusline"
   local repo="https://github.com/alxjrvs/claude-statusline.git"
   if [[ -d "${dir}/.git" ]]; then
     git -C "${dir}" pull --ff-only > /dev/null 2>&1 ||
