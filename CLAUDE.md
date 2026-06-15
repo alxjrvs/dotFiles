@@ -203,7 +203,7 @@ Pause and confirm with the user before doing any of these:
 
 ## Important Gotchas
 
-- **dot-claude vs .claude**: source of truth is `dot-claude/` in this repo. The `.claude/` directory at repo root holds machine-local overrides (gitignored) — don't confuse it with project-local Claude config.
+- **dot-claude vs .claude**: `dot-claude/` is the source of truth for **user/global** Claude config (symlinked into `~/.claude/`). The repo-root `.claude/` is this repo's **project-scoped** config and follows the native Claude Code convention — `.claude/settings.json` is **committed** (currently the `sandbox.enabled:false` relief-valve, since this installer repo can't run under the strict global sandbox) and only `.claude/settings.local.json` is gitignored machine-local. Don't conflate the two: `dot-claude/` is global, `.claude/` is this-repo-only.
 - **Sheldon plugin order matters**: `fast-syntax-highlighting` must be last in `sheldon/plugins.toml`. It wraps every existing ZLE widget at load time, so anything that registers a widget must run before sheldon's `eval` line in `zsh/30-plugins.zsh`.
 - **`dot` self-locates**: `dot` resolves `DOTFILES_DIR` from its own resolved symlink target, so the repo is relocatable. To move it: `mv` the repo, then run `DOTFILES_DIR=<new> <new>/dot sync --force` once to relink (or just re-run `bootstrap.sh`).
 - **`gh` auth is keychain-backed**: the OAuth token lives in the macOS login keychain (gh secure storage); `~/.config/gh/hosts.yml` carries only non-secret host metadata. If a future `gh auth login` ever uses `--insecure-storage` it will dump the token plaintext into `hosts.yml` — don't; re-login with default (secure) storage. `gh auth status` should show `(keyring)`.

@@ -21,11 +21,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Claude — `.claude/` at the repo root is for machine-local Claude state.
-# Project-level config (settings.json, skills, agents) belongs in `dot-claude/`
-# and is symlinked into ~/.claude/ by `dot sync`. Everything in `.claude/`
-# is gitignored to avoid drift.
-.claude/
+# Claude — follow native Claude Code: commit shared project config
+# (`.claude/settings.json` — here, the `sandbox.enabled:false` relief-valve this
+# installer repo needs), keep only personal machine-local overrides untracked
+# (`**/.claude/settings.local.json`, below). User/global config is separate: it
+# lives in `dot-claude/`, symlinked into ~/.claude/ by `dot sync`.
+.claude/*
+!.claude/settings.json
 
 # Secrets resolve through `op run --` / op:// references, never a file (see
 # CLAUDE.md). `.npmrc` is gitignored at the user-config level because per-project

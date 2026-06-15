@@ -79,10 +79,12 @@ Everything else is policy, not identity — copy it as-is.
 `dot-claude/` is symlinked into `~/.claude/` by `dot sync`. Contents:
 
 - `CLAUDE.md` — user-level global instructions
-- `settings.json` — deliberately minimal (agent teams, statusline, auto mode, quieter UI); the full list lives in `dot-claude/CLAUDE.md`
+- `settings.json` — deliberately minimal (agent teams, statusline, auto mode, **strict bash sandbox**, quieter UI); the full list lives in `dot-claude/CLAUDE.md`
 - `REFERENCE.md` — a load-on-demand Claude Code cheatsheet (built-in slash commands, experimental env vars). Not symlinked into `~/.claude/` and not auto-loaded — read it when you need it.
 
 The statusline is a separate project — [claude-statusline](https://github.com/alxjrvs/claude-statusline). `dot sync` (claude tag) clones it to `~/Code/claude-statusline` (fast-forwards an existing clone) and runs its `install.sh`, which symlinks both scripts into `~/.local/bin`; `settings.json` references the installed path. `dot doctor` checks the symlinks are present.
+
+The sandbox is OS-level containment (macOS Seatbelt) under auto mode — it confines bash writes/egress as a safety net, but covers **bash only** (the GitHub MCP and `WebFetch` run outside it). Because *this* repo is a system installer (`dot sync` writes across `$HOME`), it opts out via a committed project-level `.claude/settings.json` (`sandbox.enabled: false`) — the native Claude Code pattern: commit `settings.json`, gitignore only `settings.local.json`.
 
 ## Linting & tests
 
@@ -114,6 +116,7 @@ To disable signing on a given machine, edit `~/.gitconfig.local`.
 - **`op run -- <cmd>`** — one-shot CLI injection. `op run -- npm publish` resolves `op://` refs at exec time and never writes them anywhere (masking on by default).
 - **`op://` references in config files** — pair with `op run --`, which resolves them just for the child process.
 - **`gh` keychain auth** — the GitHub token lives in the macOS keychain (`gh auth login`, secure storage) and is deliberately NOT exported to the environment (a standing export would leak it into every subprocess). Resolve on demand with `gh auth token` when a tool needs it.
+- **GitHub MCP token** — `gh/gh-mcp-auth-header` resolves a PAT via `op read` at connect time (never on disk/env). Keep it a **fine-grained, least-privilege** PAT: the MCP server runs *outside* the bash sandbox, so its scope — not the sandbox — bounds what an agent can do on GitHub from any repo.
 - **`mise` `[env]` + `op`** — for project-local env that must inherit at fork time, put it in the project's `mise.toml` `[env]` and resolve secrets via `{{ exec(command='op read …') }}`. mise activates on `cd`.
 
 ## Packaging: Lean A (brew = casks, mise = dev CLIs)
