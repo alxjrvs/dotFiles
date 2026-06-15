@@ -14,7 +14,8 @@
     "GIT_CONFIG_KEY_2": "credential.https://github.com.helper",
     "GIT_CONFIG_VALUE_2": "",
     "GIT_CONFIG_KEY_3": "credential.https://github.com.helper",
-    "GIT_CONFIG_VALUE_3": "osxkeychain"
+    "GIT_CONFIG_VALUE_3": "osxkeychain",
+    "SPACEBASE_API_KEY_COMMAND": "OP_SERVICE_ACCOUNT_TOKEN=\"$(security find-generic-password -s op-claude-agent -w)\" op read 'op://claude-agent/Spacebase API Key/credential'"
   },
   "attribution": {
     "commit": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>"
@@ -49,14 +50,6 @@
       }
     }
   },
-  "deniedMcpServers": [
-    {
-      "serverCommand": [
-        "node",
-        "/Users/jarvis/.claude/plugins/cache/gnar/spacebase/0.8.3/mcp/dist/index.js"
-      ]
-    }
-  ],
   "skipWorkflowUsageWarning": true,
   "showTurnDuration": false,
   "terminalProgressBarEnabled": false,
