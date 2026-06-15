@@ -8,23 +8,33 @@
 # into the shell env (which would leak it into every Bash subprocess Claude Code
 # spawns) and never written to disk.
 #
-# The token comes from 1Password, matching the rest of the GitHub stack: auth
-# and signing already go through the 1Password agent (op-ssh-sign). OP_REF points
-# at a secure note holding a GitHub PAT with repo/read:org scopes for the MCP
-# server. `op read` resolves at connect time and will prompt to unlock if
-# 1Password is locked.
+# The token comes from 1Password. Resolution prefers the `claude-agent` service
+# account (set up by install/47-op-agent.sh): its token lives in the macOS login
+# keychain, is read INLINE here, and is handed to `op read` only within this
+# short-lived process — so neither the service-account token nor the PAT ever
+# reaches a Bash subprocess, the transcript, or OTEL spans. The payoff: no Touch
+# ID prompt and no desktop-app dependency, so this works in headless/cron Claude
+# too. When the keychain item is absent (pre-bootstrap), `op read` falls back to
+# the desktop biometric session. OP_REF points at the GitHub PAT (repo/read:org)
+# in the claude-agent vault — service accounts can't read Personal/Private.
 #
 # Contract: print a JSON object of headers to stdout. On any failure, print an
 # empty object so the connection fails cleanly (no Authorization header) rather
 # than sending a malformed `Bearer ` with an empty value.
 set -euo pipefail
 
-OP_REF="op://Personal/Claude Github PAT/notesPlain"
+OP_REF="op://claude-agent/Claude Github PAT/notesPlain"
 
 command -v op > /dev/null 2>&1 || {
   printf '{}\n'
   exit 0
 }
+
+# Prefer the service-account token from the keychain; export it only into this
+# process so `op read` resolves without biometric. Empty/missing → desktop auth.
+sa_token="$(security find-generic-password -s op-claude-agent -w 2> /dev/null || true)"
+[[ -n "${sa_token}" ]] && export OP_SERVICE_ACCOUNT_TOKEN="${sa_token}"
+unset sa_token
 
 token="$(op read "${OP_REF}" 2> /dev/null)" || {
   printf '{}\n'

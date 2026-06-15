@@ -79,12 +79,12 @@ Everything else is policy, not identity — copy it as-is.
 `dot-claude/` is symlinked into `~/.claude/` by `dot sync`. Contents:
 
 - `CLAUDE.md` — user-level global instructions
-- `settings.json` — deliberately minimal (agent teams, statusline, auto mode, **strict bash sandbox**, quieter UI); the full list lives in `dot-claude/CLAUDE.md`
+- `settings.json` — deliberately minimal (agent teams, statusline, auto mode, quieter UI); the full list lives in `dot-claude/CLAUDE.md`
 - `REFERENCE.md` — a load-on-demand Claude Code cheatsheet (built-in slash commands, experimental env vars). Not symlinked into `~/.claude/` and not auto-loaded — read it when you need it.
 
 The statusline is a separate project — [claude-statusline](https://github.com/alxjrvs/claude-statusline). `dot sync` (claude tag) clones it to `~/Code/claude-statusline` (fast-forwards an existing clone) and runs its `install.sh`, which symlinks both scripts into `~/.local/bin`; `settings.json` references the installed path. `dot doctor` checks the symlinks are present.
 
-The sandbox is OS-level containment (macOS Seatbelt) under auto mode — it confines bash writes/egress as a safety net, but covers **bash only** (the GitHub MCP and `WebFetch` run outside it). Because *this* repo is a system installer (`dot sync` writes across `$HOME`), it opts out via a committed project-level `.claude/settings.json` (`sandbox.enabled: false`) — the native Claude Code pattern: commit `settings.json`, gitignore only `settings.local.json`.
+Under auto mode the standing safety net is **least privilege at the credential boundary**, not OS containment: the GitHub MCP authenticates through a fine-grained PAT, and the agent's 1Password access is a **service account scoped to a single `claude-agent` vault** (1Password forbids a service account from reading Personal/Private, so that one vault is the whole blast radius). The service account also means a Claude session — interactive *or* headless/cron — resolves its secrets with **no Touch ID prompt and no 1Password desktop-app dependency**. See [Secrets](#secrets).
 
 ## Linting & tests
 
@@ -111,12 +111,13 @@ To disable signing on a given machine, edit `~/.gitconfig.local`.
 
 ## Secrets
 
-1Password CLI (`op`) is the source of truth for secrets. Patterns:
+1Password (`op`) is the source of truth for secrets, on 1Password's two-tier model: **biometric desktop unlock for your interactive dev work, a scoped service account for the hands-off agent.** Patterns:
 
 - **`op run -- <cmd>`** — one-shot CLI injection. `op run -- npm publish` resolves `op://` refs at exec time and never writes them anywhere (masking on by default).
 - **`op://` references in config files** — pair with `op run --`, which resolves them just for the child process.
+- **Environments** — for project-local secret sets, a per-project vault + a committed `.env` of `op://` *references* (never values), launched with `op run --env-file=.env -- <cmd>`. (1Password's literal Environments beta is app-only — the `op` CLI can't create one — so this is the CLI-native equivalent.)
 - **`gh` keychain auth** — the GitHub token lives in the macOS keychain (`gh auth login`, secure storage) and is deliberately NOT exported to the environment (a standing export would leak it into every subprocess). Resolve on demand with `gh auth token` when a tool needs it.
-- **GitHub MCP token** — `gh/gh-mcp-auth-header` resolves a PAT via `op read` at connect time (never on disk/env). Keep it a **fine-grained, least-privilege** PAT: the MCP server runs *outside* the bash sandbox, so its scope — not the sandbox — bounds what an agent can do on GitHub from any repo.
+- **Agent secrets (service account)** — `dot sync` (`install/47-op-agent.sh`) provisions a `claude-agent` vault, a per-host service account scoped `read_items` to only that vault, and stores its token in the macOS login keychain. MCP auth shims (`gh/gh-mcp-auth-header`, `render/render-mcp-auth-header`) read that token *inline* and pass it to a single `op read` — so the token never enters the agent's env, the transcript, or OTEL spans, and there's no biometric prompt. Keep the underlying PATs **fine-grained, least-privilege**; the vault scope bounds the blast radius.
 - **`mise` `[env]` + `op`** — for project-local env that must inherit at fork time, put it in the project's `mise.toml` `[env]` and resolve secrets via `{{ exec(command='op read …') }}`. mise activates on `cd`.
 
 ## Packaging: Lean A (brew = casks, mise = dev CLIs)
