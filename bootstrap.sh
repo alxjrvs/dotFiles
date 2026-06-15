@@ -18,7 +18,7 @@ DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 yellow() { printf '\033[0;33m%s\033[0m\n' "$*"; }
 green() { printf '\033[0;32m%s\033[0m\n' "$*"; }
 
-# ── 1. Ensure ~/.local/bin exists (dot symlink is created by sync) ────
+# ── 1. Ensure ~/.local/bin exists (dot launcher is copied there by sync) ────
 mkdir -p "$HOME/.local/bin"
 green "  ✓ ~/.local/bin ready"
 

@@ -206,6 +206,27 @@ else
   _ok "symlinks: ${_checked} checked"
   unset _checked _actual_target local_link expected_target _src _dst _drift
 
+  # The dot launcher is a copy, not a symlink (so it survives a repo move). Verify
+  # it's present, a current copy (not stale, not a dangling legacy symlink), and
+  # that the breadcrumb sync records still points back to this repo. Repaired by
+  # `dot sync`, not --fix: --fix only touches the symlink contract, and this is
+  # outside it. Empty breadcrumb on a fresh machine pre-first-sync is expected.
+  _bin="${HOME}/.local/bin/dot"
+  _crumb="${XDG_STATE_HOME:-${HOME}/.local/state}/dot/dir"
+  if [[ -L "$_bin" ]]; then
+    _warn "dot launcher is a symlink — it will dangle if the repo moves (run: dot sync to convert to a copy)"
+  elif [[ ! -f "$_bin" ]]; then
+    _warn "dot launcher missing: ${_bin} (run: dot sync)"
+  elif ! cmp -s "${_dotfiles}/dot" "$_bin" 2> /dev/null; then
+    _warn "dot launcher stale vs ${_dotfiles}/dot (run: dot sync)"
+  else
+    _ok "dot launcher current (${_bin}, copy)"
+  fi
+  if [[ "$(cat "$_crumb" 2> /dev/null)" != "$_dotfiles" ]]; then
+    _warn "dot breadcrumb ${_crumb} does not point at ${_dotfiles} (run: dot sync)"
+  fi
+  unset _bin _crumb
+
   # Orphaned symlinks (home→repo direction). The check above verifies every
   # contract entry is linked; this catches the reverse — a symlink in a managed
   # directory that points into the repo but whose source was deleted (e.g. a

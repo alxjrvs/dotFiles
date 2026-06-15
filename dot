@@ -1,12 +1,22 @@
 #!/usr/bin/env bash
 # dot — thin dispatcher; the single dotfiles command on PATH.
 #
-# Resolves DOTFILES_DIR once, then execs the matching topic script, passing
-# remaining args through.
+# Installed to ~/.local/bin/dot as a COPY, not a symlink (see install/40-symlinks.sh):
+# a symlink into the repo would dangle the instant the repo dir moves, leaving the
+# one command that repairs symlinks itself unrunnable. The copy keeps working; a
+# breadcrumb file (written by sync) lets it relocate the repo with no env var set.
+# Resolves DOTFILES_DIR once, then execs the matching topic script in the repo.
 set -euo pipefail
 
-# ── Resolve DOTFILES_DIR: env → dir of this script's resolved target → ~/dotFiles.
-# First candidate that is a directory containing a Brewfile wins.
+# Breadcrumb: sync records the resolved repo path here. The on-PATH copy lives in
+# ~/.local/bin (not the repo), so without this it could not find the repo unaided.
+__dot_breadcrumb() { printf '%s/dot/dir' "${XDG_STATE_HOME:-${HOME}/.local/state}"; }
+
+# ── Resolve DOTFILES_DIR — first candidate that is a dir containing a Brewfile:
+#   1. $DOTFILES_DIR env     — explicit override
+#   2. this script's own dir — running the in-repo ./dot (or a legacy symlink)
+#   3. recorded breadcrumb   — the normal path for the ~/.local/bin copy
+#   4. ~/dotFiles            — conventional fallback
 __valid_repo() { [[ -n "$1" && -d "$1" && -f "$1/Brewfile" ]]; }
 
 resolve_dir() {
@@ -14,7 +24,7 @@ resolve_dir() {
     printf '%s' "$DOTFILES_DIR"
     return 0
   fi
-  local self target dir
+  local self target dir crumb recorded=""
   self="${BASH_SOURCE[0]}"
   target=$(readlink -f "$self" 2> /dev/null || printf '%s' "$self")
   dir=$(cd "$(dirname "$target")" && pwd)
@@ -22,12 +32,24 @@ resolve_dir() {
     printf '%s' "$dir"
     return 0
   fi
+  crumb=$(__dot_breadcrumb)
+  if [[ -f "$crumb" ]]; then
+    recorded=$(< "$crumb")
+    if __valid_repo "$recorded"; then
+      printf '%s' "$recorded"
+      return 0
+    fi
+  fi
   if __valid_repo "${HOME:-}/dotFiles"; then
     printf '%s' "${HOME}/dotFiles"
     return 0
   fi
-  # shellcheck disable=SC2016  # $DOTFILES_DIR is a literal env-var name in the message
-  printf 'dot: cannot resolve DOTFILES_DIR (set $DOTFILES_DIR)\n' >&2
+  {
+    printf 'dot: dotfiles repo not found'
+    [[ -n "$recorded" ]] && printf ' at recorded path\n      %s (moved or deleted?)' "$recorded"
+    # shellcheck disable=SC2016  # $DOTFILES_DIR is a literal env-var name in the message
+    printf '\n      run: DOTFILES_DIR=/path/to/repo dot sync\n'
+  } >&2
   exit 1
 }
 

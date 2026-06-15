@@ -25,7 +25,6 @@ _symlink_pairs() {
 .editorconfig|.editorconfig
 .ripgreprc|.ripgreprc
 .fdignore|.fdignore
-dot|.local/bin/dot
 git-template/hooks/pre-commit|.config/git/template/hooks/pre-commit
 ssh/config|.ssh/config
 ssh/1password-agent.toml|.config/1Password/ssh/agent.toml
@@ -52,6 +51,35 @@ PAIRS
     name=$(basename "$f")
     printf 'zsh/%s|.config/zsh/%s\n' "$name" "$name"
   done
+  # NB: ~/.local/bin/dot is deliberately ABSENT from this contract — it's the one
+  # destination installed as a copy, not a symlink (see _install_dot_launcher).
+}
+
+# _install_dot_launcher: put `dot` on PATH as a COPY, not a symlink, plus a
+# breadcrumb recording the repo path. The whole point of the resilience: a
+# symlink into the repo dangles the moment the repo dir moves, so `dot` — the
+# command that repairs symlinks — would itself become unrunnable, a chicken-and-
+# egg you can only escape by knowing the new full path. A copy keeps running; the
+# breadcrumb lets it relocate the repo with no env var. Cost of the copy: it can
+# go stale when repo/dot changes — so sync re-copies every run, doctor flags drift.
+_install_dot_launcher() {
+  local df="${DOTFILES_DIR}" bindir="${HOME}/.local/bin" crumb
+  crumb="${XDG_STATE_HOME:-${HOME}/.local/state}/dot/dir"
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    printf '\033[0;36m  ~ would install dot launcher (copy) at %s/dot + record repo path\033[0m\n' "$bindir"
+    return 0
+  fi
+  mkdir -p "$bindir" "$(dirname "$crumb")"
+  # Reinstall when it's a symlink (legacy model → convert) or content differs
+  # (cmp also fails on a dangling/absent link, which correctly forces reinstall).
+  if [[ -L "${bindir}/dot" ]] || ! cmp -s "${df}/dot" "${bindir}/dot" 2> /dev/null; then
+    rm -f "${bindir}/dot"
+    install -m 0755 "${df}/dot" "${bindir}/dot"
+    printf '\033[0;33m  \xe2\x86\x92 dot launcher (copy) installed at %s/dot\033[0m\n' "$bindir"
+  else
+    printf '\033[0;32m  \xe2\x9c\x93 dot launcher current (%s/dot, copy)\033[0m\n' "$bindir"
+  fi
+  printf '%s\n' "$df" > "$crumb"
 }
 
 _symlinks_run() {
@@ -62,6 +90,8 @@ _symlinks_run() {
     mkdir -p "$(dirname "${HOME}/${dst}")"
     link "${df}/${src}" "${HOME}/${dst}"
   done < <(_symlink_pairs)
+
+  _install_dot_launcher
 
   # SSH needs tight perms. Skipped under --dry-run (these create/chmod ~/.ssh).
   if [[ "${DRY_RUN:-0}" != "1" ]]; then
