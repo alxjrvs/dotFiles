@@ -18,6 +18,10 @@
 # repo's worktrees/submodules (.claude/worktrees, .worktrees, nested repos)
 # never become workspaces. Hidden dirs are skipped (a repo's innards).
 #
+# Each top-level item it creates — a group or a flat top-level repo — gets a
+# distinct color cycled from cmux's palette, so the sidebar is scannable. Group
+# members aren't individually colored; they read as one unit under the group.
+#
 # Interactive, top-down: a new top-level group folder is asked "group <name>?";
 # a "Legacy" folder defaults to skip. Each new repo then prompts for a name
 # (Enter = the repo dir name, '-' to skip just that repo). Groups that already
@@ -72,7 +76,8 @@ for _arg in "$@"; do
       printf '  any depth inside join it. A repo is a leaf (its worktrees never\n'
       printf '  become workspaces). New groups are asked "group?"; "Legacy"\n'
       printf '  defaults to skip; each new repo prompts for a name. Repos already\n'
-      printf '  covered by any existing workspace are skipped.\n'
+      printf '  covered by any existing workspace are skipped. Each new group and\n'
+      printf '  flat top-level repo gets a distinct color from the cmux palette.\n'
       printf '  --hard          archive existing into "Archive", then mirror exactly\n'
       printf '  --headless      no prompts: create all new, skip Legacy\n'
       printf '  -n, --dry-run   show what would happen; change nothing\n'
@@ -157,6 +162,20 @@ _created=0
 _covered=0
 _declined=0
 _LAST_REF="" # ref of the workspace _make_workspace just created ("" if none)
+
+# Distinct colors, cycled once per created top-level item (each group and each
+# flat top-level repo) so they're mutually distinguishable. Group members aren't
+# individually colored — they read as one unit under the group. Hexes are cmux's
+# own named-color palette, ordered for early contrast, so they match the app.
+_PALETTE=(
+  "#1565C0" "#196F3D" "#A04000" "#6A1B9A" "#006B6B" "#922B21" "#7D6608" "#AD1457"
+  "#0E6B8C" "#4A5C18" "#880E4F" "#283593" "#7B3F00" "#1A5276" "#C0392B" "#3E4B5E"
+)
+_color_i=0
+_next_color() {
+  printf '%s' "${_PALETTE[$((_color_i % ${#_PALETTE[@]}))]}"
+  _color_i=$((_color_i + 1))
+}
 
 # _repo_leaves <dir>: print every repo-leaf dir below <dir> — the FIRST repo on
 # each path (stop at a repo, never descend into it), non-hidden dirs only.
@@ -250,8 +269,12 @@ _add_to_group() {
         _p_fail "failed to add ${m} to group ${name}"
     done < <(printf '%s' "$members" | tr ',' '\n')
   else
-    _cmux workspace-group create --name "$name" --cwd "$path" --from "$members" > /dev/null 2>&1 ||
+    if _cmux workspace-group create --name "$name" --cwd "$path" --from "$members" > /dev/null 2>&1; then
+      gref=$(_group_ref "$name")
+      [[ -n "$gref" ]] && _cmux workspace-group set-color "$gref" --hex "$(_next_color)" > /dev/null 2>&1 || true
+    else
       _p_fail "failed to create group ${name}"
+    fi
   fi
 }
 
@@ -323,6 +346,8 @@ _walk() {
     name=$(basename "$entry")
     if [[ -e "$entry/.git" ]]; then
       _make_workspace "$entry" "$name" # top-level repo → flat workspace
+      [[ -n "$_LAST_REF" ]] &&
+        _cmux workspace-action --action set-color --workspace "$_LAST_REF" --color "$(_next_color)" > /dev/null 2>&1 || true
     else
       _process_group "$entry" "$name" # folder of repos → one group
     fi
