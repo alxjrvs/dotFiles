@@ -56,7 +56,7 @@ resolve_dir() {
 DIR=$(resolve_dir)
 
 [[ $# -ge 1 ]] || {
-  printf 'usage: dot <sync|update|doctor|watchtower|cmux> [args...]\n' >&2
+  printf 'usage: dot <sync|update|doctor|watchtower|ws> [args...]\n' >&2
   exit 2
 }
 
@@ -69,7 +69,7 @@ case "$cmd" in
   update) exec "$DIR/sync" --upgrade "$@" ;;
   doctor) exec "$DIR/doctor" "$@" ;;
   watchtower) exec "$DIR/watchtower" "$@" ;;
-  cmux) exec "$DIR/cmux/mirror" "$@" ;;
+  ws) exec "$DIR/cmux/mirror" "$@" ;;
   *)
     printf 'dot: unknown subcommand: %s\n' "$cmd" >&2
     exit 2

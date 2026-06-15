@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # cmux/mirror — mirror ~/Code into cmux workspaces (one workspace per git repo).
-# Run via `dot cmux`. Lives in the cmux/ topic folder beside cmux.json; it is a
-# dispatcher target (like sync/doctor), not a symlinked or sourced module.
+# Run via `dot ws` (dot workspace). Lives in the cmux/ topic folder beside
+# cmux.json; it is a dispatcher target (like sync/doctor), not a symlinked or
+# sourced module.
 #
 # Each top-level entry of $CODE_DIR (default ~/Code) maps to the sidebar:
 #   - a git repo                      → a flat workspace.
@@ -38,19 +39,29 @@
 # auto-by-directory grouping); new repos are added to the group for their folder.
 #
 # Modes:
-#   (default)     interactive prompts, top-down.
-#   --headless    no prompts: create every new workspace, skip "Legacy" folders.
-#   --hard        force the sidebar to match ~/Code: ARCHIVE all existing
-#                 workspaces into an "Archive" group, then mirror
-#                 non-interactively while ignoring coverage (recreate the
-#                 full canonical set fresh). "Legacy" is still skipped.
-#   -n/--dry-run  list what an accept-the-defaults run would do; change nothing.
+#   (default)        interactive prompts, top-down.
+#   --headless       no prompts: create every new workspace, skip "Legacy" folders.
+#   --hard           force the sidebar to match the target dir: ARCHIVE all
+#                    existing workspaces into an "Archive" group, then mirror
+#                    non-interactively while ignoring coverage (recreate the
+#                    full canonical set fresh). "Legacy" is still skipped.
+#   -n/--dry-run     list what an accept-the-defaults run would do; change nothing.
+#
+# Scope:
+#   --target-dir D   mirror D instead of ~/Code (overrides $CODE_DIR). The root
+#                    whose top-level entries map to the sidebar.
+#   --target-ws W    migrate only the single folder W (absolute, or relative to
+#                    the target dir) — a repo → one workspace, a folder of repos
+#                    → one group — instead of walking the whole target dir.
+#                    Mutually exclusive with --hard (a full-sidebar operation).
 #
 # Per-machine by design: it reads THIS machine's own ~/Code and drives the
 # running cmux over its control socket, so the layout lives nowhere in the repo.
 #
 # Flags:
-#   --hard          archive existing into "Archive", then mirror ~/Code exactly (implies no prompts)
+#   --target-dir D  mirror D instead of ~/Code (overrides $CODE_DIR)
+#   --target-ws W   migrate only the single folder W (repo → workspace, folder → group)
+#   --hard          archive existing into "Archive", then mirror the target dir exactly (implies no prompts)
 #   --headless      non-interactive: create all new, skip Legacy
 #   -n, --dry-run   list what would happen; change nothing
 #   -h, --help
@@ -67,13 +78,48 @@ source "${_REPO_DIR}/lib/common.sh"
 _DRY=0
 _HEADLESS=0
 _HARD=0
-for _arg in "$@"; do
-  case "$_arg" in
+_TARGET_DIR=""
+_TARGET_WS=""
+# _need_value <flag> <next>: fail+exit unless a value-flag got a real value (not
+# the next flag, not empty). Called directly (NOT in a $() subshell) so the exit
+# halts the whole script — a subshell exit would only end the substitution and
+# let the run continue with an empty value.
+_need_value() {
+  [[ -n "$2" && "$2" != -* ]] && return 0
+  _p_fail "ws: $1 needs a value"
+  exit 2
+}
+while [[ $# -gt 0 ]]; do
+  case "$1" in
     -n | --dry-run) _DRY=1 ;;
     --headless) _HEADLESS=1 ;;
     --hard) _HARD=1 ;;
+    --target-dir)
+      _need_value "$1" "${2:-}"
+      _TARGET_DIR="$2"
+      shift
+      ;;
+    --target-dir=*)
+      _TARGET_DIR="${1#*=}"
+      [[ -n "$_TARGET_DIR" ]] || {
+        _p_fail "ws: --target-dir needs a value"
+        exit 2
+      }
+      ;;
+    --target-ws)
+      _need_value "$1" "${2:-}"
+      _TARGET_WS="$2"
+      shift
+      ;;
+    --target-ws=*)
+      _TARGET_WS="${1#*=}"
+      [[ -n "$_TARGET_WS" ]] || {
+        _p_fail "ws: --target-ws needs a value"
+        exit 2
+      }
+      ;;
     -h | --help)
-      printf 'usage: dot cmux [--hard] [--headless] [--dry-run]\n'
+      printf 'usage: dot ws [--target-dir D] [--target-ws W] [--hard] [--headless] [--dry-run]\n'
       printf '  Mirror ~/Code into cmux workspaces (one per git repo). Each\n'
       printf '  top-level folder of repos becomes one flat cmux group; repos at\n'
       printf '  any depth inside join it. A repo is a leaf (its worktrees never\n'
@@ -82,39 +128,70 @@ for _arg in "$@"; do
       printf '  covered by any existing workspace are skipped. Each new group and\n'
       printf '  flat top-level repo gets a unique color from the cmux palette; a\n'
       printf "  group's members are shaded from that group's color.\n"
+      printf '  --target-dir D  mirror D instead of ~/Code\n'
+      printf '  --target-ws W   migrate only folder W (repo → workspace, folder → group)\n'
       printf '  --hard          archive existing into "Archive", then mirror exactly\n'
       printf '  --headless      no prompts: create all new, skip Legacy\n'
       printf '  -n, --dry-run   show what would happen; change nothing\n'
       # shellcheck disable=SC2016  # $CODE_DIR is a literal env-var name in the message
-      printf '  Honors $CODE_DIR (default ~/Code).\n'
+      printf '  Honors $CODE_DIR (default ~/Code) when --target-dir is unset.\n'
       exit 0
       ;;
     *)
-      _p_fail "cmux: unknown argument: $_arg"
+      _p_fail "ws: unknown argument: $1"
       exit 2
       ;;
   esac
+  shift
 done
 
+# --target-ws scopes to one folder; --hard rewrites the entire sidebar. Refusing
+# the combination keeps each mode's contract unambiguous.
+if [[ -n "$_TARGET_WS" && "$_HARD" == "1" ]]; then
+  _p_fail "ws: --target-ws cannot be combined with --hard"
+  exit 2
+fi
+
 # ── Preconditions: a code dir, a cmux on PATH, and a reachable cmux socket ─────
-_code="${CODE_DIR:-}"
+# --target-dir wins over $CODE_DIR wins over the ~/Code default.
+_code="${_TARGET_DIR:-${CODE_DIR:-}}"
 if [[ -z "$_code" ]]; then
   if [[ -d "${HOME}/Code" ]]; then
     _code="${HOME}/Code"
   elif [[ -d "${HOME}/code" ]]; then
     _code="${HOME}/code"
   else
-    _p_fail "cmux: no ~/Code directory found (set \$CODE_DIR)"
+    _p_fail "ws: no ~/Code directory found (set \$CODE_DIR or pass --target-dir)"
     exit 1
   fi
 fi
+_code="${_code%/}"
+[[ -d "$_code" ]] || {
+  _p_fail "ws: target dir not found: $_code"
+  exit 1
+}
+
+# --target-ws: resolve W to an absolute folder (relative paths hang off the
+# target dir, so `--target-ws gnar` means ~/Code/gnar) and confirm it exists.
+_tws=""
+if [[ -n "$_TARGET_WS" ]]; then
+  case "$_TARGET_WS" in
+    /*) _tws="$_TARGET_WS" ;;
+    *) _tws="${_code}/${_TARGET_WS}" ;;
+  esac
+  _tws="${_tws%/}"
+  [[ -d "$_tws" ]] || {
+    _p_fail "ws: --target-ws folder not found: $_tws"
+    exit 1
+  }
+fi
 
 command -v cmux > /dev/null 2>&1 || {
-  _p_fail "cmux: the cmux CLI is not on PATH"
+  _p_fail "ws: the cmux CLI is not on PATH"
   exit 1
 }
 if [[ "$(cmux ping 2> /dev/null || true)" != "PONG" ]]; then
-  _p_fail "cmux: control socket not reachable — open the cmux app first"
+  _p_fail "ws: cmux control socket not reachable — open the cmux app first"
   exit 1
 fi
 
@@ -440,21 +517,29 @@ _archive_existing() {
   _note "archived ${count} existing workspace(s) into 'Archive'"
 }
 
+# _process_entry <path> <name>: map one top-level entry to the sidebar — a repo
+# becomes a flat workspace (uniquely colored), a folder of repos becomes a group.
+# Shared by the full walk and the single-folder --target-ws path.
+_process_entry() {
+  local path="$1" name="$2"
+  if [[ -e "$path/.git" ]]; then
+    _make_workspace "$path" "$name" # repo → flat workspace
+    if [[ -n "$_LAST_REF" ]]; then
+      _pick_color "$name"
+      _cmux workspace-action --action set-color --workspace "$_LAST_REF" --color "$_COLOR" > /dev/null 2>&1 || true
+    fi
+  else
+    _process_group "$path" "$name" # folder of repos → one group
+  fi
+}
+
 # ── Walk top-level: repos → flat workspaces, folders-of-repos → groups ────────
 _walk() {
   local entry name
   for entry in "$_code"/*/; do
     entry="${entry%/}"
     name=$(basename "$entry")
-    if [[ -e "$entry/.git" ]]; then
-      _make_workspace "$entry" "$name" # top-level repo → flat workspace
-      if [[ -n "$_LAST_REF" ]]; then
-        _pick_color "$name"
-        _cmux workspace-action --action set-color --workspace "$_LAST_REF" --color "$_COLOR" > /dev/null 2>&1 || true
-      fi
-    else
-      _process_group "$entry" "$name" # folder of repos → one group
-    fi
+    _process_entry "$entry" "$name"
   done
 }
 
@@ -465,10 +550,17 @@ elif [[ "$_HEADLESS" == "1" ]]; then
 else
   _mode=""
 fi
-_hdr "cmux workspaces ← ${_code}${_mode}"
-[[ "$_HARD" == "1" ]] || _note "matched against ${_seen_count} existing workspace(s)"
-[[ "$_HARD" == "1" ]] && _archive_existing
-_walk
+
+if [[ -n "$_tws" ]]; then
+  _hdr "cmux workspace ← ${_tws}${_mode}"
+  _note "matched against ${_seen_count} existing workspace(s)"
+  _process_entry "$_tws" "$(basename "$_tws")"
+else
+  _hdr "cmux workspaces ← ${_code}${_mode}"
+  [[ "$_HARD" == "1" ]] || _note "matched against ${_seen_count} existing workspace(s)"
+  [[ "$_HARD" == "1" ]] && _archive_existing
+  _walk
+fi
 
 if [[ "$_DRY" == "1" ]]; then
   _ok "dry-run: ${_created} would be created, ${_covered} already covered, ${_declined} skipped"

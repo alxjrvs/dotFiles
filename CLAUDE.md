@@ -58,7 +58,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `dot update` | `./sync --upgrade` | Bump everything. |
 | `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. `--fix` repairs the symlink contract (reap orphans + relink missing/incorrect) — doctor's only mutation. |
 | `dot watchtower` | `./watchtower` | Local "Watchtower"-style 1Password audit (breached/reused/weak/unsecured) built on the `op` CLI. Reads passwords locally, emits only hashes/metadata. Dev creds (localhost/`.local`/LAN URL, or the `watchtower-ignore` tag) are listed separately, never flagged. Foreground only (op desktop-auth needs the calling session); `--vault=NAME`, `--no-breach`. |
-| `dot cmux` | `./cmux/mirror` | Mirror `~/Code` into cmux workspaces: crawl until repos, repos become workspaces (a repo is a leaf — worktrees never become workspaces), each top-level folder of repos becomes one flat cmux group (created via the `workspace-group` CLI — cmux has no auto-by-directory grouping; the group is anchored with a terminal at the folder). Each new group and flat top-level repo gets a *unique* color from cmux's palette (never repeated, never colliding with one already in the sidebar), and a group's members are shaded from that group's color so they read as one family (any `gnar`-named item — the owner's brand — is themed orange instead). Interactive top-down (`workspace?`/`group?`); repos already *covered* by any existing workspace (at or inside the repo, incl. custom setups) are skipped, `Legacy` folders default-skip. `--headless` (create all new, skip Legacy), `--hard` (archive all existing workspaces into an "Archive" group, then mirror exactly), `--dry-run`. Needs a running cmux (drives it over the control socket). |
+| `dot ws` | `./cmux/mirror` | Mirror `~/Code` into cmux workspaces (`ws` = workspace): crawl until repos, repos become workspaces (a repo is a leaf — worktrees never become workspaces), each top-level folder of repos becomes one flat cmux group (created via the `workspace-group` CLI — cmux has no auto-by-directory grouping; the group is anchored with a terminal at the folder). Each new group and flat top-level repo gets a *unique* color from cmux's palette (never repeated, never colliding with one already in the sidebar), and a group's members are shaded from that group's color so they read as one family (any `gnar`-named item — the owner's brand — is themed orange instead). Interactive top-down (`workspace?`/`group?`); repos already *covered* by any existing workspace (at or inside the repo, incl. custom setups) are skipped, `Legacy` folders default-skip. `--target-dir D` (mirror `D` instead of `~/Code`), `--target-ws W` (migrate only the single folder `W` — repo→workspace, folder→group; mutually exclusive with `--hard`), `--headless` (create all new, skip Legacy), `--hard` (archive all existing workspaces into an "Archive" group, then mirror exactly), `--dry-run`. Needs a running cmux (drives it over the control socket). |
 
 `DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → the script's own dir (in-repo `./dot`) → the breadcrumb `sync` records at `${XDG_STATE_HOME:-~/.local/state}/dot/dir` (the path the on-PATH copy uses, since its own dir is `~/.local/bin`, not the repo) → fallback `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` sources `lib/common.sh` (which defines `link()` alongside the other shared helpers), then exports those helpers (`os_kind`, `resolve_dotfiles_dir`, `link`) before sourcing each module, so the modules carry no helpers of their own.
 
@@ -151,9 +151,10 @@ Ghostty is kept installed purely as the **embedded rendering engine** (the
 `ghostty` cask provides libghostty), not a separate daily driver. `dot
 doctor` validates both symlinks via the generic `_symlink_pairs` audit.
 
-The third cmux piece is **`cmux/mirror`** (run as `dot cmux`): it populates the
-sidebar by mirroring `~/Code` — crawling until it hits git repos, turning repos
-into workspaces and each top-level folder of repos into one flat cmux group.
+The third cmux piece is **`cmux/mirror`** (run as `dot ws`, for *workspace*): it
+populates the sidebar by mirroring `~/Code` — crawling until it hits git repos,
+turning repos into workspaces and each top-level folder of repos into one flat
+cmux group.
 Groups are created explicitly via the `workspace-group` CLI (cmux has **no**
 auto-by-directory grouping), anchored with a terminal at the folder; cmux
 groups are flat, so nested folders collapse into their top-level group. Each
@@ -178,8 +179,13 @@ existing group is filled in without asking, so only brand-new groups prompt),
 with `--headless` (create all new, skip Legacy), `--hard` (archive every
 existing workspace into an "Archive" group, then mirror `~/Code` exactly,
 ignoring coverage — nothing is lost, the prior set is just parked out of the
-way), and `--dry-run`. Lives in `cmux/` beside `cmux.json`; it's a dispatcher
-target, not symlinked.
+way), and `--dry-run`. Two scope flags narrow the target: `--target-dir D`
+mirrors `D` instead of `~/Code` (overrides `$CODE_DIR`), and `--target-ws W`
+migrates just the one folder `W` (absolute, or relative to the target dir) —
+a repo becomes a workspace, a folder of repos becomes a group — instead of
+walking the whole tree; it's mutually exclusive with `--hard` (a full-sidebar
+operation). Lives in `cmux/` beside `cmux.json`; it's a dispatcher target, not
+symlinked.
 
 No other terminal emulators (iTerm2, WezTerm, Kitty, Alacritty, Warp) are
 managed by this repo. The stack is exactly cmux (the terminal) plus Ghostty
