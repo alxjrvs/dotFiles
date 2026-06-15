@@ -8,7 +8,7 @@ A macOS dotfiles repository owned end-to-end by a handful of **shell scripts** f
 
 Each subsystem lives in its own topic folder. The helpers shared by the standalone scripts (`os_kind`, `resolve_dotfiles_dir`, and the `link()` symlinker) live in one small **`lib/common.sh`**, sourced by `sync` and `doctor`.
 
-Source of truth for setup behavior is `sync` + `install/*.sh`. The shell prompt is starship (`starship.toml`, symlinked to `~/.config/starship.toml`). The Claude Code statusline is a separate project (`github.com/alxjrvs/claude-statusline`). `install/60-claude.sh` (claude tag) clones it to `~/Code/claude-statusline` and runs its `install.sh`, which symlinks `claude-statusline` + `claude-subagent-statusline` into `~/.local/bin`; `dot-claude/settings.json` references those paths.
+Source of truth for setup behavior is `sync` + `install/*.sh`. The shell prompt is starship (`starship.toml`, symlinked to `~/.config/starship.toml`). The Claude Code statusline is a separate project (`github.com/alxjrvs/claude-statusline`). `install/60-claude.sh` (claude tag) clones it **beside the dotfiles repo** (sibling of `$DOTFILES_DIR`, so it travels with the repo across moves rather than a hardcoded `~/Code` path) and runs its `install.sh`, which symlinks `claude-statusline` + `claude-subagent-statusline` into `~/.local/bin`; `dot-claude/settings.json` references those paths.
 
 ## Northern Principles
 
@@ -50,7 +50,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 
 ### The `dot` dispatcher + topic folders
 
-`dot` (repo root) is a short bash script — the single command symlinked onto `PATH` at `~/.local/bin/dot`. It resolves `DOTFILES_DIR` once, then execs the matching topic script, passing args through:
+`dot` (repo root) is a short bash script — the single command on `PATH` at `~/.local/bin/dot`, installed there as a **copy** (not a symlink, so it survives a repo move — see Gotchas). It resolves `DOTFILES_DIR` once, then execs the matching topic script, passing args through:
 
 | Subcommand | Execs | Purpose |
 |------------|-------|---------|
@@ -58,9 +58,9 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `dot update` | `./sync --upgrade` | Bump everything. |
 | `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. `--fix` repairs the symlink contract (reap orphans + relink missing/incorrect) — doctor's only mutation. |
 | `dot watchtower` | `./watchtower` | Local "Watchtower"-style 1Password audit (breached/reused/weak/unsecured) built on the `op` CLI. Reads passwords locally, emits only hashes/metadata. Dev creds (localhost/`.local`/LAN URL, or the `watchtower-ignore` tag) are listed separately, never flagged. Foreground only (op desktop-auth needs the calling session); `--vault=NAME`, `--no-breach`. |
-| `dot cmux` | `./cmux/mirror` | Mirror `~/Code` into cmux workspaces: crawl until repos, repos become workspaces (a repo is a leaf — worktrees never become workspaces), each top-level folder of repos becomes one flat cmux group (created via the `workspace-group` CLI — cmux has no auto-by-directory grouping; the group is anchored with a terminal at the folder). Each new group and flat top-level repo gets a distinct color cycled from cmux's palette. Interactive top-down (`workspace?`/`group?`); repos already *covered* by any existing workspace (at or inside the repo, incl. custom setups) are skipped, `Legacy` folders default-skip. `--headless` (create all new, skip Legacy), `--hard` (archive existing into an "Archive" group, then mirror exactly), `--dry-run`. Needs a running cmux (drives it over the control socket). |
+| `dot cmux` | `./cmux/mirror` | Mirror `~/Code` into cmux workspaces: crawl until repos, repos become workspaces (a repo is a leaf — worktrees never become workspaces), each top-level folder of repos becomes one flat cmux group (created via the `workspace-group` CLI — cmux has no auto-by-directory grouping; the group is anchored with a terminal at the folder). Each new group and flat top-level repo gets a *unique* color from cmux's palette (never repeated, never colliding with one already in the sidebar), and a group's members are shaded from that group's color so they read as one family (any `gnar`-named item — the owner's brand — is themed orange instead). Interactive top-down (`workspace?`/`group?`); repos already *covered* by any existing workspace (at or inside the repo, incl. custom setups) are skipped, `Legacy` folders default-skip. `--headless` (create all new, skip Legacy), `--hard` (close all existing workspaces, then mirror exactly), `--dry-run`. Needs a running cmux (drives it over the control socket). |
 
-`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → directory of `dot`'s resolved symlink target → fallback `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` sources `lib/common.sh` (which defines `link()` alongside the other shared helpers), then exports those helpers (`os_kind`, `resolve_dotfiles_dir`, `link`) before sourcing each module, so the modules carry no helpers of their own.
+`DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → the script's own dir (in-repo `./dot`) → the breadcrumb `sync` records at `${XDG_STATE_HOME:-~/.local/state}/dot/dir` (the path the on-PATH copy uses, since its own dir is `~/.local/bin`, not the repo) → fallback `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` sources `lib/common.sh` (which defines `link()` alongside the other shared helpers), then exports those helpers (`os_kind`, `resolve_dotfiles_dir`, `link`) before sourcing each module, so the modules carry no helpers of their own.
 
 ### sync / install modules
 
@@ -92,10 +92,9 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `gh/gh-mcp-auth-header` | `~/.local/bin/gh-mcp-auth-header` (github MCP headersHelper → `op read`) |
 | `render/render-mcp-auth-header` | `~/.local/bin/render-mcp-auth-header` (Render MCP headersHelper → `op read`) |
 | `git-template/hooks/pre-commit` | `~/.config/git/template/hooks/pre-commit` (copied into new repos via `init.templateDir`) |
-| `dot` | `~/.local/bin/dot` |
 | `dot-claude/{CLAUDE.md, settings.json}` | `~/.claude/` (individually) |
 
-Everything is symlinked — every destination traces back to a file in this repo.
+Everything here is symlinked — every destination traces back to a file in this repo. The lone exception is `~/.local/bin/dot`, which `sync` installs as a **copy** (plus a breadcrumb) so the dispatcher keeps working even if the repo dir moves — see the `dot` survives a repo move gotcha.
 
 ### Claude Code Configuration (`dot-claude/`)
 
@@ -157,9 +156,15 @@ into workspaces and each top-level folder of repos into one flat cmux group.
 Groups are created explicitly via the `workspace-group` CLI (cmux has **no**
 auto-by-directory grouping), anchored with a terminal at the folder; cmux
 groups are flat, so nested folders collapse into their top-level group. Each
-created top-level item (group or flat repo) gets a distinct color cycled from
-cmux's palette (`workspace-group set-color` / `workspace-action set-color`). A
-repo is a **leaf**: the crawl stops there, so worktrees (`.claude/worktrees`,
+created top-level item (group or flat repo) gets a *unique* color from cmux's
+palette (`workspace-group set-color` / `workspace-action set-color`) — never
+repeated and never colliding with a color already in the sidebar (it seeds the
+used set from the live `custom_color`s) — and each group's members are shaded
+from that group's color (lightness-spread, plain integer math) so they read as
+one color family. The one exception: any `gnar`-named item (the owner's brand,
+gnar.dog) is always themed orange (`#FF8000`, the claude-statusline's orange)
+instead of a palette color, so the brand reads consistently. A repo is a
+**leaf**: the crawl stops there, so worktrees (`.claude/worktrees`,
 `.worktrees`) and submodules never spawn stray workspaces. It's *generated per
 machine, not stored* — it reads the local `~/Code` and drives the running cmux
 over its control socket, so it honors "one config, every machine" without
@@ -169,10 +174,11 @@ and skips any repo already *covered* — a workspace at or inside the repo, so
 hand-made/custom setups count, not just exact `~/Code` mirrors. Interactive by
 default (asks `workspace?`/`group?` top-down; `Legacy` folders default-skip; an
 existing group is filled in without asking, so only brand-new groups prompt),
-with `--headless` (create all new, skip Legacy), `--hard` (move every existing
-workspace into an "Archive" group, then mirror `~/Code` exactly, ignoring
-coverage), and `--dry-run`. Lives in `cmux/` beside `cmux.json`; it's a
-dispatcher target, not symlinked.
+with `--headless` (create all new, skip Legacy), `--hard` (close every existing
+workspace outright, then mirror `~/Code` exactly, ignoring coverage — closing a
+group's anchor dissolves the group, so iterating every workspace clears groups
+too), and `--dry-run`. Lives in `cmux/` beside `cmux.json`; it's a dispatcher
+target, not symlinked.
 
 No other terminal emulators (iTerm2, WezTerm, Kitty, Alacritty, Warp) are
 managed by this repo. The stack is exactly cmux (the terminal) plus Ghostty
@@ -286,6 +292,6 @@ Pause and confirm with the user before doing any of these:
 
 - **dot-claude vs .claude**: `dot-claude/` is the source of truth for **user/global** Claude config (symlinked into `~/.claude/`). The repo-root `.claude/` is this repo's **project-scoped** config and is entirely gitignored — there's no committed project `settings.json` (the repo carries no per-project Claude divergences). Don't conflate the two: `dot-claude/` is global, `.claude/` is this-repo-only and local.
 - **Sheldon plugin order matters**: `fast-syntax-highlighting` must be last in `sheldon/plugins.toml`. It wraps every existing ZLE widget at load time, so anything that registers a widget must run before sheldon's `eval` line in `zsh/30-plugins.zsh`.
-- **`dot` self-locates**: `dot` resolves `DOTFILES_DIR` from its own resolved symlink target, so the repo is relocatable. To move it: `mv` the repo, then run `DOTFILES_DIR=<new> <new>/dot sync --force` once to relink (or just re-run `bootstrap.sh`).
+- **`dot` survives a repo move**: `~/.local/bin/dot` is a **copy**, not a symlink (the *one* destination not symlinked — a symlink would dangle the instant the repo dir moved, making the very command that repairs symlinks unrunnable). The copy stays runnable; a breadcrumb at `${XDG_STATE_HOME:-~/.local/state}/dot/dir` (written by `sync`) lets it relocate the repo with no env var. Resolution order: `$DOTFILES_DIR` env → the script's own dir (in-repo `./dot`) → breadcrumb → `~/dotFiles`. To move the repo: `mv` it, then `DOTFILES_DIR=<new> dot sync` once — that relinks everything, re-copies the launcher, and re-records the breadcrumb (`dot` keeps working throughout, since the copy doesn't move; if the breadcrumb is stale it prints the exact heal command). `dot doctor` flags a stale/symlinked launcher or a wrong breadcrumb. `--force` is no longer needed for the relink.
 - **`gh` auth is keychain-backed**: the OAuth token lives in the macOS login keychain (gh secure storage); `~/.config/gh/hosts.yml` carries only non-secret host metadata. If a future `gh auth login` ever uses `--insecure-storage` it will dump the token plaintext into `hosts.yml` — don't; re-login with default (secure) storage. `gh auth status` should show `(keyring)`.
 - **`dot sync --only=<tag>` requires the tag to exist**: a module's declared tag and the `--only=` value must agree. A tag no module declares fails loudly (`==> ✗ --only=foo matched no module`, exit 1) — it does not silently run nothing.
