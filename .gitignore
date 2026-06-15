@@ -21,11 +21,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Claude — this repo carries no committed project-scoped settings (the whole
-# `.claude/` dir is local-only). User/global config lives in `dot-claude/`,
-# symlinked into ~/.claude/ by `dot sync`. Machine-local overrides stay
-# untracked via `**/.claude/settings.local.json` below.
-.claude/
+# Claude — commit the project-scoped opt-out (this installer repo runs
+# `dot sync` across $HOME and needs in-box `op`, both impossible under the
+# global sandbox), keep everything else under `.claude/` local-only. User/global
+# config lives in `dot-claude/`, symlinked into ~/.claude/ by `dot sync`.
+.claude/*
+!.claude/settings.json
 
 # Secrets resolve through `op run --` / op:// references, never a file (see
 # CLAUDE.md). `.npmrc` is gitignored at the user-config level because per-project

@@ -18,7 +18,7 @@ One North Star: **small, exemplary, easily shareable — a senior engineer's sho
 
 2. **Guilty until proven load-bearing.** Every dependency, wrapper, convention, and line of config must earn its weight on a *personal* repo. Nothing stays because it's "best practice" — ceremony justifies itself by what it prevents, or it goes. When in doubt, cut and see what breaks. Protected, never cut without asking: `brew`, `neovim`, `ghostty`.
 
-3. **No gratuitous wrappers.** Don't wrap a command just to re-expose it — call tools natively (`op run --`, `eval "$(starship init zsh)"`). Keep *only* the shims an external program execs by path with no native alternative: `git-ssh-sign` (1Password commit signing), `gh-mcp-auth-header` (GitHub MCP `headersHelper`), and `git-credential-op-claude` (git credential helper resolving the agent's scoped PAT). A shim that merely forwards is a smell.
+3. **No gratuitous wrappers.** Don't wrap a command just to re-expose it — call tools natively (`op run --`, `eval "$(starship init zsh)"`). Keep *only* the shims an external program execs by path with no native alternative: `git-ssh-sign` (1Password commit signing) and `gh-mcp-auth-header` (GitHub MCP `headersHelper`). A shim that merely forwards is a smell. (Agent git auth deliberately uses the *stock* `osxkeychain` helper, not a custom shim — see Secrets.)
 
 4. **One config, every machine.** No host detection, no per-host overlay. If a genuine per-machine divergence appears, add the *smallest possible guard at that point* — never a host-overlay system built preemptively. (Machine-local escape hatches that already exist: `~/.gitconfig.local` for signing, `DOTFILES_DIR` for relocation.)
 
@@ -88,7 +88,6 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `ssh/config` | `~/.ssh/config` (mode 600) |
 | `ssh/1password-agent.toml` | `~/.config/1Password/ssh/agent.toml` |
 | `gh/gh-mcp-auth-header` | `~/.local/bin/gh-mcp-auth-header` (github MCP headersHelper → `op read`) |
-| `gh/git-credential-op-claude` | `~/.local/bin/git-credential-op-claude` (agent git credential helper → `op read` scoped PAT) |
 | `render/render-mcp-auth-header` | `~/.local/bin/render-mcp-auth-header` (Render MCP headersHelper → `op read`) |
 | `git-template/hooks/pre-commit` | `~/.config/git/template/hooks/pre-commit` (copied into new repos via `init.templateDir`) |
 | `dot` | `~/.local/bin/dot` |
@@ -207,7 +206,12 @@ The agent never borrows your biometric session. `dot sync` (the `op-agent` modul
 
 MCP auth is a **`headersHelper` → `op read` shim** (`gh/gh-mcp-auth-header`, `render/render-mcp-auth-header`). Each shim sources the keychain token *inline* (`OP_SERVICE_ACCOUNT_TOKEN="$(security find-generic-password -s op-claude-agent -w)" op read …`), confined to that one `op` process — so neither the service-account token nor the resolved secret reaches a Bash subprocess, the transcript, or OTEL spans. The payoff: **no Touch ID prompt and no desktop-app dependency** (works headless/cron). No `claude()` wrapper. When the keychain item is absent the shim falls back to desktop biometric, so nothing breaks pre-bootstrap. Generalize the shim to any HTTP MCP server needing a bearer token; store each such secret in `claude-agent` and point `OP_REF` at `op://claude-agent/...`.
 
-The **same service-account pattern backs the agent's git auth.** `gh/git-credential-op-claude` is a git credential helper (same inline-keychain → `op read`) that resolves a **fine-grained, all-repos, `Contents:read+write` PAT** from `op://claude-agent/Claude Git PAT/credential`. It's wired in *agent-only* via `dot-claude/settings.json` `GIT_CONFIG_*` (`credential.https://github.com.helper` → `op-claude`, with an empty-string reset first to drop the inherited `gh` helper) — so a Claude session pushes over HTTPS with a least-privilege PAT instead of your broad `gh` OAuth token (perpetual `repo` scope, every repo). Your own terminal git is untouched (it keeps the `gh` helper from `~/.gitconfig`). SSH auth was rejected for the agent: 1Password's SSH agent is interactive-only (per-process biometric, no headless mode), so HTTPS+service-account-token is the headless-safe path both GitHub and 1Password recommend for automation. Bootstrap: mint the PAT and `op item create --category "API Credential" --title "Claude Git PAT" --vault claude-agent credential=<pat>`.
+**Agent git auth uses the stock `osxkeychain` helper, not `op` directly** — because `op` cannot run inside the bash sandbox (see the Sandbox section): the sandbox MITM-proxies any direct TLS, and `op` bypasses the proxy + pins the system trust store, so its 1Password API call dies with `errSecNotTrusted`. Keychain *reads*, however, work in-box. So the agent's git credential is the **login keychain**, populated out-of-band:
+
+- `dot sync` (`install/47-op-agent.sh`, runs *unsandboxed*) resolves the **fine-grained, all-repos, `Contents:read+write` PAT** from `op://claude-agent/Claude Git PAT/credential` and `git credential-osxkeychain store`s it as the `github.com` credential. Keychain *writes* need an unsandboxed context, which sync is.
+- A sandboxed Claude session then authenticates git-over-HTTPS by **reading** that cached PAT via `osxkeychain` — no `op`, no proxy, no biometric. Rotation = re-run `dot sync`.
+
+Wired *agent-only* via `dot-claude/settings.json` `GIT_CONFIG_*` (`credential.https://github.com.helper` → `osxkeychain`, with an empty-string reset first to drop the inherited `gh` helper) — so the agent pushes with the least-privilege PAT instead of your broad `gh` OAuth token, while your own terminal git keeps the `gh` helper from `~/.gitconfig`. (SSH auth was rejected for the agent: 1Password's SSH agent is interactive-only — per-process biometric, no headless mode.) Bootstrap: mint the PAT and `op item create --category "API Credential" --title "Claude Git PAT" --vault claude-agent credential=<pat>`, then `dot sync`.
 
 Rotation: delete the service account in the 1Password web UI and re-run `dot sync` — it re-mints whenever the keychain item is missing. Each machine gets its own per-host service account, so a single machine can be revoked without touching the others.
 
@@ -218,6 +222,20 @@ Rotation: delete the service account in the 1Password web UI and re-run `dot syn
 - **If you find a plaintext token anywhere**, revoke first, then migrate to `op` or a keychain CLI.
 - **Deliberately not done**: secret injection via PreToolUse hooks (hook tool-I/O flows through OTEL telemetry unredacted — an exfil path), and any 1Password MCP that returns raw secret values to the agent (the official op MCP refuses to by design — which matches our threat model).
 - `gitleaks` runs from the pre-commit hook template (`git-template/hooks/pre-commit`, copied into new repos via `init.templateDir`); it's a backstop, not the policy.
+
+## Sandbox
+
+The agent runs under Claude Code's **lightweight bash sandbox** (`dot-claude/settings.json` → `sandbox: { enabled, autoAllowBashIfSandboxed, allowUnsandboxedCommands:false }`). It's deliberately **carve-out-free**: filesystem writes confined to the workdir, no dynamic escape (a blocked command fails hard — unattended-safe), and — the point of going 1Password-native — **zero secret-specific configuration**. No `allowMachLookup`, no `allowedDomains`, no `op` injection. Secret resolution lives *outside* the sandbox, so the boundary knows nothing about 1Password.
+
+What this means in practice (all measured, not assumed):
+
+- **`op` does NOT work in-box.** The sandbox MITM-proxies direct TLS; `op` bypasses the proxy and pins the system trust store, so its API call fails `errSecNotTrusted` (OSStatus -26276). No env/cert fix (`op` ignores `HTTP(S)_PROXY`, `ALL_PROXY`, and `SSL_CERT_FILE`). This is a collision of two security designs, not a bug — don't try to "fix" it in-box (trusting the proxy CA would route your secrets through the interception layer). Resolve secrets at boundaries instead.
+- **MCP works** — `headersHelper` resolves *outside* the sandbox at connection time.
+- **git push works** — via the `osxkeychain`-cached PAT (keychain *reads* are allowed in-box; see Secrets).
+- **Other in-box secrets**: not available. Run `op run`/`op read` from your terminal or a sandbox-opted-out repo.
+- **`.claude/` is write-protected in-box** at the OS layer (not just the self-modification classifier) — the agent cannot create/modify project settings from inside the sandbox.
+
+**Opting out**: a repo that genuinely needs system-wide writes or in-box `op` (this installer repo — `dot sync` writes across `$HOME`) commits a project `.claude/settings.json` with `sandbox.enabled:false`. That's the native pattern: commit `.claude/settings.json`, gitignore only `.claude/settings.local.json`. Don't opt a repo out without that justification.
 
 ## Guardrails
 

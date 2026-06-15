@@ -14,7 +14,7 @@
     "GIT_CONFIG_KEY_2": "credential.https://github.com.helper",
     "GIT_CONFIG_VALUE_2": "",
     "GIT_CONFIG_KEY_3": "credential.https://github.com.helper",
-    "GIT_CONFIG_VALUE_3": "op-claude"
+    "GIT_CONFIG_VALUE_3": "osxkeychain"
   },
   "attribution": {
     "commit": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>"
@@ -53,5 +53,10 @@
   "showTurnDuration": false,
   "terminalProgressBarEnabled": false,
   "teammateMode": "in-process",
-  "inputNeededNotifEnabled": true
+  "inputNeededNotifEnabled": true,
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false
+  }
 }
