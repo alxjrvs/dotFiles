@@ -39,6 +39,7 @@ atuin/config.toml|.config/atuin/config.toml
 gh/config.yml|.config/gh/config.yml
 gh/gh-mcp-auth-header|.local/bin/gh-mcp-auth-header
 render/render-mcp-auth-header|.local/bin/render-mcp-auth-header
+spacebase/spacebase-mcp|.local/bin/spacebase-mcp
 nvim/init.lua|.config/nvim/init.lua
 karabiner/karabiner.json|.config/karabiner/karabiner.json
 dot-claude/CLAUDE.md|.claude/CLAUDE.md

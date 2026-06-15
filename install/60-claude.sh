@@ -39,6 +39,39 @@ _claude_register_github_mcp() {
   fi
 }
 
+# Register the user-scope `spacebase` stdio MCP server, pointing at the
+# spacebase-mcp shim. The gnar spacebase plugin bundles its own server that reads
+# a literal SPACEBASE_API_KEY from the launch env — unresolvable without a
+# wrapper or plaintext export — so we shadow it with our own entry whose command
+# is the shim, which resolves the key from 1Password on demand (see
+# spacebase/spacebase-mcp). The plugin's bundled server still appears in the list
+# but fails harmlessly (it registers no tools); the skills/commands call tools by
+# bare name, which this server provides. Idempotent; safe to re-run.
+_claude_register_spacebase_mcp() {
+  command -v claude > /dev/null 2>&1 || return 0
+  command -v jq > /dev/null 2>&1 || return 0
+
+  local shim="${HOME}/.local/bin/spacebase-mcp"
+  local cfg="${HOME}/.claude.json"
+
+  # Already registered with the right command path → nothing to do.
+  if [[ -f "${cfg}" ]] &&
+    [[ "$(jq -r '.mcpServers.spacebase.command // empty' "${cfg}" 2> /dev/null)" == "${shim}" ]]; then
+    printf '\033[0;32m  \xe2\x9c\x93 spacebase MCP server registered (user scope, 1Password auth)\033[0m\n'
+    return 0
+  fi
+
+  claude mcp remove spacebase --scope user > /dev/null 2>&1 || true
+  claude mcp add --scope user spacebase "${shim}" > /dev/null 2>&1 || true
+
+  if [[ -f "${cfg}" ]] &&
+    [[ "$(jq -r '.mcpServers.spacebase.command // empty' "${cfg}" 2> /dev/null)" == "${shim}" ]]; then
+    printf '\033[0;32m  \xe2\x9c\x93 spacebase MCP server registered (user scope, 1Password auth)\033[0m\n'
+  else
+    printf '\033[0;33m  \xe2\x86\x92 spacebase MCP server not registered — re-run "dot sync --only=claude" from a regular terminal\033[0m\n' >&2
+  fi
+}
+
 # The Claude statusline lives in its own repo (github.com/alxjrvs/claude-statusline).
 # Clone it *beside* the dotfiles repo (sibling of $DOTFILES_DIR) so it travels
 # with it when the repo dir moves, rather than a hardcoded ~/Code path that goes
@@ -75,7 +108,7 @@ _claude_run() {
   printf '\n==> Claude Code\n'
 
   if [[ "${DRY_RUN:-0}" == "1" ]]; then
-    printf '\033[0;36m  ~ [dry-run] would install Claude Code CLI (if absent), register github MCP, install claude-statusline\033[0m\n'
+    printf '\033[0;36m  ~ [dry-run] would install Claude Code CLI (if absent), register github + spacebase MCP, install claude-statusline\033[0m\n'
     return 0
   fi
 
@@ -98,5 +131,6 @@ _claude_run() {
   fi
 
   _claude_register_github_mcp
+  _claude_register_spacebase_mcp
   _claude_install_statusline
 }

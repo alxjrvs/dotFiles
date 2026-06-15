@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# spacebase-mcp — launch the gnar `spacebase` plugin's bundled MCP server with
+# its API key resolved from 1Password on demand.
+#
+# The stdio analog of the headersHelper shims (gh-mcp-auth-header,
+# render-mcp-auth-header). Those inject a Bearer header into an HTTP MCP server;
+# this one launches a *stdio* server. The spacebase plugin ships its server as
+# `node …/index.js` reading a literal SPACEBASE_API_KEY from the environment —
+# and Claude Code can only expand that from its own launch env, which would force
+# either a `claude` wrapper or a plaintext export. Neither is acceptable, so we
+# register this shim as the server `command` instead: it resolves the key here,
+# in this one short-lived process, and execs the real server.
+#
+# Resolution prefers the `claude-agent` service account (install/47-op-agent.sh):
+# its token lives in the macOS login keychain, is read INLINE, and reaches
+# `op read` only within this process — so neither it nor the key touches a Bash
+# subprocess, the transcript, or OTEL spans. No Touch ID prompt, no desktop-app
+# dependency (headless-safe); when the keychain item is absent it falls back to
+# desktop biometric. The key DOES land in the server process env (the plugin
+# requires it there) — that's the minimal exposure its design allows; it never
+# enters Claude Code's own env. MCP servers run OUTSIDE the bash sandbox, so `op`
+# works here even though it can't in-box.
+#
+# Bootstrap: the key must exist at op://claude-agent/Spacebase API Key/credential
+#   op item create --category "API Credential" --title "Spacebase API Key" \
+#     --vault claude-agent credential=<sw_token>
+# On any failure the server starts without the key and exits with the plugin's
+# own clear "SPACEBASE_API_KEY is required" message — a clean failed connection.
+set -euo pipefail
+
+# Prefer the service-account token from the keychain; export it only into this
+# process so `op read` resolves without biometric. Empty/missing → desktop auth.
+sa_token="$(security find-generic-password -s op-claude-agent -w 2> /dev/null || true)"
+[[ -n "${sa_token}" ]] && export OP_SERVICE_ACCOUNT_TOKEN="${sa_token}"
+unset sa_token
+
+SPACEBASE_API_KEY="$(op read 'op://claude-agent/Spacebase API Key/credential' 2> /dev/null || true)"
+export SPACEBASE_API_KEY
+
+# Version-resilient: glob expands sorted, so the last match is the newest cached
+# plugin version. (Plain index — bash 3.2-safe, no negative subscripts.)
+idx=("${HOME}"/.claude/plugins/cache/gnar/spacebase/*/mcp/dist/index.js)
+exec node "${idx[$((${#idx[@]} - 1))]}"

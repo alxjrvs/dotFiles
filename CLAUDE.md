@@ -91,6 +91,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `ssh/1password-agent.toml` | `~/.config/1Password/ssh/agent.toml` |
 | `gh/gh-mcp-auth-header` | `~/.local/bin/gh-mcp-auth-header` (github MCP headersHelper → `op read`) |
 | `render/render-mcp-auth-header` | `~/.local/bin/render-mcp-auth-header` (Render MCP headersHelper → `op read`) |
+| `spacebase/spacebase-mcp` | `~/.local/bin/spacebase-mcp` (gnar spacebase **stdio** MCP launcher → `op read` then `exec node`) |
 | `git-template/hooks/pre-commit` | `~/.config/git/template/hooks/pre-commit` (copied into new repos via `init.templateDir`) |
 | `dot-claude/{CLAUDE.md, settings.json}` | `~/.claude/` (individually) |
 
@@ -246,6 +247,8 @@ The agent never borrows your biometric session. `dot sync` (the `op-agent` modul
 - its token in the **macOS login keychain** (`op-claude-agent`), never on disk, never in git.
 
 MCP auth is a **`headersHelper` → `op read` shim** (`gh/gh-mcp-auth-header`, `render/render-mcp-auth-header`). Each shim sources the keychain token *inline* (`OP_SERVICE_ACCOUNT_TOKEN="$(security find-generic-password -s op-claude-agent -w)" op read …`), confined to that one `op` process — so neither the service-account token nor the resolved secret reaches a Bash subprocess, the transcript, or OTEL spans. The payoff: **no Touch ID prompt and no desktop-app dependency** (works headless/cron). No `claude()` wrapper. When the keychain item is absent the shim falls back to desktop biometric, so nothing breaks pre-bootstrap. Generalize the shim to any HTTP MCP server needing a bearer token; store each such secret in `claude-agent` and point `OP_REF` at `op://claude-agent/...`.
+
+**Stdio MCP servers get the same treatment via a launch shim** (`spacebase/spacebase-mcp`, registered user-scope by `install/60-claude.sh` alongside the github server). A stdio server's env is static (no `headersHelper` hook — Claude Code expands only `${VAR}` from its own launch env), so a plugin that wants `SPACEBASE_API_KEY` literal would otherwise force a `claude` wrapper or a plaintext export. Instead the shim *is* the server `command`: it reads the keychain SA token inline, `op read`s the key, exports it into **its own** process, and `exec`s the real server — never touching Claude Code's env, a Bash subprocess, the transcript, or OTEL. MCP servers run outside the bash sandbox, so `op` works here (unlike in-box). The gnar `spacebase` plugin bundles its own server that can't resolve the key this way; the user-scope `spacebase` entry shadows it functionally — the plugin's bundled server still lists as failed but registers no tools, and the skills/commands call tools by bare name, which the shim's server provides. The key is a manual vault bootstrap (like the Claude Git PAT), not auto-provisioned: `op item create --category "API Credential" --title "Spacebase API Key" --vault claude-agent credential=<sw_token>`.
 
 **Agent git auth uses the stock `osxkeychain` helper, not `op` directly** — because `op` cannot run inside the bash sandbox (see the Sandbox section): the sandbox MITM-proxies any direct TLS, and `op` bypasses the proxy + pins the system trust store, so its 1Password API call dies with `errSecNotTrusted`. Keychain *reads*, however, work in-box. So the agent's git credential is the **login keychain**, populated out-of-band:
 
