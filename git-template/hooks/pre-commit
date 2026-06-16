@@ -24,3 +24,34 @@ if ! command -v gitleaks > /dev/null 2>&1; then
 fi
 
 gitleaks protect --staged --redact -v --no-banner
+
+# MCP secret doctrine — staged .mcp.json / .env must carry op:// references,
+# never values. gitleaks catches known token formats; this also catches the
+# ${VAR}-in-tracked-.mcp.json hazard (a later `claude mcp add` can expand it and
+# write the resolved token into this tracked file — Claude Code #18692) and any
+# vendor token gitleaks does not recognize. The canonical `op run --env-file`
+# pattern needs no ${VAR} in .mcp.json. See the dotfiles Secrets section.
+_token_re='(gh[opsu]_|github_pat_|sbp_|glpat-|xox[baprs]-|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{16}|eyJ[A-Za-z0-9_=-]{8,}\.[A-Za-z0-9._=-]{8,})'
+_mcp_bad=0
+for _f in $(git diff --cached --name-only --diff-filter=AM | grep -E '\.mcp\.json$|\.env$' || true); do
+  [ -f "$_f" ] || continue
+  case "$_f" in
+    *.mcp.json)
+      if grep -Eq '\$\{[A-Za-z_]' "$_f"; then
+        # shellcheck disable=SC2016  # ${VAR}/${...} are literal text in the warning, not expansions
+        printf 'pre-commit: %s has a ${VAR} placeholder — Claude Code #18692 can expand it and write the resolved token into this tracked file.\n' "$_f" >&2
+        # shellcheck disable=SC2016  # ${VAR} is literal text in the warning, not an expansion
+        printf '  Use `op run --env-file=.env -- <server>` (op:// refs in .env) or a headersHelper; neither needs ${VAR} in .mcp.json.\n' >&2
+        _mcp_bad=1
+      fi
+      ;;
+  esac
+  if grep -Eq "$_token_re" "$_f"; then
+    printf 'pre-commit: %s contains a resolved-token-shaped value — commit op:// references, never values.\n' "$_f" >&2
+    _mcp_bad=1
+  fi
+done
+if [ "$_mcp_bad" -ne 0 ]; then
+  printf '  Bypass for one commit (only if you are sure):  git commit --no-verify\n' >&2
+  exit 1
+fi

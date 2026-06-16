@@ -59,7 +59,9 @@ Everything else is policy, not identity — copy it as-is.
 | `zsh/` | Numbered zsh fragments (exports, options, vi, plugins, completions, prompt, tools, aliases, functions) |
 | `.zprofile`, `.zshenv` | Login env, including `DOTFILES_DIR` export |
 | `.gitconfig`, `.gitmessage` | Git identity, commit template, signing (gpgSign overrides live in `~/.gitconfig.local`) |
-| `git-template/hooks/pre-commit` | Per-repo gitleaks hook, copied into new repos at `git init` via `init.templateDir` |
+| `git-template/hooks/pre-commit` | Per-repo gitleaks hook (also fails `.mcp.json`/`.env` carrying a `${VAR}` placeholder or resolved-token literal), copied into new repos at `git init` via `init.templateDir` |
+| `mcp/mcp` | `dot mcp add` — register an MCP server via 1Password's `op run --env-file=.env` pattern (secrets stay off disk) |
+| `templates/mcp/` | Starter `.mcp.json` + `.env` (references only) to copy into a repo for the canonical MCP-secrets pattern |
 | `ghostty/config` | Ghostty terminal config |
 | `atuin/config.toml` | Atuin (shell history) config |
 | `bat/config` | Bat config |

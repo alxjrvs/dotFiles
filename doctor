@@ -268,6 +268,31 @@ else
     fi
     unset _brewfile
   fi
+
+  # ── 4b. MCP secret hygiene (tracked .mcp.json / .env carry refs, not values) ─
+  # The canonical pattern is `op run --env-file=.env` with op:// references, so a
+  # tracked .mcp.json needs no ${VAR} (a later `claude mcp add` can expand one and
+  # write the resolved token back into the tracked file — Claude Code #18692), and
+  # neither file should ever hold a resolved-token literal.
+  _tokre='(gh[opsu]_|github_pat_|sbp_|glpat-|xox[baprs]-|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{16}|eyJ[A-Za-z0-9_=-]{8,}\.[A-Za-z0-9._=-]{8,})'
+  _mcp_bad=0
+  while IFS= read -r _mf; do
+    [[ -n "$_mf" ]] || continue
+    case "$_mf" in
+      *.mcp.json)
+        if grep -Eq '\$\{[A-Za-z_]' "${_dotfiles}/${_mf}" 2> /dev/null; then
+          _warn "mcp: ${_mf} has a \${VAR} placeholder (Claude Code #18692 re-expansion hazard) — use op run --env-file + op:// refs, or a headersHelper"
+          _mcp_bad=1
+        fi
+        ;;
+    esac
+    if grep -Eq "$_tokre" "${_dotfiles}/${_mf}" 2> /dev/null; then
+      _fail "mcp: ${_mf} contains a resolved-token-shaped value — commit op:// references, never values"
+      _mcp_bad=1
+    fi
+  done < <(cd "$_dotfiles" && git ls-files '*.mcp.json' '*.env' '.env' 2> /dev/null || true)
+  [[ "$_mcp_bad" -eq 0 ]] && _ok "mcp: tracked .mcp.json/.env carry references only"
+  unset _tokre _mcp_bad _mf
 fi
 # NB: _dotfiles is resolved once (above) and reused through §7 — don't unset here.
 

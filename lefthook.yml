@@ -12,10 +12,10 @@ pre-commit:
   commands:
     shellcheck:
       # `*.sh` matches recursively; the extensionless entrypoints are listed explicitly.
-      glob: "{*.sh,dot,sync,doctor,watchtower,cmux/mirror,git-template/hooks/*}"
+      glob: "{*.sh,dot,sync,doctor,watchtower,cmux/mirror,mcp/mcp,git-template/hooks/*}"
       run: shellcheck -x {staged_files}
     shfmt-check:
-      glob: "{*.sh,dot,sync,doctor,watchtower,cmux/mirror,git-template/hooks/*}"
+      glob: "{*.sh,dot,sync,doctor,watchtower,cmux/mirror,mcp/mcp,git-template/hooks/*}"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}
     gitleaks:

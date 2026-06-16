@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# dot mcp — register MCP servers the 1Password-native way.
+#
+# `dot mcp add` wraps stock `claude mcp add` so the registered launch command is
+# 1Password's canonical pattern — `op run --env-file=.env -- <server>`. The
+# server's secrets resolve from `op://` references in .env at every launch,
+# nothing resolved ever rests on disk, and the resulting .mcp.json entry carries
+# no secret (so it is safe to commit). This is the standard for repos going
+# forward; see the Secrets section of CLAUDE.md and templates/mcp/.
+#
+# Usage:
+#   dot mcp add <name> [--scope project|user|local] [--env-file FILE] [--agent] \
+#       -- <server-cmd> [args...]
+#
+#   --env-file FILE  references file `op run` reads (default: .env). Commit it —
+#                    it holds op:// references, never values.
+#   --scope SCOPE    claude mcp scope (default: project → repo-local .mcp.json,
+#                    the committable form the canonical pattern wants).
+#   --agent          emit a headless recipe that sources the claude-agent
+#                    service-account token from the macOS login keychain inline,
+#                    so a background/cron agent launches `op run` with no
+#                    biometric. Omit for portable interactive use, where `op`
+#                    uses your own desktop auth (the .mcp.json then stays
+#                    machine-agnostic — no keychain recipe baked in).
+set -euo pipefail
+
+OP_BIN="/opt/homebrew/bin/op"
+KEYCHAIN_ITEM="op-claude-agent"
+
+die() {
+  printf 'dot mcp: %s\n' "$*" >&2
+  exit 2
+}
+
+[[ $# -ge 1 ]] || die "usage: dot mcp add <name> [--scope S] [--env-file F] [--agent] -- <server-cmd> [args...]"
+
+sub="$1"
+shift
+[[ "$sub" == "add" ]] || die "unknown subcommand: ${sub} (only 'add' is supported)"
+
+name=""
+scope="project"
+env_file=".env"
+agent=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --scope) scope="${2:?--scope needs a value}" && shift 2 ;;
+    --env-file) env_file="${2:?--env-file needs a value}" && shift 2 ;;
+    --agent) agent=1 && shift ;;
+    --)
+      shift
+      break
+      ;;
+    -*) die "unknown flag: $1" ;;
+    *)
+      [[ -z "$name" ]] || die "unexpected argument before --: $1"
+      name="$1" && shift
+      ;;
+  esac
+done
+
+[[ -n "$name" ]] || die "missing <name>"
+[[ $# -ge 1 ]] || die "missing server command after --"
+command -v claude > /dev/null 2>&1 || die "claude not on PATH"
+
+# Build the launch command that `claude mcp add` will persist as this server's
+# command. Both forms keep the secret off disk: only op:// references (in
+# env_file) and — for --agent — a non-secret keychain-read recipe are stored.
+if [[ "$agent" -eq 1 ]]; then
+  # Headless: source the SA token from the login keychain inline (no biometric,
+  # never on disk). `op` is pinned by absolute path because the server is spawned
+  # with a minimal PATH that lacks the homebrew bin dir.
+  recipe="OP_SERVICE_ACCOUNT_TOKEN=\"\$(security find-generic-password -s ${KEYCHAIN_ITEM} -w)\" ${OP_BIN} run --env-file=${env_file} -- $*"
+  set -- sh -c "$recipe"
+  note=", agent (keychain SA token)"
+else
+  # Portable: op resolves via ambient auth — your desktop biometric, or an
+  # OP_SERVICE_ACCOUNT_TOKEN already present in env. Arg boundaries preserved.
+  set -- op run --env-file="${env_file}" -- "$@"
+  note=""
+fi
+
+printf 'dot mcp: registering "%s" (scope=%s, env-file=%s%s)\n' "$name" "$scope" "$env_file" "$note" >&2
+exec claude mcp add "$name" --scope "$scope" -- "$@"
