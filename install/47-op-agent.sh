@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # install/47-op-agent.sh — provision the agent's 1Password service account and
-# cache the agent git PAT for the sandbox.
+# cache the agent git PAT for least-privilege git-over-HTTPS auth.
 # Tags: op-agent
 # Sourced by sync; not standalone.
 #
@@ -13,8 +13,8 @@
 #   2. a per-host service account with read_items on only that vault;
 #   3. its token in the macOS login keychain (service `op-claude-agent`);
 #   4. the fine-grained git PAT cached into the login keychain as the github.com
-#      credential, so a SANDBOXED Claude session can auth git-over-HTTPS via the
-#      stock `osxkeychain` helper (op can't run in-box — see _op_agent_cache_git_pat).
+#      credential, so a Claude session can auth git-over-HTTPS via the stock
+#      `osxkeychain` helper with a least-privilege PAT (see _op_agent_cache_git_pat).
 # The MCP headersHelper shims (gh/gh-mcp-auth-header, render/render-mcp-auth-header)
 # read the keychain token inline. Foreground only: minting the account authorizes
 # through the 1Password desktop app, which needs the calling session.
@@ -39,7 +39,7 @@ _op_agent_run() {
   fi
 
   if [[ "${DRY_RUN:-0}" == "1" ]]; then
-    printf '\033[0;36m  ~ [dry-run] would ensure "%s" vault + per-host service account + keychain token, and cache the git PAT for in-box osxkeychain auth\033[0m\n' "$_OP_AGENT_VAULT"
+    printf '\033[0;36m  ~ [dry-run] would ensure "%s" vault + per-host service account + keychain token, and cache the git PAT for osxkeychain git auth\033[0m\n' "$_OP_AGENT_VAULT"
     return 0
   fi
 
@@ -94,21 +94,20 @@ _op_agent_ensure_sa() {
   printf '\033[0;36m  ~ next: move agent secrets into the "%s" vault (op item move "<item>" --destination-vault %s)\033[0m\n' "$_OP_AGENT_VAULT" "$_OP_AGENT_VAULT"
 }
 
-# Cache the fine-grained git PAT into the macOS login keychain so a SANDBOXED
-# Claude session can authenticate git-over-HTTPS via the stock `osxkeychain`
-# helper. `op` itself can't run inside Claude Code's bash sandbox (its TLS is
-# MITM'd by the sandbox proxy → errSecNotTrusted), but keychain *reads* work
-# in-box — so we resolve the PAT HERE (sync runs unsandboxed, keychain writes
-# allowed) and the agent only reads it later. Refreshes every run → rotation =
-# re-sync. No-op (with a hint) until the PAT is minted into the vault.
+# Cache the fine-grained git PAT into the macOS login keychain so a Claude
+# session can authenticate git-over-HTTPS via the stock `osxkeychain` helper
+# with a least-privilege PAT (not your broad `gh` OAuth token) and no biometric
+# prompt. `dot sync` resolves the PAT HERE and the agent only reads it later.
+# Refreshes every run → rotation = re-sync. No-op (with a hint) until the PAT
+# is minted into the vault.
 _op_agent_cache_git_pat() {
   local pat
   if pat=$(op read "op://${_OP_AGENT_VAULT}/Claude Git PAT/credential" 2> /dev/null) && [[ -n "$pat" ]]; then
     if printf 'protocol=https\nhost=github.com\nusername=x-access-token\npassword=%s\n\n' "$pat" |
       git credential-osxkeychain store 2> /dev/null; then
-      printf '\033[0;32m  \xe2\x9c\x93 git PAT cached in login keychain (github.com) for in-box osxkeychain auth\033[0m\n'
+      printf '\033[0;32m  \xe2\x9c\x93 git PAT cached in login keychain (github.com) for osxkeychain git auth\033[0m\n'
     fi
   else
-    printf '\033[0;33m  \xe2\x86\x92 "Claude Git PAT" not in %s yet — sandboxed-agent git-over-HTTPS will fail until you mint it (op item create --category "API Credential" --title "Claude Git PAT" --vault %s credential=<pat>)\033[0m\n' "$_OP_AGENT_VAULT" "$_OP_AGENT_VAULT" >&2
+    printf '\033[0;33m  \xe2\x86\x92 "Claude Git PAT" not in %s yet — agent git-over-HTTPS will fail until you mint it (op item create --category "API Credential" --title "Claude Git PAT" --vault %s credential=<pat>)\033[0m\n' "$_OP_AGENT_VAULT" "$_OP_AGENT_VAULT" >&2
   fi
 }

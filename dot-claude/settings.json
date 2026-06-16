@@ -54,11 +54,6 @@
       "autoUpdate": true
     }
   },
-  "sandbox": {
-    "enabled": true,
-    "autoAllowBashIfSandboxed": true,
-    "allowUnsandboxedCommands": false
-  },
   "skipWorkflowUsageWarning": true,
   "showTurnDuration": false,
   "terminalProgressBarEnabled": false,
