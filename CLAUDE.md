@@ -58,7 +58,7 @@ Fresh machine: `git clone … ~/dotFiles && ~/dotFiles/bootstrap.sh` (execs `dot
 | `dot update` | `./sync --upgrade` | Bump everything. |
 | `dot doctor` | `./doctor` | Read-only diagnostics; exits non-zero on failures. `--fix` repairs the symlink contract (reap orphans + relink missing/incorrect) — doctor's only mutation. |
 | `dot watchtower` | `./watchtower` | Local "Watchtower"-style 1Password audit (breached/reused/weak/unsecured) built on the `op` CLI. Reads passwords locally, emits only hashes/metadata. Dev creds (localhost/`.local`/LAN URL, or the `watchtower-ignore` tag) are listed separately, never flagged. Foreground only (op desktop-auth needs the calling session); `--vault=NAME`, `--no-breach`. |
-| `dot ws` | `./cmux/mirror` | Mirror `~/Code` into cmux workspaces (`ws` = workspace): crawl until repos, repos become workspaces (a repo is a leaf — worktrees never become workspaces), each top-level folder of repos becomes one flat cmux group (created via the `workspace-group` CLI — cmux has no auto-by-directory grouping; the group is anchored with a terminal at the folder). Each new group and flat top-level repo gets a *unique* color from cmux's palette (never repeated, never colliding with one already in the sidebar), and a group's members are shaded from that group's color so they read as one family (any `gnar`-named item — the owner's brand — is themed orange instead). Interactive top-down (`workspace?`/`group?`); repos already *covered* by any existing workspace (at or inside the repo, incl. custom setups) are skipped, `Legacy` folders default-skip. `--target-dir D` (mirror `D` instead of `~/Code`), `--target-ws W` (migrate only the single folder `W` — repo→workspace, folder→group; mutually exclusive with `--hard`), `--headless` (create all new, skip Legacy), `--hard` (archive all existing workspaces into an "Archive" group, then mirror exactly), `--dry-run`. Needs a running cmux (drives it over the control socket). |
+| `dot ws` | `./cmux/mirror` | Mirror `~/Code` into cmux workspaces (`ws` = workspace): crawl until repos, repos become workspaces (a repo is a leaf — worktrees never become workspaces), each top-level folder of repos becomes one flat cmux group (created via the `workspace-group` CLI — cmux has no auto-by-directory grouping; the group is anchored with a terminal at the folder). Each new group and flat top-level repo gets a *unique* color from cmux's palette (never repeated, never colliding with one already in the sidebar), and a group's members are shaded from that group's color so they read as one family (any `gnar`-named item — the owner's brand — is themed orange instead). Interactive top-down (`workspace?`/`group?`); repos already *covered* by any existing workspace (at or inside the repo, incl. custom setups) are skipped, `Legacy` folders default-skip. `--target-dir D` (mirror `D` instead of `~/Code`), `--target-ws W` (migrate only the single folder `W` — repo→workspace, folder→group; mutually exclusive with `--hard`), `--headless` (create all new, skip Legacy), `--hard` (archive all existing workspaces into an "Archive" group, then mirror exactly), `--dry-run`. `--app cmux\|claude` picks the backend the same crawl feeds (default `cmux`): `claude` launches one idle `claude --bg` background agent per repo (auto permission mode, ready in `claude agents`) — flat, no groups/colors; coverage reads live background sessions via `claude agents --json`; `--prompt T` seeds each session with a task instead of leaving it idle; `--hard` is rejected (no archive concept). Needs a running cmux for `--app cmux` (drives it over the control socket); `--app claude` needs the agent view enabled. |
 
 `DOTFILES_DIR` resolution lives only in `dot`: `$DOTFILES_DIR` env → the script's own dir (in-repo `./dot`) → the breadcrumb `sync` records at `${XDG_STATE_HOME:-~/.local/state}/dot/dir` (the path the on-PATH copy uses, since its own dir is `~/.local/bin`, not the repo) → fallback `~/dotFiles`; first candidate that is a directory containing a `Brewfile` wins. The top-level scripts (`sync`, `doctor`) are standalone — run them directly for development. The `install/NN-*.sh` modules are **sync-sourced, not standalone**: `sync` sources `lib/common.sh` (which defines `link()` alongside the other shared helpers), then exports those helpers (`os_kind`, `resolve_dotfiles_dir`, `link`) before sourcing each module, so the modules carry no helpers of their own.
 
@@ -185,6 +185,28 @@ a repo becomes a workspace, a folder of repos becomes a group — instead of
 walking the whole tree; it's mutually exclusive with `--hard` (a full-sidebar
 operation). Lives in `cmux/` beside `cmux.json`; it's a dispatcher target, not
 symlinked.
+
+`--app cmux|claude` (default `cmux`) picks the **backend** the one crawl feeds —
+the same `~/Code` walk, leaf rule, coverage, `Legacy`-skip, and interactive
+per-repo naming drive both; only the *leaf action* differs. `--app claude`
+launches **one idle `claude --bg` background agent per repo** (in `auto`
+permission mode, named after the repo), so `claude agents` opens pre-populated
+with every directory you want at hand. It is flat — `claude agents` has no
+groups, so the cmux group/color/anchor machinery is skipped — and **coverage
+reads live background sessions** (`claude agents --json`, `kind == "background"`)
+rather than the cmux workspace list, so a re-run skips a repo that already has a
+standby agent (a *foreground* interactive `claude` in that repo does **not**
+count — you can still want a background one there). A session with no `--prompt`
+is genuinely **idle** (it waits for your first message — zero tokens, nothing
+runs in `auto` until you prompt it, which is why this beat seeding an
+orientation turn); `--prompt T` seeds each new session with task `T` instead.
+`--hard` is rejected for `--app claude` (no archive concept for agents), and
+`--prompt` is rejected for `--app cmux`. The claude path needs the agent view
+enabled (`disableAgentView` unset) — it gates `claude --bg` and `claude agents`
+both — but no running cmux. Note the **blast radius**: `auto` mode plus a fleet
+of background agents across every repo is exactly the confused-deputy surface
+`dot-claude/CLAUDE.md` flags for periodic review; idle-by-default keeps it cool
+until you actually dispatch work.
 
 No other terminal emulators (iTerm2, WezTerm, Kitty, Alacritty, Warp) are
 managed by this repo. The stack is exactly cmux (the terminal) plus Ghostty

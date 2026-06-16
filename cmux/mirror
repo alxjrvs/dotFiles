@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
-# cmux/mirror — mirror ~/Code into cmux workspaces (one workspace per git repo).
+# cmux/mirror — mirror ~/Code into per-repo workspaces (one per git repo).
 # Run via `dot ws` (dot workspace). Lives in the cmux/ topic folder beside
 # cmux.json; it is a dispatcher target (like sync/doctor), not a symlinked or
 # sourced module.
+#
+# --app picks the backend the same crawl feeds (default cmux):
+#   cmux   — a sidebar workspace per repo, folders → flat colored groups (below).
+#   claude — an idle `claude --bg` background agent per repo, in auto permission
+#            mode, ready in `claude agents`. Flat (no groups/colors): the crawl,
+#            coverage, Legacy-skip, and interactive naming are shared; coverage
+#            reads live background sessions (`claude agents --json`) and a repo
+#            with no --prompt gets an idle session that waits for your first
+#            message. The cmux machinery below (socket, groups, colors, --hard
+#            archive) is cmux-only. See _launch_claude / _process_group_claude.
 #
 # Each top-level entry of $CODE_DIR (default ~/Code) maps to the sidebar:
 #   - a git repo                      → a flat workspace.
@@ -59,11 +69,13 @@
 # running cmux over its control socket, so the layout lives nowhere in the repo.
 #
 # Flags:
-#   --target-dir D  mirror D instead of ~/Code (overrides $CODE_DIR)
-#   --target-ws W   migrate only the single folder W (repo → workspace, folder → group)
-#   --hard          archive existing into "Archive", then mirror the target dir exactly (implies no prompts)
-#   --headless      non-interactive: create all new, skip Legacy
-#   -n, --dry-run   list what would happen; change nothing
+#   --app cmux|claude  backend to mirror into (default: cmux)
+#   --prompt T         (claude) seed each new session with task T instead of idle
+#   --target-dir D     mirror D instead of ~/Code (overrides $CODE_DIR)
+#   --target-ws W      migrate only the single folder W (repo → workspace/agent)
+#   --hard             (cmux) archive existing into "Archive", then mirror exactly (no prompts)
+#   --headless         non-interactive: create all new, skip Legacy
+#   -n, --dry-run      list what would happen; change nothing
 #   -h, --help
 set -euo pipefail
 shopt -s nullglob # an empty dir glob expands to nothing, not a literal '*/'
@@ -80,6 +92,9 @@ _HEADLESS=0
 _HARD=0
 _TARGET_DIR=""
 _TARGET_WS=""
+_APP="cmux"   # backend: cmux (sidebar workspaces) or claude (background agents)
+_PROMPT=""    # --app claude: optional task to seed each session (default: idle)
+_PROMPT_SET=0 # whether --prompt was given (so "" can still mean 'idle', not unset)
 # _need_value <flag> <next>: fail+exit unless a value-flag got a real value (not
 # the next flag, not empty). Called directly (NOT in a $() subshell) so the exit
 # halts the whole script — a subshell exit would only end the substitution and
@@ -118,21 +133,44 @@ while [[ $# -gt 0 ]]; do
         exit 2
       }
       ;;
+    --app)
+      _need_value "$1" "${2:-}"
+      _APP="$2"
+      shift
+      ;;
+    --app=*) _APP="${1#*=}" ;;
+    --prompt)
+      _need_value "$1" "${2:-}"
+      _PROMPT="$2"
+      _PROMPT_SET=1
+      shift
+      ;;
+    --prompt=*)
+      _PROMPT="${1#*=}"
+      _PROMPT_SET=1
+      ;;
     -h | --help)
-      printf 'usage: dot ws [--target-dir D] [--target-ws W] [--hard] [--headless] [--dry-run]\n'
-      printf '  Mirror ~/Code into cmux workspaces (one per git repo). Each\n'
-      printf '  top-level folder of repos becomes one flat cmux group; repos at\n'
-      printf '  any depth inside join it. A repo is a leaf (its worktrees never\n'
-      printf '  become workspaces). New groups are asked "group?"; "Legacy"\n'
-      printf '  defaults to skip; each new repo prompts for a name. Repos already\n'
-      printf '  covered by any existing workspace are skipped. Each new group and\n'
-      printf '  flat top-level repo gets a unique color from the cmux palette; a\n'
-      printf "  group's members are shaded from that group's color.\n"
-      printf '  --target-dir D  mirror D instead of ~/Code\n'
-      printf '  --target-ws W   migrate only folder W (repo → workspace, folder → group)\n'
-      printf '  --hard          archive existing into "Archive", then mirror exactly\n'
-      printf '  --headless      no prompts: create all new, skip Legacy\n'
-      printf '  -n, --dry-run   show what would happen; change nothing\n'
+      printf 'usage: dot ws [--app cmux|claude] [--target-dir D] [--target-ws W]\n'
+      printf '              [--hard] [--headless] [--prompt T] [--dry-run]\n'
+      printf '  Mirror ~/Code into per-repo workspaces. The same crawl rules feed\n'
+      printf '  two backends (--app, default cmux):\n'
+      printf '    cmux   — one sidebar workspace per repo; each top-level folder of\n'
+      printf '             repos becomes one flat cmux group (members shaded from a\n'
+      printf '             unique group color). Needs a running cmux.\n'
+      printf '    claude — one idle "claude --bg" background agent per repo, in auto\n'
+      printf '             permission mode, ready in "claude agents". No groups/colors.\n'
+      printf '  A repo is a leaf (its worktrees never become workspaces). New groups\n'
+      printf '  (or folders, for claude) are asked "group?"; "Legacy" defaults to\n'
+      printf '  skip; each new repo prompts for a name. Repos already covered (a cmux\n'
+      printf '  workspace, or a live background session) are skipped.\n'
+      printf '  --app cmux|claude  backend to mirror into (default: cmux)\n'
+      printf '  --prompt T         (claude) seed each new session with task T instead\n'
+      printf '                     of leaving it idle\n'
+      printf '  --target-dir D     mirror D instead of ~/Code\n'
+      printf '  --target-ws W      migrate only folder W (repo → workspace/agent)\n'
+      printf '  --hard             (cmux) archive existing into "Archive", then mirror exactly\n'
+      printf '  --headless         no prompts: create all new, skip Legacy\n'
+      printf '  -n, --dry-run      show what would happen; change nothing\n'
       # shellcheck disable=SC2016  # $CODE_DIR is a literal env-var name in the message
       printf '  Honors $CODE_DIR (default ~/Code) when --target-dir is unset.\n'
       exit 0
@@ -149,6 +187,25 @@ done
 # the combination keeps each mode's contract unambiguous.
 if [[ -n "$_TARGET_WS" && "$_HARD" == "1" ]]; then
   _p_fail "ws: --target-ws cannot be combined with --hard"
+  exit 2
+fi
+
+# --app picks the backend. cmux-only flags refuse the claude backend so each
+# mode's contract stays honest: --hard archives cmux workspaces (no claude
+# analog); --prompt seeds a claude session (meaningless for cmux).
+case "$_APP" in
+  cmux | claude) ;;
+  *)
+    _p_fail "ws: --app must be 'cmux' or 'claude' (got '$_APP')"
+    exit 2
+    ;;
+esac
+if [[ "$_APP" == "claude" && "$_HARD" == "1" ]]; then
+  _p_fail "ws: --hard is a cmux-only operation (no archive concept for background agents)"
+  exit 2
+fi
+if [[ "$_APP" == "cmux" && "$_PROMPT_SET" == "1" ]]; then
+  _p_fail "ws: --prompt only applies to --app claude"
   exit 2
 fi
 
@@ -186,13 +243,26 @@ if [[ -n "$_TARGET_WS" ]]; then
   }
 fi
 
-command -v cmux > /dev/null 2>&1 || {
-  _p_fail "ws: the cmux CLI is not on PATH"
-  exit 1
-}
-if [[ "$(cmux ping 2> /dev/null || true)" != "PONG" ]]; then
-  _p_fail "ws: cmux control socket not reachable — open the cmux app first"
-  exit 1
+if [[ "$_APP" == "cmux" ]]; then
+  command -v cmux > /dev/null 2>&1 || {
+    _p_fail "ws: the cmux CLI is not on PATH"
+    exit 1
+  }
+  if [[ "$(cmux ping 2> /dev/null || true)" != "PONG" ]]; then
+    _p_fail "ws: cmux control socket not reachable — open the cmux app first"
+    exit 1
+  fi
+else # claude
+  command -v claude > /dev/null 2>&1 || {
+    _p_fail "ws: the claude CLI is not on PATH"
+    exit 1
+  }
+  # `claude agents --json` is the launch + dedup surface; it errors when agent
+  # view is disabled (disableAgentView), so a clean JSON array is our gate.
+  if ! claude agents --json > /dev/null 2>&1; then
+    _p_fail "ws: 'claude agents' is unavailable — enable agent view (unset disableAgentView) first"
+    exit 1
+  fi
 fi
 
 # Thin wrappers — every cmux call is quiet (no deprecation notices on stdout).
@@ -203,13 +273,20 @@ _cmux() { CMUX_QUIET=1 cmux "$@"; }
 # subshell resolves symlinks so matches survive a symlinked path vs its real one.
 _seen=""
 _seen_count=0
+# cmux: every open workspace's cwd. claude: every live BACKGROUND session's cwd
+# (interactive sessions are your own foreground claudes — they don't count as a
+# repo already having a standby agent, so we'd still seed one there).
+if [[ "$_APP" == "cmux" ]]; then
+  _seen_src() { _cmux workspace list --json 2> /dev/null | jq -r '.workspaces[].current_directory // empty'; }
+else
+  _seen_src() { claude agents --json 2> /dev/null | jq -r '.[] | select(.kind == "background") | .cwd // empty'; }
+fi
 while IFS= read -r _d; do
   [[ -n "$_d" ]] || continue
   _rp=$(cd "$_d" 2> /dev/null && pwd -P) || _rp="$_d"
   _seen+="${_rp}"$'\n'
   _seen_count=$((_seen_count + 1))
-done < <(_cmux workspace list --json 2> /dev/null |
-  jq -r '.workspaces[].current_directory // empty')
+done < <(_seen_src)
 
 # _is_covered <repo-path>: true if some existing workspace sits AT the repo or
 # anywhere INSIDE it. --hard ignores coverage so it recreates the full set.
@@ -248,13 +325,16 @@ _LAST_REF="" # ref of the workspace _make_workspace just created ("" if none)
 # top-level item never collides with what's already in the sidebar. Seeded once;
 # _next_color appends to it as it hands colors out.
 _used_colors=$'\n'
-while IFS= read -r _c; do
-  [[ -n "$_c" ]] || continue
-  _used_colors+="$(printf '%s' "$_c" | tr '[:lower:]' '[:upper:]')"$'\n'
-done < <({
-  _cmux workspace list --json 2> /dev/null | jq -r '.workspaces[].custom_color // empty'
-  _cmux workspace-group list --json 2> /dev/null | jq -r '.groups[].custom_color // empty'
-})
+# Colors are a cmux-only concern (the claude backend has no per-session color).
+if [[ "$_APP" == "cmux" ]]; then
+  while IFS= read -r _c; do
+    [[ -n "$_c" ]] || continue
+    _used_colors+="$(printf '%s' "$_c" | tr '[:lower:]' '[:upper:]')"$'\n'
+  done < <({
+    _cmux workspace list --json 2> /dev/null | jq -r '.workspaces[].custom_color // empty'
+    _cmux workspace-group list --json 2> /dev/null | jq -r '.groups[].custom_color // empty'
+  })
+fi
 
 # A distinct color per created top-level item (each group and each flat top-level
 # repo). Hexes are cmux's own named-color palette, ordered for early contrast, so
@@ -517,11 +597,91 @@ _archive_existing() {
   _note "archived ${count} existing workspace(s) into 'Archive'"
 }
 
-# _process_entry <path> <name>: map one top-level entry to the sidebar — a repo
-# becomes a flat workspace (uniquely colored), a folder of repos becomes a group.
-# Shared by the full walk and the single-folder --target-ws path.
+# ── claude backend: one idle `claude --bg` agent per repo ─────────────────────
+# `claude agents` is a flat list — no groups, no colors. We reuse the same crawl,
+# coverage, Legacy-skip, and interactive naming as cmux; only the leaf action
+# (launch a session vs. create a workspace) and the folder gate differ.
+
+# _launch_claude <repo-path> <label>: skip if a live background session already
+# covers it, else (dry-run) report or launch a background agent in that dir, in
+# auto permission mode, named after the repo. With no --prompt the session is
+# idle (waits for your first message); --prompt seeds it with that task. '-' at
+# the name prompt skips the repo.
+_launch_claude() {
+  local path="$1" label="$2" rp title
+  local -a cmd
+  rp=$(cd "$path" 2> /dev/null && pwd -P) || rp="$path"
+
+  if _is_covered "$rp"; then
+    _note "skip (session exists): ${label}"
+    _covered=$((_covered + 1))
+    return
+  fi
+  if [[ "$_DRY" == "1" ]]; then
+    _warn "would launch ($([[ "$_PROMPT_SET" == "1" ]] && echo seeded || echo idle)): ${label}  → ${path}"
+    _created=$((_created + 1))
+    return
+  fi
+  title=$(_prompt_name "$(basename "$path")" "$label")
+  if [[ -z "$title" ]]; then
+    _note "skip: ${label}"
+    _declined=$((_declined + 1))
+    return
+  fi
+  cmd=(claude --bg --permission-mode auto --name "$title")
+  [[ "$_PROMPT_SET" == "1" ]] && cmd+=("$_PROMPT")
+  if (cd "$path" && "${cmd[@]}" > /dev/null 2>&1); then
+    _ok "launched: ${title}  (${label})"
+    _created=$((_created + 1))
+  else
+    _p_fail "failed to launch background session for ${path}"
+  fi
+}
+
+# _process_group_claude <folder-path> <folder-name>: a top-level folder of repos,
+# claude backend. Mirrors _process_group's decide-then-act (existing coverage
+# fills in silently; a brand-new folder asks, Legacy defaults skip) but launches
+# an idle agent per leaf instead of building a cmux group.
+_process_group_claude() {
+  local path="$1" name="$2" leaves new=0 covered=0 def L rp
+  leaves=$(_repo_leaves "$path")
+  [[ -n "$leaves" ]] || return 0 # not a folder of repos
+
+  while IFS= read -r L; do
+    [[ -n "$L" ]] || continue
+    rp=$(cd "$L" 2> /dev/null && pwd -P) || rp="$L"
+    if _is_covered "$rp"; then covered=$((covered + 1)); else new=$((new + 1)); fi
+  done <<< "$leaves"
+  [[ "$new" -gt 0 ]] || return 0 # nothing new → quiet
+
+  if [[ "$covered" -eq 0 ]]; then # brand-new folder → ask (Legacy defaults skip)
+    _is_legacy "$name" && def="n" || def="y"
+    if ! _ask "folder" "$name" "$def"; then
+      _note "skip (folder): ${name}"
+      _declined=$((_declined + new))
+      return 0
+    fi
+  fi
+
+  while IFS= read -r L; do
+    [[ -n "$L" ]] || continue
+    _launch_claude "$L" "${L#"${_code}"/}"
+  done <<< "$leaves"
+}
+
+# _process_entry <path> <name>: map one top-level entry to the chosen backend — a
+# repo becomes a flat workspace / one agent, a folder of repos becomes a group /
+# a batch of agents. Shared by the full walk and the single-folder --target-ws path.
 _process_entry() {
   local path="$1" name="$2"
+  if [[ "$_APP" == "claude" ]]; then
+    if [[ -e "$path/.git" ]]; then
+      _launch_claude "$path" "$name" # repo → one background agent
+    else
+      _process_group_claude "$path" "$name" # folder of repos → a batch of agents
+    fi
+    return
+  fi
   if [[ -e "$path/.git" ]]; then
     _make_workspace "$path" "$name" # repo → flat workspace
     if [[ -n "$_LAST_REF" ]]; then
@@ -551,19 +711,30 @@ else
   _mode=""
 fi
 
+# Backend-aware wording for the header, the coverage line, and the tally.
+if [[ "$_APP" == "claude" ]]; then
+  _hdr_noun="claude agents"
+  _seen_noun="background session"
+  _made="launched"
+else
+  _hdr_noun="cmux workspaces"
+  _seen_noun="workspace"
+  _made="created"
+fi
+
 if [[ -n "$_tws" ]]; then
-  _hdr "cmux workspace ← ${_tws}${_mode}"
-  _note "matched against ${_seen_count} existing workspace(s)"
+  _hdr "${_hdr_noun} ← ${_tws}${_mode}"
+  _note "matched against ${_seen_count} existing ${_seen_noun}(s)"
   _process_entry "$_tws" "$(basename "$_tws")"
 else
-  _hdr "cmux workspaces ← ${_code}${_mode}"
-  [[ "$_HARD" == "1" ]] || _note "matched against ${_seen_count} existing workspace(s)"
+  _hdr "${_hdr_noun} ← ${_code}${_mode}"
+  [[ "$_HARD" == "1" ]] || _note "matched against ${_seen_count} existing ${_seen_noun}(s)"
   [[ "$_HARD" == "1" ]] && _archive_existing
   _walk
 fi
 
 if [[ "$_DRY" == "1" ]]; then
-  _ok "dry-run: ${_created} would be created, ${_covered} already covered, ${_declined} skipped"
+  _ok "dry-run: ${_created} would be ${_made}, ${_covered} already covered, ${_declined} skipped"
 else
-  _ok "done: ${_created} created, ${_covered} already covered, ${_declined} skipped"
+  _ok "done: ${_created} ${_made}, ${_covered} already covered, ${_declined} skipped"
 fi

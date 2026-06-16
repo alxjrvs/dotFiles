@@ -26,7 +26,6 @@
   "permissions": {
     "defaultMode": "auto"
   },
-  "disableAgentView": true,
   "statusLine": {
     "type": "command",
     "command": "~/.local/bin/claude-statusline",
