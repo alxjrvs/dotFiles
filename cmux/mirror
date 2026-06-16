@@ -4,7 +4,7 @@
 # cmux.json; it is a dispatcher target (like sync/doctor), not a symlinked or
 # sourced module.
 #
-# --app picks the backend the same crawl feeds (default cmux):
+# --app picks the backend the same crawl feeds (default claude):
 #   cmux   — a sidebar workspace per repo, folders → flat colored groups (below).
 #   claude — an idle `claude --bg` background agent per repo, in auto permission
 #            mode, ready in `claude agents`. Flat (no groups/colors): the crawl,
@@ -69,7 +69,7 @@
 # running cmux over its control socket, so the layout lives nowhere in the repo.
 #
 # Flags:
-#   --app cmux|claude  backend to mirror into (default: cmux)
+#   --app claude|cmux  backend to mirror into (default: claude)
 #   --prompt T         (claude) seed each new session with task T instead of idle
 #   --target-dir D     mirror D instead of ~/Code (overrides $CODE_DIR)
 #   --target-ws W      migrate only the single folder W (repo → workspace/agent)
@@ -92,7 +92,7 @@ _HEADLESS=0
 _HARD=0
 _TARGET_DIR=""
 _TARGET_WS=""
-_APP="cmux"   # backend: cmux (sidebar workspaces) or claude (background agents)
+_APP="claude" # backend: claude (background agents) or cmux (sidebar workspaces)
 _PROMPT=""    # --app claude: optional task to seed each session (default: idle)
 _PROMPT_SET=0 # whether --prompt was given (so "" can still mean 'idle', not unset)
 # _need_value <flag> <next>: fail+exit unless a value-flag got a real value (not
@@ -150,10 +150,10 @@ while [[ $# -gt 0 ]]; do
       _PROMPT_SET=1
       ;;
     -h | --help)
-      printf 'usage: dot ws [--app cmux|claude] [--target-dir D] [--target-ws W]\n'
+      printf 'usage: dot ws [--app claude|cmux] [--target-dir D] [--target-ws W]\n'
       printf '              [--hard] [--headless] [--prompt T] [--dry-run]\n'
       printf '  Mirror ~/Code into per-repo workspaces. The same crawl rules feed\n'
-      printf '  two backends (--app, default cmux):\n'
+      printf '  two backends (--app, default claude):\n'
       printf '    cmux   — one sidebar workspace per repo; each top-level folder of\n'
       printf '             repos becomes one flat cmux group (members shaded from a\n'
       printf '             unique group color). Needs a running cmux.\n'
@@ -163,7 +163,7 @@ while [[ $# -gt 0 ]]; do
       printf '  (or folders, for claude) are asked "group?"; "Legacy" defaults to\n'
       printf '  skip; each new repo prompts for a name. Repos already covered (a cmux\n'
       printf '  workspace, or a live background session) are skipped.\n'
-      printf '  --app cmux|claude  backend to mirror into (default: cmux)\n'
+      printf '  --app claude|cmux  backend to mirror into (default: claude)\n'
       printf '  --prompt T         (claude) seed each new session with task T instead\n'
       printf '                     of leaving it idle\n'
       printf '  --target-dir D     mirror D instead of ~/Code\n'
