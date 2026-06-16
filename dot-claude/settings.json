@@ -50,17 +50,18 @@
       "source": {
         "source": "github",
         "repo": "thegnarco/agent-skills"
-      }
+      },
+      "autoUpdate": true
     }
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false
   },
   "skipWorkflowUsageWarning": true,
   "showTurnDuration": false,
   "terminalProgressBarEnabled": false,
   "teammateMode": "in-process",
-  "inputNeededNotifEnabled": true,
-  "sandbox": {
-    "enabled": true,
-    "autoAllowBashIfSandboxed": true,
-    "allowUnsandboxedCommands": false
-  }
+  "inputNeededNotifEnabled": true
 }
