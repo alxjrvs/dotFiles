@@ -55,6 +55,18 @@ resolve_dir() {
 
 DIR=$(resolve_dir)
 
+# Propagate the authoritative repo path to the subprocess tree. The dispatcher is
+# the resolver of record (it validates + consults the breadcrumb); sync/doctor
+# must use ITS decision, not re-resolve from a possibly-stale inherited env. If the
+# inherited value disagrees, this shell session predates a repo move — warn once
+# (new shells self-heal via .zshenv) and override it for this invocation.
+if [[ -n "${DOTFILES_DIR:-}" && "${DOTFILES_DIR}" != "$DIR" ]]; then
+  # shellcheck disable=SC2016  # backticks are literal text in the message, not a subshell
+  printf 'dot: stale DOTFILES_DIR in this shell (%s) — using %s; run `exec zsh` to refresh it\n' \
+    "${DOTFILES_DIR}" "$DIR" >&2
+fi
+export DOTFILES_DIR="$DIR"
+
 [[ $# -ge 1 ]] || {
   printf 'usage: dot <sync|update|doctor|watchtower|ws> [args...]\n' >&2
   exit 2
