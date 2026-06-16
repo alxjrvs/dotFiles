@@ -123,34 +123,34 @@ Brewfile holds **only**: `mise` (chicken-and-egg bootstrap), casks (GUI apps, fo
 
 If you're about to add a CLI to `Brewfile`, stop — put it in `mise.toml` unless it's `mise` itself or it's a cask.
 
-## Terminal: cmux (canonical), Ghostty (embedded engine)
+## Terminal: Ghostty (canonical), cmux (parallel agent sessions)
 
-`cmux` is the canonical terminal — set via `TERMINAL=cmux` in
-`zsh/00-exports.zsh`. It's a libghostty-based agent multiplexer for
-running parallel Claude Code sessions with vertical tabs and git-worktree
-isolation. macOS has no system "default terminal" role, so the env var is
-a declaration of intent (the XDG convention), not a hard switch; launch
-cmux directly (Dock/Raycast).
+`Ghostty` is the canonical daily-driver terminal — set via `TERMINAL=ghostty`
+in `zsh/00-exports.zsh`. It's a fast Metal-GPU emulator, configured by
+`ghostty/config`. macOS has no system "default terminal" role, so the env var
+is a declaration of intent (the XDG convention), not a hard switch; launch
+Ghostty directly (Dock/Raycast). `cmux` stays installed for a narrower role —
+**parallel Claude Code sessions** via `dot ws --app cmux` (the agent
+multiplexer below) — but is no longer the daily driver.
 
-cmux config is **split across two files, both symlinked by `dot sync`**:
+Terminal config is **two files, both symlinked by `dot sync`**:
 
+- **`ghostty/config`** → `~/.config/ghostty/config` — Ghostty.app's full
+  config: rendering (theme/font/colors) **plus** Ghostty-native keybinds and
+  the drop-down quick-terminal visor. **cmux also reads this file** (it embeds
+  libghostty and reads from a **fixed path with no override**) but honors only
+  the visual subset — it ignores the keybinds and quick-terminal lines, which
+  are Ghostty.app-only.
 - **`cmux/cmux.json`** → `~/.config/cmux/cmux.json` — cmux's own app config
   (sidebar, shortcuts, automation, notifications). Carries *intentional
   divergences only* (currently just `app.sendAnonymousTelemetry = false`);
   every omitted key falls back to cmux's in-app default, so the file stays
   small. `settings.json` is a legacy read-only fallback — don't manage it.
-  This is the "portable cmux" piece: it now travels with the repo.
-- **`ghostty/config`** → `~/.config/ghostty/config` — terminal *rendering*
-  (theme/font/colors). cmux embeds libghostty and reads this from a **fixed
-  path with no override**, so the file must live at the Ghostty path even
-  though cmux owns it. cmux honors only the visual subset — keybinds and the
-  quick-terminal visor are Ghostty.app-only and were dropped from the file.
+  This is the "portable cmux" piece: it travels with the repo.
 
-Ghostty is kept installed purely as the **embedded rendering engine** (the
-`ghostty` cask provides libghostty), not a separate daily driver. `dot
-doctor` validates both symlinks via the generic `_symlink_pairs` audit.
+`dot doctor` validates both symlinks via the generic `_symlink_pairs` audit.
 
-The third cmux piece is **`cmux/mirror`** (run as `dot ws`, for *workspace*): it
+The cmux workspace mirror is **`cmux/mirror`** (run as `dot ws`, for *workspace*): it
 populates the sidebar by mirroring `~/Code` — crawling until it hits git repos,
 turning repos into workspaces and each top-level folder of repos into one flat
 cmux group.
@@ -209,9 +209,10 @@ of background agents across every repo is exactly the confused-deputy surface
 until you actually dispatch work.
 
 No other terminal emulators (iTerm2, WezTerm, Kitty, Alacritty, Warp) are
-managed by this repo. The stack is exactly cmux (the terminal) plus Ghostty
-(the engine under it) — one unit. If you find yourself adding a third, stop;
-revisit only if Mitchell Hashimoto abandons Ghostty.
+managed by this repo. The stack is exactly Ghostty (the daily driver) plus
+cmux (the agent multiplexer, which embeds libghostty) — one unit. If you find
+yourself adding a third, stop; revisit only if Mitchell Hashimoto abandons
+Ghostty.
 
 ## One config, every machine
 

@@ -30,16 +30,16 @@ cask "discord"
 cask "font-fira-code-nerd-font"
 
 # ── Terminal ──────────────────────────────────────────────────────────
-# cmux is the canonical terminal (TERMINAL=cmux, set in zsh/00-exports.zsh):
-# a libghostty-based agent multiplexer for parallel Claude Code sessions with
-# vertical tabs and git-worktree isolation. App config is portable in
-# cmux/cmux.json; terminal rendering comes from ghostty/config, which cmux
-# reads via embedded libghostty (both symlinked by dot sync).
-cask "cmux"
-
-# Ghostty is the rendering engine cmux embeds — kept installed for libghostty,
-# not a separate daily driver. Reads the same ghostty/config if launched.
+# Ghostty is the canonical daily-driver terminal (TERMINAL=ghostty, set in
+# zsh/00-exports.zsh): a fast Metal-GPU emulator, configured by ghostty/config
+# (symlinked by dot sync).
 cask "ghostty"
+
+# cmux — a libghostty-based agent multiplexer for parallel Claude Code sessions
+# with vertical tabs and git-worktree isolation. Kept installed for that role
+# (dot ws --app cmux), no longer the daily driver. App config is portable in
+# cmux/cmux.json; it reads ghostty/config via embedded libghostty for rendering.
+cask "cmux"
 
 cask "google-chrome"
 
