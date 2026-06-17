@@ -46,6 +46,28 @@ glob 'zsh/[0-9]*.zsh' ~/.config/zsh/
 brewfile Brewfile
 mise_install
 
+section "macOS defaults"
+osx_default NSGlobalDomain KeyRepeat int 2
+osx_default NSGlobalDomain InitialKeyRepeat int 15
+osx_default NSGlobalDomain ApplePressAndHoldEnabled bool false
+osx_default com.apple.finder AppleShowAllFiles bool true
+osx_default NSGlobalDomain AppleShowAllExtensions bool true
+osx_default com.apple.finder _FXShowPosixPathInWindowTitle bool true
+osx_default com.apple.AppleMultitouchTrackpad Clicking bool true
+osx_default com.apple.dock autohide bool true
+osx_default com.apple.dock autohide-delay float 0
+osx_default com.apple.dock autohide-time-modifier float 0.3
+osx_default com.apple.dock tilesize int 48
+osx_default NSGlobalDomain NSAutomaticSpellingCorrectionEnabled bool false
+osx_default NSGlobalDomain NSAutomaticCapitalizationEnabled bool false
+osx_default NSGlobalDomain NSAutomaticPeriodSubstitutionEnabled bool false
+osx_default NSGlobalDomain NSAutomaticDashSubstitutionEnabled bool false
+osx_default NSGlobalDomain NSAutomaticQuoteSubstitutionEnabled bool false
+osx_default com.apple.desktopservices DSDontWriteNetworkStores bool true
+osx_default com.apple.desktopservices DSDontWriteUSBStores bool true
+on apply mkdir -p "$HOME/Screenshots"
+osx_default com.apple.screencapture location string "$HOME/Screenshots"
+
 # ── Imperative steps ──────────────────────────────────────────────────────────
 # Small steps inline with `on <verb> CMD`; the botufile is bash, so they need no
 # file. A hook file is only for substantial logic (claude, below) or a script an
