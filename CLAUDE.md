@@ -57,7 +57,7 @@ Small steps (`chmod 700 ~/.ssh`, `lefthook install`) are inline `run` (`on = "ap
 
 ## Terminal: Ghostty (canonical), cmux (parallel agent sessions)
 
-Ghostty is the daily driver (`TERMINAL=ghostty`, `ghostty/config`). cmux stays for **parallel Claude Code sessions** via `botu code cmux` (the workspace mirror, formerly `dot ws`). Two symlinked files: `ghostty/config` (rendering + Ghostty keybinds/visor; cmux also reads it for the visual subset) and `cmux/cmux.json` (cmux's app config — intentional divergences only). `botu code` mirrors `~/Code` into workspaces: `botu code init [DIR]` records the dir, `botu code claude` (idle `claude --bg` per repo) / `botu code cmux` (one workspace per repo).
+Ghostty is the daily driver (`TERMINAL=ghostty`, `ghostty/config`). cmux stays for **parallel Claude Code sessions** via `botu code cmux` (the workspace mirror, formerly `dot ws`). Two symlinked files: `ghostty/config` (rendering + Ghostty keybinds/visor; cmux also reads it for the visual subset) and `cmux/cmux.json` (cmux's app config — intentional divergences only). `botu code` mirrors `~/Code` into workspaces: `botu code init [DIR]` records the dir, `botu code claude` (symlinks every repo into one flat dir and opens `claude agents` there, so each repo is `@`-taggable for dispatch with no running agents) / `botu code cmux` (one workspace per repo).
 
 ## Secrets management
 
