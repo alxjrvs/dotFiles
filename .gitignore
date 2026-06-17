@@ -22,7 +22,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Claude — `.claude/` is machine-local here; user/global config lives in
-# `dot-claude/`, symlinked into ~/.claude/ by `dot sync`.
+# `dot-claude/`, symlinked into ~/.claude/ by `botu apply`.
 .claude/
 
 # Secrets resolve through `op run --` / op:// references, never a file (see

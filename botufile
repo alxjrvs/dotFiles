@@ -93,6 +93,11 @@ link hooks/op-agent.sh ~/.local/bin/op-agent
 on apply  op-agent provision
 on verify op-agent status
 
+# git commit signing via 1Password op-ssh-sign — writes machine-local
+# ~/.gitconfig.local + allowed_signers (kept out of the committed config).
+section "git-signing"
+hook git-signing key=GitHubSSH
+
 # claude_statusline stays a hook file — multi-step clone+install, file-worthy.
 section "claude_statusline"
 hook claude_statusline repo=github.com/alxjrvs/claude-statusline

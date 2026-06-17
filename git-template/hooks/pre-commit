@@ -18,7 +18,7 @@ set -e
 # machine gitleaks is on PATH (mise shims via .zshenv), so this never trips.
 if ! command -v gitleaks > /dev/null 2>&1; then
   printf 'pre-commit: gitleaks not on PATH — cannot scan staged changes for secrets.\n' >&2
-  printf '  Provision it with:  dot sync   (or: mise install)\n' >&2
+  printf '  Provision it with:  botu apply   (or: mise install)\n' >&2
   printf '  Bypass for one commit (only if you are sure):  git commit --no-verify\n' >&2
   exit 1
 fi

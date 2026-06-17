@@ -44,9 +44,6 @@ eza = "latest"
 shfmt = "latest"
 shellcheck = "latest"
 
-# ── Test runner (lib/common.sh unit tests in test/, also run in CI) ───
-bats = "latest"
-
 # ── Neovim language servers (nvim/init.lua wires these in) ────────────
 # rust-analyzer is not global — it comes with a per-project `rust` toolchain,
 # and nvim/init.lua picks it up automatically when present.

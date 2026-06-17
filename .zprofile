@@ -10,7 +10,7 @@ export PATH="$HOME/.local/bin:$PATH"
 # GITHUB_PERSONAL_ACCESS_TOKEN would sit in the env of every subprocess Claude
 # Code spawns (a low-friction exfiltration target). Anything that needs a token
 # resolves it on demand: `gh auth token` (gh keychain) for git/CLI use, or the
-# github MCP server via its headersHelper (gh/gh-mcp-auth-header, which runs
+# github MCP server via its headersHelper (op-agent header, which runs
 # `op read` at connect time). Signing and SSH auth both go through the single
 # 1Password agent (gpg.format = ssh + op-ssh-sign; ssh/config IdentityAgent) —
 # no SSH_AUTH_SOCK export and no second agent here.

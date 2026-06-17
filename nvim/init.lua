@@ -1,6 +1,6 @@
 -- nvim/init.lua — minimal, plugin-free Neovim starter config.
 --
--- Synced to ~/.config/nvim/init.lua by `dot sync --only=nvim`.
+-- Synced to ~/.config/nvim/init.lua by `botu apply`.
 -- All LSP/formatter binaries live in mise.toml so they're on PATH in every shell.
 -- Requires Neovim 0.11+ (native vim.lsp.config / vim.lsp.enable, no lspconfig).
 

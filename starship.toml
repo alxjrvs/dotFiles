@@ -2,7 +2,7 @@
 # a bold near-white identity (cwd), then muted-bracketed git chips whose
 # colors match the statusline (branch = blue, untracked = cyan, stashes =
 # magenta, additions = green, deletions = red). Nerd-font glyphs throughout.
-# Symlinked to ~/.config/starship.toml by `dot sync`.
+# Symlinked to ~/.config/starship.toml by `botu apply`.
 
 add_newline = false
 # One space after the directory "title", then chips append flush (no gaps) —
