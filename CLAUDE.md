@@ -4,28 +4,31 @@ This file guides Claude Code (claude.ai/code) when working in this repository.
 
 ## What This Is
 
-A macOS **dotfiles repo** that is now pure **config for [`botu`](https://github.com/alxjrvs/botu)** — the small bash dotfiles+workspace engine extracted from this repo. botu lives on `PATH`; this repo is its *first consumer*. There is no engine code here anymore: the whole repo is a `botufile` (the config), a handful of `hooks/`, and the payload (`.zshrc`, `zsh/`, `nvim/`, `dot-claude/`, `Brewfile`, `mise.toml`, …) that botu symlinks into place.
+A macOS **dotfiles repo** that is pure **config for [BoomTube](https://github.com/alxjrvs/botu)** — the small TypeScript dotfiles+workspace engine (the executable is `botu`), compiled to a single binary on `PATH`. This repo is its *first consumer*. There is no engine code here: the whole repo is a `botufile.toml` (the config), a handful of TypeScript `hooks/`, and the payload (`.zshrc`, `zsh/`, `nvim/`, `dot-claude/`, `Brewfile`, `mise.toml`, …) that botu symlinks into place.
 
 ```
-botu init ~/Code/DevEnv/dotFiles   # record this repo (writes botuinit.sh)
-botu apply        # symlink/copy/install/run from the botufile
-botu verify       # check drift (exit 0 ok / 2 warn / 1 fail)
+botu init ~/Code/DevEnv/Dotfiles   # record this repo (writes botuinit.sh)
+botu apply        # symlink/copy/install/run from the botufile.toml
+botu verify       # check drift (exit 0 ok / 2 warn / 1 fail); --json for a report
 botu fix          # repair drift (incl. reaping orphaned links)
+botu rollback     # undo the last apply (restores backed-up files)
 botu uninstall    # remove every managed link
 ```
 
-Fresh machine: `git clone … && ./dotFiles/botuinit.sh` (installs botu, points it here, applies).
+Fresh machine: `git clone … && ./Dotfiles/botuinit.sh` (installs botu, points it here, applies).
 
-## The `botufile`
+## The `botufile.toml`
 
-The config is a short bash program of verb-aware declarations; `botu apply|verify|fix` source it once under the matching verb. No JSON, no templating — the config *is* the program. Vocabulary:
+The config is a typed, validated TOML document; botu parses it once and runs each `[[section]]` under the verb. Within a section, resources run in phase order `link → copy → glob → packages → run → hook`. Schema:
 
-- `section "Name"` — group + tag (for `--only=Name`).
-- `link [--mode M] SRC DST` / `copy [--mode M] SRC DST` / `glob PAT DSTDIR` — the symlink/copy contract (DST may use `~`).
-- `brewfile FILE` / `mise_install` — packages via the stock tools (the `Brewfile` / `mise.toml` are the data).
-- `osx_default DOMAIN KEY TYPE VALUE` — a macOS default (the engine restarts the UI automatically when any changed).
-- `on apply|verify CMD…` — a small inline imperative step (no file needed; the botufile is bash).
-- `hook NAME [k=v…]` — sources `hooks/NAME.sh`, calls `_NAME_<verb>`, passes data as `$BOTU_k`. For substantial imperative logic only.
+- `[[section]]` with `name` (the `--only`/tag) and optional `when = { os, host, profile }` to gate by machine.
+- `link` / `copy` `[{ src, dst, mode? }]` and `glob [{ pattern, into }]` — the symlink/copy contract (`dst` may use `~`).
+- `brewfile = "FILE"` / `mise = true` — packages via the stock tools (the `Brewfile` / `mise.toml` are the data).
+- `osx_default [{ domain, key, type, value }]` — a macOS default (the engine restarts the UI automatically when any changed).
+- `run [{ on = "apply"|"verify", cmd }]` — a small inline imperative step.
+- `hook [{ name, with? }]` — loads `hooks/<name>.ts` (a TypeScript resource module), passing `with` as inputs. For substantial imperative logic only.
+
+Multi-machine: gate sections with `when`, or layer overlay files `botufile.<os|host|profile>.toml`.
 
 ## Northern Principles
 
@@ -33,19 +36,20 @@ One North Star: **small, exemplary, easily shareable — a senior engineer's sho
 
 1. **Native over special.** Prefer stock behavior to bespoke machinery; deleting custom code for a built-in is the highest-value change. (Extracting the engine into `botu` was the largest application of this.)
 2. **Guilty until proven load-bearing.** Every dependency, wrapper, and line earns its weight on a *personal* repo, or it goes.
-3. **No gratuitous wrappers.** Call tools natively. The lone shims that survive are ones an external program execs by path: `git-ssh-sign` (1Password commit signing) and `op-agent` (the MCP `headersHelper`, see Secrets).
+3. **No gratuitous wrappers.** Call tools natively. The lone bash script that survives is `op-agent`, which an external program execs by path (the MCP `headersHelper`, see Secrets); git commit signing lives in the `git-signing.ts` hook.
 4. **One config, every machine.** No host detection. Add the smallest possible guard at the point a genuine per-machine divergence appears.
 5. **Standard, and agentic-enabled.** 1Password, Git, SSH, `gh`, MCP stay stock — but wired for agents. Secrets resolve through `op` on demand, never plaintext in git, never exported to the session env.
 6. **Keep it legible.** Plain ops over clever math; docs explain the *decision and the gotcha*, not the *what*.
 
 ## hooks/
 
-The imperative residue the DSL can't express. A hook becomes a file only for (a) substantial multi-step logic, or (b) a script an external program execs by path.
+The imperative residue the config can't express. A botu hook is a `hooks/<name>.ts` module exporting `apply`/`verify`/`fix` functions that receive a typed `HookApi` (`with` inputs, `dryRun`, `env`, and `ok`/`warn`/`fail`/`note`); it self-locates this repo via `import.meta.dir`, and `fix` falls back to `apply`.
 
-- **`op-agent.sh`** — one verb-dispatched CLI for all 1Password-agent machinery (see Secrets). Replaces the old `install/47-op-agent.sh` and the two per-service `*-mcp-auth-header` shims. Linked onto `PATH` as `op-agent`; driven by `on apply op-agent provision` / `on verify op-agent status`.
-- **`claude_statusline.sh`** — clones the `claude-statusline` repo beside this one and runs its installer.
+- **`git-signing.ts`** — converges git commit/tag signing via 1Password `op-ssh-sign` (machine-local `~/.gitconfig.local` + `~/.ssh/allowed_signers`), using the agent key named by `with.key` (default `GitHubSSH`).
+- **`claude_statusline.ts`** — clones the `claude-statusline` repo beside this one and runs its installer.
+- **`op-agent.sh`** — NOT a botu hook: a standalone bash CLI for all 1Password-agent machinery (see Secrets), `link`ed onto `PATH` as `op-agent` and driven by `run` steps (`op-agent provision` / `op-agent status`). Stays bash because external programs (MCP headersHelpers) exec it by path.
 
-Small steps (`chmod 700 ~/.ssh`, `lefthook install`) are inline `on apply` lines, not files.
+Small steps (`chmod 700 ~/.ssh`, `lefthook install`) are inline `run` (`on = "apply"`) entries, not files.
 
 ## Packaging policy: Lean A (brew = casks, mise = dev CLIs)
 
@@ -105,4 +109,4 @@ Symlinked individually into `~/.claude/` (the `Claude` section of the botufile):
 - **dot-claude vs .claude**: `dot-claude/` is the source of truth for **user/global** Claude config (committed, symlinked into `~/.claude/`). The repo-root `.claude/` is this repo's **project-scoped**, gitignored config. Don't conflate them.
 - **Sheldon plugin order**: `fast-syntax-highlighting` must be last in `sheldon/plugins.toml` (it wraps every existing ZLE widget at load).
 - **`gh` auth is keychain-backed**: token in the login keychain (gh secure storage); `~/.config/gh/hosts.yml` carries only non-secret metadata. Never `gh auth login --insecure-storage`.
-- **The engine is `botu`**: anything about apply/verify/fix semantics, symlink internals, the manifest, or orphan reaping lives in `github.com/alxjrvs/botu`, not here. This repo is config.
+- **The engine is `botu`** (the BoomTube project): anything about apply/verify/fix/rollback semantics, symlink internals, the manifest/journal, or orphan reaping lives in `github.com/alxjrvs/botu`, not here. This repo is config.
