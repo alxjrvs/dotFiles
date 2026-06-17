@@ -1,8 +1,9 @@
 name: lint
 
 # Mirrors the local lefthook pre-commit gate (shellcheck + shfmt + gitleaks +
-# settings.json validity) plus the bats unit tests, on every push to main and
-# every PR. Lint only — never runs `dot sync` or mutates anything.
+# settings.json validity) on every push to main and every PR. Lint only — never
+# runs `botu apply` or mutates anything. (The engine and its tests live in the
+# botu repo; this repo is just botu's config.)
 
 on:
   push:
@@ -19,27 +20,23 @@ jobs:
       - uses: actions/checkout@v4
 
       # Set mise up (PATH + shims) but skip the full `mise install` — we only
-      # need the five lint tools, not the whole toolchain (node, bun, neovim…).
+      # need the lint tools, not the whole toolchain (node, bun, neovim…).
       - uses: jdx/mise-action@v2
         with:
           install: false
       - name: Install lint tools
-        run: mise install shellcheck shfmt gitleaks jq bats
+        run: mise install shellcheck shfmt gitleaks jq
 
       # Same file set as lefthook.yml's shell globs, resolved via git.
       - name: shellcheck
-        run: shellcheck -x $(git ls-files '*.sh' dot sync doctor watchtower bootstrap.sh 'git-template/hooks/*')
+        run: shellcheck -x $(git ls-files '*.sh' 'git-template/hooks/*')
       - name: shfmt
-        run: shfmt -d -i 2 -ci -sr $(git ls-files '*.sh' dot sync doctor watchtower bootstrap.sh 'git-template/hooks/*')
+        run: shfmt -d -i 2 -ci -sr $(git ls-files '*.sh' 'git-template/hooks/*')
 
-      # Scan the current tree (not full history) — mirrors the intent of the
-      # pre-commit secret gate without risking flaky failures on old history.
-      # Deep-history scanning is available on demand via `dot doctor --full`.
+      # Scan the current tree (not full history) — mirrors the pre-commit secret
+      # gate without risking flaky failures on old history.
       - name: gitleaks
         run: gitleaks detect --no-git --redact --no-banner
 
       - name: settings.json validity
         run: jq -e . dot-claude/settings.json > /dev/null
-
-      - name: bats unit tests
-        run: bats test/

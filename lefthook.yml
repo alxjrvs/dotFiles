@@ -1,21 +1,23 @@
-# Lefthook config for this repo (dotfiles itself).
+# Lefthook config for this repo (a botu config / dotfiles repo).
 #
 # pre-commit: lint staged shell + guard secrets and settings.json.
 #
-# no_auto_install: dot sync owns hook installation (install/85-lefthook.sh
-# runs `lefthook install` on every sync). After a lefthook.yml change,
-# re-run `dot sync` (or `lefthook install`) to refresh the checksum.
+# no_auto_install: botu owns hook installation (the `lefthook` hook runs
+# `lefthook install` on apply). After a lefthook.yml change, re-run
+# `botu apply --only=lefthook` (or `lefthook install`) to refresh the checksum.
 no_auto_install: true
 
 pre-commit:
   parallel: true
   commands:
     shellcheck:
-      # `*.sh` matches recursively; the extensionless entrypoints are listed explicitly.
-      glob: "{*.sh,dot,sync,doctor,watchtower,cmux/mirror,mcp/mcp,git-template/hooks/*}"
+      # `*.sh` matches the hooks + botuinit.sh recursively.
+      glob: "{*.sh,git-template/hooks/*}"
       run: shellcheck -x {staged_files}
     shfmt-check:
-      glob: "{*.sh,dot,sync,doctor,watchtower,cmux/mirror,mcp/mcp,git-template/hooks/*}"
+      # botufile is DSL config (an aligned link table by design) — validated by
+      # `botu apply --dry-run`, not shfmt, so it's deliberately not formatted here.
+      glob: "{*.sh,git-template/hooks/*}"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}
     gitleaks:

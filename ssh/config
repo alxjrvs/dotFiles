@@ -15,7 +15,7 @@ Host *
 
   # Connection multiplexing — second `git push` reuses the first connection.
   ControlMaster auto
-  # Sockets live under ~/.ssh/cm (user-private 700, created by `dot sync`), not
+  # Sockets live under ~/.ssh/cm (user-private 700, created by botu (ssh-perms)), not
   # world-writable /tmp — which is a symlink-race surface on multi-user hosts.
   # %C is a hash of (local host, remote host, port, user): short, collision-free.
   ControlPath ~/.ssh/cm/%C

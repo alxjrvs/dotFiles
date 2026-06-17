@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "example-stdio": {
-      "command": "op",
-      "args": ["run", "--env-file=.env", "--", "example-mcp-server", "--stdio"]
-    }
-  }
-}
