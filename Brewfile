@@ -23,7 +23,9 @@ cask "1password-cli"
 cask "1password"
 
 # ── Apps ──────────────────────────────────────────────────────────────
-cask "claude"
+# The Claude Code CLI is intentionally NOT here: it's installed via the
+# native curl installer (a run step in the botufile "Claude" section), which
+# self-updates — brew/npm builds do not. Do not add cask "claude"/"claude-code".
 cask "discord"
 
 # ── Fonts ─────────────────────────────────────────────────────────────

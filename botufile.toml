@@ -117,6 +117,13 @@ dst = "~/.claude/CLAUDE.md"
 src = "dot-claude/settings.json"
 dst = "~/.claude/settings.json"
 
+[[section.run]]
+# Claude Code CLI via the official native installer (self-updating); never
+# brew/npm, whose builds do not auto-update. Idempotent — only installs when
+# `claude` is missing; the CLI updates itself thereafter.
+on = "apply"
+cmd = "command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash"
+
 [[section]]
 name = "zsh fragments"
 brewfile = "Brewfile"
