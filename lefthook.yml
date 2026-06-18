@@ -26,6 +26,12 @@ pre-commit:
       # Backstop against committing a broken settings.json (breaks every Claude session).
       glob: "dot-claude/settings*.json"
       run: jq -e . {staged_files} > /dev/null
+    toml-validity:
+      # The botufile.toml IS the repo — a parse error only surfaces at `botu
+      # apply` time on a real machine otherwise. --no-schema = pure syntax check
+      # (hermetic, offline); won't reformat the hand-aligned link tables.
+      glob: "*.toml"
+      run: taplo check --no-schema {staged_files}
 
 # commit-msg: forward-only hygiene guard. Rejects throwaway subjects (bare
 # "WIP"/"wip" or a single character) so they don't land in permanent history.

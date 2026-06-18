@@ -25,6 +25,7 @@ sheldon = "latest"      # zsh plugin manager — loaded in zsh/30-plugins.zsh
                         # ensure `openssl@3` is in Brewfile or the binary segfaults.
 atuin = "latest"        # shell history sync — loaded in zsh/30-plugins.zsh
 fzf = "latest"          # `fzf --zsh` integration loaded in zsh/60-tools.zsh
+zoxide = "latest"       # frecency `cd` — `zoxide init zsh` loaded in zsh/60-tools.zsh
 starship = "latest"     # prompt — `starship init zsh` loaded in zsh/50-prompt.zsh
 
 # ── Git surface (used by prompt, lefthook, pre-commit) ────────────────
@@ -32,6 +33,7 @@ gh = "latest"           # GH CLI; also feeds the GitHub MCP auth header
 delta = "latest"        # syntax-aware git pager
 gitleaks = "latest"     # gitleaks protect — global pre-commit hook
 lefthook = "latest"     # repo-local pre-commit/pre-push runner
+"aqua:tummychow/git-absorb" = "latest"  # `git absorb` — auto-route staged fixups to the right ancestor (pairs with rebase.autoSquash + updateRefs)
 
 # ── File / text / data tools ──────────────────────────────────────────
 bat = "latest"
@@ -39,6 +41,7 @@ fd = "latest"
 ripgrep = "latest"
 jq = "latest"
 eza = "latest"
+"aqua:dbrgn/tealdeer" = "latest"          # fast `tldr` cheatsheets (binary: tldr)
 
 # ── Linters / formatters ─────────────────────────────────────────────
 shfmt = "latest"

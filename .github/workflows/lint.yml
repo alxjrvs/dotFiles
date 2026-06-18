@@ -25,7 +25,7 @@ jobs:
         with:
           install: false
       - name: Install lint tools
-        run: mise install shellcheck shfmt gitleaks jq
+        run: mise install shellcheck shfmt gitleaks jq taplo
 
       # Same file set as lefthook.yml's shell globs, resolved via git.
       - name: shellcheck
@@ -40,3 +40,9 @@ jobs:
 
       - name: settings.json validity
         run: jq -e . dot-claude/settings.json > /dev/null
+
+      # The botufile.toml IS the repo — gate that every tracked TOML parses, so a
+      # syntax error is caught here, not at `botu apply` time on a real machine.
+      # --no-schema = pure syntax (hermetic, offline). Mirrors lefthook's toml-validity.
+      - name: TOML validity
+        run: taplo check --no-schema $(git ls-files '*.toml')
