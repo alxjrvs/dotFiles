@@ -57,5 +57,8 @@
   "showTurnDuration": false,
   "terminalProgressBarEnabled": false,
   "teammateMode": "in-process",
-  "inputNeededNotifEnabled": true
+  "inputNeededNotifEnabled": true,
+  "skipAutoPermissionPrompt": true,
+  "editorMode": "vim",
+  "verbose": true
 }
