@@ -21,6 +21,10 @@ Settings (`~/.claude/settings.json`, symlinked from the dotFiles repo) are minim
 
 Don't add settings beyond these without asking.
 
+## Worktrees (agents mode)
+
+In `claude agents` mode each dispatched agent starts at the repo root. To isolate before editing, create a **fresh** worktree with `EnterWorktree(name: …)` — fresh-per-dispatch is the intended pattern: stateless, collision-free, auto-cleaned. **Never enter an existing worktree by `path` from the repo root** — it's rejected (`Cannot enter worktree: … is the repository root, not an isolated worktree`). `path` switching is only available from inside a worktree, or a subagent with `isolation: worktree`. To resume work in a *specific* existing worktree, launch the session with its cwd already inside it (`cd .claude/worktrees/<name> && claude`); no settings key changes this (the only `worktree.*` key is `worktree.baseRef`, which just picks the base branch).
+
 ## Agent secret access
 
 The agent resolves 1Password secrets through a **service account**, not your desktop biometric session — so a Claude session (interactive *or* headless/cron) gets its secrets with **no Touch ID prompt** and **no dependency on the 1Password desktop app**. This is the 1Password-recommended automation tier ([secure-ai-access](https://www.1password.dev/get-started/secure-ai-access), [developer-quickstart](https://www.1password.dev/get-started/developer-quickstart)).
