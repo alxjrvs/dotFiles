@@ -90,6 +90,15 @@ Uses the stock `osxkeychain` helper (not `op`), so the agent pushes with a least
 - HTTP MCP → `op-agent header`; controlled servers → `op run --env-file`; plugin servers → their `*_COMMAND`.
 - If you find a plaintext token anywhere, revoke first, then migrate.
 
+### Standing threats (keep the surface small)
+
+The minimal MCP/plugin footprint is a *security* decision, not just taste — every enabled server widens the prompt-injection/exfil blast radius. Two live vectors shape the posture:
+
+- **`~/.claude.json` postinstall hijack** (Mitiga, unpatched-by-design): a malicious npm/bun package's `postinstall` can rewrite `~/.claude.json` to MITM MCP traffic and steal OAuth tokens — invisible in provider logs. No patch is coming (it presupposes code execution as the Claude user). Native mitigations, already mostly in place: don't run untrusted `npm/bun install` as the agent user; keep MCP OAuth surface minimal; prefer scoped/fine-grained tokens (the `claude-agent` SA + per-repo PATs cap the blast radius); the `editorMode`-level `permissions.deny` floor blocks direct keychain token reads. No bespoke `~/.claude.json` integrity-checker — that's machinery this repo would otherwise delete.
+- **Repo-controlled config CVEs** (CVE-2025-59536 RCE, the `enableAllProjectMcpServers` auto-approve bypass, CVE-2026-21852 `ANTHROPIC_BASE_URL` key-exfil): all patched in current Claude Code, all pre-trust-dialog. Mitigation: stay current, never set `enableAllProjectMcpServers`/`enabledMcpjsonServers` globally (`botu verify` greps for them), don't open untrusted repos under `auto` mode.
+
+There is no canonical "must-install" plugin set; `enabledPlugins` earns each entry by use, not by hype.
+
 ## Claude Code Configuration (`dot-claude/`)
 
 Symlinked individually into `~/.claude/` (the `Claude` section of the botufile):

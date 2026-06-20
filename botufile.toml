@@ -124,6 +124,14 @@ dst = "~/.claude/settings.json"
 on = "apply"
 cmd = "command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash"
 
+[[section.run]]
+# Deterministic guardrail (CVE-2025-59536 class): fail verify if the auto-approve
+# MCP keys ever land in settings.json — they run .mcp.json commands before the
+# trust dialog, i.e. pre-consent RCE. A rule that lives only in prose isn't
+# enforced; this grep is.
+on = "verify"
+cmd = "test -f ~/.claude/settings.json && grep -qE '(enableAllProjectMcpServers|enabledMcpjsonServers)' ~/.claude/settings.json && { echo 'forbidden auto-approve MCP key in ~/.claude/settings.json'; exit 1; } || true"
+
 [[section]]
 name = "zsh fragments"
 brewfile = "Brewfile"
