@@ -15,7 +15,7 @@
     "GIT_CONFIG_VALUE_2": "",
     "GIT_CONFIG_KEY_3": "credential.https://github.com.helper",
     "GIT_CONFIG_VALUE_3": "osxkeychain",
-    "SPACEBASE_API_KEY_COMMAND": "OP_SERVICE_ACCOUNT_TOKEN=\"$(security find-generic-password -s op-claude-agent -w)\" /opt/homebrew/bin/op read 'op://claude-agent/Spacebase API Key/credential'",
+    "SPACEBASE_API_KEY_COMMAND": "~/.local/bin/op-agent secret op://claude-agent/Spacebase API Key/credential",
     "SPACEBASE_API_KEY": "",
     "SPACEBASE_URL": "",
     "SPACEBASE_PROJECT_ID": ""

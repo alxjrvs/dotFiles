@@ -48,7 +48,7 @@ Everything here is policy except a handful of identity values:
 |------|-------|
 | Git name + email | `.gitconfig` `[user]` |
 | 1Password signing-key item name | `botufile` / the `git-ssh-sign` setup (default `GitHubSSH`) |
-| MCP token references | `dot-claude/settings.json` `headersHelper`s → `op-agent header op://…` |
+| MCP token references | `dot-claude/settings.json` `*_COMMAND` resolvers → `op-agent secret op://…` |
 | 1Password vault filter for SSH keys | `ssh/1password-agent.toml` |
 | Statusline source repo | `hooks/claude_statusline.sh` (`repo=…` in the botufile) |
 | Editor / identity prefs | `dot-claude/CLAUDE.md` |
@@ -75,8 +75,8 @@ Everything here is policy except a handful of identity values:
 ## Secrets, signing, terminal, packaging
 
 The load-bearing doctrine lives in [`CLAUDE.md`](CLAUDE.md): the `op-agent` CLI
-(one verb-dispatched script for the agent service account, git PAT, and MCP
-`headersHelper`), the Lean-A packaging policy, the Ghostty+cmux terminal stack,
+(one verb-dispatched script for the agent service account, git PAT, and on-demand
+secret reads), the Lean-A packaging policy, the Ghostty+cmux terminal stack,
 and 1Password commit signing. In brief:
 
 - **Git signing** is 1Password via `op-ssh-sign` (`gpg.format = ssh`); the

@@ -1,17 +1,22 @@
 #!/usr/bin/env bash
 # op-agent — all 1Password-agent machinery in one verb-dispatched CLI.
-# Replaces the per-service header shims (gh-mcp-auth-header,
-# render-mcp-auth-header — identical but for the ref) and install/47-op-agent.sh.
-# Differentiation is by ARGUMENT, never a new file.
+# Differentiation is by ARGUMENT, never a new file. Every verb has a live
+# consumer — no speculative surface (an HTTP MCP `headersHelper`, when one is
+# added, formats its Bearer line from `op-agent secret`).
 #
-#   op-agent header <op://ref>   emit {"Authorization":"Bearer …"} for an MCP
-#                                headersHelper (the ref is an arg, not a file)
+#   op-agent secret <op://ref>   read one secret value to stdout via the SA
+#                                (the ref is an arg, not a per-service file)
 #   op-agent provision           ensure SA vault + keychain token + git PAT
 #   op-agent status              report keychain token presence (exit 0/1)
 #
-# This stays a standalone script ONLY because Claude Code's headersHelper execs
-# it by path; the botufile drives provision/status via `on apply|verify op-agent …`.
+# Stays a standalone script because plugin `*_COMMAND` resolvers (e.g. spacebase)
+# exec it by path; the botufile drives provision/status via `on apply|verify`.
 set -euo pipefail
+
+# Normalize PATH so `op` (brew) resolves even when a plugin resolver execs us
+# with a thin PATH — replaces the old hardcoded /opt/homebrew/bin/op. `security`,
+# `git`, `scutil` live in /usr/bin and are always present.
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 KEYCHAIN="op-claude-agent"
 VAULT="${BOTU_vault:-claude-agent}"
@@ -25,26 +30,18 @@ _load_sa() {
   return 0
 }
 
-cmd_header() {
-  local ref="${1:-${OP_REF:-}}" token
-  command -v op > /dev/null 2>&1 || {
-    printf '{}\n'
-    return 0
-  }
+# Emit one secret value to stdout (the `op read` contract: value on success,
+# nothing + nonzero on failure). A failed read leaves the consumer's var empty,
+# which falls through to its own default — never a malformed value.
+cmd_secret() {
+  local ref="${1:-}"
+  command -v op > /dev/null 2>&1 || return 1
   [[ -n "$ref" ]] || {
-    printf '{}\n'
-    return 0
+    echo "op-agent: secret needs an op:// ref" >&2
+    return 2
   }
   _load_sa
-  token="$(op read "$ref" 2> /dev/null)" || {
-    printf '{}\n'
-    return 0
-  }
-  [[ -n "$token" ]] || {
-    printf '{}\n'
-    return 0
-  }
-  printf '{"Authorization":"Bearer %s"}\n' "$token"
+  op read "$ref" 2> /dev/null
 }
 
 cmd_provision() {
@@ -91,14 +88,14 @@ cmd_status() {
 }
 
 case "${1:-}" in
-  header)
+  secret)
     shift
-    cmd_header "$@"
+    cmd_secret "$@"
     ;;
   provision) cmd_provision ;;
   status) cmd_status ;;
   *)
-    printf 'usage: op-agent <header op://ref | provision | status>\n' >&2
+    printf 'usage: op-agent <secret op://ref | provision | status>\n' >&2
     exit 2
     ;;
 esac

@@ -36,7 +36,7 @@ One North Star: **small, exemplary, easily shareable — a senior engineer's sho
 
 1. **Native over special.** Prefer stock behavior to bespoke machinery; deleting custom code for a built-in is the highest-value change. (Extracting the engine into `botu` was the largest application of this.)
 2. **Guilty until proven load-bearing.** Every dependency, wrapper, and line earns its weight on a *personal* repo, or it goes.
-3. **No gratuitous wrappers.** Call tools natively. The lone bash script that survives is `op-agent`, which an external program execs by path (the MCP `headersHelper`, see Secrets); git commit signing lives in the `git-signing.ts` hook.
+3. **No gratuitous wrappers.** Call tools natively. The lone bash script that survives is `op-agent`, which an external program execs by path (a plugin `*_COMMAND` resolver, see Secrets); git commit signing lives in the `git-signing.ts` hook.
 4. **One config, every machine.** No host detection. Add the smallest possible guard at the point a genuine per-machine divergence appears.
 5. **Standard, and agentic-enabled.** 1Password, Git, SSH, `gh`, MCP stay stock — but wired for agents. Secrets resolve through `op` on demand, never plaintext in git, never exported to the session env.
 6. **Keep it legible.** Plain ops over clever math; docs explain the *decision and the gotcha*, not the *what*.
@@ -47,7 +47,7 @@ The imperative residue the config can't express. A botu hook is a `hooks/<name>.
 
 - **`git-signing.ts`** — converges git commit/tag signing via 1Password `op-ssh-sign` (machine-local `~/.gitconfig.local` + `~/.ssh/allowed_signers`), using the agent key named by `with.key` (default `GitHubSSH`).
 - **`claude_statusline.ts`** — clones the `claude-statusline` repo beside this one and runs its installer.
-- **`op-agent.sh`** — NOT a botu hook: a standalone bash CLI for all 1Password-agent machinery (see Secrets), `link`ed onto `PATH` as `op-agent` and driven by `run` steps (`op-agent provision` / `op-agent status`). Stays bash because external programs (MCP headersHelpers) exec it by path.
+- **`op-agent.sh`** — NOT a botu hook: a standalone bash CLI for all 1Password-agent machinery (see Secrets), `link`ed onto `PATH` as `op-agent` and driven by `run` steps (`op-agent provision` / `op-agent status`). Stays bash because external programs (a plugin `*_COMMAND` resolver) exec it by path.
 
 Small steps (`chmod 700 ~/.ssh`, `lefthook install`) are inline `run` (`on = "apply"`) entries, not files.
 
@@ -72,13 +72,13 @@ Ghostty is the daily driver (`TERMINAL=ghostty`, `ghostty/config`). cmux stays f
 
 - `op-agent provision` — idempotently ensures the `claude-agent` vault, a per-host service account with `read_items` on only that vault, its token in the macOS login keychain (`op-claude-agent`), and caches the fine-grained git PAT into the keychain for `osxkeychain` git auth. Run via `on apply op-agent provision`. Foreground-only first run (minting authorizes through the desktop app).
 - `op-agent status` — reports keychain token presence (`on verify`).
-- `op-agent header op://ref` — emits `{"Authorization":"Bearer …"}` for an HTTP MCP server's `headersHelper`. **The ref is an argument, not a per-service file** — this one verb replaced the two identical-but-for-`OP_REF` shims. It sources the SA token from the keychain inline (no biometric, headless-safe), confined to one short-lived process so neither the token nor the secret reaches a Bash subprocess, the transcript, or OTEL. `{}` on any failure (clean connection failure, no malformed Bearer).
+- `op-agent secret op://ref` — reads one secret value to stdout via the SA, the single read primitive for consumers that want a raw value (e.g. the spacebase `*_COMMAND`). **The ref is an argument, not a per-service file.** It sources the SA token from the keychain inline (no biometric, headless-safe), confined to one short-lived process so neither the token nor the secret reaches a Bash subprocess, the transcript, or OTEL. Follows the `op read` contract: value on success, nothing + nonzero on failure (so a failed read leaves the consumer's var empty and it falls through to its own default).
 
-`headersHelper` runs its value as a shell command, so `op-agent header op://claude-agent/…` works directly. Wire each HTTP MCP server's `headersHelper` to `op-agent header <its op:// ref>`.
+Every verb has a live consumer — no speculative surface. An HTTP MCP server, if one is ever added, formats its `headersHelper` Bearer line from `op-agent secret <its op:// ref>`; until then no bespoke header verb is carried.
 
 ### MCP secrets — one canonical pattern
 
-Servers we control launch via 1Password's `op run --env-file=.env -- <server>` with `op://` references in a committable `.env` (`botu mcp add`). HTTP servers use the `op-agent header` hook above. Plugin-bundled stdio servers use their own `*_COMMAND` resolver (e.g. spacebase's `SPACEBASE_API_KEY_COMMAND`). **Never write a `${VAR}` placeholder into a git-tracked `.mcp.json`/`.env`** (a later `claude mcp add` can expand it). `botu verify` and the `git-template` pre-commit both fail on a `${VAR}` in a tracked `.mcp.json` and on a resolved-token literal in any tracked `.mcp.json`/`.env`.
+Servers we control launch via 1Password's `op run --env-file=.env -- <server>` with `op://` references in a committable `.env` (`botu mcp add`). Plugin-bundled stdio servers use their own `*_COMMAND` resolver (e.g. spacebase's `SPACEBASE_API_KEY_COMMAND` → `op-agent secret op://…`); an HTTP server, if added, formats its `headersHelper` from `op-agent secret`. **Never write a `${VAR}` placeholder into a git-tracked `.mcp.json`/`.env`** (a later `claude mcp add` can expand it). `botu verify` and the `git-template` pre-commit both fail on a `${VAR}` in a tracked `.mcp.json` and on a resolved-token literal in any tracked `.mcp.json`/`.env`.
 
 ### Agent git auth
 
@@ -87,7 +87,7 @@ Uses the stock `osxkeychain` helper (not `op`), so the agent pushes with a least
 ### Rules
 
 - Never commit a plaintext token. Use `op://` references or `op run --`.
-- HTTP MCP → `op-agent header`; controlled servers → `op run --env-file`; plugin servers → their `*_COMMAND`.
+- Controlled servers → `op run --env-file`; plugin servers → their `*_COMMAND` (→ `op-agent secret`); a future HTTP MCP server → `headersHelper` formatted from `op-agent secret`.
 - If you find a plaintext token anywhere, revoke first, then migrate.
 
 ### Standing threats (keep the surface small)
