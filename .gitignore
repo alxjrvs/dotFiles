@@ -21,16 +21,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Claude — `.claude/` is machine-local here; user/global config lives in
-# `dot-claude/`, symlinked into ~/.claude/ by `botu apply`.
+# Claude — this repo's own project-scoped `.claude/` is machine-local; the
+# user/global config lives in `dot-claude/`, symlinked into ~/.claude/ by
+# `botu apply`. (Repo-scoped only — global excludes live in `git/ignore`, NOT
+# a blanket `.claude/` that would hide it in every repo on the machine.)
 .claude/
-
-# Secrets resolve through `op run --` / op:// references, never a file (see
-# CLAUDE.md). `.npmrc` is gitignored at the user-config level because per-project
-# `.npmrc`s belong to those projects' repos (with op:// refs if they need
-# credentials). A user-level `.npmrc` would mostly hold registry-auth
-# state we don't want bleeding across projects.
-.npmrc
 
 # Transient/generated
 Brewfile.lock.json

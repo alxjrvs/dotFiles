@@ -1,0 +1,21 @@
+# Personal global gitignore — applies to EVERY git repo on this machine
+# (git's XDG default, ~/.config/git/ignore; no core.excludesfile override).
+#
+# ONLY universal, machine-/editor-level cruft belongs here. Project- and
+# repo-specific ignores (build output, logs, lockfiles, `.claude/`, .npmrc,
+# audit/, …) live in each project's own .gitignore — globally ignoring them
+# would hide files that other repos legitimately track.
+
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# Editor swap / backup files
+*.swp
+*.swo
+*~
+
+# Claude Code machine-local override — never tracked in ANY repo.
+**/.claude/settings.local.json

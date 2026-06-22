@@ -25,7 +25,11 @@
 	helper = !gh auth git-credential
 [core]
 	editor = nvim
-	excludesfile = ~/.gitignore
+	# No excludesfile override: git reads ~/.config/git/ignore (XDG default)
+	# for global excludes, managed by the `git/ignore` link in botufile.toml.
+	# The repo's own .gitignore stays repo-scoped (it used to double as the
+	# global excludes via a ~/.gitignore symlink, leaking .claude/ etc. into
+	# every repo on the machine).
 	pager = delta
 	fsmonitor = false
 	untrackedCache = true

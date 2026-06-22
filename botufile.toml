@@ -27,9 +27,13 @@ dst = "~/.gitconfig"
 src = ".gitmessage"
 dst = "~/.gitmessage"
 
+# Global git excludes → git's XDG default. ONLY universal machine/editor
+# cruft; repo-specific ignores live in each project's own .gitignore. (This
+# used to be a `.gitignore → ~/.gitignore` link doubling as core.excludesfile,
+# which leaked this repo's `.claude/` etc. into every repo on the machine.)
 [[section.link]]
-src = ".gitignore"
-dst = "~/.gitignore"
+src = "git/ignore"
+dst = "~/.config/git/ignore"
 
 [[section.link]]
 src = ".editorconfig"
