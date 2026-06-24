@@ -136,6 +136,15 @@ cmd = "command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install
 on = "verify"
 cmd = "test -f ~/.claude/settings.json && grep -qE '(enableAllProjectMcpServers|enabledMcpjsonServers)' ~/.claude/settings.json && { echo 'forbidden auto-approve MCP key in ~/.claude/settings.json'; exit 1; } || true"
 
+[[section.run]]
+# Deterministic guardrail: agent git auth must resolve the PAT through the single
+# `op` primitive (`op-agent git-credential`), never a cached PAT via `osxkeychain`.
+# Keeps git from silently regressing off the secrets doctrine. (A PAT literal can
+# never reach a tracked file either — gitleaks + the git-template pre-commit cover
+# that.) A prose rule isn't enforced; this grep is.
+on = "verify"
+cmd = "test -f ~/.claude/settings.json || exit 0; grep -q 'op-agent git-credential' ~/.claude/settings.json || { echo 'agent git helper not wired to op-agent git-credential in ~/.claude/settings.json'; exit 1; }; ! grep -q 'osxkeychain' ~/.claude/settings.json || { echo 'forbidden osxkeychain git helper (cached-PAT regression) in ~/.claude/settings.json'; exit 1; }"
+
 [[section]]
 name = "zsh fragments"
 brewfile = "Brewfile"

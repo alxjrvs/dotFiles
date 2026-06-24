@@ -6,7 +6,10 @@
 #
 #   op-agent secret <op://ref>   read one secret value to stdout via the SA
 #                                (the ref is an arg, not a per-service file)
-#   op-agent provision           ensure SA vault + keychain token + git PAT
+#   op-agent git-credential get  git credential helper: resolve the agent PAT
+#                                from the vault on demand (same `op` path as
+#                                `secret`; git's own `cache` helper amortizes it)
+#   op-agent provision           ensure SA vault + keychain token; check git PAT
 #   op-agent status              report keychain token presence (exit 0/1)
 #
 # Stays a standalone script because plugin `*_COMMAND` resolvers (e.g. spacebase)
@@ -20,6 +23,7 @@ export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 KEYCHAIN="op-claude-agent"
 VAULT="${BOTU_vault:-claude-agent}"
+PAT_REF="op://$VAULT/Claude Git PAT/credential"
 
 # Load the SA token from the login keychain into THIS process only (no biometric,
 # headless-safe). Empty/missing → op falls back to desktop auth.
@@ -42,6 +46,21 @@ cmd_secret() {
   }
   _load_sa
   op read "$ref" 2> /dev/null
+}
+
+# git credential helper, scoped to https://github.com in the agent git config.
+# On `get` it resolves the agent PAT from the vault via the SA — the same on-demand
+# `op` path as `secret`, so the PAT lives only in 1Password (no keychain cache).
+# git's built-in `cache` helper sits in front to amortize the round-trip. `store`
+# and `erase` are no-ops: the vault is the source of truth, not git. A failed read
+# emits nothing (git falls through), never a malformed credential.
+cmd_git_credential() {
+  [[ "${1:-}" == get ]] || return 0
+  command -v op > /dev/null 2>&1 || return 0
+  _load_sa
+  local pat
+  pat="$(op read "$PAT_REF" 2> /dev/null)" && [[ -n "$pat" ]] || return 0
+  printf 'username=x-access-token\npassword=%s\n' "$pat"
 }
 
 cmd_provision() {
@@ -69,10 +88,10 @@ cmd_provision() {
       echo "op-agent: SA create failed (needs owner/admin token)"
     fi
   fi
-  local pat
-  if pat="$(op read "op://$VAULT/Claude Git PAT/credential" 2> /dev/null)" && [[ -n "$pat" ]]; then
-    printf 'protocol=https\nhost=github.com\nusername=x-access-token\npassword=%s\n\n' "$pat" |
-      git credential-osxkeychain store 2> /dev/null && echo "op-agent: git PAT cached (github.com)"
+  # The PAT is resolved on demand by `git-credential` (no keychain cache); just
+  # confirm the vault item exists so a fresh machine gets a clear setup signal.
+  if op read "$PAT_REF" > /dev/null 2>&1; then
+    echo "op-agent: git PAT present in vault ($VAULT)"
   else
     echo "op-agent: 'Claude Git PAT' not in $VAULT yet"
   fi
@@ -92,10 +111,14 @@ case "${1:-}" in
     shift
     cmd_secret "$@"
     ;;
+  git-credential)
+    shift
+    cmd_git_credential "$@"
+    ;;
   provision) cmd_provision ;;
   status) cmd_status ;;
   *)
-    printf 'usage: op-agent <secret op://ref | provision | status>\n' >&2
+    printf 'usage: op-agent <secret op://ref | git-credential get | provision | status>\n' >&2
     exit 2
     ;;
 esac
