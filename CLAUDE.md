@@ -89,6 +89,7 @@ Git's native `credential.helper` is pointed at `op-agent git-credential` (fronte
 
 - Never commit a plaintext token. Use `op://` references or `op run --`.
 - Controlled servers → `op run --env-file`; plugin servers → their `*_COMMAND` (→ `op-agent secret`); a future HTTP MCP server → `headersHelper` formatted from `op-agent secret`.
+- npm registry auth → `npm/npmrc` (linked to `~/.npmrc`, the canonical userconfig) carries `_authToken=${NPM_TOKEN}`, expanded by npm at read time; publish via `op run -- npm publish`. Daily public installs need no token, so nothing exports a secret to the session env.
 - If you find a plaintext token anywhere, revoke first, then migrate.
 
 ### Standing threats (keep the surface small)

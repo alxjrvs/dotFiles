@@ -47,6 +47,14 @@ dst = "~/.ripgreprc"
 src = ".fdignore"
 dst = "~/.fdignore"
 
+# npm userconfig → its canonical native location (`npm config get userconfig` is
+# ~/.npmrc; npm does NOT use XDG ~/.config/npm for the userconfig). Preferences
+# only; the registry token is `${NPM_TOKEN}`, expanded by npm at read time and
+# supplied on demand via `op run -- npm publish` — never plaintext in git.
+[[section.link]]
+src = "npm/npmrc"
+dst = "~/.npmrc"
+
 [[section.link]]
 src = "git-template/hooks/pre-commit"
 dst = "~/.config/git/template/hooks/pre-commit"
