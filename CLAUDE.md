@@ -73,13 +73,14 @@ Ghostty is the daily driver (`TERMINAL=ghostty`, `ghostty/config`). cmux stays f
 - `op-agent provision` — idempotently ensures the `claude-agent` vault, a per-host service account with `read_items` on only that vault, and its token in the macOS login keychain (`op-claude-agent`); also confirms the `Claude Git PAT` vault item exists (a fresh-machine setup signal — the PAT is resolved on demand, never cached). Run via `on apply op-agent provision`. Foreground-only first run (minting authorizes through the desktop app).
 - `op-agent status` — reports keychain token presence (`on verify`).
 - `op-agent secret op://ref` — reads one secret value to stdout via the SA, the single read primitive for consumers that want a raw value (e.g. the spacebase `*_COMMAND`). **The ref is an argument, not a per-service file.** It sources the SA token from the keychain inline (no biometric, headless-safe), confined to one short-lived process so neither the token nor the secret reaches a Bash subprocess, the transcript, or OTEL. Follows the `op read` contract: value on success, nothing + nonzero on failure (so a failed read leaves the consumer's var empty and it falls through to its own default).
+- `op-agent header op://ref` — MCP `headersHelper` for HTTP servers that bearer-authenticate (the GitHub MCP at `api.githubcopilot.com/mcp/` and the Render MCP). Resolves the vaulted token via the same SA path as `secret` and emits `{"Authorization":"Bearer <token>"}`; on any failure emits `{}` (valid JSON, no header) so the client never sees a malformed response. **The ref is an argument, not a per-service file.**
 - `op-agent git-credential get` — git credential helper (scoped to `https://github.com` in the agent git config). Resolves the `Claude Git PAT` vault item via the same SA path as `secret` and emits `username=x-access-token` + `password=<pat>`; `store`/`erase` are no-ops (the vault is the source of truth). This is the canonical native-hook-fed-by-`op` pattern applied to git.
 
-Every verb has a live consumer — no speculative surface. An HTTP MCP server, if one is ever added, formats its `headersHelper` Bearer line from `op-agent secret <its op:// ref>`; until then no bespoke header verb is carried.
+Every verb has a live consumer — no speculative surface: the GitHub and Render MCP servers' `headersHelper` formats its Bearer line from `op-agent header <its op:// ref>`.
 
 ### MCP secrets — one canonical pattern
 
-Servers we control launch via 1Password's `op run --env-file=.env -- <server>` with `op://` references in a committable `.env` (`botu mcp add`). Plugin-bundled stdio servers use their own `*_COMMAND` resolver (e.g. spacebase's `SPACEBASE_API_KEY_COMMAND` → `op-agent secret op://…`); an HTTP server, if added, formats its `headersHelper` from `op-agent secret`. **Never write a `${VAR}` placeholder into a git-tracked `.mcp.json`/`.env`** (a later `claude mcp add` can expand it). `botu verify` and the `git-template` pre-commit both fail on a `${VAR}` in a tracked `.mcp.json` and on a resolved-token literal in any tracked `.mcp.json`/`.env`.
+Servers we control launch via 1Password's `op run --env-file=.env -- <server>` with `op://` references in a committable `.env` (`botu mcp add`). Plugin-bundled stdio servers use their own `*_COMMAND` resolver (e.g. spacebase's `SPACEBASE_API_KEY_COMMAND` → `op-agent secret op://…`); HTTP servers (the GitHub and Render MCP) format their `headersHelper` from `op-agent header op://…`. **Never write a `${VAR}` placeholder into a git-tracked `.mcp.json`/`.env`** (a later `claude mcp add` can expand it). `botu verify` and the `git-template` pre-commit both fail on a `${VAR}` in a tracked `.mcp.json` and on a resolved-token literal in any tracked `.mcp.json`/`.env`.
 
 ### Agent git auth
 
@@ -92,7 +93,7 @@ Headless, no biometric (SA token via `securityd`); the `cache` helper amortizes 
 ### Rules
 
 - Never commit a plaintext token. Use `op://` references or `op run --`.
-- Controlled servers → `op run --env-file`; plugin servers → their `*_COMMAND` (→ `op-agent secret`); a future HTTP MCP server → `headersHelper` formatted from `op-agent secret`.
+- Controlled servers → `op run --env-file`; plugin servers → their `*_COMMAND` (→ `op-agent secret`); HTTP MCP servers (GitHub, Render) → `headersHelper` formatted from `op-agent header`.
 - npm registry auth → `npm/npmrc` (linked to `~/.npmrc`, the canonical userconfig) carries `_authToken=${NPM_TOKEN}`, expanded by npm at read time; publish via `op run -- npm publish`. Daily public installs need no token, so nothing exports a secret to the session env.
 - If you find a plaintext token anywhere, revoke first, then migrate.
 

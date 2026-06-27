@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
 # op-agent — all 1Password-agent machinery in one verb-dispatched CLI.
 # Differentiation is by ARGUMENT, never a new file. Every verb has a live
-# consumer — no speculative surface (an HTTP MCP `headersHelper`, when one is
-# added, formats its Bearer line from `op-agent secret`).
+# consumer — no speculative surface.
 #
 #   op-agent secret <op://ref>   read one secret value to stdout via the SA
 #                                (the ref is an arg, not a per-service file)
+#   op-agent header <op://ref>   emit {"Authorization":"Bearer …"} for an HTTP
+#                                MCP `headersHelper` (GitHub, Render); ref is an arg
 #   op-agent git-credential get  git credential helper: resolve the agent PAT
 #                                from the vault on demand (same `op` path as
 #                                `secret`; git's own `cache` helper amortizes it)
 #   op-agent provision           ensure SA vault + keychain token; check git PAT
 #   op-agent status              report keychain token presence (exit 0/1)
 #
-# Stays a standalone script because plugin `*_COMMAND` resolvers (e.g. spacebase)
-# exec it by path; the botufile drives provision/status via `on apply|verify`.
+# Stays a standalone script because Claude Code's MCP `headersHelper` and plugin
+# `*_COMMAND` resolvers (e.g. spacebase) exec it by path; the botufile drives
+# provision/status via `on apply|verify`.
 set -euo pipefail
 
 # Normalize PATH so `op` (brew) resolves even when a plugin resolver execs us
@@ -46,6 +48,29 @@ cmd_secret() {
   }
   _load_sa
   op read "$ref" 2> /dev/null
+}
+
+# Emit an MCP `headersHelper` JSON object — {"Authorization":"Bearer <token>"} —
+# for an HTTP MCP server that bearer-authenticates (the GitHub MCP at
+# api.githubcopilot.com/mcp/ and the Render MCP). The op:// ref is an argument,
+# not a per-service file. On any failure it emits `{}` (valid JSON, no header) so
+# the MCP client gets a well-formed response instead of a parse error.
+cmd_header() {
+  local ref="${1:-}" token
+  command -v op > /dev/null 2>&1 || {
+    printf '{}\n'
+    return 0
+  }
+  [[ -n "$ref" ]] || {
+    printf '{}\n'
+    return 0
+  }
+  _load_sa
+  token="$(op read "$ref" 2> /dev/null)" && [[ -n "$token" ]] || {
+    printf '{}\n'
+    return 0
+  }
+  printf '{"Authorization":"Bearer %s"}\n' "$token"
 }
 
 # git credential helper, scoped to https://github.com in the agent git config.
@@ -111,6 +136,10 @@ case "${1:-}" in
     shift
     cmd_secret "$@"
     ;;
+  header)
+    shift
+    cmd_header "$@"
+    ;;
   git-credential)
     shift
     cmd_git_credential "$@"
@@ -118,7 +147,7 @@ case "${1:-}" in
   provision) cmd_provision ;;
   status) cmd_status ;;
   *)
-    printf 'usage: op-agent <secret op://ref | git-credential get | provision | status>\n' >&2
+    printf 'usage: op-agent <secret op://ref | header op://ref | git-credential get | provision | status>\n' >&2
     exit 2
     ;;
 esac
