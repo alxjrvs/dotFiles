@@ -33,6 +33,9 @@
       "Read(~/.aws/credentials)"
     ]
   },
+  "autoMode": {
+    "classifyAllShell": true
+  },
   "statusLine": {
     "type": "command",
     "command": "~/.local/bin/claude-statusline",
