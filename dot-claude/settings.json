@@ -36,6 +36,8 @@
   "autoMode": {
     "classifyAllShell": true
   },
+  "model": "claude-sonnet-5",
+  "advisorModel": "claude-opus-4-8",
   "statusLine": {
     "type": "command",
     "command": "~/.local/bin/claude-statusline",

@@ -153,6 +153,14 @@ cmd = "test -f ~/.claude/settings.json && grep -qE '(enableAllProjectMcpServers|
 on = "verify"
 cmd = "test -f ~/.claude/settings.json || exit 0; grep -q 'op-agent git-credential' ~/.claude/settings.json || { echo 'agent git helper not wired to op-agent git-credential in ~/.claude/settings.json'; exit 1; }; ! grep -q 'osxkeychain' ~/.claude/settings.json || { echo 'forbidden osxkeychain git helper (cached-PAT regression) in ~/.claude/settings.json'; exit 1; }"
 
+[[section.run]]
+# Deterministic guardrail: the pinned default model stays claude-sonnet-5 —
+# Fable is per-session/-subagent only (`/model`), never the new-session default.
+# No Claude Code setting expresses "selectable but not default", and `/model`'s
+# "set as default" silently rewrites settings.json, so drift is caught here.
+on = "verify"
+cmd = "test -f ~/.claude/settings.json || exit 0; ! grep -qE '\"model\"[[:space:]]*:[[:space:]]*\"[^\"]*fable' ~/.claude/settings.json || { echo 'Fable pinned as default model in ~/.claude/settings.json (Fable is /model per-session only)'; exit 1; }"
+
 [[section]]
 name = "zsh fragments"
 brewfile = "Brewfile"
