@@ -26,18 +26,14 @@
     "commit": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>"
   },
   "permissions": {
-    "defaultMode": "auto",
     "deny": [
       "Bash(security find-generic-password:*)",
       "Read(~/.ssh/id_*)",
       "Read(~/.aws/credentials)"
-    ]
+    ],
+    "defaultMode": "auto"
   },
-  "autoMode": {
-    "classifyAllShell": true
-  },
-  "model": "claude-sonnet-5",
-  "advisorModel": "claude-opus-4-8",
+  "model": "sonnet",
   "statusLine": {
     "type": "command",
     "command": "~/.local/bin/claude-statusline",
@@ -65,12 +61,16 @@
       "autoUpdate": true
     }
   },
+  "advisorModel": "claude-opus-4-8",
   "skipWorkflowUsageWarning": true,
+  "editorMode": "vim",
+  "verbose": true,
   "showTurnDuration": false,
   "terminalProgressBarEnabled": false,
   "teammateMode": "in-process",
   "inputNeededNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
-  "editorMode": "vim",
-  "verbose": true
+  "autoMode": {
+    "classifyAllShell": true
+  }
 }
