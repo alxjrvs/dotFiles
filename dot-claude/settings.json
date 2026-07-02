@@ -70,6 +70,7 @@
   "teammateMode": "in-process",
   "inputNeededNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
+  "autoScrollEnabled": true,
   "autoMode": {
     "classifyAllShell": true
   }
