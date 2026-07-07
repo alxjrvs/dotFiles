@@ -21,7 +21,7 @@
     "SPACEBASE_API_KEY": "",
     "SPACEBASE_URL": "",
     "SPACEBASE_PROJECT_ID": "",
-    "NINETY_API_TOKEN_COMMAND": "~/.local/bin/op-agent secret op://Gnar/ninety/credential",
+    "NINETY_API_TOKEN_COMMAND": "~/.local/bin/op-agent secret 'op://Gnar/ninety/API key'",
     "NINETY_API_TOKEN": "",
     "NINETY_BASE_URL": ""
   },
