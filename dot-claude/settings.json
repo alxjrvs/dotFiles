@@ -20,7 +20,10 @@
     "SPACEBASE_API_KEY_COMMAND": "~/.local/bin/op-agent secret op://claude-agent/Spacebase API Key/credential",
     "SPACEBASE_API_KEY": "",
     "SPACEBASE_URL": "",
-    "SPACEBASE_PROJECT_ID": ""
+    "SPACEBASE_PROJECT_ID": "",
+    "NINETY_API_TOKEN_COMMAND": "~/.local/bin/op-agent secret op://claude-agent/gninety/credential",
+    "NINETY_API_TOKEN": "",
+    "NINETY_BASE_URL": ""
   },
   "attribution": {
     "commit": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>"
