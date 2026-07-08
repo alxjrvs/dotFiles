@@ -23,9 +23,21 @@ pre-commit:
     gitleaks:
       run: gitleaks protect --staged --redact -v --no-banner
     settings-json-validity:
-      # Backstop against committing a broken settings.json (breaks every Claude session).
+      # Backstop against committing a broken settings.json (breaks every Claude
+      # session), PLUS the same three content guardrails botufile.toml's `botu
+      # verify` runs against the live ~/.claude/settings.json (MCP auto-approve
+      # keys, osxkeychain git-helper regression, Fable pinned as default model) —
+      # applied here to the staged file so a bad commit is caught immediately
+      # instead of waiting for the nightly launchd verify run.
       glob: "dot-claude/settings*.json"
-      run: jq -e . {staged_files} > /dev/null
+      run: |
+        for f in {staged_files}; do
+          jq -e . "$f" > /dev/null
+          ! grep -qE '(enableAllProjectMcpServers|enabledMcpjsonServers)' "$f" || { echo "forbidden auto-approve MCP key in $f"; exit 1; }
+          grep -q 'op-agent git-credential' "$f" || { echo "agent git helper not wired to op-agent git-credential in $f"; exit 1; }
+          ! grep -q 'osxkeychain' "$f" || { echo "forbidden osxkeychain git helper (cached-PAT regression) in $f"; exit 1; }
+          ! grep -qE '"model"[[:space:]]*:[[:space:]]*"[^"]*fable' "$f" || { echo "Fable pinned as default model in $f"; exit 1; }
+        done
     toml-validity:
       # The botufile.toml IS the repo — a parse error only surfaces at `botu
       # apply` time on a real machine otherwise. --no-schema = pure syntax check

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.alxjrvs.botu-verify</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/zsh</string>
+		<string>-l</string>
+		<string>-c</string>
+		<string>botu verify || osascript -e 'display notification "settings.json or config drift detected — run botu verify" with title "botu verify"'</string>
+	</array>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>21</integer>
+		<key>Minute</key>
+		<integer>47</integer>
+	</dict>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>StandardOutPath</key>
+	<string>~/Library/Logs/botu-verify.log</string>
+	<key>StandardErrorPath</key>
+	<string>~/Library/Logs/botu-verify.log</string>
+</dict>
+</plist>
