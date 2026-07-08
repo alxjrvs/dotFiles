@@ -4,6 +4,7 @@
   sw = switch
   st = status -sb
   undo = reset HEAD~1 --mixed
+  gone = !git fetch -p && git branch -vv | awk '/: gone]/{print $1}' | xargs -r git branch -D
 
 [user]
 	name = alxjrvs
@@ -52,6 +53,7 @@
 [push]
 	autoSetupRemote = true
 	followTags = true
+	useForceIfIncludes = true
 [pull]
 	rebase = true
 [rerere]
