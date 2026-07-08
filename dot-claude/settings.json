@@ -52,7 +52,7 @@
     "ideate@gnar": true,
     "ignite@gnar": true,
     "spacebase@gnar": true,
-    "toolkit@gnar": true,
+    "toolkit@gnar": false,
     "typescript-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
