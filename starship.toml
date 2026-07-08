@@ -8,14 +8,19 @@ add_newline = false
 # One space after the directory "title", then chips append flush (no gaps) —
 # mirrors statusline.sh line 1 ("bracket groups below append flush"). A single
 # space precedes the prompt character.
-format = "$directory$git_branch$git_status $character"
+format = "$directory$git_branch$git_state$git_status $character"
 
 # Identity: bold near-white, unbracketed — mirrors statusline line 1, which
 # leads with the repo/dir and brackets only the chips that follow.
+# repo_root_style is muted (same bright-black used for chip brackets below) so
+# that inside a git worktree (e.g. .claude/worktrees/<name>) the leading path
+# back to the real repo stays visible, without competing with the truncated,
+# bold-white part for emphasis.
 [directory]
 truncate_to_repo = true
 truncation_length = 4
 style = "bold white"
+repo_root_style = "bright-black"
 read_only = " "
 read_only_style = "red"
 
@@ -27,6 +32,13 @@ read_only_style = "red"
 symbol = " "
 style = "blue"
 format = '[\[](bright-black)[$symbol$branch]($style)[\]](bright-black)'
+
+# State chip: muted [ ] around the rebase/merge/cherry-pick label (bold yellow,
+# starship's own default state color — kept as-is since it already matches this
+# file's palette). Empty and invisible outside those states, same as the rest.
+[git_state]
+style = "bold yellow"
+format = '[\[](bright-black)[$state]($style)[\]](bright-black)'
 
 # Status chip: one muted [ ] around per-state glyphs, each colored to match the
 # statusline's counters (untracked cyan, modified yellow, staged green, stashes

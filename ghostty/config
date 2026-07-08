@@ -39,9 +39,6 @@ clipboard-trim-trailing-spaces = true
 clipboard-paste-protection = false
 copy-on-select = true
 
-# Scrollback
-scrollback-limit = 10000
-
 shell-integration = zsh
 
 # Quick terminal — drop-down visor toggled by a global hotkey. Pairs with
