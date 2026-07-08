@@ -11,9 +11,8 @@ fpath+=(/opt/homebrew/share/zsh/site-functions)
 # Sheldon plugins (adds zsh-completions to fpath, loads FSH last)
 eval "$(sheldon source)"
 
-# Atuin shell history — Ctrl-R fuzzy search. --disable-up-arrow keeps Up/Down as
-# plain zsh history navigation instead of opening atuin's search on every Up.
-eval "$(atuin init zsh --disable-up-arrow)"
+# Atuin shell history init lives in zsh/60-tools.zsh, after fzf's — both bind
+# Ctrl-R and fzf's must not win (see the comment there).
 
 # Syntax highlighting theme (Jack Kirby CMYK) - F-Sy-H overrides
 typeset -A FAST_HIGHLIGHT_STYLES

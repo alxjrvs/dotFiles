@@ -15,6 +15,10 @@ export TERMINAL=ghostty
 # resolves it on demand via `gh auth token` (the github MCP server reads its PAT
 # from 1Password through op-agent). See .zprofile for the rationale.
 
+# maestro (mobile UI testing) CLI on PATH. Harmless on machines without it —
+# a non-existent dir on PATH is a no-op.
+export PATH="$PATH:$HOME/.maestro/bin"
+
 # Colored man pages (CMYK)
 export LESS_TERMCAP_mb=$'\e[1;35m'
 export LESS_TERMCAP_md=$'\e[1;36m'

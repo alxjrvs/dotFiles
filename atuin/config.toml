@@ -17,6 +17,10 @@ inline_height = 20
 # ever run".
 filter_mode_shell_up_key_binding = "session"
 
+# Scope history search/cycling to the current repo (git root) rather than
+# globally — most Ctrl-R recall is "what did I run in this project".
+workspaces = true
+
 [sync]
 # Atuin sync v2 (encrypted record sync). Required for cross-machine history.
 records = true
