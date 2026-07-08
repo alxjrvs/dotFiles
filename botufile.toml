@@ -129,6 +129,10 @@ dst = "~/.claude/CLAUDE.md"
 src = "dot-claude/settings.json"
 dst = "~/.claude/settings.json"
 
+[[section.glob]]
+pattern = "dot-claude/skills/*"
+into = "~/.claude/skills/"
+
 [[section.run]]
 # Claude Code CLI via the official native installer (self-updating); never
 # brew/npm, whose builds do not auto-update. Idempotent — only installs when
