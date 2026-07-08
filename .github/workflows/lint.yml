@@ -41,6 +41,20 @@ jobs:
       - name: settings.json validity
         run: jq -e . dot-claude/settings.json > /dev/null
 
+      # Mirrors lefthook's settings-json-validity: the same three content
+      # guardrails botufile.toml's `botu verify` runs against the live
+      # ~/.claude/settings.json (MCP auto-approve keys, osxkeychain git-helper
+      # regression, Fable pinned as default model), applied here to the
+      # committed file so CI catches drift immediately, not just the nightly
+      # launchd verify run on the live machine.
+      - name: settings.json content guardrails
+        run: |
+          f=dot-claude/settings.json
+          ! grep -qE '(enableAllProjectMcpServers|enabledMcpjsonServers)' "$f" || { echo "forbidden auto-approve MCP key in $f"; exit 1; }
+          grep -q 'op-agent git-credential' "$f" || { echo "agent git helper not wired to op-agent git-credential in $f"; exit 1; }
+          ! grep -q 'osxkeychain' "$f" || { echo "forbidden osxkeychain git helper (cached-PAT regression) in $f"; exit 1; }
+          ! grep -qE '"model"[[:space:]]*:[[:space:]]*"[^"]*fable' "$f" || { echo "Fable pinned as default model in $f"; exit 1; }
+
       # The botufile.toml IS the repo — gate that every tracked TOML parses, so a
       # syntax error is caught here, not at `botu apply` time on a real machine.
       # --no-schema = pure syntax (hermetic, offline). Mirrors lefthook's toml-validity.

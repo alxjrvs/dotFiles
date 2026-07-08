@@ -341,6 +341,22 @@ on = "verify"
 cmd = "op-agent status"
 
 [[section]]
+name = "botu-verify launchd"
+
+# The `botu verify` guardrails above (MCP auto-approve, osxkeychain regression,
+# Fable-default drift) only fire when someone manually runs `botu verify` — so
+# drift can sit undetected indefinitely. launchd is the native macOS scheduler
+# for this (not CI: CI can't see this live machine's ~/.claude/settings.json
+# symlink target). unload-then-load on every apply keeps re-running idempotent.
+[[section.link]]
+src = "launchd/com.alxjrvs.botu-verify.plist"
+dst = "~/Library/LaunchAgents/com.alxjrvs.botu-verify.plist"
+
+[[section.run]]
+on = "apply"
+cmd = "launchctl unload ~/Library/LaunchAgents/com.alxjrvs.botu-verify.plist 2>/dev/null; launchctl load -w ~/Library/LaunchAgents/com.alxjrvs.botu-verify.plist"
+
+[[section]]
 name = "git-signing"
 
 [[section.hook]]
