@@ -62,7 +62,6 @@
       "autoUpdate": true
     }
   },
-  "advisorModel": "claude-opus-4-8",
   "skipWorkflowUsageWarning": true,
   "editorMode": "vim",
   "verbose": true,
