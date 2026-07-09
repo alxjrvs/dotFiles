@@ -36,7 +36,6 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "sonnet",
   "statusLine": {
     "type": "command",
     "command": "~/.local/bin/claude-statusline",
