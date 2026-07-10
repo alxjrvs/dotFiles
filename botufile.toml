@@ -355,6 +355,28 @@ on = "apply"
 cmd = "launchctl unload ~/Library/LaunchAgents/com.alxjrvs.botu-verify.plist 2>/dev/null; launchctl load -w ~/Library/LaunchAgents/com.alxjrvs.botu-verify.plist"
 
 [[section]]
+name = "agent-fetch launchd"
+
+# Claude Code cuts `worktree.baseRef: "fresh"` agent worktrees off the *local*
+# `origin/HEAD` and never fetches first, so a spawned agent starts as stale as the
+# last manual fetch. The `SessionStart` hook in dot-claude/settings.json fetches
+# per-spawn when the session cwd is inside a repo — but the `botu code claude`
+# flat-symlink workspace can spawn an agent with cwd = the flat parent (not a
+# repo), where that hook no-ops. This launchd job is the cwd-independent
+# belt-and-suspenders: every 15 min it fetches every `~/Code/**` repo's origin so
+# `origin/HEAD` is already warm whenever an agent's worktree is cut. Runs as the
+# login shell → uses the user's keychain-backed `gh` credential helper (headless
+# in a logged-in session), so private repos authenticate without biometric.
+# unload-then-load on every apply keeps re-running idempotent.
+[[section.link]]
+src = "launchd/com.alxjrvs.agent-fetch.plist"
+dst = "~/Library/LaunchAgents/com.alxjrvs.agent-fetch.plist"
+
+[[section.run]]
+on = "apply"
+cmd = "launchctl unload ~/Library/LaunchAgents/com.alxjrvs.agent-fetch.plist 2>/dev/null; launchctl load -w ~/Library/LaunchAgents/com.alxjrvs.agent-fetch.plist"
+
+[[section]]
 name = "git-signing"
 
 [[section.hook]]
