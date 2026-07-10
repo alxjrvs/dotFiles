@@ -5,8 +5,8 @@
 # init (loses instant Ctrl-R history) — both are UX tradeoffs, so the baseline
 # is accepted as-is. Re-measure with: zsh -i -c exit under `time`.
 
-# Homebrew completions
-fpath+=(/opt/homebrew/share/zsh/site-functions)
+# Homebrew completions (site-functions) are already on fpath: `.zprofile`'s
+# `brew shellenv` prepends them on every login shell.
 
 # Sheldon plugins (adds zsh-completions to fpath, loads FSH last)
 eval "$(sheldon source)"

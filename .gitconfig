@@ -12,12 +12,11 @@
 	# user.signingkey is machine-local (~/.gitconfig.local, written by
 	# `botu apply` (git-signing hook)) -- a `key::` pubkey for the 1Password
 	# "GitHubSSH" key. git signs via op-ssh-sign (1Password), no local key.
-[credential]
-	helper = osxkeychain
 # GitHub HTTPS auth via the gh CLI (keychain-backed). Lets git push resolve a
 # token on demand instead of needing a PAT in the environment. The empty
-# `helper =` resets the inherited osxkeychain helper for github.com so gh is
-# used. Mirrors `gh auth setup-git`.
+# `helper =` resets the inherited helper for github.com so gh is used
+# (the default osxkeychain helper is inherited from Apple git's system config,
+# so it isn't re-declared globally here). Mirrors `gh auth setup-git`.
 [credential "https://github.com"]
 	helper =
 	helper = !gh auth git-credential
@@ -32,7 +31,6 @@
 	# global excludes via a ~/.gitignore symlink, leaking .claude/ etc. into
 	# every repo on the machine).
 	pager = delta
-	fsmonitor = false
 	untrackedCache = true
 
 # New repos copy template/hooks/pre-commit into their own .git/hooks/ at

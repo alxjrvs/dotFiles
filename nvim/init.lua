@@ -32,11 +32,10 @@ local map = vim.keymap.set
 map("n", "<leader>w", "<cmd>write<cr>", { desc = "Save" })
 map("n", "<leader>q", "<cmd>quit<cr>", { desc = "Quit" })
 map("n", "<esc>", "<cmd>nohlsearch<cr>", { desc = "Clear search highlight" })
-map("n", "grn", vim.lsp.buf.rename, { desc = "LSP rename" })
-map("n", "gra", vim.lsp.buf.code_action, { desc = "LSP code action" })
-map("n", "grr", vim.lsp.buf.references, { desc = "LSP references" })
+-- rename (grn), code-action (gra), references (grr) and hover (K) are Nvim
+-- ≥0.11 builtin LSP defaults, so they're not redeclared here. gd is not a
+-- default, so it stays.
 map("n", "gd", vim.lsp.buf.definition, { desc = "LSP definition" })
-map("n", "K", vim.lsp.buf.hover, { desc = "LSP hover" })
 
 -- ── Language servers (native, no lspconfig) ────────────────────────────────
 -- One vim.lsp.config block per language server; enabled together below.

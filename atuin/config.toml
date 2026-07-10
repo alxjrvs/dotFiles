@@ -12,11 +12,6 @@ keymap_mode = "vim-normal"
 style = "compact"
 inline_height = 20
 
-# Up arrow scopes to the current shell session (Ctrl-R stays full-history
-# fuzzy). Matches muscle memory: "what did I just run" vs "what have I
-# ever run".
-filter_mode_shell_up_key_binding = "session"
-
 # Scope history search/cycling to the current repo (git root) rather than
 # globally — most Ctrl-R recall is "what did I run in this project".
 workspaces = true

@@ -7,7 +7,7 @@ This file guides Claude Code (claude.ai/code) when working in this repository.
 A macOS **dotfiles repo** that is pure **config for [BoomTube](https://github.com/alxjrvs/botu)** — the small TypeScript dotfiles+workspace engine (the executable is `botu`), compiled to a single binary on `PATH`. This repo is its *first consumer*. There is no engine code here: the whole repo is a `botufile.toml` (the config), a handful of TypeScript `hooks/`, and the payload (`.zshrc`, `zsh/`, `nvim/`, `dot-claude/`, `Brewfile`, `mise.toml`, …) that botu symlinks into place.
 
 ```
-botu init ~/Code/DevEnv/Dotfiles   # record this repo (writes botuinit.sh)
+botu init ~/Code/DevEnv/dotFiles   # record this repo (writes botuinit.sh)
 botu apply        # symlink/copy/install/run from the botufile.toml
 botu verify       # check drift (exit 0 ok / 2 warn / 1 fail); --json for a report
 botu fix          # repair drift (incl. reaping orphaned links)
@@ -15,7 +15,7 @@ botu rollback     # undo the last apply (restores backed-up files)
 botu uninstall    # remove every managed link
 ```
 
-Fresh machine: `git clone … && ./Dotfiles/botuinit.sh` (installs botu, points it here, applies).
+Fresh machine: `git clone … && ./dotFiles/botuinit.sh` (installs botu, points it here, applies).
 
 ## The `botufile.toml`
 
@@ -101,7 +101,7 @@ Headless, no biometric (SA token via `securityd`); the `cache` helper amortizes 
 
 The minimal MCP/plugin footprint is a *security* decision, not just taste — every enabled server widens the prompt-injection/exfil blast radius. Two live vectors shape the posture:
 
-- **`~/.claude.json` postinstall hijack** (Mitiga, unpatched-by-design): a malicious npm/bun package's `postinstall` can rewrite `~/.claude.json` to MITM MCP traffic and steal OAuth tokens — invisible in provider logs. No patch is coming (it presupposes code execution as the Claude user). Native mitigations, already mostly in place: don't run untrusted `npm/bun install` as the agent user; keep MCP OAuth surface minimal; prefer scoped tokens with an expiry (the `claude-agent` SA caps what the agent can read, and its tokens are bounded by your own access); the `editorMode`-level `permissions.deny` floor blocks direct keychain token reads. No bespoke `~/.claude.json` integrity-checker — that's machinery this repo would otherwise delete.
+- **`~/.claude.json` postinstall hijack** (Mitiga, unpatched-by-design): a malicious npm/bun package's `postinstall` can rewrite `~/.claude.json` to MITM MCP traffic and steal OAuth tokens — invisible in provider logs. No patch is coming (it presupposes code execution as the Claude user). Native mitigations, already mostly in place: don't run untrusted `npm/bun install` as the agent user; keep MCP OAuth surface minimal; prefer scoped tokens with an expiry (the `claude-agent` SA caps what the agent can read, and its tokens are bounded by your own access); the user-settings-level `permissions.deny` floor blocks direct keychain token reads. No bespoke `~/.claude.json` integrity-checker — that's machinery this repo would otherwise delete.
 - **Repo-controlled config CVEs** (CVE-2025-59536 RCE, the `enableAllProjectMcpServers` auto-approve bypass, CVE-2026-21852 `ANTHROPIC_BASE_URL` key-exfil): all patched in current Claude Code, all pre-trust-dialog. Mitigation: stay current, never set `enableAllProjectMcpServers`/`enabledMcpjsonServers` globally (`botu verify` greps for them), don't open untrusted repos under `auto` mode.
 
 There is no canonical "must-install" plugin set; `enabledPlugins` earns each entry by use, not by hype.

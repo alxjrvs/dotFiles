@@ -5,12 +5,6 @@ export LANG=en_US.UTF-8
 export LESS='-RFX'
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 
-# Preferred terminal emulator. macOS has no system "default terminal" role,
-# so this is the XDG-convention declaration of intent (not TERM_PROGRAM,
-# which terminals set themselves). Ghostty is the daily driver; cmux stays
-# installed for parallel agent sessions (botu code cmux).
-export TERMINAL=ghostty
-
 # GitHub tokens are never exported into the shell env; anything that needs one
 # resolves it on demand via `gh auth token` (the github MCP server reads its PAT
 # from 1Password through op-agent). See .zprofile for the rationale.
