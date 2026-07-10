@@ -127,6 +127,19 @@ dst = "~/.claude/CLAUDE.md"
 src = "dot-claude/settings.json"
 dst = "~/.claude/settings.json"
 
+# PreToolUse guard referenced by settings.json `hooks.PreToolUse`: blocks an
+# agent's `git push` / `gh pr create` when its branch is behind origin/HEAD, so
+# it rebases onto the latest target before publishing. Logic lives in a script
+# (not an inline settings.json string) because it parses stdin, fetches, and
+# emits a deny-JSON verdict — too much for a legible one-liner.
+[[section.link]]
+src = "dot-claude/hooks/rebase-guard.sh"
+dst = "~/.claude/hooks/rebase-guard.sh"
+
+[[section.run]]
+on = "apply"
+cmd = "chmod +x ~/.claude/hooks/rebase-guard.sh"
+
 [[section.glob]]
 pattern = "dot-claude/skills/*"
 into = "~/.claude/skills/"

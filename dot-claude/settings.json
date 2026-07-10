@@ -47,6 +47,17 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/rebase-guard.sh"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
