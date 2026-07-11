@@ -137,7 +137,7 @@ src = "dot-claude/hooks/rebase-guard.sh"
 dst = "~/.claude/hooks/rebase-guard.sh"
 
 [[section.run]]
-on = "apply"
+on = "sync"
 cmd = "chmod +x ~/.claude/hooks/rebase-guard.sh"
 
 [[section.glob]]
@@ -148,7 +148,7 @@ into = "~/.claude/skills/"
 # Claude Code CLI via the official native installer (self-updating); never
 # brew/npm, whose builds do not auto-update. Idempotent — only installs when
 # `claude` is missing; the CLI updates itself thereafter.
-on = "apply"
+on = "sync"
 cmd = "command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash"
 
 [[section.run]]
@@ -307,21 +307,21 @@ type = "string"
 value = "$HOME/Screenshots"
 
 [[section.run]]
-on = "apply"
+on = "sync"
 cmd = "mkdir -p $HOME/Screenshots"
 
 [[section]]
 name = "SSH perms"
 
 [[section.run]]
-on = "apply"
+on = "sync"
 cmd = "mkdir -p ~/.ssh/cm && chmod 700 ~/.ssh ~/.ssh/cm"
 
 [[section]]
 name = "lefthook"
 
 [[section.run]]
-on = "apply"
+on = "sync"
 cmd = "lefthook install"
 
 [[section]]
@@ -333,7 +333,7 @@ name = "tldr cache"
 # an offline apply from failing on a non-critical cache; re-run with
 # `boom apply --only="tldr cache"` once networked.
 [[section.run]]
-on = "apply"
+on = "sync"
 cmd = "tldr --update || true"
 
 [[section]]
@@ -344,7 +344,7 @@ src = "hooks/op-agent.sh"
 dst = "~/.local/bin/op-agent"
 
 [[section.run]]
-on = "apply"
+on = "sync"
 cmd = "op-agent provision"
 
 [[section.run]]
@@ -364,7 +364,7 @@ src = "launchd/com.alxjrvs.boom-verify.plist"
 dst = "~/Library/LaunchAgents/com.alxjrvs.boom-verify.plist"
 
 [[section.run]]
-on = "apply"
+on = "sync"
 cmd = "launchctl unload ~/Library/LaunchAgents/com.alxjrvs.boom-verify.plist 2>/dev/null; launchctl load -w ~/Library/LaunchAgents/com.alxjrvs.boom-verify.plist"
 
 [[section]]
@@ -386,7 +386,7 @@ src = "launchd/com.alxjrvs.agent-fetch.plist"
 dst = "~/Library/LaunchAgents/com.alxjrvs.agent-fetch.plist"
 
 [[section.run]]
-on = "apply"
+on = "sync"
 cmd = "launchctl unload ~/Library/LaunchAgents/com.alxjrvs.agent-fetch.plist 2>/dev/null; launchctl load -w ~/Library/LaunchAgents/com.alxjrvs.agent-fetch.plist"
 
 [[section]]
