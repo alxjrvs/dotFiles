@@ -25,7 +25,7 @@ cask "1password"
 # ── Apps ──────────────────────────────────────────────────────────────
 # cask "claude" is the Claude desktop GUI app, NOT the CLI (it ships no
 # `claude` binary on PATH, so it coexists with the native CLI). The Claude
-# Code CLI is installed via the native curl installer (run step in the botufile
+# Code CLI is installed via the native curl installer (run step in the boomfile
 # "Claude" section) which self-updates — never install the CLI via brew
 # (cask "claude-code") or npm.
 cask "claude"
@@ -37,19 +37,19 @@ cask "font-fira-code-nerd-font"
 # ── Terminal ──────────────────────────────────────────────────────────
 # Ghostty is the canonical daily-driver terminal (TERMINAL=ghostty, set in
 # zsh/00-exports.zsh): a fast Metal-GPU emulator, configured by ghostty/config
-# (symlinked by botu apply).
+# (symlinked by boom apply).
 cask "ghostty"
 
 # cmux — a libghostty-based agent multiplexer for parallel Claude Code sessions
 # with vertical tabs and git-worktree isolation. Kept installed for that role
-# (botu code cmux), no longer the daily driver. App config is portable in
+# (boom code cmux), no longer the daily driver. App config is portable in
 # cmux/cmux.json; it reads ghostty/config via embedded libghostty for rendering.
 cask "cmux"
 
 cask "google-chrome"
 
 # Caps Lock → Control via Karabiner (rule lives in karabiner/karabiner.json,
-# symlinked by botu apply).
+# symlinked by boom apply).
 cask "karabiner-elements"
 
 cask "notunes"

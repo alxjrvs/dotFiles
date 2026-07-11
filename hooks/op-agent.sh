@@ -14,7 +14,7 @@
 #   op-agent status              report keychain token presence (exit 0/1)
 #
 # Stays a standalone script because Claude Code's MCP `headersHelper` and plugin
-# `*_COMMAND` resolvers (e.g. spacebase) exec it by path; the botufile drives
+# `*_COMMAND` resolvers (e.g. spacebase) exec it by path; the boomfile drives
 # provision/status via `on apply|verify`.
 set -euo pipefail
 
@@ -24,7 +24,7 @@ set -euo pipefail
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 KEYCHAIN="op-claude-agent"
-VAULT="${BOTU_vault:-claude-agent}"
+VAULT="${BOOM_vault:-claude-agent}"
 PAT_REF="op://$VAULT/Claude Git PAT/credential"
 
 # Load the SA token from the login keychain into THIS process only (no biometric,

@@ -16,7 +16,7 @@ interface Api {
   note(s: string): void;
 }
 
-const DOTFILES = join(import.meta.dir, ".."); // hooks/ → repo root (was $BOTU_CONFIG)
+const DOTFILES = join(import.meta.dir, ".."); // hooks/ → repo root (was $BOOM_CONFIG)
 const PROG = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign";
 const home = (api: Api): string => api.env.HOME ?? "";
 const sock = (api: Api): string =>
@@ -55,7 +55,7 @@ export async function apply(api: Api): Promise<void> {
 
   // Machine-local git overrides: sign with the 1Password key via op-ssh-sign.
   const cfg = join(home(api), ".gitconfig.local");
-  if (!existsSync(cfg)) writeFileSync(cfg, "# Machine-local git overrides — NOT in dotfiles. Written by botu.\n");
+  if (!existsSync(cfg)) writeFileSync(cfg, "# Machine-local git overrides — NOT in dotfiles. Written by boom.\n");
   await $`git config --file ${cfg} commit.gpgSign true`.nothrow().quiet();
   await $`git config --file ${cfg} tag.gpgSign true`.nothrow().quiet();
   await $`git config --file ${cfg} gpg.ssh.program ${PROG}`.nothrow().quiet();
@@ -99,6 +99,6 @@ export function verify(api: Api): void {
   if (r.exitCode === 0 && new TextDecoder().decode(r.stdout).trim() === "true") {
     api.ok("commit signing enabled (~/.gitconfig.local)");
   } else {
-    api.warn("signing not configured — run: botu apply --only=git-signing");
+    api.warn("signing not configured — run: boom apply --only=git-signing");
   }
 }

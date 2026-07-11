@@ -10,7 +10,7 @@
 	name = alxjrvs
 	email = alxjrvs@gmail.com
 	# user.signingkey is machine-local (~/.gitconfig.local, written by
-	# `botu apply` (git-signing hook)) -- a `key::` pubkey for the 1Password
+	# `boom apply` (git-signing hook)) -- a `key::` pubkey for the 1Password
 	# "GitHubSSH" key. git signs via op-ssh-sign (1Password), no local key.
 [credential]
 	helper = osxkeychain
@@ -27,7 +27,7 @@
 [core]
 	editor = nvim
 	# No excludesfile override: git reads ~/.config/git/ignore (XDG default)
-	# for global excludes, managed by the `git/ignore` link in botufile.toml.
+	# for global excludes, managed by the `git/ignore` link in boomfile.toml.
 	# The repo's own .gitignore stays repo-scoped (it used to double as the
 	# global excludes via a ~/.gitignore symlink, leaking .claude/ etc. into
 	# every repo on the machine).
@@ -49,7 +49,7 @@
 	# Anything below the scissors line in the commit message is stripped.
 	cleanup = scissors
 	# gpgSign lives in ~/.gitconfig.local (machine-local) so fresh boxes don't
-	# fail commits before SSH keys are set up. See `botu apply`.
+	# fail commits before SSH keys are set up. See `boom apply`.
 [push]
 	autoSetupRemote = true
 	followTags = true

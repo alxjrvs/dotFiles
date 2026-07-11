@@ -1,22 +1,22 @@
-# Lefthook config for this repo (a botu config / dotfiles repo).
+# Lefthook config for this repo (a boom config / dotfiles repo).
 #
 # pre-commit: lint staged shell + guard secrets and settings.json.
 #
-# no_auto_install: botu owns hook installation (the `lefthook` hook runs
+# no_auto_install: boom owns hook installation (the `lefthook` hook runs
 # `lefthook install` on apply). After a lefthook.yml change, re-run
-# `botu apply --only=lefthook` (or `lefthook install`) to refresh the checksum.
+# `boom apply --only=lefthook` (or `lefthook install`) to refresh the checksum.
 no_auto_install: true
 
 pre-commit:
   parallel: true
   commands:
     shellcheck:
-      # `*.sh` matches the hooks + botuinit.sh recursively.
+      # `*.sh` matches the hooks + boominit.sh recursively.
       glob: "{*.sh,git-template/hooks/*}"
       run: shellcheck -x {staged_files}
     shfmt-check:
-      # botufile is DSL config (an aligned link table by design) — validated by
-      # `botu apply --dry-run`, not shfmt, so it's deliberately not formatted here.
+      # boomfile is DSL config (an aligned link table by design) — validated by
+      # `boom apply --dry-run`, not shfmt, so it's deliberately not formatted here.
       glob: "{*.sh,git-template/hooks/*}"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}
@@ -24,7 +24,7 @@ pre-commit:
       run: gitleaks protect --staged --redact -v --no-banner
     settings-json-validity:
       # Backstop against committing a broken settings.json (breaks every Claude
-      # session), PLUS the same three content guardrails botufile.toml's `botu
+      # session), PLUS the same three content guardrails boomfile.toml's `boom
       # verify` runs against the live ~/.claude/settings.json (MCP auto-approve
       # keys, osxkeychain git-helper regression, Fable pinned as default model) —
       # applied here to the staged file so a bad commit is caught immediately
@@ -39,7 +39,7 @@ pre-commit:
           ! grep -qE '"model"[[:space:]]*:[[:space:]]*"[^"]*fable' "$f" || { echo "Fable pinned as default model in $f"; exit 1; }
         done
     toml-validity:
-      # The botufile.toml IS the repo — a parse error only surfaces at `botu
+      # The boomfile.toml IS the repo — a parse error only surfaces at `boom
       # apply` time on a real machine otherwise. --no-schema = pure syntax check
       # (hermetic, offline); won't reformat the hand-aligned link tables.
       glob: "*.toml"

@@ -2,8 +2,8 @@ name: lint
 
 # Mirrors the local lefthook pre-commit gate (shellcheck + shfmt + gitleaks +
 # settings.json validity) on every push to main and every PR. Lint only — never
-# runs `botu apply` or mutates anything. (The engine and its tests live in the
-# botu repo; this repo is just botu's config.)
+# runs `boom apply` or mutates anything. (The engine and its tests live in the
+# boom repo; this repo is just boom's config.)
 
 on:
   push:
@@ -42,7 +42,7 @@ jobs:
         run: jq -e . dot-claude/settings.json > /dev/null
 
       # Mirrors lefthook's settings-json-validity: the same three content
-      # guardrails botufile.toml's `botu verify` runs against the live
+      # guardrails boomfile.toml's `boom verify` runs against the live
       # ~/.claude/settings.json (MCP auto-approve keys, osxkeychain git-helper
       # regression, Fable pinned as default model), applied here to the
       # committed file so CI catches drift immediately, not just the nightly
@@ -55,8 +55,8 @@ jobs:
           ! grep -q 'osxkeychain' "$f" || { echo "forbidden osxkeychain git helper (cached-PAT regression) in $f"; exit 1; }
           ! grep -qE '"model"[[:space:]]*:[[:space:]]*"[^"]*fable' "$f" || { echo "Fable pinned as default model in $f"; exit 1; }
 
-      # The botufile.toml IS the repo — gate that every tracked TOML parses, so a
-      # syntax error is caught here, not at `botu apply` time on a real machine.
+      # The boomfile.toml IS the repo — gate that every tracked TOML parses, so a
+      # syntax error is caught here, not at `boom apply` time on a real machine.
       # --no-schema = pure syntax (hermetic, offline). Mirrors lefthook's toml-validity.
       - name: TOML validity
         run: taplo check --no-schema $(git ls-files '*.toml')

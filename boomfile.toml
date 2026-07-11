@@ -331,7 +331,7 @@ name = "tldr cache"
 # here), but tealdeer ships no pages — `tldr <cmd>` errors until the archive is
 # fetched once. Do it at apply time so a fresh machine is ready. `|| true` keeps
 # an offline apply from failing on a non-critical cache; re-run with
-# `botu apply --only="tldr cache"` once networked.
+# `boom apply --only="tldr cache"` once networked.
 [[section.run]]
 on = "apply"
 cmd = "tldr --update || true"
@@ -352,20 +352,20 @@ on = "verify"
 cmd = "op-agent status"
 
 [[section]]
-name = "botu-verify launchd"
+name = "boom-verify launchd"
 
-# The `botu verify` guardrails above (MCP auto-approve, osxkeychain regression,
-# Fable-default drift) only fire when someone manually runs `botu verify` — so
+# The `boom verify` guardrails above (MCP auto-approve, osxkeychain regression,
+# Fable-default drift) only fire when someone manually runs `boom verify` — so
 # drift can sit undetected indefinitely. launchd is the native macOS scheduler
 # for this (not CI: CI can't see this live machine's ~/.claude/settings.json
 # symlink target). unload-then-load on every apply keeps re-running idempotent.
 [[section.link]]
-src = "launchd/com.alxjrvs.botu-verify.plist"
-dst = "~/Library/LaunchAgents/com.alxjrvs.botu-verify.plist"
+src = "launchd/com.alxjrvs.boom-verify.plist"
+dst = "~/Library/LaunchAgents/com.alxjrvs.boom-verify.plist"
 
 [[section.run]]
 on = "apply"
-cmd = "launchctl unload ~/Library/LaunchAgents/com.alxjrvs.botu-verify.plist 2>/dev/null; launchctl load -w ~/Library/LaunchAgents/com.alxjrvs.botu-verify.plist"
+cmd = "launchctl unload ~/Library/LaunchAgents/com.alxjrvs.boom-verify.plist 2>/dev/null; launchctl load -w ~/Library/LaunchAgents/com.alxjrvs.boom-verify.plist"
 
 [[section]]
 name = "agent-fetch launchd"
@@ -373,7 +373,7 @@ name = "agent-fetch launchd"
 # Claude Code cuts `worktree.baseRef: "fresh"` agent worktrees off the *local*
 # `origin/HEAD` and never fetches first, so a spawned agent starts as stale as the
 # last manual fetch. The `SessionStart` hook in dot-claude/settings.json fetches
-# per-spawn when the session cwd is inside a repo — but the `botu code claude`
+# per-spawn when the session cwd is inside a repo — but the `boom code claude`
 # flat-symlink workspace can spawn an agent with cwd = the flat parent (not a
 # repo), where that hook no-ops. This launchd job is the cwd-independent
 # belt-and-suspenders: every 15 min it fetches every `~/Code/**` repo's origin so

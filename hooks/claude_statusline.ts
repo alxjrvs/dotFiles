@@ -14,7 +14,7 @@ interface Api {
 }
 
 // hooks/<name>.ts lives in <dotfiles>/hooks, so the repo is one dir up; the
-// statusline checkout sits beside the dotfiles repo (was $BOTU_CONFIG/..).
+// statusline checkout sits beside the dotfiles repo (was $BOOM_CONFIG/..).
 const TARGET = join(import.meta.dir, "..", "..", "claude-statusline");
 
 export async function apply(api: Api): Promise<void> {
@@ -40,7 +40,7 @@ export async function apply(api: Api): Promise<void> {
 export function verify(api: Api): void {
   const bin = join(api.env.HOME ?? "", ".local", "bin", "claude-statusline");
   if (existsSync(bin) && (statSync(bin).mode & 0o111) !== 0) api.ok("statusline on PATH");
-  else api.warn("statusline missing — botu apply --only=claude_statusline");
+  else api.warn("statusline missing — boom apply --only=claude_statusline");
 }
 
-// fix is re-apply (botu falls back to apply when fix is absent), so nothing to add.
+// fix is re-apply (boom falls back to apply when fix is absent), so nothing to add.
