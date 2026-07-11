@@ -37,7 +37,7 @@ async function pubkey(api: Api, name: string): Promise<string> {
   return type && data ? `${type} ${data}` : "";
 }
 
-export async function apply(api: Api): Promise<void> {
+export async function sync(api: Api): Promise<void> {
   const name = api.with.key ?? "GitHubSSH";
   if (api.dryRun) {
     api.note("would converge signing in ~/.gitconfig.local + ~/.ssh/allowed_signers");
@@ -99,6 +99,6 @@ export function verify(api: Api): void {
   if (r.exitCode === 0 && new TextDecoder().decode(r.stdout).trim() === "true") {
     api.ok("commit signing enabled (~/.gitconfig.local)");
   } else {
-    api.warn("signing not configured — run: boom apply --only=git-signing");
+    api.warn("signing not configured — run: boom source --only=git-signing");
   }
 }

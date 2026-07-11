@@ -329,9 +329,9 @@ name = "tldr cache"
 
 # mise installs the `tldr` binary (packages section, earlier → on PATH
 # here), but tealdeer ships no pages — `tldr <cmd>` errors until the archive is
-# fetched once. Do it at apply time so a fresh machine is ready. `|| true` keeps
-# an offline apply from failing on a non-critical cache; re-run with
-# `boom apply --only="tldr cache"` once networked.
+# fetched once. Do it at sync time so a fresh machine is ready. `|| true` keeps
+# an offline sync from failing on a non-critical cache; re-run with
+# `boom source --only="tldr cache"` once networked.
 [[section.run]]
 on = "sync"
 cmd = "tldr --update || true"
