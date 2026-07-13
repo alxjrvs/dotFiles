@@ -89,10 +89,6 @@ src = "starship.toml"
 dst = "~/.config/starship.toml"
 
 [[section.link]]
-src = "cmux/cmux.json"
-dst = "~/.config/cmux/cmux.json"
-
-[[section.link]]
 src = "ghostty/config"
 dst = "~/.config/ghostty/config"
 
@@ -111,10 +107,6 @@ dst = "~/.config/gh/config.yml"
 [[section.link]]
 src = "nvim/init.lua"
 dst = "~/.config/nvim/init.lua"
-
-[[section.link]]
-src = "karabiner/karabiner.json"
-dst = "~/.config/karabiner/karabiner.json"
 
 [[section]]
 name = "Claude"
@@ -388,6 +380,23 @@ dst = "~/Library/LaunchAgents/com.alxjrvs.agent-fetch.plist"
 [[section.run]]
 on = "sync"
 cmd = "launchctl unload ~/Library/LaunchAgents/com.alxjrvs.agent-fetch.plist 2>/dev/null; launchctl load -w ~/Library/LaunchAgents/com.alxjrvs.agent-fetch.plist"
+
+[[section]]
+name = "capslock-control launchd"
+
+# Caps Lock → Left Control natively via hidutil, replacing the Karabiner
+# kernel extension (deleted — a whole kext for one modifier remap failed the
+# "native over special" bar). hidutil remaps are lost on reboot/keyboard
+# reconnect, so a RunAtLoad LaunchAgent re-applies it every login — the
+# declarative, reproducible equivalent of the System Settings Modifier Keys
+# toggle. unload-then-load on every sync keeps re-running idempotent.
+[[section.link]]
+src = "launchd/com.alxjrvs.capslock-control.plist"
+dst = "~/Library/LaunchAgents/com.alxjrvs.capslock-control.plist"
+
+[[section.run]]
+on = "sync"
+cmd = "launchctl unload ~/Library/LaunchAgents/com.alxjrvs.capslock-control.plist 2>/dev/null; launchctl load -w ~/Library/LaunchAgents/com.alxjrvs.capslock-control.plist"
 
 [[section]]
 name = "git-signing"

@@ -1,9 +1,5 @@
-# Ghostty.app config — the daily-driver terminal. Read from
-# ~/.config/ghostty/config (a fixed path, no override). cmux, kept installed for
-# parallel agent sessions, embeds libghostty and reads this same file but honors
-# only the visual subset (theme/font/colors/opacity/splits/scrollback) — it
-# ignores the keybinds and quick-terminal visor below, which are Ghostty.app
-# only. cmux app behavior lives in cmux/cmux.json.
+# Ghostty.app config — the sole terminal. Read from ~/.config/ghostty/config
+# (a fixed path, no override).
 
 # Theme
 theme = Nord

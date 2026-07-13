@@ -40,17 +40,11 @@ cask "font-fira-code-nerd-font"
 # (symlinked by boom apply).
 cask "ghostty"
 
-# cmux — a libghostty-based agent multiplexer for parallel Claude Code sessions
-# with vertical tabs and git-worktree isolation. Kept installed for that role
-# (boom code cmux), no longer the daily driver. App config is portable in
-# cmux/cmux.json; it reads ghostty/config via embedded libghostty for rendering.
-cask "cmux"
-
 cask "google-chrome"
 
-# Caps Lock → Control via Karabiner (rule lives in karabiner/karabiner.json,
-# symlinked by boom apply).
-cask "karabiner-elements"
+# Caps Lock → Control is done natively via hidutil (a RunAtLoad LaunchAgent,
+# launchd/com.alxjrvs.capslock-control.plist) — no Karabiner kernel extension
+# for a single modifier remap.
 
 cask "notunes"
 

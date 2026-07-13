@@ -37,7 +37,7 @@ this repo, and runs `boom apply`. Preview without touching the machine:
 | `boom verify` (`boom doctor`) | Read-only drift check, incl. orphaned links. Exit `0` clean / `2` warn / `1` fail. |
 | `boom fix` | Repair drift — relink missing/incorrect, reap orphaned links. |
 | `boom uninstall` | Remove every managed link. |
-| `boom code claude\|cmux` | Mirror `~/Code` into agent workspaces (one idle `claude --bg` / cmux workspace per repo). |
+| `boom code claude` | Mirror `~/Code` into a flat agent workspace (every repo `@`-taggable in `claude agents`). |
 | `boom mcp add NAME -- SERVER` | Register an MCP server the 1Password-native way. |
 
 ## Making it yours
@@ -64,11 +64,11 @@ Everything here is policy except a handful of identity values:
 | `.gitconfig`, `.gitmessage` | Git identity, commit template, 1Password SSH signing |
 | `git-template/hooks/pre-commit` | Per-repo gitleaks + MCP-secret guard, copied into new repos via `init.templateDir` |
 | `starship.toml` | Prompt |
-| `ghostty/config`, `cmux/cmux.json` | Terminal (Ghostty daily driver + cmux for parallel agent sessions) |
+| `ghostty/config` | Terminal (Ghostty, sole terminal) |
 | `nvim/init.lua` | Plugin-free neovim (native LSP, ≥0.11) |
 | `dot-claude/` | Claude Code `CLAUDE.md` + `settings.json` (symlinked into `~/.claude/`) |
 | `Brewfile` / `mise.toml` | Packages (Lean A: brew = casks, mise = dev CLIs) |
-| `sheldon/`, `atuin/`, `bat/`, `karabiner/`, `ssh/`, `gh/config.yml` | Payload configs |
+| `sheldon/`, `atuin/`, `bat/`, `ssh/`, `gh/config.yml` | Payload configs |
 | `lefthook.yml`, `.github/workflows/lint.yml` | Lint gate (shellcheck + shfmt + gitleaks) for this repo's shell |
 | `LICENSE` | MIT |
 
@@ -76,7 +76,7 @@ Everything here is policy except a handful of identity values:
 
 The load-bearing doctrine lives in [`CLAUDE.md`](CLAUDE.md): the `op-agent` CLI
 (one verb-dispatched script for the agent service account, git PAT, and on-demand
-secret reads), the Lean-A packaging policy, the Ghostty+cmux terminal stack,
+secret reads), the Lean-A packaging policy, the Ghostty terminal,
 and 1Password commit signing. In brief:
 
 - **Git signing** is 1Password via `op-ssh-sign` (`gpg.format = ssh`); the
@@ -84,7 +84,7 @@ and 1Password commit signing. In brief:
   without 1Password doesn't fail commits.
 - **1Password SSH agent**: `ssh/config` points `IdentityAgent` at the 1Password
   8 socket — enable it in 1Password → Settings → Developer first.
-- **Caps Lock → Control** via Karabiner (`karabiner/karabiner.json`).
+- **Caps Lock → Control** natively via `hidutil` (a RunAtLoad LaunchAgent, `launchd/com.alxjrvs.capslock-control.plist`) — no Karabiner kernel extension.
 - **Editor**: `nvim`, a single plugin-free `init.lua`; LSP binaries via mise.
 
 ## The engine

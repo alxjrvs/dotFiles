@@ -55,9 +55,9 @@ Small steps (`chmod 700 ~/.ssh`, `lefthook install`) are inline `run` (`on = "ap
 
 `Brewfile` holds **only** `mise` (bootstrap), casks (GUI apps, fonts), and system libs with no mise equivalent. `mise.toml` holds all language toolchains AND dev CLIs (`jq`, `shellcheck`, `shfmt`). If you're about to add a CLI to `Brewfile`, stop — it goes in `mise.toml` unless it's `mise` itself or a cask.
 
-## Terminal: Ghostty (canonical), cmux (parallel agent sessions)
+## Terminal: Ghostty (sole terminal)
 
-Ghostty is the daily driver (`TERMINAL=ghostty`, `ghostty/config`). cmux stays for **parallel Claude Code sessions** via `boom code cmux` (the workspace mirror, formerly `dot ws`). Two symlinked files: `ghostty/config` (rendering + Ghostty keybinds/visor; cmux also reads it for the visual subset) and `cmux/cmux.json` (cmux's app config — intentional divergences only). `boom code` mirrors `~/Code` into workspaces: `boom code init [DIR]` records the dir, `boom code claude` (symlinks every repo into one flat dir and opens `claude agents` there, so each repo is `@`-taggable for dispatch with no running agents) / `boom code cmux` (one workspace per repo).
+Ghostty is the only terminal (`TERMINAL=ghostty`, `ghostty/config`) — one symlinked file for rendering + keybinds/visor. Parallel Claude Code sessions run through `claude agents` mode directly (standalone Ghostty, no multiplexer: `claude agents` already does parallel dispatch, session persistence, and git-worktree isolation, so a multiplexing terminal is redundant). `boom code` mirrors `~/Code` into workspaces: `boom code init [DIR]` records the dir, `boom code claude` symlinks every repo into one flat dir and opens `claude agents` there so each repo is `@`-taggable for dispatch. (cmux, a libghostty agent multiplexer, was removed for this reason; `boom code cmux` — the per-repo workspace variant — is an unused engine feature.)
 
 ## Secrets management
 

@@ -25,7 +25,7 @@ read_only = " "
 read_only_style = "red"
 
 # Branch chip: muted [ ] around a blue   + name. The statusline uses an ASCII
-# '@' sigil here (cmux safety); starship keeps the nerd-font branch glyph, same
+# '@' sigil for glyph-safety; starship keeps the nerd-font branch glyph, same
 # blue. No leading space — the `directory` module already trails one space after
 # the title; no trailing space either, so the status chip butts up flush.
 [git_branch]
