@@ -113,6 +113,12 @@ cmd_provision() {
       echo "op-agent: SA create failed (needs owner/admin token)"
     fi
   fi
+  # Resolve the PAT via the SA token (from the keychain), NOT desktop auth. Without
+  # this, the bare `op read` below falls back to biometric and re-prompts Touch ID on
+  # EVERY `boom source`. The SA can read the claude-agent vault where the PAT lives, so
+  # this is headless. On a first-ever provision the token was just created above, so
+  # _load_sa picks it up too; only SA *creation* itself needs the one-time biometric.
+  _load_sa
   # The PAT is resolved on demand by `git-credential` (no keychain cache); just
   # confirm the vault item exists so a fresh machine gets a clear setup signal.
   if op read "$PAT_REF" > /dev/null 2>&1; then
