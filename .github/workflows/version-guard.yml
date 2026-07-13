@@ -1,0 +1,44 @@
+name: version-guard
+
+# Every PR must move the VERSION file forward by exactly one semver step —
+# patch (x.y.z+1), minor (x.y+1.0), or major (x+1.0.0). Stricter than boom's
+# own guard: this repo does NOT allow "unchanged" — no change lands without at
+# least a patch bump. Never skip (0.0.1->0.0.3) or jump (0.0.1->3.0.0): one
+# merge, at most one release.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  version-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Enforce a single-step version bump vs the base branch
+        run: |
+          base_ref="${{ github.base_ref }}"
+          git fetch -q origin "$base_ref"
+          # VERSION may be absent on the base (first-time setup): treat as 0.0.0
+          # so the bootstrap PR that introduces it reads as a clean patch bump.
+          base=$(git show "origin/$base_ref:VERSION" 2>/dev/null | tr -d '[:space:]')
+          base=${base:-0.0.0}
+          head=$(tr -d '[:space:]' < VERSION)
+          echo "base ($base_ref): $base   this PR: $head"
+          echo "$head" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' \
+            || { echo "::error::VERSION must be X.Y.Z, got '$head'"; exit 1; }
+          IFS=. read -r bM bm bp <<<"$base"
+          IFS=. read -r hM hm hp <<<"$head"
+          ok=0
+          [ "$hM" = "$bM" ] && [ "$hm" = "$bm" ] && [ "$hp" = "$((bp+1))" ] && ok=1   # patch
+          [ "$hM" = "$bM" ] && [ "$hm" = "$((bm+1))" ] && [ "$hp" = 0 ] && ok=1       # minor
+          [ "$hM" = "$((bM+1))" ] && [ "$hm" = 0 ] && [ "$hp" = 0 ] && ok=1           # major
+          if [ "$ok" != 1 ]; then
+            echo "::error::every PR must bump VERSION exactly one step from $base — patch $bM.$bm.$((bp+1)), minor $bM.$((bm+1)).0, or major $((bM+1)).0.0 (unchanged is not allowed); got $head"
+            exit 1
+          fi
+          echo "version OK: $base -> $head"
