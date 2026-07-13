@@ -18,9 +18,12 @@
 	</array>
 	<key>RunAtLoad</key>
 	<true/>
+	<!-- Absolute paths only: launchd does NOT expand ~ or $HOME in plist values.
+	     A ~-prefixed log path made launchd fail this job with EX_CONFIG (exit 78)
+	     before it could run hidutil, silently breaking the Caps→Control remap. -->
 	<key>StandardOutPath</key>
-	<string>~/Library/Logs/capslock-control.log</string>
+	<string>/tmp/capslock-control.log</string>
 	<key>StandardErrorPath</key>
-	<string>~/Library/Logs/capslock-control.log</string>
+	<string>/tmp/capslock-control.log</string>
 </dict>
 </plist>
