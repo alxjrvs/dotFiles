@@ -33,6 +33,8 @@ Brewfile.lock.json
 # Generated audit reports (gnar audit plugin) — regenerate on demand, not tracked.
 audit/
 
-# Machine-specific overrides
+# Machine-local override — NOT a pattern this setup uses (every divergence lives
+# in the committed settings.json contract). Guard stays because Claude Code can
+# auto-write settings.local.json on "always allow"/project-trust flows; never commit one.
 dot-claude/settings.local.json
 **/.claude/settings.local.json
