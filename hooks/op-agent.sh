@@ -129,12 +129,41 @@ cmd_provision() {
 }
 
 cmd_status() {
-  if security find-generic-password -s "$KEYCHAIN" > /dev/null 2>&1; then
-    echo "op-agent: SA token in keychain ($KEYCHAIN)"
+  security find-generic-password -s "$KEYCHAIN" > /dev/null 2>&1 || {
+    echo "op-agent: SA token missing — run: op-agent provision" >&2
+    return 1
+  }
+  echo "op-agent: SA token in keychain ($KEYCHAIN)"
+
+  # PAT liveness. The agent's git PAT is a classic token with an expiry: when it
+  # lapses, git-credential silently returns a dead token and every agent push then
+  # fails with no warning. Probe it here — the one place that already handles the
+  # PAT, so the boomfile/launchd stay clean and the token never touches a tracked
+  # file or the model's context. Resolve via the SA and hit the API; only OK/expiry
+  # is printed, never the token. A definitive 401/403 = dead → fail (surfaces via
+  # `boom verify` + the boom-verify launchd); network/tooling gaps are advisory so
+  # a flaky connection never fails verify.
+  command -v op > /dev/null 2>&1 && command -v curl > /dev/null 2>&1 || return 0
+  _load_sa
+  local pat code
+  pat="$(op read "$PAT_REF" 2> /dev/null)" || {
+    echo "op-agent: git PAT not resolvable from vault ($VAULT) — advisory"
     return 0
-  fi
-  echo "op-agent: SA token missing — run: op-agent provision" >&2
-  return 1
+  }
+  [[ -n "$pat" ]] || {
+    echo "op-agent: git PAT empty in vault ($VAULT) — advisory"
+    return 0
+  }
+  code="$(curl -s -o /dev/null -w '%{http_code}' -m 8 -H "Authorization: token $pat" https://api.github.com/user 2> /dev/null || echo 000)"
+  case "$code" in
+    200) echo "op-agent: git PAT live" ;;
+    401 | 403)
+      echo "op-agent: git PAT DEAD/expired (HTTP $code) — rotate 'Claude Git PAT' in vault $VAULT" >&2
+      return 1
+      ;;
+    *) echo "op-agent: git PAT liveness unknown (HTTP $code) — network/API, not failing" ;;
+  esac
+  return 0
 }
 
 case "${1:-}" in
