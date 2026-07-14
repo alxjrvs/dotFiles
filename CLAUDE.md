@@ -6,20 +6,18 @@ This file guides Claude Code (claude.ai/code) when working in this repository.
 
 A macOS **dotfiles repo** that is pure **config for [BoomTube](https://github.com/alxjrvs/boom)** — the small TypeScript dotfiles+workspace engine (the executable is `boom`), compiled to a single binary on `PATH`. This repo is its *first consumer*. There is no engine code here: the whole repo is a `boomfile.toml` (the config), a handful of TypeScript `hooks/`, and the payload (`.zshrc`, `zsh/`, `nvim/`, `dot-claude/`, `Brewfile`, `mise.toml`, …) that boom symlinks into place.
 
-```
-boom source set alxjrvs/dotFiles   # clone + record this repo, then reconcile
-boom source       # symlink/copy/install/run from the boomfile.toml
-boom verify       # check drift (exit 0 ok / 2 warn / 1 fail); --json for a report
-boom repair       # repair drift (incl. reaping orphaned links)
-boom rollback     # undo the last sync (restores backed-up files)
-boom uninstall    # remove every managed link
-```
+boom's command surface is boom's to document, not this repo's — the canonical
+reference is the [boom docs](https://alxjrvs.github.io/boom/), `boom --help`, or
+`boom man`. Don't restate the full command list here; it drifts across boom
+releases. Day-to-day: `boom source` reconciles the machine from `boomfile.toml`
+(symlink/copy/install/run), and `boom verify` checks drift (exit 0 ok / 2 warn /
+1 fail; `--json` for a report).
 
 Fresh machine: `curl -fsSL https://raw.githubusercontent.com/alxjrvs/boom/main/install.sh | sh && boom source set alxjrvs/dotFiles` (installs boom, clones + records this repo, reconciles).
 
 ## The `boomfile.toml`
 
-The config is a typed, validated TOML document; boom parses it once and runs each `[[section]]` under the verb. Within a section, resources run in phase order `link → copy → glob → packages → run → hook`. Schema:
+The config is a typed, validated TOML document; boom parses it once and runs each `[[section]]` under the verb. The authoritative schema lives in the [boom docs](https://alxjrvs.github.io/boom/) (`boom validate` checks a file against it) — the summary below is orientation, not the source of truth. Within a section, resources run in phase order `link → copy → glob → packages → run → hook`. Schema:
 
 - `[[section]]` with `name` (the `--only`/tag) and optional `when = { os, host, profile }` to gate by machine.
 - `link` / `copy` `[{ src, dst, mode? }]` and `glob [{ pattern, into }]` — the symlink/copy contract (`dst` may use `~`).
