@@ -29,16 +29,14 @@ and reconciles the machine. Preview without touching anything first:
 
 ## Day-to-day
 
-| Command | Job |
-|---------|-----|
-| `boom source` | Idempotent re-sync — symlinks, packages, macOS defaults, hooks. Fast on no-op. |
-| `boom source --upgrade` | Same + brew/mise upgrade. |
-| `boom source --only="zsh fragments"` | Only the named section (e.g. brew/mise packages). |
-| `boom verify` | Read-only drift check, incl. orphaned links. Exit `0` clean / `2` warn / `1` fail. |
-| `boom repair` | Repair drift — relink missing/incorrect, reap orphaned links. |
-| `boom uninstall` | Remove every managed link. |
-| `boom code claude` | Mirror `~/Code` into a flat agent workspace (every repo `@`-taggable in `claude agents`). |
-| `boom mcp add NAME -- SERVER` | Register an MCP server the 1Password-native way. |
+The command surface belongs to boom, not this repo, so it isn't restated here (and
+can't drift out of date). The canonical reference is the [boom docs][boom-docs] —
+or `boom --help` / `boom man` locally. In practice you'll reach for two verbs:
+**`boom source`** re-syncs the machine from `boomfile.toml` after you edit config
+(fast on a no-op; `--only="<section>"` scopes it, `--dry-run` previews); **`boom
+verify`** is the read-only drift check (exit `0` clean / `2` warn / `1` fail).
+
+[boom-docs]: https://alxjrvs.github.io/boom/
 
 ## Making it yours
 
@@ -88,6 +86,7 @@ and 1Password commit signing. In brief:
 
 ## The engine
 
-Anything about source/verify/repair semantics, symlink internals, the manifest, or
-orphan reaping lives in [**boom**](https://github.com/alxjrvs/boom), not here.
-This repo is boom's first consumer — and the reference example of a `boomfile`.
+Anything about reconcile/verify semantics, symlink internals, the manifest, or
+orphan reaping lives in [**boom**](https://github.com/alxjrvs/boom) and its
+[docs][boom-docs], not here. This repo is boom's first consumer — and the
+reference example of a `boomfile`.
