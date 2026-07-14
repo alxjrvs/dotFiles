@@ -1,3 +1,18 @@
+# boom's own self-wiring, folded into the reconcile it already runs (boom >= 0.13.0) —
+# so these stop being hand-rolled `run`/plist steps below:
+#   - skill_on_sync: regenerate ~/.claude/skills/boom/SKILL.md from the running binary each
+#     sync, so the self-describing skill never lags a `boom upgrade` (replaces the
+#     `boom skill --install` run step).
+#   - upgrade_check_on_sync: after a sync, warn (offline-safe, non-fatal) when a newer boom
+#     ships — the exact stale-binary drift that let a 0.9.1 machine propagate renamed-away
+#     command names before anyone noticed.
+#   - code_fetch_schedule: a launchd timer that `git fetch`es every ~/Code repo every 15m to
+#     keep origin/HEAD warm for agent worktree cuts (replaces the agent-fetch plist + section).
+[boom]
+skill_on_sync = true
+upgrade_check_on_sync = true
+code_fetch_schedule = "15m"
+
 [[section]]
 name = "Shell + git"
 
@@ -141,15 +156,8 @@ mode = "755"
 pattern = "dot-claude/skills/*"
 into = "~/.claude/skills/"
 
-[[section.run]]
-# Regenerate boom's own agentic reference from the installed binary on every
-# reconcile, so `~/.claude/skills/boom/SKILL.md` never drifts behind a `boom
-# upgrade`. boom renames verbs across releases (repair↔fix, apply→source); a
-# hand-maintained or one-time-snapshot skill goes stale and agents chase the
-# churn. `boom skill --install` writes the current surface — boom's own emitter,
-# no wrapper. This is why the docs here don't restate boom's command list.
-on = "sync"
-cmd = "boom skill --install"
+# Skill refresh moved to the top-level `[boom] skill_on_sync = true` — boom regenerates its
+# own SKILL.md from the running binary each sync, no `run` step needed.
 
 [[section.run]]
 # Claude Code CLI via the official native installer (self-updating); never
@@ -158,31 +166,36 @@ cmd = "boom skill --install"
 on = "sync"
 cmd = "command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash"
 
-[[section.run]]
-# Deterministic guardrail (CVE-2025-59536 class): fail verify if the auto-approve
-# MCP keys ever land in settings.json — they run .mcp.json commands before the
-# trust dialog, i.e. pre-consent RCE. A rule that lives only in prose isn't
-# enforced; this grep is.
-on = "verify"
-cmd = "test -f ~/.claude/settings.json && grep -qE '(enableAllProjectMcpServers|enabledMcpjsonServers)' ~/.claude/settings.json && { echo 'forbidden auto-approve MCP key in ~/.claude/settings.json'; exit 1; } || true"
+# The three settings.json guardrails below were escaping-heavy `grep`-in-a-`run` steps; they
+# are now declarative `check` resources (boom >= 0.13.0), evaluated on `boom verify` and folded
+# into its exit code + `--json` report. `missing_file = "skip"` preserves the old `|| exit 0`
+# (an absent settings.json is not a failure). Note the Fable pattern is a JS regex (`\s`), not
+# the POSIX `[[:space:]]` the grep used.
 
-[[section.run]]
-# Deterministic guardrail: agent git auth must resolve the PAT through the single
-# `op` primitive (`op-agent git-credential`), never a cached PAT via `osxkeychain`.
-# Keeps git from silently regressing off the secrets doctrine. (A PAT literal can
-# never reach a tracked file either — gitleaks + the git-template pre-commit cover
-# that.) A prose rule isn't enforced; this grep is.
-on = "verify"
-cmd = "test -f ~/.claude/settings.json || exit 0; grep -q 'op-agent git-credential' ~/.claude/settings.json || { echo 'agent git helper not wired to op-agent git-credential in ~/.claude/settings.json'; exit 1; }; ! grep -q 'osxkeychain' ~/.claude/settings.json || { echo 'forbidden osxkeychain git helper (cached-PAT regression) in ~/.claude/settings.json'; exit 1; }"
+[[section.check]]
+# CVE-2025-59536 class: the auto-approve MCP keys run .mcp.json commands before the trust
+# dialog (pre-consent RCE). A prose rule isn't enforced; this is.
+file = "~/.claude/settings.json"
+absent = ["enableAllProjectMcpServers", "enabledMcpjsonServers"]
+missing_file = "skip"
+message = "forbidden auto-approve MCP key in ~/.claude/settings.json"
 
-[[section.run]]
-# Deterministic guardrail: no model is pinned as the default (new sessions use
-# Claude Code's built-in default) — and Fable in particular is per-session/
-# -subagent only (`/model`), never the new-session default. No Claude Code
-# setting expresses "selectable but not default", and `/model`'s "set as
-# default" silently rewrites settings.json, so drift is caught here.
-on = "verify"
-cmd = "test -f ~/.claude/settings.json || exit 0; ! grep -qE '\"model\"[[:space:]]*:[[:space:]]*\"[^\"]*fable' ~/.claude/settings.json || { echo 'Fable pinned as default model in ~/.claude/settings.json (Fable is /model per-session only)'; exit 1; }"
+[[section.check]]
+# Agent git auth must resolve the PAT through the single `op` primitive
+# (`op-agent git-credential`), never a cached PAT via `osxkeychain`.
+file = "~/.claude/settings.json"
+present = ["op-agent git-credential"]
+absent = ["osxkeychain"]
+missing_file = "skip"
+message = "agent git helper drifted off op-agent git-credential (or an osxkeychain cached-PAT regression) in ~/.claude/settings.json"
+
+[[section.check]]
+# No model pinned as the default, and Fable in particular is /model per-session only —
+# `/model`'s "set as default" silently rewrites settings.json, so drift is caught here.
+file = "~/.claude/settings.json"
+absent = ['"model"\s*:\s*"[^"]*fable']
+missing_file = "skip"
+message = "Fable pinned as default model in ~/.claude/settings.json (Fable is /model per-session only)"
 
 [[section]]
 name = "zsh fragments"
@@ -313,16 +326,23 @@ key = "location"
 type = "string"
 value = "$HOME/Screenshots"
 
-[[section.run]]
-on = "sync"
-cmd = "mkdir -p $HOME/Screenshots"
+# The screencapture `location` default above writes to ~/Screenshots; ensure it exists.
+# Declarative `dir` (boom >= 0.13.0) replaces the mkdir run step.
+[[section.dir]]
+path = "~/Screenshots"
 
 [[section]]
 name = "SSH perms"
 
-[[section.run]]
-on = "sync"
-cmd = "mkdir -p ~/.ssh/cm && chmod 700 ~/.ssh ~/.ssh/cm"
+# `dir` with a mode replaces the `mkdir -p && chmod 700` run step: ensure ~/.ssh and its
+# control-master dir exist at 0700 (idempotent; verify reports mode drift).
+[[section.dir]]
+path = "~/.ssh"
+mode = "700"
+
+[[section.dir]]
+path = "~/.ssh/cm"
+mode = "700"
 
 [[section]]
 name = "lefthook"
@@ -358,60 +378,33 @@ cmd = "op-agent provision"
 on = "verify"
 cmd = "op-agent status"
 
+# The agent-fetch launchd job (every 15m, `git fetch` every ~/Code repo to keep origin/HEAD
+# warm for agent worktree cuts) is now the top-level `[boom] code_fetch_schedule = "15m"` —
+# boom owns the timer and runs `boom code fetch` (which walks the recorded code dir), so the
+# hand-authored com.alxjrvs.agent-fetch.plist + its link/launchctl section are gone.
+
 [[section]]
 name = "boom-verify launchd"
 
-# The `boom verify` guardrails above (MCP auto-approve, osxkeychain regression,
-# Fable-default drift) only fire when someone manually runs `boom verify` — so
-# drift can sit undetected indefinitely. launchd is the native macOS scheduler
-# for this (not CI: CI can't see this live machine's ~/.claude/settings.json
-# symlink target). unload-then-load on every apply keeps re-running idempotent.
-[[section.link]]
+# The `boom verify` guardrails above (MCP auto-approve, osxkeychain regression, Fable-default
+# drift) only fire when someone runs `boom verify` — so drift can sit undetected. This custom
+# plist runs `boom verify` on a timer AND fires a desktop notification on drift (which the
+# batteries-included `[boom] verify_schedule` doesn't), so it stays a plist — but the new
+# `launchd` resource (boom >= 0.13.0) collapses the old link + `launchctl unload;load -w` pair
+# into one stanza that owns the load/unload lifecycle itself.
+[[section.launchd]]
 src = "launchd/com.alxjrvs.boom-verify.plist"
-dst = "~/Library/LaunchAgents/com.alxjrvs.boom-verify.plist"
-
-[[section.run]]
-on = "sync"
-cmd = "launchctl unload ~/Library/LaunchAgents/com.alxjrvs.boom-verify.plist 2>/dev/null; launchctl load -w ~/Library/LaunchAgents/com.alxjrvs.boom-verify.plist"
-
-[[section]]
-name = "agent-fetch launchd"
-
-# Claude Code cuts `worktree.baseRef: "fresh"` agent worktrees off the *local*
-# `origin/HEAD` and never fetches first, so a spawned agent starts as stale as the
-# last manual fetch. The `SessionStart` hook in dot-claude/settings.json fetches
-# per-spawn when the session cwd is inside a repo — but the `boom code claude`
-# flat-symlink workspace can spawn an agent with cwd = the flat parent (not a
-# repo), where that hook no-ops. This launchd job is the cwd-independent
-# belt-and-suspenders: every 15 min it fetches every `~/Code/**` repo's origin so
-# `origin/HEAD` is already warm whenever an agent's worktree is cut. Runs as the
-# login shell → uses the user's keychain-backed `gh` credential helper (headless
-# in a logged-in session), so private repos authenticate without biometric.
-# unload-then-load on every apply keeps re-running idempotent.
-[[section.link]]
-src = "launchd/com.alxjrvs.agent-fetch.plist"
-dst = "~/Library/LaunchAgents/com.alxjrvs.agent-fetch.plist"
-
-[[section.run]]
-on = "sync"
-cmd = "launchctl unload ~/Library/LaunchAgents/com.alxjrvs.agent-fetch.plist 2>/dev/null; launchctl load -w ~/Library/LaunchAgents/com.alxjrvs.agent-fetch.plist"
 
 [[section]]
 name = "capslock-control launchd"
 
-# Caps Lock → Left Control natively via hidutil, replacing the Karabiner
-# kernel extension (deleted — a whole kext for one modifier remap failed the
-# "native over special" bar). hidutil remaps are lost on reboot/keyboard
-# reconnect, so a RunAtLoad LaunchAgent re-applies it every login — the
-# declarative, reproducible equivalent of the System Settings Modifier Keys
-# toggle. unload-then-load on every sync keeps re-running idempotent.
-[[section.link]]
+# Caps Lock → Left Control natively via hidutil, replacing the Karabiner kernel extension
+# (deleted — a whole kext for one modifier remap failed the "native over special" bar).
+# hidutil remaps are lost on reboot/keyboard reconnect, so a RunAtLoad LaunchAgent re-applies
+# it every login. Not boom-specific, so it stays a user plist — but the `launchd` resource
+# collapses the old link + launchctl pair into one stanza.
+[[section.launchd]]
 src = "launchd/com.alxjrvs.capslock-control.plist"
-dst = "~/Library/LaunchAgents/com.alxjrvs.capslock-control.plist"
-
-[[section.run]]
-on = "sync"
-cmd = "launchctl unload ~/Library/LaunchAgents/com.alxjrvs.capslock-control.plist 2>/dev/null; launchctl load -w ~/Library/LaunchAgents/com.alxjrvs.capslock-control.plist"
 
 [[section]]
 name = "git-signing"
