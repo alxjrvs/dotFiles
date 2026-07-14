@@ -7,15 +7,15 @@ This file guides Claude Code (claude.ai/code) when working in this repository.
 A macOS **dotfiles repo** that is pure **config for [BoomTube](https://github.com/alxjrvs/boom)** — the small TypeScript dotfiles+workspace engine (the executable is `boom`), compiled to a single binary on `PATH`. This repo is its *first consumer*. There is no engine code here: the whole repo is a `boomfile.toml` (the config), a handful of TypeScript `hooks/`, and the payload (`.zshrc`, `zsh/`, `nvim/`, `dot-claude/`, `Brewfile`, `mise.toml`, …) that boom symlinks into place.
 
 ```
-boom init ~/Code/DevEnv/Dotfiles   # record this repo (writes boominit.sh)
-boom apply        # symlink/copy/install/run from the boomfile.toml
+boom source set alxjrvs/dotFiles   # clone + record this repo, then reconcile
+boom source       # symlink/copy/install/run from the boomfile.toml
 boom verify       # check drift (exit 0 ok / 2 warn / 1 fail); --json for a report
-boom fix          # repair drift (incl. reaping orphaned links)
-boom rollback     # undo the last apply (restores backed-up files)
+boom repair       # repair drift (incl. reaping orphaned links)
+boom rollback     # undo the last sync (restores backed-up files)
 boom uninstall    # remove every managed link
 ```
 
-Fresh machine: `git clone … && ./Dotfiles/boominit.sh` (installs boom, points it here, applies).
+Fresh machine: `curl -fsSL https://raw.githubusercontent.com/alxjrvs/boom/main/install.sh | sh && boom source set alxjrvs/dotFiles` (installs boom, clones + records this repo, reconciles).
 
 ## The `boomfile.toml`
 
@@ -25,7 +25,7 @@ The config is a typed, validated TOML document; boom parses it once and runs eac
 - `link` / `copy` `[{ src, dst, mode? }]` and `glob [{ pattern, into }]` — the symlink/copy contract (`dst` may use `~`).
 - `brewfile = "FILE"` / `mise = true` — packages via the stock tools (the `Brewfile` / `mise.toml` are the data).
 - `osx_default [{ domain, key, type, value }]` — a macOS default (the engine restarts the UI automatically when any changed).
-- `run [{ on = "apply"|"verify", cmd }]` — a small inline imperative step.
+- `run [{ on = "sync"|"verify", cmd }]` — a small inline imperative step.
 - `hook [{ name, with? }]` — loads `hooks/<name>.ts` (a TypeScript resource module), passing `with` as inputs. For substantial imperative logic only.
 
 Multi-machine: gate sections with `when`, or layer overlay files `boomfile.<os|host|profile>.toml`.
