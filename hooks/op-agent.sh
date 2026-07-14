@@ -6,7 +6,7 @@
 #   op-agent secret <op://ref>   read one secret value to stdout via the SA
 #                                (the ref is an arg, not a per-service file)
 #   op-agent header <op://ref>   emit {"Authorization":"Bearer …"} for an HTTP
-#                                MCP `headersHelper` (GitHub, Render); ref is an arg
+#                                MCP `headersHelper` (GitHub); ref is an arg
 #   op-agent git-credential get  git credential helper: resolve the agent PAT
 #                                from the vault on demand (same `op` path as
 #                                `secret`; git's own `cache` helper amortizes it)
@@ -52,9 +52,9 @@ cmd_secret() {
 
 # Emit an MCP `headersHelper` JSON object — {"Authorization":"Bearer <token>"} —
 # for an HTTP MCP server that bearer-authenticates (the GitHub MCP at
-# api.githubcopilot.com/mcp/ and the Render MCP). The op:// ref is an argument,
-# not a per-service file. On any failure it emits `{}` (valid JSON, no header) so
-# the MCP client gets a well-formed response instead of a parse error.
+# api.githubcopilot.com/mcp/). The op:// ref is an argument, not a per-service
+# file. On any failure it emits `{}` (valid JSON, no header) so the MCP client
+# gets a well-formed response instead of a parse error.
 cmd_header() {
   local ref="${1:-}" token
   command -v op > /dev/null 2>&1 || {
@@ -140,9 +140,9 @@ cmd_status() {
   # fails with no warning. Probe it here — the one place that already handles the
   # PAT, so the boomfile/launchd stay clean and the token never touches a tracked
   # file or the model's context. Resolve via the SA and hit the API; only OK/expiry
-  # is printed, never the token. A definitive 401/403 = dead → fail (surfaces via
-  # `boom verify` + the boom-verify launchd); network/tooling gaps are advisory so
-  # a flaky connection never fails verify.
+  # is printed, never the token. A 401 = dead → fail (surfaces via `boom verify` +
+  # the boom-verify launchd); 403 (rate-limit/SSO) and network/tooling gaps are
+  # advisory so a flaky connection or throttle never fails verify.
   command -v op > /dev/null 2>&1 && command -v curl > /dev/null 2>&1 || return 0
   _load_sa
   local pat code
@@ -154,14 +154,21 @@ cmd_status() {
     echo "op-agent: git PAT empty in vault ($VAULT) — advisory"
     return 0
   }
-  code="$(curl -s -o /dev/null -w '%{http_code}' -m 8 -H "Authorization: token $pat" https://api.github.com/user 2> /dev/null || echo 000)"
+  # Keep the PAT off curl's argv (visible via `ps`): feed the auth header through
+  # a `-K -` config on stdin, so the token stays inside this process like every
+  # other op-agent secret path.
+  code="$(printf 'header = "Authorization: token %s"\n' "$pat" |
+    curl -s -o /dev/null -w '%{http_code}' -m 8 -K - https://api.github.com/user 2> /dev/null || echo 000)"
   case "$code" in
     200) echo "op-agent: git PAT live" ;;
-    401 | 403)
-      echo "op-agent: git PAT DEAD/expired (HTTP $code) — rotate 'Claude Git PAT' in vault $VAULT" >&2
+    # 401 is unambiguous "bad/expired credential" → dead. 403 is NOT: GitHub also
+    # returns it for secondary-rate-limit and SSO-enforcement on an otherwise live
+    # token, so treat it as advisory rather than failing verify on a false alarm.
+    401)
+      echo "op-agent: git PAT DEAD/expired (HTTP 401) — rotate 'Claude Git PAT' in vault $VAULT" >&2
       return 1
       ;;
-    *) echo "op-agent: git PAT liveness unknown (HTTP $code) — network/API, not failing" ;;
+    *) echo "op-agent: git PAT liveness unknown (HTTP $code) — network/rate-limit/SSO, not failing" ;;
   esac
   return 0
 }

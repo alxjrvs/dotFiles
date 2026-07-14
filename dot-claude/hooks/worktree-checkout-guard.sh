@@ -31,15 +31,27 @@ gitdir=$(git rev-parse --absolute-git-dir 2> /dev/null) || allow
 commondir=$(git rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || allow
 [ "$gitdir" = "$commondir" ] && allow
 
-# Resolve the default branch name from origin/HEAD; default to main.
+# Resolve the default branch name from origin/HEAD; default to main. Escape any
+# regex-special chars so a branch like `release/1.0` can't mis-match as an ERE.
 def=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2> /dev/null)
 def=${def#origin/}
 def=${def:-main}
+def_re=$(printf '%s' "$def" | sed 's/[^[:alnum:]_-]/\\&/g')
 
-# Match `git checkout <def>` / `git switch <def>` (optionally with leading flags),
-# terminated by whitespace, end, or a shell separator so `main.ts` (a path) and
-# `origin/main` (a detaching ref, which is safe) don't trip it.
-if printf '%s' "$cmd" | grep -Eq "git[[:space:]]+(checkout|switch)[[:space:]]+(-[[:alnum:]-]+[[:space:]]+)*${def}([[:space:]]|\$|&|;|\|)"; then
+# Deny ONLY a plain branch-switch to the default: `git checkout <def>` /
+# `git switch <def>` with NO flags between the verb and the name, terminated by
+# end-of-string or a shell separator. Precision beats coverage here — the point is
+# to never wedge legit work, so we accept false negatives to kill false positives:
+#   - `git` must sit at a command boundary (start, or after ; & | ( ) — NOT after
+#     another word), so `echo git checkout main` and `-m "…git checkout main…"`
+#     (inside a message/argument) pass through.
+#   - no flags are consumed before <def>, so `git checkout --detach main` and
+#     `git checkout -b main` pass (both are safe / not the reflex).
+#   - the terminator excludes a following token, so `git checkout main -- file`
+#     (file restore) and `git checkout main.ts` (a path) pass.
+# Known, accepted false negatives (git still crashes, just unguarded): quoted
+# `"main"`, `git -C dir checkout main`, and shell aliases.
+if printf '%s' "$cmd" | grep -Eq "(^|[;&|()])[[:space:]]*git[[:space:]]+(checkout|switch)[[:space:]]+${def_re}[[:space:]]*(\$|[;&|])"; then
   reason="You're in a linked worktree; \`git checkout ${def}\` / \`git switch ${def}\` fails with \"'${def}' is already used by worktree\". To inspect ${def} read-only, use: git log origin/${def} / git diff origin/${def} (or git switch --detach origin/${def}). To do work, stay on your current branch."
   jq -n --arg r "$reason" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $r}}'
   exit 0

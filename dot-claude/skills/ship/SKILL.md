@@ -34,9 +34,9 @@ Never run this on `main`/`master` directly — the rebase-guard hook denies a di
 
 6. **Enable auto-merge** so GitHub's gated queue lands it once required checks pass (this is why the `Bash(gh pr merge:*)` permission rule exists):
    ```
-   gh pr merge --auto --squash --delete-branch
+   gh pr merge --auto --squash
    ```
-   Squash + delete-branch match the repo defaults (squash-only, linear history). `--auto` waits for CI — it does **not** bypass required checks, and it is never a local `git merge`/`git push` onto `main`.
+   Squash matches the repo default. **Do not add `-d`/`--delete-branch`** — that caused the #53 worktree-`main` collision (`gh` checks out `main` to delete the local branch, which the primary checkout already holds). The repos enable `delete_branch_on_merge`, so GitHub deletes the remote branch server-side; if a target repo doesn't, delete it manually *after* confirming the PR merged (`gh pr view --json state`), never right after an `--auto` merge on a not-yet-green PR. `--auto` waits for CI — it does **not** bypass required checks, and it is never a local `git merge`/`git push` onto `main`.
 
 ## Guardrails
 
