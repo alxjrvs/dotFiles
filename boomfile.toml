@@ -128,9 +128,16 @@ dst = "~/.claude/settings.json"
 src = "dot-claude/hooks/rebase-guard.sh"
 dst = "~/.claude/hooks/rebase-guard.sh"
 
+# PreToolUse guard (runs before rebase-guard): blocks `git checkout/switch
+# <default>` from inside a linked worktree, where it fails "'<default>' is already
+# used by worktree". The single highest-frequency mechanical crash agents hit.
+[[section.link]]
+src = "dot-claude/hooks/worktree-checkout-guard.sh"
+dst = "~/.claude/hooks/worktree-checkout-guard.sh"
+
 [[section.run]]
 on = "sync"
-cmd = "chmod +x ~/.claude/hooks/rebase-guard.sh"
+cmd = "chmod +x ~/.claude/hooks/*.sh"
 
 [[section.glob]]
 pattern = "dot-claude/skills/*"

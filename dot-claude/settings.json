@@ -23,12 +23,17 @@
     "SPACEBASE_PROJECT_ID": "",
     "NINETY_API_TOKEN_COMMAND": "~/.local/bin/op-agent secret op://claude-agent/gninety/credential",
     "NINETY_API_TOKEN": "",
-    "NINETY_BASE_URL": ""
+    "NINETY_BASE_URL": "",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80",
+    "ENABLE_PROMPT_CACHING_1H": "1"
   },
   "attribution": {
     "commit": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>"
   },
   "permissions": {
+    "allow": [
+      "Bash(gh pr merge:*)"
+    ],
     "deny": [
       "Bash(security find-generic-password:*)",
       "Read(~/.ssh/id_*)",
@@ -62,6 +67,10 @@
       {
         "matcher": "Bash",
         "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/worktree-checkout-guard.sh"
+          },
           {
             "type": "command",
             "command": "~/.claude/hooks/rebase-guard.sh"

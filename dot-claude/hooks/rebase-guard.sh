@@ -33,9 +33,20 @@ branch=${target#origin/}
 # Compare against the real remote tip, not a stale local ref.
 git fetch --quiet origin "$branch" 2> /dev/null
 
-# Nothing to gate when pushing the target branch itself, or when the target ref
-# can't be resolved (e.g. a non-main default with no origin/HEAD set).
-[ "$(git symbolic-ref --quiet --short HEAD 2> /dev/null)" = "$branch" ] && allow
+# When HEAD *is* the default branch: a direct `git push` of it is off-limits
+# (work lands via a feature branch + PR + `gh pr merge --auto`, never a push onto
+# the shared default) — deny with that instruction. A `gh pr create` from the
+# default branch has nothing to rebase-gate, so it passes.
+if [ "$(git symbolic-ref --quiet --short HEAD 2> /dev/null)" = "$branch" ]; then
+  case "$cmd" in
+    *"git push"*)
+      reason="Refusing a direct push to the default branch (${branch}). Cut a feature branch and open a PR instead: git switch -c <branch> && git push -u origin <branch> && gh pr create, then land it with gh pr merge --auto --squash --delete-branch. (Run the push from a plain terminal, not Claude, for a genuine emergency bypass.)"
+      jq -n --arg r "$reason" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $r}}'
+      exit 0
+      ;;
+    *) allow ;;
+  esac
+fi
 git rev-parse --verify --quiet "$target" > /dev/null 2>&1 || allow
 
 # Up to date: the target is an ancestor of HEAD → the branch already contains it.
