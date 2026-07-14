@@ -33,7 +33,6 @@ gh = "latest"           # GH CLI; also feeds the GitHub MCP auth header
 delta = "latest"        # syntax-aware git pager
 gitleaks = "latest"     # gitleaks protect — global pre-commit hook
 lefthook = "latest"     # repo-local pre-commit/pre-push runner
-"aqua:tummychow/git-absorb" = "latest"  # `git absorb` — auto-route staged fixups to the right ancestor (pairs with rebase.autoSquash + updateRefs)
 
 # ── File / text / data tools ──────────────────────────────────────────
 bat = "latest"
