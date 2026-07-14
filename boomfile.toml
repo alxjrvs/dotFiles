@@ -144,6 +144,16 @@ pattern = "dot-claude/skills/*"
 into = "~/.claude/skills/"
 
 [[section.run]]
+# Regenerate boom's own agentic reference from the installed binary on every
+# reconcile, so `~/.claude/skills/boom/SKILL.md` never drifts behind a `boom
+# upgrade`. boom renames verbs across releases (repair↔fix, apply→source); a
+# hand-maintained or one-time-snapshot skill goes stale and agents chase the
+# churn. `boom skill --install` writes the current surface — boom's own emitter,
+# no wrapper. This is why the docs here don't restate boom's command list.
+on = "sync"
+cmd = "boom skill --install"
+
+[[section.run]]
 # Claude Code CLI via the official native installer (self-updating); never
 # brew/npm, whose builds do not auto-update. Idempotent — only installs when
 # `claude` is missing; the CLI updates itself thereafter.
