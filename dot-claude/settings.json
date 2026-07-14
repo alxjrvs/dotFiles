@@ -100,6 +100,9 @@
   },
   "skipWorkflowUsageWarning": true,
   "editorMode": "vim",
+  "vimInsertModeRemaps": {
+    "jj": "<Esc>"
+  },
   "verbose": true,
   "showTurnDuration": false,
   "terminalProgressBarEnabled": false,
