@@ -1,17 +1,18 @@
-# boom's own self-wiring, folded into the reconcile it already runs (boom >= 0.13.0) —
+# boom's own self-wiring, folded into the reconcile it already runs (boom >= 0.14.0) —
 # so these stop being hand-rolled `run`/plist steps below:
 #   - skill_on_sync: regenerate ~/.claude/skills/boom/SKILL.md from the running binary each
 #     sync, so the self-describing skill never lags a `boom upgrade` (replaces the
 #     `boom skill --install` run step).
-#   - upgrade_check_on_sync: after a sync, warn (offline-safe, non-fatal) when a newer boom
+#   - upgrade_on_sync = "check": after a sync, warn (offline-safe, non-fatal) when a newer boom
 #     ships — the exact stale-binary drift that let a 0.9.1 machine propagate renamed-away
-#     command names before anyone noticed.
-#   - code_fetch_schedule: a launchd timer that `git fetch`es every ~/Code repo every 15m to
-#     keep origin/HEAD warm for agent worktree cuts (replaces the agent-fetch plist + section).
+#     command names before anyone noticed. ("auto" would self-upgrade instead of warning.)
+#   - schedule: launchd timers running `boom <cmd>` on an interval. `code fetch` every 15m
+#     `git fetch`es every ~/Code repo to keep origin/HEAD warm for agent worktree cuts
+#     (replaces the agent-fetch plist + section). One array — any boom command can be scheduled.
 [boom]
 skill_on_sync = true
-upgrade_check_on_sync = true
-code_fetch_schedule = "15m"
+upgrade_on_sync = "check"
+schedule = [{ cmd = "code fetch", every = "15m" }]
 
 [[section]]
 name = "Shell + git"
@@ -152,9 +153,11 @@ src = "dot-claude/hooks/worktree-checkout-guard.sh"
 dst = "~/.claude/hooks/worktree-checkout-guard.sh"
 mode = "755"
 
-[[section.glob]]
-pattern = "dot-claude/skills/*"
-into = "~/.claude/skills/"
+# A glob `src` places every match under `dst` (a directory) — the old `glob` resource, now
+# just a `link` whose src carries a wildcard (boom >= 0.14.0).
+[[section.link]]
+src = "dot-claude/skills/*"
+dst = "~/.claude/skills/"
 
 # Skill refresh moved to the top-level `[boom] skill_on_sync = true` — boom regenerates its
 # own SKILL.md from the running binary each sync, no `run` step needed.
@@ -175,7 +178,7 @@ cmd = "command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install
 [[section.check]]
 # CVE-2025-59536 class: the auto-approve MCP keys run .mcp.json commands before the trust
 # dialog (pre-consent RCE). A prose rule isn't enforced; this is.
-file = "~/.claude/settings.json"
+path = "~/.claude/settings.json"
 absent = ["enableAllProjectMcpServers", "enabledMcpjsonServers"]
 missing_file = "skip"
 message = "forbidden auto-approve MCP key in ~/.claude/settings.json"
@@ -183,7 +186,7 @@ message = "forbidden auto-approve MCP key in ~/.claude/settings.json"
 [[section.check]]
 # Agent git auth must resolve the PAT through the single `op` primitive
 # (`op-agent git-credential`), never a cached PAT via `osxkeychain`.
-file = "~/.claude/settings.json"
+path = "~/.claude/settings.json"
 present = ["op-agent git-credential"]
 absent = ["osxkeychain"]
 missing_file = "skip"
@@ -192,7 +195,7 @@ message = "agent git helper drifted off op-agent git-credential (or an osxkeycha
 [[section.check]]
 # No model pinned as the default, and Fable in particular is /model per-session only —
 # `/model`'s "set as default" silently rewrites settings.json, so drift is caught here.
-file = "~/.claude/settings.json"
+path = "~/.claude/settings.json"
 absent = ['"model"\s*:\s*"[^"]*fable']
 missing_file = "skip"
 message = "Fable pinned as default model in ~/.claude/settings.json (Fable is /model per-session only)"
@@ -200,14 +203,18 @@ message = "Fable pinned as default model in ~/.claude/settings.json (Fable is /m
 [[section]]
 name = "zsh fragments"
 
-[[section.glob]]
-pattern = "zsh/[0-9]*.zsh"
-into = "~/.config/zsh/"
+[[section.link]]
+src = "zsh/[0-9]*.zsh"
+dst = "~/.config/zsh/"
 
 [[section]]
 name = "packages"
-brewfile = "Brewfile"
-mise = true
+# One `pkg` array per manager (boom >= 0.14.0), replacing the old scalar `brewfile` +
+# boolean `mise`. `brew` runs `brew bundle` over `file`; `mise` reads the repo's mise config.
+pkg = [
+  { manager = "brew", file = "Brewfile" },
+  { manager = "mise" },
+]
 
 [[section]]
 name = "macOS defaults"
@@ -379,19 +386,20 @@ on = "verify"
 cmd = "op-agent status"
 
 # The agent-fetch launchd job (every 15m, `git fetch` every ~/Code repo to keep origin/HEAD
-# warm for agent worktree cuts) is now the top-level `[boom] code_fetch_schedule = "15m"` —
-# boom owns the timer and runs `boom code fetch` (which walks the recorded code dir), so the
-# hand-authored com.alxjrvs.agent-fetch.plist + its link/launchctl section are gone.
+# warm for agent worktree cuts) is now the top-level `[boom] schedule` entry
+# `{ cmd = "code fetch", every = "15m" }` — boom owns the timer and runs `boom code fetch`
+# (which walks the recorded code dir), so the hand-authored com.alxjrvs.agent-fetch.plist +
+# its link/launchctl section are gone.
 
 [[section]]
 name = "boom-verify launchd"
 
 # The `boom verify` guardrails above (MCP auto-approve, osxkeychain regression, Fable-default
 # drift) only fire when someone runs `boom verify` — so drift can sit undetected. This custom
-# plist runs `boom verify` on a timer AND fires a desktop notification on drift (which the
-# batteries-included `[boom] verify_schedule` doesn't), so it stays a plist — but the new
-# `launchd` resource (boom >= 0.13.0) collapses the old link + `launchctl unload;load -w` pair
-# into one stanza that owns the load/unload lifecycle itself.
+# plist runs `boom verify` on a timer AND fires a desktop notification on drift (which a
+# batteries-included `[boom] schedule` timer for `verify` doesn't), so it stays a plist — but
+# the `launchd` resource collapses the old link + `launchctl unload;load -w` pair into one
+# stanza that owns the load/unload lifecycle itself.
 [[section.launchd]]
 src = "launchd/com.alxjrvs.boom-verify.plist"
 
