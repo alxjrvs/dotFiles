@@ -12,6 +12,9 @@
 [boom]
 skill_on_sync = true
 upgrade_on_sync = "check"
+# Desktop-notify (macOS osascript) when a scheduled `boom verify` finds drift, so the
+# boom-verify launchd timer's signal surfaces instead of dying in its log. (needs boom >= 0.17.0)
+notify = true
 schedule = [{ cmd = "code fetch", every = "15m" }]
 
 [[section]]
