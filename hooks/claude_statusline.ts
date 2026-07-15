@@ -1,8 +1,9 @@
 // hook: claude_statusline — clone the statusline repo beside the dotfiles repo and
 // run its installer. Input: with.repo (git url). Ported from claude_statusline.sh.
-import { $ } from "bun";
+
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { $ } from "bun";
 
 interface Api {
   with: Record<string, string>;
@@ -39,7 +40,8 @@ export async function sync(api: Api): Promise<void> {
 
 export function verify(api: Api): void {
   const bin = join(api.env.HOME ?? "", ".local", "bin", "claude-statusline");
-  if (existsSync(bin) && (statSync(bin).mode & 0o111) !== 0) api.ok("statusline on PATH");
+  if (existsSync(bin) && (statSync(bin).mode & 0o111) !== 0)
+    api.ok("statusline on PATH");
   else api.warn("statusline missing — boom source --only=claude_statusline");
 }
 

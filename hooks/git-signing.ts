@@ -3,9 +3,16 @@
 // 1Password-agent key named by with.key (default GitHubSSH). gpgSign stays
 // machine-local so a box without 1Password doesn't fail commits. Ported from
 // git-signing.sh.
-import { $ } from "bun";
-import { appendFileSync, chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+
+import {
+  appendFileSync,
+  chmodSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
+import { $ } from "bun";
 
 interface Api {
   with: Record<string, string>;
@@ -20,7 +27,14 @@ const DOTFILES = join(import.meta.dir, ".."); // hooks/ → repo root (was $BOOM
 const PROG = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign";
 const home = (api: Api): string => api.env.HOME ?? "";
 const sock = (api: Api): string =>
-  join(home(api), "Library", "Group Containers", "2BUA8C4S2C.com.1password", "t", "agent.sock");
+  join(
+    home(api),
+    "Library",
+    "Group Containers",
+    "2BUA8C4S2C.com.1password",
+    "t",
+    "agent.sock",
+  );
 
 // "<type> <data>" of the named signing key from the 1Password agent ("" if unavailable).
 async function pubkey(api: Api, name: string): Promise<string> {
@@ -40,22 +54,32 @@ async function pubkey(api: Api, name: string): Promise<string> {
 export async function sync(api: Api): Promise<void> {
   const name = api.with.key ?? "GitHubSSH";
   if (api.dryRun) {
-    api.note("would converge signing in ~/.gitconfig.local + ~/.ssh/allowed_signers");
+    api.note(
+      "would converge signing in ~/.gitconfig.local + ~/.ssh/allowed_signers",
+    );
     return;
   }
   if (!existsSync(PROG)) {
-    api.warn("op-ssh-sign not found (install 1Password) — skipping signing setup");
+    api.warn(
+      "op-ssh-sign not found (install 1Password) — skipping signing setup",
+    );
     return;
   }
   const pub = await pubkey(api, name);
   if (!pub) {
-    api.warn(`1Password agent not offering "${name}" (running? SSH agent enabled?) — skipping`);
+    api.warn(
+      `1Password agent not offering "${name}" (running? SSH agent enabled?) — skipping`,
+    );
     return;
   }
 
   // Machine-local git overrides: sign with the 1Password key via op-ssh-sign.
   const cfg = join(home(api), ".gitconfig.local");
-  if (!existsSync(cfg)) writeFileSync(cfg, "# Machine-local git overrides — NOT in dotfiles. Written by boom.\n");
+  if (!existsSync(cfg))
+    writeFileSync(
+      cfg,
+      "# Machine-local git overrides — NOT in dotfiles. Written by boom.\n",
+    );
   await $`git config --file ${cfg} commit.gpgSign true`.nothrow().quiet();
   await $`git config --file ${cfg} tag.gpgSign true`.nothrow().quiet();
   await $`git config --file ${cfg} gpg.ssh.program ${PROG}`.nothrow().quiet();
@@ -83,7 +107,9 @@ export async function sync(api: Api): Promise<void> {
   ).trim();
   if (email) {
     const line = `${email} ${pub}`;
-    const have = existsSync(allowed) && readFileSync(allowed, "utf8").split("\n").includes(line);
+    const have =
+      existsSync(allowed) &&
+      readFileSync(allowed, "utf8").split("\n").includes(line);
     if (!have) {
       appendFileSync(allowed, `${line}\n`);
       api.ok("allowed_signers updated");
@@ -95,8 +121,14 @@ export async function sync(api: Api): Promise<void> {
 
 export function verify(api: Api): void {
   const cfg = join(home(api), ".gitconfig.local");
-  const r = Bun.spawnSync(["git", "config", "--file", cfg, "commit.gpgSign"], { stdout: "pipe", stderr: "ignore" });
-  if (r.exitCode === 0 && new TextDecoder().decode(r.stdout).trim() === "true") {
+  const r = Bun.spawnSync(["git", "config", "--file", cfg, "commit.gpgSign"], {
+    stdout: "pipe",
+    stderr: "ignore",
+  });
+  if (
+    r.exitCode === 0 &&
+    new TextDecoder().decode(r.stdout).trim() === "true"
+  ) {
     api.ok("commit signing enabled (~/.gitconfig.local)");
   } else {
     api.warn("signing not configured — run: boom source --only=git-signing");
