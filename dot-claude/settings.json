@@ -31,9 +31,7 @@
     "commit": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>"
   },
   "permissions": {
-    "allow": [
-      "Bash(gh pr merge:*)"
-    ],
+    "allow": ["Bash(gh pr merge:*)"],
     "deny": [
       "Bash(security find-generic-password:*)",
       "Read(~/.ssh/id_*)",

@@ -1,6 +1,6 @@
 # Lefthook config for this repo (a boom config / dotfiles repo).
 #
-# pre-commit: lint staged shell + guard secrets and settings.json.
+# pre-commit: lint staged shell + JS/TS/JSON, guard secrets and settings.json.
 #
 # no_auto_install: boom owns hook installation (the `lefthook` hook runs
 # `lefthook install` on apply). After a lefthook.yml change, re-run
@@ -20,6 +20,13 @@ pre-commit:
       glob: "{*.sh,git-template/hooks/*}"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}
+    biome-check:
+      # JS/TS/JSON lint + format gate (the only JS/TS here is the boom hooks;
+      # JSON includes dot-claude/settings.json). `check` reports without
+      # rewriting — like shfmt-check, it won't auto-fix on commit; run
+      # `biome check --write` to fix. Config: biome.json (2-space, gitignore-aware).
+      glob: "{*.ts,*.tsx,*.js,*.jsx,*.json,*.jsonc}"
+      run: biome check {staged_files}
     gitleaks:
       run: gitleaks protect --staged --redact -v --no-banner
     settings-json-validity:

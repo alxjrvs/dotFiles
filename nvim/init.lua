@@ -94,10 +94,13 @@ end
 local formatters = {
   sh = { "shfmt", "-i", "2", "-ci", "-sr" },
   bash = { "shfmt", "-i", "2", "-ci", "-sr" },
-  typescript = { "prettier", "--parser", "typescript" },
-  typescriptreact = { "prettier", "--parser", "typescript" },
-  javascript = { "prettier", "--parser", "babel" },
-  javascriptreact = { "prettier", "--parser", "babel" },
+  -- biome check --write applies formatting + safe lint fixes (incl. import
+  -- sorting) and prints the result to stdout; --stdin-file-path's extension
+  -- tells biome the language. Mirrors the `biome check` lefthook/CI gate.
+  typescript = { "biome", "check", "--write", "--stdin-file-path=stdin.ts" },
+  typescriptreact = { "biome", "check", "--write", "--stdin-file-path=stdin.tsx" },
+  javascript = { "biome", "check", "--write", "--stdin-file-path=stdin.js" },
+  javascriptreact = { "biome", "check", "--write", "--stdin-file-path=stdin.jsx" },
   toml = { "taplo", "fmt", "-" },
 }
 

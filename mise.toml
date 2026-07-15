@@ -45,13 +45,15 @@ eza = "latest"
 # ── Linters / formatters ─────────────────────────────────────────────
 shfmt = "latest"
 shellcheck = "latest"
+biome = "latest"                          # JS/TS/JSON linter+formatter — `biome check`
+                                          # (lefthook + CI + nvim format-on-save); registry
+                                          # short-name → aqua:biomejs/biome
 
 # ── Neovim language servers (nvim/init.lua wires these in) ────────────
 # rust-analyzer is not global — it comes with a per-project `rust` toolchain,
 # and nvim/init.lua picks it up automatically when present.
 "npm:bash-language-server" = "latest"
 "npm:typescript-language-server" = "latest"
-"npm:prettier" = "latest"                 # JS/TS/JSX/TSX formatter (nvim/init.lua format-on-save)
 "aqua:artempyanykh/marksman" = "latest"   # markdown LSP
 taplo = "latest"                          # TOML LSP + formatter (`taplo lsp stdio`); registry alias → aqua:tamasfe/taplo (no -cli suffix)
 

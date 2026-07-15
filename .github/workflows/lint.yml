@@ -1,9 +1,9 @@
 name: lint
 
-# Mirrors the local lefthook pre-commit gate (shellcheck + shfmt + gitleaks +
-# settings.json validity) on every push to main and every PR. Lint only — never
-# runs `boom apply` or mutates anything. (The engine and its tests live in the
-# boom repo; this repo is just boom's config.)
+# Mirrors the local lefthook pre-commit gate (shellcheck + shfmt + biome +
+# gitleaks + settings.json validity) on every push to main and every PR. Lint
+# only — never runs `boom apply` or mutates anything. (The engine and its tests
+# live in the boom repo; this repo is just boom's config.)
 
 on:
   push:
@@ -25,13 +25,19 @@ jobs:
         with:
           install: false
       - name: Install lint tools
-        run: mise install shellcheck shfmt gitleaks jq taplo
+        run: mise install shellcheck shfmt gitleaks jq taplo biome
 
       # Same file set as lefthook.yml's shell globs, resolved via git.
       - name: shellcheck
         run: shellcheck -x $(git ls-files '*.sh' 'git-template/hooks/*')
       - name: shfmt
         run: shfmt -d -i 2 -ci -sr $(git ls-files '*.sh' 'git-template/hooks/*')
+
+      # JS/TS/JSON lint + format gate (the boom hooks + settings.json). Mirrors
+      # lefthook's biome-check; bare `biome check` uses biome.json and respects
+      # .gitignore, so it never touches node_modules / worktrees.
+      - name: biome
+        run: biome check
 
       # Scan the current tree (not full history) — mirrors the pre-commit secret
       # gate without risking flaky failures on old history.
