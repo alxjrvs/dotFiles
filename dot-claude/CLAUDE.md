@@ -40,23 +40,25 @@ Claude Code isolates background/subagent work into git worktrees by default (`wo
 
 alxjrvs's standing preference for his personal repos (confirmed 2026-07-08): **squash-only merges, rebase-preferred branch updates, linear history required, CI must be green before merging.** Apply this when setting up a new repo (e.g. via `ignite:kickoff`) or when asked to align an existing one. This is a **per-repo, explicit-confirmation action**, not a standing authorization to change settings unprompted.
 
+**The executable version of this section is the `agent-friendly-repo` skill** (`dot-claude/skills/agent-friendly-repo/`) — it reads current state, diffs against the checklist below, asks, then applies the merge settings + ruleset (and optionally a merge queue). Use the skill for the full flow; the recipes below are the reference it encodes.
+
 - **Squash-only — no merge commits, no rebase-merge**: `gh api -X PATCH repos/<owner>/<repo> -F allow_squash_merge=true -F allow_merge_commit=false -F allow_rebase_merge=false`. This is safe to combine with rebase-*preferred updates* below — they're governed by a different setting (see next bullet), not by `allow_rebase_merge`.
 - **Rebase-preferred branch updates**: enable `allow_update_branch=true` (`-F allow_update_branch=true` on the same PATCH) to surface the "Update branch" button. Which method that button offers — merge-commit vs. rebase — is reported to be gated by the branch's `required_linear_history` protection setting (next bullet) rather than by `allow_rebase_merge`, though behavior here has been inconsistent per GitHub community reports, not GitHub's own docs. `required_linear_history` is worth setting regardless, since it's a standalone stated preference (below) independent of whether it also unlocks the rebase-update button. The REST API has no endpoint to force a rebase update itself — only the web UI and `gh pr update-branch --rebase` can do it.
-- **Linear history + CI green, via classic branch protection** on the default branch — `enforce_admins: true` because "CI needs to be green" was stated as a firm rule, including for alxjrvs's own merges. For a one-off emergency bypass, disable and re-enable it rather than weakening the default: `gh api -X DELETE repos/<owner>/<repo>/branches/main/protection/enforce_admins` (disable), `gh api -X POST repos/<owner>/<repo>/branches/main/protection/enforce_admins` (re-enable):
-  ```
-  gh api -X PUT repos/<owner>/<repo>/branches/main/protection --input - <<'EOF'
-  {
-    "required_status_checks": { "strict": true, "contexts": ["<check-name-1>", "<check-name-2>"] },
-    "enforce_admins": true,
-    "required_pull_request_reviews": null,
-    "restrictions": null,
-    "required_linear_history": true,
-    "allow_force_pushes": false,
-    "allow_deletions": false
-  }
-  EOF
-  ```
-  `contexts` must list the repo's actual CI check names (there's no wildcard) — find them from a recent commit: `gh api repos/<owner>/<repo>/commits/main/check-runs --jq '.check_runs[].name'`. `enforce_admins: false` leaves alxjrvs able to bypass in an emergency; flip to `true` only if asked for stricter enforcement.
+- **Linear history + CI green, via a ruleset (preferred) — one mechanism, not classic + ruleset both.** GitHub takes the *union* of classic branch protection and rulesets, so having both is a footgun (edit one, the other silently still applies). Make the **ruleset** the single source of truth and delete the redundant classic protection (`gh api -X DELETE repos/<owner>/<repo>/branches/<branch>/protection`) once the ruleset supersets it. Ruleset rules for the default branch: `required_linear_history`, `non_fast_forward`, `deletion`; `required_status_checks` pointing at a **single aggregate gate job** (an `if: always()` job that `needs:` every other job — not each individual check, which strands required checks in "pending" on path-filtered PRs); **no required human PR reviews** (a required review blocks agent auto-merge forever — agents can't approve their own PRs); and `bypass_actors: []` so nobody bypasses, incl. admins → "CI green for everyone" (agents don't need bypass; `--auto` just waits for green). For a one-off emergency, disable+re-enable the ruleset rather than adding a standing bypass. Real check names have no wildcard — find them via `gh api repos/<owner>/<repo>/commits/<branch>/check-runs --jq '.check_runs[].name'`. The `agent-friendly-repo` skill applies all of this (plus the optional merge queue and its `merge_group:`-trigger sequencing hazard).
+  - **Classic protection (legacy fallback only)** — if a repo can't use rulesets, the equivalent classic form is `enforce_admins: true` (CI green for everyone) + a one-off emergency bypass via `gh api -X DELETE .../branches/main/protection/enforce_admins` (disable) / `-X POST` (re-enable):
+    ```
+    gh api -X PUT repos/<owner>/<repo>/branches/main/protection --input - <<'EOF'
+    {
+      "required_status_checks": { "strict": true, "contexts": ["<aggregate-check>"] },
+      "enforce_admins": true,
+      "required_pull_request_reviews": null,
+      "restrictions": null,
+      "required_linear_history": true,
+      "allow_force_pushes": false,
+      "allow_deletions": false
+    }
+    EOF
+    ```
 
 ## Agent secret access
 
