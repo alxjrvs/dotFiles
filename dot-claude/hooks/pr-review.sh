@@ -40,8 +40,12 @@ case "$cmd" in
   *) exit_ok ;;
 esac
 
-# --- opt-in allowlist -------------------------------------------------------
-: "${PR_REVIEW_REPOS:=SalvageUnion-io/SU-SRD}"
+# --- allowlist: owners AND/OR owner/repo ------------------------------------
+# Entries may be an OWNER (covers every repo under it) or a fully-qualified
+# owner/repo. Default covers every org the agent ships into — the whole point is
+# that 1,113 org PRs across 25+ repos went unreviewed, so a single-repo pilot
+# would leave the exposure exactly where it was. Set PR_REVIEW_REPOS to narrow.
+: "${PR_REVIEW_REPOS:=TheGnarCo BinfiniteLLC SalvageUnion-io RANDSUM alxjrvs}"
 
 command -v gh > /dev/null 2>&1 || exit_ok
 command -v claude > /dev/null 2>&1 || exit_ok
@@ -49,10 +53,16 @@ git rev-parse --is-inside-work-tree > /dev/null 2>&1 || exit_ok
 
 repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2> /dev/null) || exit_ok
 [ -n "$repo" ] || exit_ok
-case " $PR_REVIEW_REPOS " in
-  *" $repo "*) ;;
-  *) exit_ok ;;
-esac
+owner=${repo%%/*}
+allowed=0
+for entry in $PR_REVIEW_REPOS; do
+  case "$entry" in
+    */*) [ "$entry" = "$repo" ] && allowed=1 ;;
+    *) [ "$entry" = "$owner" ] && allowed=1 ;;
+  esac
+  [ "$allowed" = 1 ] && break
+done
+[ "$allowed" = 1 ] || exit_ok
 
 # Only when there is an open PR for this branch.
 pr=$(gh pr view --json number -q .number 2> /dev/null) || exit_ok

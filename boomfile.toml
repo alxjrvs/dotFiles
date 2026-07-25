@@ -28,7 +28,9 @@ notify = true
 # repo's worktrees.
 schedule = [
   { cmd = "code fetch", every = "15m" },
-  { cmd = "code reap --push", every = "1d" },
+  # Daily. NOT "1d" — boom's schema accepts only s/m/h or a bare seconds count, so
+  # "1d" failed validation and this timer never ran at all from the day it was added.
+  { cmd = "code reap --push", every = "24h" },
 ]
 
 [[section]]
