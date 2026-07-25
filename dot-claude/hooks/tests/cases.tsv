@@ -1,0 +1,71 @@
+# Guard regression cases. Columns: guard <TAB> fixture <TAB> command <TAB> expected
+#
+# Every spelling here was taken from alxjrvs's own session transcripts or from a
+# reproduction during the 2026-07-25 audit. Cases marked REGRESSION failed on the
+# pre-fix guards; they are the reason this suite exists.
+#
+# guard:    rebase | worktree
+# fixture:  primary (on main) | wt-a (up to date w/ main) | wt-c (stacked on feature-b) | nonrepo
+# expected: allow | deny
+
+# --- rebase-guard: direct push to the default branch ------------------------
+rebase	primary	git push origin main	deny
+rebase	primary	git push	deny
+rebase	primary	git push origin HEAD:main	deny
+rebase	primary	git push origin main:main	deny
+# REGRESSION: `--dry-run` anywhere in the command disabled the whole guard, so a
+# real push to main was ALLOWED because an unrelated commit message contained it.
+rebase	primary	git commit -m "test --dry-run flag" && git push origin main	deny
+rebase	primary	git commit -m "document --dry-run" && git push origin HEAD:main	deny
+# A genuine dry run still passes — it never mutates the remote.
+rebase	primary	git push --dry-run origin main	allow
+rebase	primary	git push origin main --dry-run	allow
+
+# --- rebase-guard: must NOT fire out of turn --------------------------------
+# REGRESSION: the word "main" inside a commit message denied a push of a
+# perfectly ordinary feature branch. This is the false positive alxjrvs reported.
+rebase	wt-a	git commit -m "push to main branch when ready" && git push origin feature-a	allow
+rebase	wt-a	git commit -m "merge into main later" && git push origin feature-a	allow
+rebase	wt-a	git push origin feature-a	allow
+rebase	wt-a	git push -u origin HEAD	allow
+# Not a real push/pr-create at all.
+rebase	primary	git log --grep "git push origin main"	allow
+rebase	primary	echo git push origin main	allow
+
+# --- rebase-guard: stacked PRs ----------------------------------------------
+# REGRESSION: `--base` was ignored, so a stacked PR was told to rebase onto main,
+# which would flatten the stack `rebase-prs` deliberately builds.
+rebase	wt-c	gh pr create --base feature-b	allow
+rebase	wt-c	gh pr create --base=feature-b --fill	allow
+# With no --base it really is behind origin/HEAD, so denying is correct.
+rebase	wt-c	gh pr create	deny
+
+# --- rebase-guard: fail-open contract ---------------------------------------
+rebase	nonrepo	git push origin main	allow
+
+# --- worktree-checkout-guard ------------------------------------------------
+# feature-b is held by another worktree in every fixture below.
+worktree	primary	git checkout feature-b	deny
+worktree	wt-a	git checkout feature-b	deny
+# REGRESSION: only the *default* branch name was matched, so 34 of 43 measured
+# real collisions (non-default branches) walked straight past the guard.
+worktree	wt-a	git switch feature-b	deny
+# REGRESSION: a flag between the verb and the name defeated the old regex.
+worktree	wt-a	git checkout -q feature-b	deny
+# REGRESSION: a trailing pipe defeated the old terminator.
+worktree	wt-a	git checkout feature-b 2>&1 | tail -5	deny
+# REGRESSION: quoting defeated the old regex (documented as an accepted miss).
+worktree	wt-a	git checkout "feature-b"	deny
+# main is held by the primary worktree, so this is the classic case.
+worktree	wt-a	git checkout main	deny
+# Already on it — no collision, so it must pass.
+worktree	wt-a	git checkout feature-a	allow
+# Branch nobody holds.
+worktree	wt-a	git checkout -b brand-new	allow
+worktree	wt-a	git switch -c another-new	allow
+worktree	wt-a	git checkout --detach main	allow
+# Not a checkout of a branch at all.
+worktree	wt-a	git checkout -- README.md	allow
+worktree	wt-a	echo git checkout main	allow
+worktree	wt-a	git commit -m "git checkout main is a bad idea"	allow
+worktree	nonrepo	git checkout main	allow

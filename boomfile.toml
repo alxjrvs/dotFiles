@@ -170,6 +170,35 @@ src = "dot-claude/hooks/worktree-checkout-guard.sh"
 dst = "~/.claude/hooks/worktree-checkout-guard.sh"
 mode = "755"
 
+# PostToolUse hook: after `gh pr create` / `git push`, run the adversarial review
+# locally (subscription-covered, unlike an agent in GitHub Actions) and post it as
+# a PR review plus a `claude-review` commit status — which a ruleset can require.
+# Backgrounds itself so it can never block a turn. Advisory + one repo to start.
+[[section.link]]
+src = "dot-claude/hooks/pr-review.sh"
+dst = "~/.claude/hooks/pr-review.sh"
+mode = "755"
+
+# Regression suite for the two PreToolUse guards. Linked so it can be run on the
+# machine, not just in CI; `mode` keeps the runner executable.
+[[section.link]]
+src = "dot-claude/hooks/tests/run.sh"
+dst = "~/.claude/hooks/tests/run.sh"
+mode = "755"
+
+[[section.link]]
+src = "dot-claude/hooks/tests/cases.tsv"
+dst = "~/.claude/hooks/tests/cases.tsv"
+
+# Standing prompt for a bare `/loop`. `.claude/loop.md` is a real Claude Code
+# config surface (the binary carries `<<loop.md>>` sentinels), so versioning it
+# here beats retyping the condition each session. It is byte-capped — the client
+# warns "loop.md was truncated to N bytes. Keep the task list concise" — so this
+# stays a short task list, never a second CLAUDE.md.
+[[section.link]]
+src = "dot-claude/loop.md"
+dst = "~/.claude/loop.md"
+
 # A glob `src` places every match under `dst` (a directory) — the old `glob` resource, now
 # just a `link` whose src carries a wildcard (boom >= 0.14.0).
 [[section.link]]
@@ -216,6 +245,26 @@ path = "~/.claude/settings.json"
 absent = ['"model"\s*:\s*"[^"]*fable']
 missing_file = "skip"
 message = "Fable pinned as default model in ~/.claude/settings.json (Fable is /model per-session only)"
+
+# An MCP server can die silently and stay dead. Two of three configured servers
+# were failing to connect for an unknown period — spacebase (its resolver command
+# word-split an op:// ref containing spaces) and github (same bug, so no auth
+# header, so the client fell back to OAuth discovery and reported a misleading
+# "dynamic client registration" error). Nothing surfaced either one; the only
+# symptom was zero usage, which reads identically to "didn't need it". With
+# `notify = true` this now desktop-notifies instead of dying in a log.
+[[section.run]]
+on = "verify"
+cmd = "! claude mcp list 2>&1 | grep -q '✘' || { claude mcp list 2>&1 | grep '✘'; echo 'an MCP server is failing to connect'; exit 1; }"
+
+# `~/.claude/settings.json` symlinks into boom's own clone, so an uncommitted edit
+# THERE is live on the machine while being invisible to both CI (which lints the
+# repo's copy) and the checks above (which read the live symlink and so see the
+# edit as normal). That is a local override layer the doctrine says does not
+# exist. Fail while it is dirty.
+[[section.run]]
+on = "verify"
+cmd = "git -C ~/.local/state/boom/config-repo diff --quiet -- dot-claude/ || { echo 'live Claude config diverges from the committed contract (dirty boom config-repo)'; exit 1; }"
 
 [[section]]
 name = "zsh fragments"

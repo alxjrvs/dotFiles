@@ -50,6 +50,12 @@ The imperative residue the config can't express. A boom hook is a `hooks/<name>.
 - **`claude_statusline.ts`** — clones the `claude-statusline` repo beside this one and runs its installer.
 - **`op-agent.sh`** — NOT a boom hook: a standalone bash CLI for all 1Password-agent machinery (see Secrets), `link`ed onto `PATH` as `op-agent` and driven by `run` steps (`op-agent provision` / `op-agent status`). Stays bash because external programs exec it by path (a plugin `*_COMMAND` resolver; git's `credential.helper`).
 
+Also NOT boom hooks — Claude Code hooks, linked into `~/.claude/hooks/`:
+
+- **`rebase-guard.sh` / `worktree-checkout-guard.sh`** — `PreToolUse` guards (see `dot-claude/CLAUDE.md`). They are the only deterministic enforcement in the setup.
+- **`pr-review.sh`** — `PostToolUse`: runs the adversarial review locally after `gh pr create` / `git push` and posts it as a PR review + a `claude-review` commit status. Backgrounds itself so it can never block a turn.
+- **`hooks/tests/`** — `run.sh` + `cases.tsv`, a hermetic regression suite for the two guards (throwaway git fixtures in `$TMPDIR`, no network, <2s). Wired into `lint.yml` and lefthook pre-commit. **Add a case before changing a guard**: these are 200+ lines of security-relevant shell, and shipping them untested is how a `--dry-run` substring in an unrelated commit message came to disable the no-push-to-main rule.
+
 Small steps (`chmod 700 ~/.ssh`, `lefthook install`) are inline `run` (`on = "apply"`) entries, not files.
 
 ## Packaging policy: Lean A (brew = casks, mise = dev CLIs)
@@ -81,7 +87,9 @@ Every verb has a live consumer — no speculative surface: the GitHub MCP server
 
 ### MCP secrets — one canonical pattern
 
-Servers we control launch via 1Password's `op run --env-file=.env -- <server>` with `op://` references in a committable `.env` (`boom mcp add`). Plugin-bundled stdio servers use their own `*_COMMAND` resolver (spacebase's `SPACEBASE_API_KEY_COMMAND` → `op-agent secret op://claude-agent/…`; gninety's `NINETY_API_TOKEN_COMMAND` → `op-agent secret op://claude-agent/gninety/credential`); the GitHub MCP (an `http` server in the user-scoped `~/.claude.json`) formats its `headersHelper` from `op-agent header op://…`. Plugins that check a literal-token env var *before* their `_COMMAND` (both spacebase and gninety do) also need that var pinned to `""` in `settings.json`, else Claude Code's unset-`${VAR}` passthrough feeds the literal placeholder in as the token. **Never write a `${VAR}` placeholder into a git-tracked `.mcp.json`/`.env`** (a later `claude mcp add` can expand it). The `git-template` pre-commit fails on a `${VAR}` in a tracked `.mcp.json` and on a resolved-token literal in any tracked `.mcp.json`/`.env`; `boom verify` has no such check today.
+Servers we control launch via 1Password's `op run --env-file=.env -- <server>` with `op://` references in a committable `.env` (`boom mcp add`). Plugin-bundled stdio servers use their own `*_COMMAND` resolver (spacebase's `SPACEBASE_API_KEY_COMMAND` → `op-agent secret op://claude-agent/…`; gninety's `NINETY_API_TOKEN_COMMAND` → `op-agent secret op://claude-agent/gninety/credential`); the GitHub MCP (an `http` server in the user-scoped `~/.claude.json`) formats its `headersHelper` from `op-agent header op://…`. Plugins that check a literal-token env var *before* their `_COMMAND` (both spacebase and gninety do) also need that var pinned to `""` in `settings.json`, else Claude Code's unset-`${VAR}` passthrough feeds the literal placeholder in as the token.
+
+**Quote every `op://` ref inside a `*_COMMAND` / `headersHelper` value.** These are run through `/bin/sh -c`, so a ref containing spaces (`op://claude-agent/Spacebase API Key/credential`) word-splits into three arguments and the resolve fails. On 2026-07-25 this had **spacebase and the GitHub MCP both failing to connect** — spacebase logging `SPACEBASE_API_KEY_COMMAND failed`, and the GitHub helper emitting `{}` (op-agent's failure path), so no `Authorization` header was sent and the client fell back to OAuth discovery with the misleading error *"does not support dynamic client registration"*. `gninety`'s ref has no spaces, which is exactly why it was the only server still working. Prefer **vault item names without spaces** so quoting stops being load-bearing. `boom verify` now fails when any MCP server is down, because zero usage and zero connectivity look identical from usage data alone. **Never write a `${VAR}` placeholder into a git-tracked `.mcp.json`/`.env`** (a later `claude mcp add` can expand it). The `git-template` pre-commit fails on a `${VAR}` in a tracked `.mcp.json` and on a resolved-token literal in any tracked `.mcp.json`/`.env`; `boom verify` has no such check today.
 
 ### Agent git auth
 
