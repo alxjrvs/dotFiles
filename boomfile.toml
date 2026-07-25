@@ -257,7 +257,12 @@ message = "Fable pinned as default model in ~/.claude/settings.json (Fable is /m
 # `notify = true` this now desktop-notifies instead of dying in a log.
 [[section.run]]
 on = "verify"
-cmd = "! claude mcp list 2>&1 | grep -q '✘' || { claude mcp list 2>&1 | grep '✘'; echo 'an MCP server is failing to connect'; exit 1; }"
+# Retry before failing: MCP health is inherently flappy — remote servers 502 and
+# stdio plugin servers cold-start — and back-to-back `boom verify` runs went green,
+# red, green on servers that were all fine. This timer desktop-notifies, so a check
+# that cries wolf is worse than no check: it trains you to ignore the alarm. Exits
+# on the first clean read; only a fault that survives three reads is real.
+cmd = "for i in 1 2 3; do claude mcp list 2>&1 | grep -q '✘' || exit 0; sleep 3; done; claude mcp list 2>&1 | grep '✘'; echo 'an MCP server is failing to connect (3 consecutive checks)'; exit 1"
 
 # `~/.claude/settings.json` symlinks into boom's own clone, so an uncommitted edit
 # THERE is live on the machine while being invisible to both CI (which lints the
