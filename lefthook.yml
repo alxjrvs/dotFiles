@@ -51,6 +51,12 @@ pre-commit:
       # (hermetic, offline); won't reformat the hand-aligned link tables.
       glob: "*.toml"
       run: taplo check --no-schema {staged_files}
+    guard-tests:
+      # The PreToolUse guards are the enforcement floor; a regression there is
+      # silent and security-relevant. Runs whenever a guard or its cases change.
+      # Hermetic (throwaway git fixtures in $TMPDIR), no network, <2s.
+      glob: "dot-claude/hooks/*.sh"
+      run: dot-claude/hooks/tests/run.sh
 
 # commit-msg: forward-only hygiene guard. Rejects throwaway subjects (bare
 # "WIP"/"wip" or a single character) so they don't land in permanent history.

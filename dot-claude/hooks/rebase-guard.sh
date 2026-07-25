@@ -31,6 +31,9 @@ cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2> /dev/null) 
 # options (and the arg of `-c`/`-C`/etc.) to find the actual subcommand.
 is_push=0
 is_prcreate=0
+push_seg='' # the matched `git push` segment ONLY — never the whole command
+pr_base=''  # `gh pr create --base <branch>`, when given
+work_dir='' # a leading `cd <path>` decides which repo the push actually targets
 segs=$(printf '%s' "$cmd" | sed -E 's/(\|\||&&|[;&|])/\n/g')
 while IFS= read -r seg; do
   seg="${seg#"${seg%%[![:space:]]*}"}" # strip leading whitespace
@@ -40,6 +43,20 @@ while IFS= read -r seg; do
   set -- $seg
   set +f
   prog=${1:-}
+  # `cd <path> && git push …` pushes from <path>, not the session cwd. Remember
+  # the last one so every check below evaluates the repo actually being pushed.
+  if [ "$prog" = cd ] && [ -n "${2:-}" ]; then
+    work_dir=$2
+    work_dir=${work_dir%\"}
+    work_dir=${work_dir#\"}
+    work_dir=${work_dir%\'}
+    work_dir=${work_dir#\'}
+    case "$work_dir" in
+      '~') work_dir=$HOME ;;
+      '~'/*) work_dir=$HOME/${work_dir#'~'/} ;;
+    esac
+    continue
+  fi
   [ "$prog" = git ] || [ "$prog" = gh ] || continue
   shift
   while [ $# -gt 0 ]; do
@@ -53,25 +70,62 @@ while IFS= read -r seg; do
     esac
   done
   sub=${1:-}
-  [ "$prog" = git ] && [ "$sub" = push ] && is_push=1
-  [ "$prog" = gh ] && [ "$sub" = pr ] && [ "${2:-}" = create ] && is_prcreate=1
+  if [ "$prog" = git ] && [ "$sub" = push ]; then
+    is_push=1
+    push_seg=$seg
+  fi
+  if [ "$prog" = gh ] && [ "$sub" = pr ] && [ "${2:-}" = create ]; then
+    is_prcreate=1
+    # A stacked PR (`--base <parent>`) must be judged against ITS base, not
+    # origin/HEAD — telling the agent to rebase onto the default would flatten
+    # the stack that `rebase-prs` deliberately builds.
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --base)
+          shift
+          pr_base=${1:-}
+          ;;
+        --base=*) pr_base=${1#--base=} ;;
+      esac
+      shift
+    done
+  fi
 done << EOF
 $segs
 EOF
 [ "$is_push" = 1 ] || [ "$is_prcreate" = 1 ] || allow
 
-git rev-parse --is-inside-work-tree > /dev/null 2>&1 || allow
+# Run every git query against the repo the command actually acts on. Fails open
+# when that path isn't a repo — same doctrine as a non-repo session cwd.
+GIT() {
+  if [ -n "$work_dir" ]; then
+    git -C "$work_dir" "$@"
+  else
+    git "$@"
+  fi
+}
 
-# Resolve the target branch from origin/HEAD; default to origin/main.
-target=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2> /dev/null)
-target=${target:-origin/main}
-branch=${target#origin/}
+GIT rev-parse --is-inside-work-tree > /dev/null 2>&1 || allow
+
+# Resolve the target branch: an explicit `--base` wins, else origin/HEAD.
+if [ -n "$pr_base" ]; then
+  branch=$pr_base
+  target=origin/$pr_base
+else
+  target=$(GIT symbolic-ref --quiet --short refs/remotes/origin/HEAD 2> /dev/null)
+  target=${target:-origin/main}
+  branch=${target#origin/}
+fi
 def_re=$(printf '%s' "$branch" | sed 's/[^[:alnum:]_-]/\\&/g')
 
 # --- Direct-push-to-default guard (real pushes only) ------------------------
 if [ "$is_push" = 1 ]; then
+  # Every check below reads $push_seg, NOT $cmd. Scanning the whole command let
+  # unrelated text decide the verdict both ways: `git commit -m "… --dry-run …"
+  # && git push origin main` was ALLOWED (a real push to the default branch),
+  # and `git commit -m "…push to main…" && git push origin feature` was DENIED.
   # A dry run never mutates the remote — let it through entirely.
-  case " $cmd " in
+  case " $push_seg " in
     *" --dry-run "*) allow ;;
   esac
 
@@ -80,14 +134,14 @@ if [ "$is_push" = 1 ]; then
   #   git push <remote> <def>            git push <remote> <src>:<def>
   #   git push <remote> HEAD:<def>       (a single positional is the REMOTE, not
   # a dest, so `git push main` is NOT matched here).
-  printf '%s' "$cmd" |
+  printf '%s' "$push_seg" |
     grep -Eq "push([[:space:]]+-[^[:space:]]+)*[[:space:]]+[^[:space:]]+[[:space:]]+([^[:space:]]*:)?${def_re}([[:space:]]|\$|[;&|])" &&
     push_to_default=1
 
   # Bare push (no refspec — at most a remote, otherwise only flags) while HEAD is
   # the default branch → it pushes the default. Tokenize just the push args.
-  if [ "$push_to_default" = 0 ] && [ "$(git symbolic-ref --quiet --short HEAD 2> /dev/null)" = "$branch" ]; then
-    pushargs=${cmd#*push}
+  if [ "$push_to_default" = 0 ] && [ "$(GIT symbolic-ref --quiet --short HEAD 2> /dev/null)" = "$branch" ]; then
+    pushargs=${push_seg#*push}
     pushargs=${pushargs%%[;&|]*}
     set -f
     positionals=0
@@ -112,11 +166,11 @@ fi
 
 # --- Behind-target rebase guard (push or pr-create) -------------------------
 # Compare against the real remote tip, not a stale local ref.
-git fetch --quiet origin "$branch" 2> /dev/null
-git rev-parse --verify --quiet "$target" > /dev/null 2>&1 || allow
+GIT fetch --quiet origin "$branch" 2> /dev/null
+GIT rev-parse --verify --quiet "$target" > /dev/null 2>&1 || allow
 
 # Up to date: the target is an ancestor of HEAD → the branch already contains it.
-git merge-base --is-ancestor "$target" HEAD 2> /dev/null && allow
+GIT merge-base --is-ancestor "$target" HEAD 2> /dev/null && allow
 
 # Behind: block with a rebase instruction the agent acts on.
 deny "Branch is behind ${target}. Rebase onto the latest target before pushing: git fetch origin && git rebase ${target} (resolve any conflicts), then re-push with --force-with-lease if the branch was already pushed."
