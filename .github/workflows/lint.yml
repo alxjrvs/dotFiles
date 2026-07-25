@@ -66,3 +66,11 @@ jobs:
       # --no-schema = pure syntax (hermetic, offline). Mirrors lefthook's toml-validity.
       - name: TOML validity
         run: taplo check --no-schema $(git ls-files '*.toml')
+
+      # The two PreToolUse guards are the only deterministic enforcement in the
+      # setup — and they shipped untested, which is how a `--dry-run` substring in
+      # an unrelated commit message came to disable the direct-push-to-main rule.
+      # A step in THIS job, not a new one: the required context is ["lint"], so a
+      # separate job would not be a required check.
+      - name: guard regression tests
+        run: dot-claude/hooks/tests/run.sh

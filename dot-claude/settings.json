@@ -17,15 +17,13 @@
     "GIT_CONFIG_VALUE_3": "cache --timeout=900",
     "GIT_CONFIG_KEY_4": "credential.https://github.com.helper",
     "GIT_CONFIG_VALUE_4": "!~/.local/bin/op-agent git-credential",
-    "SPACEBASE_API_KEY_COMMAND": "~/.local/bin/op-agent secret op://claude-agent/Spacebase API Key/credential",
+    "SPACEBASE_API_KEY_COMMAND": "~/.local/bin/op-agent secret \"op://claude-agent/Spacebase API Key/credential\"",
     "SPACEBASE_API_KEY": "",
     "SPACEBASE_URL": "",
     "SPACEBASE_PROJECT_ID": "",
-    "NINETY_API_TOKEN_COMMAND": "~/.local/bin/op-agent secret op://claude-agent/gninety/credential",
+    "NINETY_API_TOKEN_COMMAND": "~/.local/bin/op-agent secret \"op://claude-agent/gninety/credential\"",
     "NINETY_API_TOKEN": "",
-    "NINETY_BASE_URL": "",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80",
-    "ENABLE_PROMPT_CACHING_1H": "1"
+    "NINETY_BASE_URL": ""
   },
   "attribution": {
     "commit": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>"
@@ -34,6 +32,10 @@
     "allow": ["Bash(gh pr merge:*)"],
     "deny": [
       "Bash(security find-generic-password:*)",
+      "Bash(op-agent secret:*)",
+      "Bash(~/.local/bin/op-agent secret:*)",
+      "Bash(op read:*)",
+      "Bash(op item get:*)",
       "Read(~/.ssh/id_*)",
       "Read(~/.aws/credentials)"
     ],
@@ -46,17 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git fetch --quiet origin 2>/dev/null || true"
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git fetch --quiet origin 2>/dev/null || true"
+            "command": "command -v caffeinate >/dev/null 2>&1 && (caffeinate -i -w $PPID >/dev/null 2>&1 &) || true"
           }
         ]
       }
@@ -72,6 +64,28 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/rebase-guard.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "if": "Bash(gh pr create*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pr-review.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "if": "Bash(git push*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pr-review.sh"
           }
         ]
       }
@@ -117,6 +131,11 @@
   "inputNeededNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
   "autoScrollEnabled": true,
+  "voiceEnabled": true,
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
   "autoMode": {
     "classifyAllShell": true
   }
