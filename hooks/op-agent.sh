@@ -5,17 +5,23 @@
 #
 #   op-agent secret <op://ref>   read one secret value to stdout via the SA
 #                                (the ref is an arg, not a per-service file)
-#   op-agent header <op://ref>   emit {"Authorization":"Bearer …"} for an HTTP
-#                                MCP `headersHelper` (GitHub); ref is an arg
 #   op-agent git-credential get  git credential helper: resolve the agent PAT
 #                                from the vault on demand (same `op` path as
 #                                `secret`; git's own `cache` helper amortizes it)
 #   op-agent provision           ensure SA vault + keychain token; check git PAT
 #   op-agent status              report keychain token presence (exit 0/1)
 #
-# Stays a standalone script because Claude Code's MCP `headersHelper` and plugin
-# `*_COMMAND` resolvers (e.g. spacebase) exec it by path; the boomfile drives
-# provision/status via `on apply|verify`.
+# Stays a standalone script because plugin `*_COMMAND` resolvers (spacebase,
+# gninety) exec it by path and git execs it as a credential helper; the boomfile
+# drives provision/status via `on apply|verify`.
+#
+# A `header` verb lived here to format an MCP `headersHelper` Bearer line for the
+# GitHub MCP. That server was removed 2026-07-25 — it had 0 calls across all
+# 3,410 session transcripts and had been failing to connect — which left `header`
+# with no consumer at all. Deleted rather than kept "in case": the rule at the top
+# of this file is that every verb has a live consumer, and a dead verb that
+# resolves a PAT is strictly worse than no verb. Restore from git history if an
+# HTTP MCP server that bearer-authenticates is ever added back.
 set -euo pipefail
 
 # Normalize PATH so `op` (brew) resolves even when a plugin resolver execs us
@@ -48,29 +54,6 @@ cmd_secret() {
   }
   _load_sa
   op read "$ref" 2> /dev/null
-}
-
-# Emit an MCP `headersHelper` JSON object — {"Authorization":"Bearer <token>"} —
-# for an HTTP MCP server that bearer-authenticates (the GitHub MCP at
-# api.githubcopilot.com/mcp/). The op:// ref is an argument, not a per-service
-# file. On any failure it emits `{}` (valid JSON, no header) so the MCP client
-# gets a well-formed response instead of a parse error.
-cmd_header() {
-  local ref="${1:-}" token
-  command -v op > /dev/null 2>&1 || {
-    printf '{}\n'
-    return 0
-  }
-  [[ -n "$ref" ]] || {
-    printf '{}\n'
-    return 0
-  }
-  _load_sa
-  token="$(op read "$ref" 2> /dev/null)" && [[ -n "$token" ]] || {
-    printf '{}\n'
-    return 0
-  }
-  printf '{"Authorization":"Bearer %s"}\n' "$token"
 }
 
 # git credential helper, scoped to https://github.com in the agent git config.
@@ -178,10 +161,6 @@ case "${1:-}" in
     shift
     cmd_secret "$@"
     ;;
-  header)
-    shift
-    cmd_header "$@"
-    ;;
   git-credential)
     shift
     cmd_git_credential "$@"
@@ -189,7 +168,7 @@ case "${1:-}" in
   provision) cmd_provision ;;
   status) cmd_status ;;
   *)
-    printf 'usage: op-agent <secret op://ref | header op://ref | git-credential get | provision | status>\n' >&2
+    printf 'usage: op-agent <secret op://ref | git-credential get | provision | status>\n' >&2
     exit 2
     ;;
 esac
