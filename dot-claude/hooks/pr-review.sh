@@ -28,10 +28,13 @@ set -u
 exit_ok() { exit 0; }
 
 # --- cheap bail-out ---------------------------------------------------------
-# settings.json also carries an `if` matcher, but this hook must be free on the
-# ~60k Bash calls a month that are grep/sed/find. Everything below the stdin
-# check costs a fork; everything above costs a string compare. Do NOT let the
-# first network call (`gh repo view`) run before this gate.
+# settings.json also carries a per-handler `if` rule, but keep this gate. Until
+# 2026-07-25 that `if` sat on the matcher GROUP rather than the handler, so the
+# client dropped it as an unknown key and this string compare was the only thing
+# standing between the hook and the ~60k grep/sed/find Bash calls a month. The
+# config filter is one misplaced key away from silently vanishing again; belt and
+# braces. Everything below the stdin check costs a fork; everything above costs a
+# string compare. Do NOT let the first network call (`gh repo view`) run before it.
 command -v jq > /dev/null 2>&1 || exit_ok
 input=$(cat 2> /dev/null) || exit_ok
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2> /dev/null) || exit_ok
