@@ -17,7 +17,7 @@
     "GIT_CONFIG_VALUE_3": "cache --timeout=900",
     "GIT_CONFIG_KEY_4": "credential.https://github.com.helper",
     "GIT_CONFIG_VALUE_4": "!~/.local/bin/op-agent git-credential",
-    "SPACEBASE_API_KEY_COMMAND": "~/.local/bin/op-agent secret \"op://claude-agent/Spacebase API Key/credential\"",
+    "SPACEBASE_API_KEY_COMMAND": "~/.local/bin/op-agent secret \"op://claude-agent/spacebase-api-key/credential\"",
     "SPACEBASE_API_KEY": "",
     "SPACEBASE_URL": "",
     "SPACEBASE_PROJECT_ID": "",
