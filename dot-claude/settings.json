@@ -29,7 +29,9 @@
     "commit": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>"
   },
   "permissions": {
-    "allow": ["Bash(gh pr merge:*)"],
+    "allow": [
+      "Bash(gh pr merge:*)"
+    ],
     "deny": [
       "Bash(security find-generic-password:*)",
       "Bash(op-agent secret:*)",
@@ -74,13 +76,13 @@
         "hooks": [
           {
             "type": "command",
-            "if": "Bash(gh pr create:*)",
-            "command": "~/.claude/hooks/pr-review.sh"
+            "command": "~/.claude/hooks/pr-review.sh",
+            "if": "Bash(gh pr create:*)"
           },
           {
             "type": "command",
-            "if": "Bash(git push:*)",
-            "command": "~/.claude/hooks/pr-review.sh"
+            "command": "~/.claude/hooks/pr-review.sh",
+            "if": "Bash(git push:*)"
           }
         ]
       }
@@ -103,7 +105,8 @@
     "gninety@gnar": true,
     "typescript-lsp@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true
+    "frontend-design@claude-plugins-official": true,
+    "expo@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "gnar": {
