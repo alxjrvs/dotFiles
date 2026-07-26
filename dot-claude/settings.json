@@ -71,20 +71,15 @@
     "PostToolUse": [
       {
         "matcher": "Bash",
-        "if": "Bash(gh pr create*)",
         "hooks": [
           {
             "type": "command",
+            "if": "Bash(gh pr create:*)",
             "command": "~/.claude/hooks/pr-review.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "if": "Bash(git push*)",
-        "hooks": [
+          },
           {
             "type": "command",
+            "if": "Bash(git push:*)",
             "command": "~/.claude/hooks/pr-review.sh"
           }
         ]
@@ -119,24 +114,26 @@
       "autoUpdate": true
     }
   },
+  "tui": "fullscreen",
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
   "skipWorkflowUsageWarning": true,
+  "theme": "auto",
   "editorMode": "vim",
   "vimInsertModeRemaps": {
     "jj": "<Esc>"
   },
   "verbose": true,
+  "autoScrollEnabled": true,
   "showTurnDuration": false,
   "terminalProgressBarEnabled": false,
   "teammateMode": "in-process",
   "inputNeededNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
-  "autoScrollEnabled": true,
-  "voiceEnabled": true,
-  "voice": {
-    "enabled": true,
-    "mode": "hold"
-  },
   "autoMode": {
     "classifyAllShell": true
-  }
+  },
+  "voiceEnabled": true
 }
