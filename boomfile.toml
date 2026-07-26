@@ -458,6 +458,43 @@ cmd = "op-agent provision"
 on = "verify"
 cmd = "op-agent status"
 
+[[section]]
+name = "Claude Desktop MCP"
+
+# The GitHub MCP is configured twice, deliberately, because the two clients cannot
+# share a mechanism:
+#   Claude Code    → remote HTTP server (api.githubcopilot.com/mcp/) in the
+#                    user-scoped ~/.claude.json, authenticated by a `headersHelper`
+#                    running `op-agent header`. No local binary involved.
+#   Claude Desktop → local stdio server (mise: aqua:github/github-mcp-server),
+#                    launched by gh-mcp-stdio. Desktop has no headersHelper, and
+#                    it cannot use the remote server either: GitHub's remote MCP
+#                    authenticates through a registered GitHub App and Desktop's
+#                    "Add custom connector" OAuth flow does not support it.
+#                    GitHub's own install-claude.md says to run it locally.
+# Both resolve the SAME vault item through the SAME `op` primitive, so there is
+# still exactly one credential and one source of truth.
+[[section.link]]
+src = "hooks/gh-mcp-stdio.sh"
+dst = "~/.local/bin/gh-mcp-stdio"
+mode = "755"
+
+# Merges one key into Claude Desktop's config rather than linking it — the app
+# owns that file and rewrites it continuously. See the script header.
+[[section.run]]
+on = "sync"
+cmd = "~/.local/state/boom/config-repo/hooks/claude-desktop-mcp.sh"
+
+[[section.check]]
+# The Desktop entry must never carry an inline token. GitHub's documented config
+# hardcodes GITHUB_PERSONAL_ACCESS_TOKEN in an `env` block; if anyone ever pastes
+# that in, a live classic PAT is sitting in plaintext in the app's config file.
+# The launcher takes no args and no env, so this string must simply never appear.
+path = "~/Library/Application Support/Claude/claude_desktop_config.json"
+absent = ["GITHUB_PERSONAL_ACCESS_TOKEN"]
+missing_file = "skip"
+message = "a plaintext GitHub PAT is configured in claude_desktop_config.json (use gh-mcp-stdio, which resolves it from 1Password)"
+
 # The agent-fetch launchd job (every 15m, `git fetch` every ~/Code repo to keep origin/HEAD
 # warm for agent worktree cuts) is now the top-level `[boom] schedule` entry
 # `{ cmd = "code fetch", every = "15m" }` — boom owns the timer and runs `boom code fetch`

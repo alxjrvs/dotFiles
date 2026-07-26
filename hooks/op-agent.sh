@@ -5,23 +5,32 @@
 #
 #   op-agent secret <op://ref>   read one secret value to stdout via the SA
 #                                (the ref is an arg, not a per-service file)
+#   op-agent header <op://ref>   emit {"Authorization":"Bearer …"} for an HTTP
+#                                MCP `headersHelper` (GitHub); ref is an arg
 #   op-agent git-credential get  git credential helper: resolve the agent PAT
 #                                from the vault on demand (same `op` path as
 #                                `secret`; git's own `cache` helper amortizes it)
 #   op-agent provision           ensure SA vault + keychain token; check git PAT
 #   op-agent status              report keychain token presence (exit 0/1)
 #
-# Stays a standalone script because plugin `*_COMMAND` resolvers (spacebase,
-# gninety) exec it by path and git execs it as a credential helper; the boomfile
-# drives provision/status via `on apply|verify`.
+# Stays a standalone script because Claude Code's MCP `headersHelper` and plugin
+# `*_COMMAND` resolvers (spacebase, gninety) exec it by path, and git execs it as
+# a credential helper; the boomfile drives provision/status via `on apply|verify`.
 #
-# A `header` verb lived here to format an MCP `headersHelper` Bearer line for the
-# GitHub MCP. That server was removed 2026-07-25 — it had 0 calls across all
-# 3,410 session transcripts and had been failing to connect — which left `header`
-# with no consumer at all. Deleted rather than kept "in case": the rule at the top
-# of this file is that every verb has a live consumer, and a dead verb that
-# resolves a PAT is strictly worse than no verb. Restore from git history if an
-# HTTP MCP server that bearer-authenticates is ever added back.
+# `header` was deleted on 2026-07-25 alongside the GitHub MCP, its only consumer,
+# under this file's rule that every verb has a live consumer — with the explicit
+# note to restore it from git history if an HTTP MCP server that bearer-
+# authenticates was ever added back. That happened on 2026-07-25: the GitHub MCP
+# is reinstalled at api.githubcopilot.com/mcp/ per Claude Code's documented
+# `headersHelper` pattern ("a command that writes a JSON object of string
+# key-value pairs to stdout"), so the verb is live again rather than speculative.
+#
+# The server did NOT fail last time because this approach was wrong. It failed
+# because the op:// ref contains spaces and was unquoted in the headersHelper
+# value: `sh -c` word-split it, this verb hit its failure path and emitted `{}`,
+# no Authorization header was sent, and the client fell back to OAuth discovery —
+# surfacing as the misleading "does not support dynamic client registration".
+# The ref is quoted at the call site now. Keep it quoted.
 set -euo pipefail
 
 # Normalize PATH so `op` (brew) resolves even when a plugin resolver execs us
@@ -31,7 +40,12 @@ export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 KEYCHAIN="op-claude-agent"
 VAULT="${BOOM_vault:-claude-agent}"
-PAT_REF="op://$VAULT/Claude Git PAT/credential"
+# Item titles in this vault are kept space-free on purpose. Every consumer of an
+# op:// ref runs it through `sh -c` (MCP `headersHelper`, plugin `*_COMMAND`), so
+# a title with spaces word-splits into separate arguments unless every call site
+# quotes it — a silent failure that took down two MCP servers on 2026-07-25.
+# Renamed 'Claude Git PAT' → 'claude-git-pat' so quoting stops being load-bearing.
+PAT_REF="op://$VAULT/claude-git-pat/credential"
 
 # Load the SA token from the login keychain into THIS process only (no biometric,
 # headless-safe). Empty/missing → op falls back to desktop auth.
@@ -54,6 +68,38 @@ cmd_secret() {
   }
   _load_sa
   op read "$ref" 2> /dev/null
+}
+
+# Emit an MCP `headersHelper` JSON object — {"Authorization":"Bearer <token>"} —
+# for an HTTP MCP server that bearer-authenticates (the GitHub MCP at
+# api.githubcopilot.com/mcp/). The op:// ref is an argument, not a per-service
+# file. On any failure it emits `{}` (valid JSON, no header) so the MCP client
+# gets a well-formed response instead of a parse error.
+#
+# That `{}` failure path is quiet by design, and quiet is exactly how the 2026-07-25
+# outage hid: no header went out, the client fell back to OAuth discovery, and the
+# only symptom was "does not support dynamic client registration" — an error naming
+# neither 1Password nor this script. If the GitHub MCP is ever failing to connect,
+# suspect the ref resolving to nothing FIRST. Verify without ever printing the
+# token, e.g. compare the output against `{}`:
+#   [ "$(op-agent header "op://claude-agent/claude-git-pat/credential")" = '{}' ] \
+#     && echo "resolve FAILED" || echo "resolve ok"
+cmd_header() {
+  local ref="${1:-}" token
+  command -v op > /dev/null 2>&1 || {
+    printf '{}\n'
+    return 0
+  }
+  [[ -n "$ref" ]] || {
+    printf '{}\n'
+    return 0
+  }
+  _load_sa
+  token="$(op read "$ref" 2> /dev/null)" && [[ -n "$token" ]] || {
+    printf '{}\n'
+    return 0
+  }
+  printf '{"Authorization":"Bearer %s"}\n' "$token"
 }
 
 # git credential helper, scoped to https://github.com in the agent git config.
@@ -107,7 +153,7 @@ cmd_provision() {
   if op read "$PAT_REF" > /dev/null 2>&1; then
     echo "op-agent: git PAT present in vault ($VAULT)"
   else
-    echo "op-agent: 'Claude Git PAT' not in $VAULT yet"
+    echo "op-agent: 'claude-git-pat' not in $VAULT yet"
   fi
 }
 
@@ -148,7 +194,7 @@ cmd_status() {
     # returns it for secondary-rate-limit and SSO-enforcement on an otherwise live
     # token, so treat it as advisory rather than failing verify on a false alarm.
     401)
-      echo "op-agent: git PAT DEAD/expired (HTTP 401) — rotate 'Claude Git PAT' in vault $VAULT" >&2
+      echo "op-agent: git PAT DEAD/expired (HTTP 401) — rotate 'claude-git-pat' in vault $VAULT" >&2
       return 1
       ;;
     *) echo "op-agent: git PAT liveness unknown (HTTP $code) — network/rate-limit/SSO, not failing" ;;
@@ -161,6 +207,10 @@ case "${1:-}" in
     shift
     cmd_secret "$@"
     ;;
+  header)
+    shift
+    cmd_header "$@"
+    ;;
   git-credential)
     shift
     cmd_git_credential "$@"
@@ -168,7 +218,7 @@ case "${1:-}" in
   provision) cmd_provision ;;
   status) cmd_status ;;
   *)
-    printf 'usage: op-agent <secret op://ref | git-credential get | provision | status>\n' >&2
+    printf 'usage: op-agent <secret op://ref | header op://ref | git-credential get | provision | status>\n' >&2
     exit 2
     ;;
 esac
