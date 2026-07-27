@@ -106,13 +106,21 @@
     "typescript-lsp@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
-    "expo@claude-plugins-official": true
+    "expo@claude-plugins-official": true,
+    "binfinite-context@binfinite": true
   },
   "extraKnownMarketplaces": {
     "gnar": {
       "source": {
         "source": "github",
         "repo": "thegnarco/agent-skills"
+      },
+      "autoUpdate": true
+    },
+    "binfinite": {
+      "source": {
+        "source": "github",
+        "repo": "BinfiniteLLC/binfinite-app"
       },
       "autoUpdate": true
     }
