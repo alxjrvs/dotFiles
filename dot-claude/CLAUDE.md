@@ -1,5 +1,13 @@
 # User-Level Claude Code Instructions
 
+This file loads into **every session before any work starts**, so it is kept to what a session
+must *obey*. The reasoning behind it — incidents, postmortems, removed settings, root-cause
+writeups — lives in `DECISIONS.md`, and Claude Code feature notes live in `REFERENCE.md`. Both
+sit beside this file in the dotFiles repo (on this machine:
+`~/.local/state/boom/config-repo/dot-claude/`) and **neither is symlinked into `~/.claude/`**, so
+they cost nothing per session — read them on demand. When you change something here, record *why*
+in `DECISIONS.md`.
+
 ## Identity
 
 - Name: alxjrvs
@@ -8,77 +16,255 @@
 
 ## Claude Code setup
 
-`~/.claude/settings.json` (symlinked from the dotFiles repo) is minimal by design: only deliberate divergences from defaults. **Don't add settings beyond these without asking** — the enumeration below is the contract, so anything in the file must appear here. CLAUDE.md is advisory context, never enforcement; anything that *must* hold is pinned by `permissions`/hooks/`run` guardrails, not prose. Current divergences:
+`~/.claude/settings.json` (symlinked from the dotFiles repo) is minimal by design: only
+deliberate divergences from defaults. **Don't add settings beyond these without asking** — the
+enumeration below is the contract, so anything in the file must appear here. CLAUDE.md is
+advisory context, never enforcement; anything that *must* hold is pinned by
+`permissions`/hooks/`run` guardrails, not prose.
 
-- **Agent fleet** — `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` + `teammateMode: in-process` (Agent teams, an experimental feature). Separately, Agent view is left on (no `disableAgentView`) so `claude agents`, the `←` entry, `/background`, `claude --bg`, and `boom code claude` (every `~/Code` repo symlinked into one flat, `@`-taggable dir) work with no idle fleet. **Re-evaluate with auto mode**: a fleet in `auto` widens the confused-deputy surface; dispatch-on-demand keeps it minimal.
-- **Permissions** — `defaultMode: auto` + `skipAutoPermissionPrompt` auto-approve tool calls (a productivity tradeoff removing the per-call human gate; accepted risk, **re-evaluate periodically** — it drops the safety net against prompt-injection / confused-deputy, and the user-scope GitHub MCP widens that across every project — **reinstalled 2026-07-25** after its "0 calls in 3,410 transcripts" turned out to mean *broken*, not *unused*, so a write-capable PAT is once again reachable from every session in every repo; it is deliberately full read/write, not the `/readonly` endpoint). `autoMode.classifyAllShell` routes **every** Bash/PowerShell command through the auto-mode classifier (not just arbitrary-code-exec patterns), widening the server-side auto-deny surface to narrow that gap — the classifier still runs and can deny under `skipAutoPermissionPrompt`, which suppresses only the interactive prompt, not classification. `permissions.deny` is the deterministic floor that survives `auto`/bypass (deny is evaluated before everything): it blocks direct keychain reads of the agent token (`security find-generic-password`) and raw private-key / cloud-credential files, enforcing "the SA token never reaches the model" against an injected exfil prompt. It also denies the **Bash** path to secret resolution — `op-agent secret`, `op read`, `op item get` — which breaks nothing, because the `*_COMMAND` resolvers and `credential.helper` are exec'd by the MCP client and by git, not through the Bash tool. Be honest about what that buys: it is **defense-in-depth against an unsophisticated injected one-liner, not a floor**, since `git push` authenticates with the same PAT. Least privilege still rests on the SA-scoped vault plus a token expiry. (Learned the hard way on 2026-07-25: a diagnostic that ran `op-agent header` without redirecting stdout printed a live PAT into a session transcript. Always `>/dev/null` and test the exit code; rotate if a token is ever echoed.) The standing mitigation otherwise is **least privilege at the credential boundary**: a service account scoped to a single `claude-agent` vault that physically cannot read Personal/Private, plus tokens bounded by your own access with an expiry (the agent's git PAT is a *classic* `repo`-scoped token — fine-grained per-org PATs need org-owner approval you don't have for the orgs you push to; see *Agent secret access*). Tighten further per-repo in that repo's **checked-in** `.claude/settings.json` (project-scoped), never a machine-local `settings.local.json` — this setup keeps every divergence in the committed, enumerated contract, so there is no local override layer.
-- **Models** — no `model` or `advisorModel` is pinned: new sessions use Claude Code's built-in default model and run no server-side advisor (both keys are absent, the minimal-divergence expression of "default model, no advisor"). Fable/Opus/Sonnet stay freely selectable per-session (`/model`) and per-subagent (`model` overrides); there is no setting that allows manual selection but forbids it as default, so a `boom verify` / pre-commit / CI drift check fails if Fable is ever *pinned* as the default (e.g. via `/model`'s "set as default", which rewrites this file), since Fable is meant to be per-session only.
-- **Plugins** — `enabledPlugins` runs the gnar marketplace (`extraKnownMarketplaces.gnar` → `thegnarco/agent-skills`, `autoUpdate`): `audit`, `ignite`, `spacebase`, `gninety`, plus `typescript-lsp`, `commit-commands`, `frontend-design`, and `expo` from `claude-plugins-official`. No "must-install" set exists — each entry earns its place by use (the marketplace also carries `ideate`/`toolkit`, deliberately left off). `expo` was added 2026-07-25; it ships an MCP server (EAS builds/submits/workflows, store reviews) plus ~20 skills, so it is the largest single addition here — drop it if the Expo work it serves stops.
-  - **Installing a plugin dirties this file, so `boom verify` fails until it is committed.** `/plugin install` writes `enabledPlugins` into `~/.claude/settings.json`, which symlinks into boom's clone. That is the clean-tree check doing its job, not a bug: a plugin is a new capability surface (an MCP server and skills, arbitrary code from a marketplace) and the contract says it gets enumerated here before it counts as adopted.
-  - **Second marketplace, `binfinite` (added 2026-07-26)** — `extraKnownMarketplaces.binfinite` → `BinfiniteLLC/binfinite-app`, `autoUpdate`, enabling one plugin: `binfinite-context@binfinite`. Unlike gnar and `claude-plugins-official` this is **our own private repo**, and the marketplace manifest lives in the *same* repo as the product code (`.claude-plugin/marketplace.json` → `./plugins/binfinite-context`). Two consequences worth stating: (1) resolving it needs authenticated GitHub access to a **private** repo, so it silently fails to load anywhere the credential helper can't reach `BinfiniteLLC` — a Cowork/CI environment without that auth gets no plugin and no error worth noticing; (2) `autoUpdate: true` means the plugin tracks that repo's default branch, so a merge to `binfinite-app` main changes agent context everywhere on the next update — deliberate, since the whole point is that deployment facts stay current, but it does mean the repo's main is now a live input to every session, not just sessions inside it. It carries one skill (`project-registry`) whose job is resolving Binfinite deployment facts and enforcing an ask-first rule on EAS/Netlify writes; it is a **resolver, not a store** — it holds the app→site→EAS-app→Convex-deployment mapping and routes everything else to the Netlify/Expo/Convex MCPs, so it must never accumulate copied prose. Drop it if Binfinite work stops.
-- **UI / QoL** — custom `statusLine` + `subagentStatusLine` (`~/.local/bin/claude-*statusline`, from the separate [`thegnarco/claude-statusline`](https://github.com/thegnarco/claude-statusline) repo — migrated 2026-07-27 from `alxjrvs/claude-statusline`, which that repo was seeded from; the scripts were byte-identical at the switch, so this changed provenance only, and future updates now come from the shared Gnar repo); `editorMode: vim` with `vimInsertModeRemaps: {"jj": "<Esc>"}` (two-key insert→NORMAL escape, matching the nvim muscle memory; `"<Esc>"` is the only supported target, added in 2.1.208); `verbose: true`; quieter UI (`showTurnDuration`/`terminalProgressBarEnabled` off, `autoScrollEnabled: true`); `tui: "fullscreen"` + `theme: "auto"`; `skipWorkflowUsageWarning`; `inputNeededNotifEnabled` + the `attribution.commit` trailer.
-  - **Key order in `settings.json` is Claude Code's, not ours.** The client rewrites the whole file when any setting changes through `/config`, emitting its own canonical ordering. Re-sorting it by hand just guarantees the next rewrite dirties the tree again and fails the `boom verify` clean-tree check — so the committed file keeps whatever order the client last wrote. `tui` and `theme` arrived that way (set through the UI, then written out), which is exactly why they are enumerated here now: the contract is "everything in the file appears in this list", and for a self-rewriting file that means reconciling after the client edits, not preventing it.
-- **Voice** — `voiceEnabled: true` + `voice: { enabled: true, mode: "hold" }` (push-to-talk). Adopted deliberately rather than left as an uncommitted local edit: it had been sitting dirty in boom's config-repo clone, which `~/.claude/settings.json` symlinks into — live on the machine, in neither git nor this enumeration. A `boom verify` step now fails while that clone is dirty, so the "no local override layer" claim above is enforced instead of merely asserted.
-- **Removed (2026-07-25), deliberately** — `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80` and `ENABLE_PROMPT_CACHING_1H=1`. Both were inert. Measured over 30,983 requests: p50 context 143,853 tokens, p90 441,802, only 1.4% above 800K — an 80% threshold on a 1M window is essentially never reached, and the statusline reads the env var itself (`statusline.sh:492-497`), so the "hardcoded marker" rationale was already false. The 1h prompt-cache TTL is requested by default on a subscription. Two enumerated divergences that did nothing; Principle 2 says they go.
-- **Auto-merge permission** — `permissions.allow` carries `Bash(gh pr merge:*)`. This is the classifier's *own* prescribed mechanism for letting background/unattended jobs land a finished PR (a deterministic permission grant, not the prose pre-authorization the instruction-poisoning classifier correctly blocked twice). It authorizes `gh pr merge --auto` — GitHub's gated queue, which still waits on required checks — and does **not** loosen the "no direct `git` merge/push onto `main`" rule, which the rebase-guard hook enforces separately.
-- **Worktree-checkout guard** — a second `PreToolUse` hook (matcher `Bash` → `~/.claude/hooks/worktree-checkout-guard.sh`, ordered *before* rebase-guard) denies a `git checkout/switch <branch>` that would fail with "'<branch>' is already used by worktree" (exit 128). This targets a trigger **distinct from #53's `gh pr merge --delete-branch` collision** (below): the reflexive `git checkout main && git status && git log` state-check an agent runs to inspect the tree. It steers to a read-only inspect (`git log <branch>`) or staying on the branch, and fails **open** on a non-repo cwd / parse error.
-  - **Rewritten 2026-07-25 to test the condition, not the name.** It used to match the *default branch name* inside a *linked worktree*, but git fails on a condition — **any** branch already checked out in another worktree. Of 43 real collisions measured after it shipped, **9 were `main` and 34 were other branches**, so the dominant population walked straight past it. It now tokenizes the command (so `echo git checkout main` and a commit message mentioning it still pass), then asks git directly: `git worktree list --porcelain | grep -qxF "branch refs/heads/<target>"`, denying only when the branch is genuinely held elsewhere and is not the current HEAD. This is **strictly better on both axes** than the old regex — it cannot false-positive, needs no regex escaping for branches like `release/1.0`, and is shorter. It supersedes the in-source note that said "precision beats coverage here — we accept false negatives to kill false positives"; that tradeoff existed only because the check was name-based. Now caught that previously escaped: `git checkout -q main`, `git checkout main 2>&1 | tail -5`, quoted `"main"`, `git -C <dir> checkout main`, and every non-default branch.
-- **Spacebase MCP key** — `SPACEBASE_API_KEY_COMMAND` resolves the gnar `spacebase` plugin's bundled-server key in-process via `op-agent secret op://…` (an SA-scoped `op read`; no plaintext in env, no launch shim, no hardcoded `op` path; needs a plugin version reading this var — `TheGnarCo/agent-skills#368`). Paired with deliberately-empty `SPACEBASE_API_KEY`/`_URL`/`_PROJECT_ID` so the plugin's `${VAR}` pass-through resolves to `""` (server defaults) instead of a literal `"${VAR}"`. The plugin-bundled case of the MCP-secrets doctrine (see *Agent secret access*).
-  - **Keep the `op://` ref quoted inside the `_COMMAND` value even though it no longer has to be.** The consumer runs the value through `/bin/sh -c`, so a ref containing spaces word-splits into separate arguments and the resolve fails. That is not hypothetical: the item used to be `Spacebase API Key`, and that is exactly why this server sat at **✘ Failed to connect** with `[spacebase-mcp] SPACEBASE_API_KEY_COMMAND failed` and zero calls, silently, for an unknown period — while `gninety`, whose ref had no spaces, was the one server that kept working. **Fixed at the root on 2026-07-25: every `claude-agent` item is now space-free `kebab-case`** (`spacebase-api-key`), so quoting is defence-in-depth rather than the only thing holding it up. Both halves matter — the rename protects refs someone forgets to quote, the quoting protects against someone re-introducing a space. **Any new item in this vault must be `kebab-case`.** A `boom verify` step fails when any MCP server is down, so this class of breakage surfaces instead of reading as disuse.
-- **Ninety (EOS) MCP token** — `NINETY_API_TOKEN_COMMAND` resolves the gnar `gninety` plugin's Ninety.io PAT in-process via `op-agent secret op://claude-agent/gninety/credential`. The PAT lives in the `claude-agent` vault like every other agent secret (copied there because 1Password service-account vault access is immutable after creation — you can't grant the SA a second vault, so the secret comes to the SA, not the reverse). Paired with deliberately-empty `NINETY_API_TOKEN`/`NINETY_BASE_URL` — **load-bearing, not cosmetic**: `auth.ts` checks `NINETY_API_TOKEN` *before* the `_COMMAND`, and Claude Code passes an unset `${VAR}` to the server as the literal string `"${NINETY_API_TOKEN}"`, which `auth.ts` treats as a real token and sends as `Bearer ${NINETY_API_TOKEN}` → a misleading 401. Setting it to `""` makes that check falsy so the resolver command runs; empty `NINETY_BASE_URL` is cleaned to the default host. The plugin-bundled case of the MCP-secrets doctrine (see *Agent secret access*).
-- **Commit identity** — `GIT_AUTHOR_*`/`GIT_COMMITTER_*` → `Claude <alxjrvs+claude@gmail.com>`; `GIT_CONFIG_*` sets `commit.gpgsign`/`tag.gpgsign=false` (Claude's commits are unsigned, never need a 1Password unlock) and points `credential.https://github.com.helper` at `op-agent git-credential` (fronted by git's `cache --timeout=900` helper) so agent pushes resolve a classic `repo`+`workflow` PAT (SSO-authorized for the target orgs) from the `claude-agent` vault on demand — same single `op` primitive as every other agent secret, not your broad `gh` token. Agent-only — your terminal git keeps `alxjrvs` + 1Password signing. The trailer credits you as co-author; add `alxjrvs+claude@gmail.com` on GitHub to link these commits.
-- **Keep-awake (`SessionStart`)** — `caffeinate -i -w $PPID &`, guarded by `command -v` and `|| true`. On battery this machine sleeps after **1 minute** of idle (`pmset`: `sleep 1`, `displaysleep 2`; on AC `sleep 0`, already correct), so every unplugged session ran on a 60-second fuse and a large share of typed `continue`s were resuming a sleep-killed session rather than supervising one. `-i` prevents idle sleep only; the display still sleeps. `-w $PPID` ties the assertion to the session process, so it releases automatically on exit and can never leak past it or hold power when nothing is running. Verify with `pmset -g assertions | grep PreventUserIdleSystemSleep`.
-- **Removed (2026-07-25): the `SessionStart` + `SubagentStart` git-fetch hooks.** They existed to freshen `origin/HEAD` before a worktree branch was cut. `[boom] schedule` already runs `code fetch` every 15m across every `~/Code` repo — `FETCH_HEAD` was verified stamped within 2 minutes of wall clock — so every repo is permanently warm on an interval that does not depend on session cwd. That also covers the `boom code claude` flat-symlink case the hooks never could, since there the cwd is not a repo at all and the hook silently no-opped. The `SessionStart` slot is now the keep-awake hook above.
-- **Rebase-before-push guard** — a `PreToolUse` hook (matcher `Bash` → `~/.claude/hooks/rebase-guard.sh`, symlinked from `dot-claude/hooks/`) blocks `git push` / `gh pr create` when the current branch is **behind** its target (`origin/HEAD`): it fetches the target, and if the target isn't an ancestor of `HEAD` it returns `permissionDecision: "deny"` with a rebase instruction the agent acts on. It **also** denies a direct `git push` of the default branch — a bare push while HEAD *is* the default, or an explicit `<remote> <default>` / `…:<default>` refspec from any branch (detected by tokenizing the command, so `--dry-run` and pushes of a *non*-default branch pass) — enforcing the "no direct push to `main`" rule for its real forms; work lands via a feature branch + PR + `gh pr merge --auto`, and a genuine emergency bypass runs from a plain terminal (which no Claude hook touches). The `SessionStart` hook only makes the *base* fresh; `origin/HEAD` advances *during* the agent's run, so this closes the "went stale mid-work" gap at publish time. It only checks + blocks — it never rebases itself, so the agent resolves conflicts with full context and force-with-lease-es on re-push. Fails **open** (allow) on a non-repo cwd, missing `jq`, unresolvable target, or parse error — a guard must never wedge the agent. `deny` blocks even under `defaultMode: auto` + `skipAutoPermissionPrompt` (PreToolUse fires before the permission classifier), and applies to *every* Claude session (your own interactive `claude` too, not just background agents — consistent with the linear-history preference; it never touches plain terminal `git`). Paired with the workflow-doc practice below so the agent rebases *proactively* and rarely trips the guard.
-  - **Three defects fixed 2026-07-25, all from scanning the whole command string instead of the matched `git push` segment.** (1) A `--dry-run` *anywhere* — including inside an unrelated commit message — disabled the direct-push-to-default rule entirely, so `git commit -m "test --dry-run flag" && git push origin main` was **allowed**: the one rule called non-negotiable, defeated by a substring. (2) The mirror image: a commit message merely containing the word "main" **denied** an ordinary feature-branch push. (3) `gh pr create --base <parent>` was judged against `origin/HEAD`, telling the agent to rebase a stacked PR onto the default branch — which would flatten the stack `rebase-prs` deliberately builds; `--base` is now parsed and used as the target. Additionally, a leading `cd <path>` in a compound command is now honored via `git -C`, so `cd other-repo && git push` evaluates *that* repo rather than the session cwd.
-  - **Both guards now have a regression suite** (`dot-claude/hooks/tests/`, wired into `lint.yml` and pre-commit). 33 cases against throwaway git fixtures in `$TMPDIR` — hermetic, no network, under 2s. Every case came from a real transcript or a reproduction, and **10 of them fail against the pre-fix guards**. 200+ lines of load-bearing, security-relevant shell had no tests, which is exactly how the `--dry-run` hole shipped and survived. Add a case before changing a guard.
-- **Recorded PR review (`PostToolUse`)** — `~/.claude/hooks/pr-review.sh` fires after `gh pr create` / `git push`, and when the repo is in its allowlist (`PR_REVIEW_REPOS` — entries may be a bare **owner**, covering every repo under it, or a fully-qualified `owner/repo`; defaults to `TheGnarCo BinfiniteLLC SalvageUnion-io RANDSUM alxjrvs`, i.e. every org the agent ships into) it runs the adversarial review **locally** and posts it as a real PR review plus a `claude-review` commit status. Three things make this the right shape: the review already exists but covers ~2% of PRs because it waits to be invoked by hand; running it locally is subscription-covered, whereas an agent in GitHub Actions bills metered money (~1,600 paid runs per half-year at 8.8 PRs/day); and **a commit status posted with your own token is a valid `required_status_checks` context**, so a ruleset can eventually require it — real blocking enforcement with zero LLM tokens in CI. It backgrounds itself immediately, so it can never block a turn, and a failed reviewer reports `success` with "review unavailable (not a verdict)" rather than masquerading as a clean bill of health. Advisory until a day-30 finding rate justifies requiring it: **above ~1 finding per 10 PRs that changed code, promote; below, delete it and close the question.**
-  - **Fixed 2026-07-25: the `if` filter was in the wrong place and had never worked.** It sat on the *matcher group* (`{"matcher": "Bash", "if": …}`), but `if` is a field on an **individual hook handler**, so Claude Code dropped it as an unknown key on its next rewrite — and the drop is what made this visible. Net effect for the hook's whole life: it was invoked on *every* Bash call, and only the script's own `case "$cmd"` gate kept it from acting. The config had also been duplicated into two identical `matcher: "Bash"` groups, so it forked twice per call; the per-SHA lock (`mkdir "$lock"`) meant that wasted work rather than double-posting a review. Now one group, two handlers, each carrying its own `if` — `if` holds exactly one rule, with no `||`, so two commands means two handlers. Verified by experiment, not by reading: an `if` rule matches when **any** subcommand of a compound command matches, so `git commit -m … && git push` still fires; a non-git command fires nothing. That mattered — had `if` required the *whole* command to match, adding it would have silently stopped reviews on exactly the compound push the `ship` flow uses.
+Rules that apply whatever you are touching:
+
+- **No local override layer.** Tighten per-repo in that repo's **checked-in**
+  `.claude/settings.json`, never a machine-local `settings.local.json`. A `boom verify` step
+  fails while boom's config-repo clone is dirty, so this is enforced, not merely asserted.
+- **Key order in `settings.json` is Claude Code's, not ours.** The client rewrites the whole
+  file when any setting changes through `/config`. Don't re-sort by hand — reconcile the
+  enumeration *after* the client edits, keeping whatever order it last wrote.
+- **Installing a plugin dirties this file**, and `boom verify` fails until it is committed.
+  That is the clean-tree check working: a plugin is a new capability surface (an MCP server,
+  skills, arbitrary code from a marketplace), so it gets enumerated here before it counts as
+  adopted.
+- **Never echo a secret.** Always redirect to `>/dev/null` and test the exit code. If a token
+  is ever printed, rotate it.
+- **Any new item in the `claude-agent` vault must be space-free `kebab-case`** — every `op://`
+  ref is re-parsed by `sh -c`, so a space silently breaks resolution.
+
+### Current divergences
+
+- **Agent fleet** — `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` + `teammateMode: in-process`
+  (Agent teams, experimental). Agent view is left on (no `disableAgentView`) so `claude agents`,
+  the `←` entry, `/background`, `claude --bg`, and `boom code claude` work with no idle fleet.
+  **Re-evaluate with auto mode** — a standing fleet widens the confused-deputy surface;
+  dispatch-on-demand keeps it minimal.
+- **Permissions** — `defaultMode: auto` + `skipAutoPermissionPrompt` auto-approve tool calls: a
+  productivity tradeoff that removes the per-call human gate. Accepted risk, **re-evaluate
+  periodically.** `autoMode.classifyAllShell` routes *every* Bash/PowerShell command through the
+  auto-mode classifier, not just arbitrary-code-exec patterns — the classifier still runs and can
+  deny under `skipAutoPermissionPrompt`, which suppresses only the interactive prompt, not
+  classification.
+  - `permissions.deny` is the deterministic floor that survives `auto`/bypass (deny is evaluated
+    first): keychain reads of the agent token (`security find-generic-password`), raw private-key
+    and cloud-credential files, and the Bash path to secret resolution (`op-agent secret`,
+    `op read`, `op item get`). Denying those breaks nothing — the `*_COMMAND` resolvers and
+    `credential.helper` are exec'd by the MCP client and by git, not through the Bash tool.
+  - Be honest about what that buys: **defense-in-depth against an unsophisticated injected
+    one-liner, not a floor**, since `git push` authenticates with the same PAT. Least privilege
+    rests on the SA-scoped vault plus a token expiry (see *Agent secret access*).
+- **Models** — no `model` or `advisorModel` pinned: sessions use Claude Code's built-in default
+  and run no server-side advisor. Fable/Opus/Sonnet stay freely selectable per-session (`/model`)
+  and per-subagent. **Fable must never be pinned as the default** — a drift check fails if it is
+  (e.g. via `/model`'s "set as default", which rewrites this file).
+- **Plugins** — `enabledPlugins` runs two marketplaces:
+  - `extraKnownMarketplaces.gnar` → `thegnarco/agent-skills` (`autoUpdate`): `audit`, `ignite`,
+    `spacebase`, `gninety`; plus `typescript-lsp`, `commit-commands`, `frontend-design`, `expo`
+    from `claude-plugins-official`. No "must-install" set exists — each entry earns its place by
+    use (`ideate`/`toolkit` deliberately off). Drop `expo` if the Expo work it serves stops.
+  - `extraKnownMarketplaces.binfinite` → `BinfiniteLLC/binfinite-app` (`autoUpdate`), enabling
+    `binfinite-context@binfinite`. **A private repo**, so it silently fails to load anywhere the
+    credential helper can't reach `BinfiniteLLC` — a CI/Cowork box gets no plugin and no error
+    worth noticing. `autoUpdate` means a merge to that repo's main changes agent context
+    everywhere on the next update. Its `project-registry` skill is a **resolver, not a store** —
+    it holds the app→site→EAS-app→Convex mapping and routes everything else to the
+    Netlify/Expo/Convex MCPs, so it must never accumulate copied prose. Drop it if Binfinite work
+    stops.
+- **UI / QoL** — custom `statusLine` + `subagentStatusLine` (`~/.local/bin/claude-*statusline`,
+  from [`thegnarco/claude-statusline`](https://github.com/thegnarco/claude-statusline));
+  `editorMode: vim` with `vimInsertModeRemaps: {"jj": "<Esc>"}` (`"<Esc>"` is the only supported
+  target, added in 2.1.208); `verbose: true`; quieter UI (`showTurnDuration` and
+  `terminalProgressBarEnabled` off, `autoScrollEnabled: true`); `tui: "fullscreen"` +
+  `theme: "auto"`; `skipWorkflowUsageWarning`; `inputNeededNotifEnabled` + the
+  `attribution.commit` trailer.
+- **Voice** — `voiceEnabled: true` + `voice: { enabled: true, mode: "hold" }` (push-to-talk).
+- **Auto-merge permission** — `permissions.allow` carries `Bash(gh pr merge:*)`. This is the
+  classifier's own prescribed mechanism for letting background/unattended jobs land a finished
+  PR. It authorizes `gh pr merge --auto` — GitHub's gated queue, which still waits on required
+  checks — and does **not** loosen the "no direct `git` merge/push onto `main`" rule.
+- **Worktree-checkout guard** — `PreToolUse` hook (matcher `Bash` →
+  `~/.claude/hooks/worktree-checkout-guard.sh`, ordered *before* rebase-guard). Denies a
+  `git checkout/switch <branch>` that would fail with "'<branch>' is already used by worktree".
+  It tokenizes the command (so `echo git checkout main` and commit messages mentioning it pass),
+  then asks git directly — `git worktree list --porcelain | grep -qxF "branch refs/heads/<target>"`
+  — denying only when the branch is genuinely held elsewhere and is not the current HEAD. Steers
+  to a read-only inspect (`git log <branch>`). Fails **open** on a non-repo cwd or parse error.
+- **Rebase-before-push guard** — `PreToolUse` hook (matcher `Bash` →
+  `~/.claude/hooks/rebase-guard.sh`). Blocks `git push` / `gh pr create` when the branch is
+  **behind** its target, returning `permissionDecision: "deny"` with a rebase instruction. It
+  also denies a direct `git push` of the default branch — a bare push while HEAD *is* the
+  default, or an explicit `<remote> <default>` / `…:<default>` refspec — enforcing "no direct
+  push to `main`". `gh pr create --base <parent>` is judged against that base, so stacked PRs are
+  not flattened, and a leading `cd <path>` is honored via `git -C`. It only checks and blocks,
+  never rebases itself. Fails **open** on a non-repo cwd, missing `jq`, unresolvable target, or
+  parse error — a guard must never wedge the agent. `deny` works even under `defaultMode: auto`
+  (PreToolUse fires before the permission classifier) and applies to every Claude session, never
+  to plain terminal `git`.
+  - **Both guards have a regression suite** (`dot-claude/hooks/tests/`, wired into `lint.yml` and
+    pre-commit): 33 hermetic cases against throwaway git fixtures, under 2s.
+    **Add a case before changing a guard.**
+- **Recorded PR review (`PostToolUse`)** — `~/.claude/hooks/pr-review.sh` fires after
+  `gh pr create` / `git push`; when the repo is in `PR_REVIEW_REPOS` (a bare **owner**, covering
+  every repo under it, or a fully-qualified `owner/repo`; defaults to `TheGnarCo BinfiniteLLC
+  SalvageUnion-io RANDSUM alxjrvs`) it runs the adversarial review locally and posts it as a real
+  PR review plus a `claude-review` commit status. It backgrounds itself immediately so it can
+  never block a turn, and a failed reviewer reports `success` with "review unavailable (not a
+  verdict)" rather than masquerading as a clean bill of health. `if` is a field on an individual
+  hook handler, never on the matcher group — one rule per handler, so two commands means two
+  handlers. **Advisory until a day-30 finding rate justifies requiring it: above ~1 finding per
+  10 PRs that changed code, promote; below, delete it and close the question.**
+- **Spacebase MCP key** — `SPACEBASE_API_KEY_COMMAND` resolves the gnar `spacebase` plugin's key
+  in-process via `op-agent secret op://…`. Paired with deliberately-empty `SPACEBASE_API_KEY` /
+  `_URL` / `_PROJECT_ID` so the plugin's `${VAR}` pass-through resolves to `""` (server defaults)
+  instead of a literal `"${VAR}"`. Keep the `op://` ref **quoted** inside the `_COMMAND` value —
+  the consumer runs it through `/bin/sh -c`, so a space would word-split it.
+- **Ninety (EOS) MCP token** — `NINETY_API_TOKEN_COMMAND` resolves the `gninety` plugin's
+  Ninety.io PAT via `op-agent secret op://claude-agent/gninety/credential`. The empty
+  `NINETY_API_TOKEN` / `NINETY_BASE_URL` are **load-bearing, not cosmetic**: `auth.ts` checks
+  `NINETY_API_TOKEN` *before* the `_COMMAND`, and Claude Code passes an unset `${VAR}` through as
+  a literal string, which would be sent as a bearer token and 401. Setting it to `""` makes that
+  check falsy so the resolver runs; empty `NINETY_BASE_URL` cleans to the default host.
+- **Commit identity** — `GIT_AUTHOR_*`/`GIT_COMMITTER_*` → `Claude <alxjrvs+claude@gmail.com>`;
+  `GIT_CONFIG_*` sets `commit.gpgsign`/`tag.gpgsign=false` (Claude's commits are unsigned and
+  never need a 1Password unlock) and points `credential.https://github.com.helper` at
+  `op-agent git-credential`, fronted by git's `cache --timeout=900` helper. Agent-only — your
+  terminal git keeps `alxjrvs` + 1Password signing. The trailer credits you as co-author; add
+  `alxjrvs+claude@gmail.com` on GitHub to link these commits.
+- **Keep-awake (`SessionStart`)** — `caffeinate -i -w $PPID &`, guarded by `command -v` and
+  `|| true`. On battery this machine sleeps after 1 minute idle, so every unplugged session ran
+  on a 60-second fuse. `-i` prevents idle sleep only (the display still sleeps); `-w $PPID` ties
+  the assertion to the session process so it releases on exit and can never leak past it. Verify
+  with `pmset -g assertions | grep PreventUserIdleSystemSleep`.
 
 ## Agent worktree & merge workflow
 
-Claude Code isolates background/subagent work into git worktrees by default (`worktree.bgIsolation: "worktree"`, `worktree.baseRef: "fresh"` — both stock defaults per the settings schema, not overridden in `settings.json`). Each agent gets its own `.claude/worktrees/<name>` on a **freshly created branch** off `origin/<default-branch>`, so under normal EnterWorktree operation the primary checkout's `main` is never re-targeted and parallel agents shouldn't collide through that path. A "branch 'main' is already used by worktree" error can still surface, and there are now **two** confirmed triggers: (1) issue [#53](https://github.com/alxjrvs/dotFiles/issues/53) — `gh pr merge --delete-branch` (below), reproduced under a plain background-job `EnterWorktree` session (none of the earlier-suspected Agent `isolation: "worktree"` / `claude --worktree` / cmux mechanisms were needed); and (2) an agent's reflexive `git checkout <default>` inside a linked worktree to inspect state, surfaced by a session-history scan and now blocked by the **Worktree-checkout guard** (settings.json divergence above), which converts it to a read-only inspect. If a *new* shape of this error turns up, capture the full error text and the mechanism that produced it before assuming it's one of these.
+Claude Code isolates background/subagent work into git worktrees by default
+(`worktree.bgIsolation: "worktree"`, `worktree.baseRef: "fresh"` — stock defaults, not
+overridden). Each agent gets `.claude/worktrees/<name>` on a **freshly created branch** off
+`origin/<default-branch>`.
 
-- **Recovery**: `git worktree list` to see what's checked out where; if something is genuinely pinned to `main` in a second worktree, `git worktree remove <path>` (`--force` if dirty) reclaims it, and `git worktree prune` sweeps entries whose directory is already gone. Never manually `git worktree add <path> main` without `-b <new-branch>` — that's the one confirmed way to force *this* variant of the collision yourself.
-- **Stale/crashed worktrees**: a killed session leaves its worktree `locked` (`.git/worktrees/<name>/locked` names the holding PID) instead of reaped. `git worktree list --porcelain` shows the PID; if it's dead, `git worktree unlock <path> && git worktree remove <path>` reclaims it. Never force-remove a worktree whose lock PID is alive — that's another session's in-flight work.
-- **"Worktree kept … has commits that are not pushed anywhere" is usually a false positive — reap it with `boom code reap`.** Claude Code's remove guard keeps any worktree whose HEAD commits exist on no remote, but it tests **SHA identity**, and a squash-merge rewrites history: the content lands on the default branch under a *new* SHA, so the branch's own commits genuinely exist nowhere by SHA even though every line is merged. The guard can't tell squash-merged-and-landed from truly-unpushed, so it keeps both and agent sessions become uncloseable. This recurs after *every* squash-merge; it's a Claude Code limitation, not config. `commit-commands:clean_gone` does **not** catch it — the `worktree-*`/`agent-*` branches have no upstream, so there's no `[gone]` signal. `boom code reap` re-decides by **content** (git patch-id), removing only worktrees that are clean, unlocked (or locked by a dead PID), and either fully pushed or already merged — and it deletes the directory, never the branch ref, so it cannot lose a commit. `--dry-run` classifies without touching anything. Its default answer is *keep*: anything it can't prove safe stays put, and a removal failure is a warning, so the sweep can never wedge. `--push` covers the one remaining blocker — a clean worktree whose commits exist nowhere but this machine is published first (`git push -u origin <branch>`, never forced), so it too becomes reapable and **nothing is ever stuck un-closeable**. That's outward-facing by design (branches land on origin, org repos included); dirty trees, live sessions and detached HEADs are never pushed. It runs daily as `code reap --push` via the `[boom] schedule` timer; run it by hand any time the backlog bites. The one-off escape hatch for a single worktree is the same move manually: `git push -u origin HEAD`.
-- **Rebase on the target before pushing.** Before the first `git push` / `gh pr create`, rebase the branch onto the freshly-fetched target: `git fetch origin && git rebase origin/<default>` (resolve any conflicts; re-push with `--force-with-lease` if the branch was already pushed). `origin/HEAD` moves while an agent works, so even a branch cut from a fresh base can be behind by push time. This is the *proactive* half of the `Rebase-before-push guard` (settings.json divergence above) — do it up front and the guard is a silent no-op; skip it and the guard blocks the push with this same instruction.
-- **Root-caused (#53): `gh pr merge --delete-branch` collides with the primary checkout.** `-d`/`--delete-branch` deletes the *local* branch after merging, which requires `gh` to switch off it first — it checks out the base branch (`main`) in the worktree session's own repo. Since the primary checkout normally has `main` checked out at the same time, git refuses with `fatal: 'main' is already used by worktree at '<primary checkout path>'`. The GitHub-side merge itself already succeeded by this point (PR shows `MERGED`), so only the trailing local-cleanup step fails — leaving the remote branch undeleted.
-- **Fix (native, applied 2026-07-08): `delete_branch_on_merge` is enabled repo-wide** on `alxjrvs/dotFiles` and `alxjrvs/botu` (`gh api -X PATCH repos/<owner>/<repo> -f delete_branch_on_merge=true`, one-time GitHub setting — check `.delete_branch_on_merge` on any other repo the agent pushes to and enable it there too if false). With this on, GitHub itself deletes the remote branch server-side once the merge lands — no local git checkout, no `-d`/`--delete-branch` flag needed, no timing hazard with `--auto` on a not-yet-green PR. Local cleanup (the disposable worktree branch itself) already happens via `ExitWorktree`/`git worktree remove`, so there's nothing left for `gh` to do locally.
-- **Completion = commit → push → PR → auto-merge.** Once an agent's work is committed, pushed, and a PR opened, `gh pr merge --auto --squash` (no `-d`/`--delete-branch` — redundant now, and the thing that caused #53) is the preferred way to land it — GitHub's own gated queue (waits on required checks, GitHub performs the merge and, per the setting above, the branch deletion) rather than a local `git merge`/`git push` into the shared `main` checkout. If a repo doesn't have `delete_branch_on_merge` enabled, fall back to deleting the remote branch manually *after confirming the PR merged* (`gh pr view --json state`): `gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/<branch>` — never run that delete immediately after an `--auto` merge on a PR whose checks haven't passed yet, since deleting the head branch of a still-open PR closes it unmerged and cancels auto-merge. Confirmed 2026-07-08: alxjrvs wants this to also cover unattended background jobs, not just interactive sessions — but writing that as a blanket standing pre-authorization in this file was blocked twice by the Claude Code auto-mode "instruction poisoning" classifier (chat confirmation doesn't clear that rule by design). So this is **not yet an enforced policy** — it's a documented intent. If you want background jobs to actually auto-merge without asking, the classifier's own guidance is to add an explicit Bash permission rule for `gh pr merge` in the committed `settings.json` (auto mode reads permission rules from the checked-in settings, not a machine-local override — see 2.1.207), or run `gh pr merge --auto` yourself when a PR is ready. A literal local `git merge`/`git push` onto `main` is still off-limits regardless.
-- If a merge already ran with `--delete-branch` and hit this error: the merge itself succeeded, so recovery is just `gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/<branch>` to finish deleting the remote branch.
+- **Rebase on the target before pushing.** Before the first `git push` / `gh pr create`:
+  `git fetch origin && git rebase origin/<default>` (resolve conflicts; re-push with
+  `--force-with-lease` if already pushed). `origin/HEAD` moves while an agent works, so even a
+  branch cut from a fresh base can be behind by push time. Do this up front and the rebase-guard
+  is a silent no-op; skip it and the guard blocks the push with this same instruction.
+- **Completion = commit → push → PR → auto-merge.** `gh pr merge --auto --squash` (never
+  `-d`/`--delete-branch`) is the way to land work — GitHub's gated queue, not a local
+  `git merge`/`git push` into the shared `main` checkout. `delete_branch_on_merge` is enabled
+  repo-wide on `alxjrvs/dotFiles` and `alxjrvs/botu`; check `.delete_branch_on_merge` on any
+  other repo the agent pushes to and enable it if false. Where it isn't enabled, delete the
+  remote branch manually *after confirming the PR merged* (`gh pr view --json state`):
+  `gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/<branch>` — never immediately after an
+  `--auto` merge on a not-yet-green PR, since deleting the head branch of a still-open PR closes
+  it unmerged and cancels auto-merge. A literal local `git merge`/`git push` onto `main` is
+  off-limits regardless.
+- **"branch 'main' is already used by worktree"** — two confirmed triggers:
+  `gh pr merge --delete-branch` (which is why that flag is banned above), and an agent's
+  reflexive `git checkout <default>` inside a linked worktree (now blocked by the
+  worktree-checkout guard). If a *new* shape turns up, capture the full error text and the
+  mechanism that produced it before assuming it is one of these.
+- **Recovery**: `git worktree list` shows what is checked out where; `git worktree remove <path>`
+  (`--force` if dirty) reclaims it; `git worktree prune` sweeps entries whose directory is gone.
+  Never manually `git worktree add <path> main` without `-b <new-branch>` — that is the one
+  confirmed way to force this collision yourself.
+- **Stale/crashed worktrees**: a killed session leaves its worktree `locked`
+  (`.git/worktrees/<name>/locked` names the holding PID). If that PID is dead,
+  `git worktree unlock <path> && git worktree remove <path>`. **Never force-remove a worktree
+  whose lock PID is alive** — that is another session's in-flight work.
+- **"Worktree kept … has commits that are not pushed anywhere" is usually a false positive.**
+  Claude Code's remove guard tests **SHA identity**, and a squash-merge rewrites history, so a
+  fully-merged branch's commits exist nowhere by SHA. Reap with `boom code reap`, which re-decides
+  by **content** (git patch-id) and removes only worktrees that are clean, unlocked (or locked by
+  a dead PID), and either fully pushed or already merged. It deletes the directory, never the
+  branch ref, so it cannot lose a commit; `--dry-run` classifies without touching anything; its
+  default answer is *keep*. `--push` publishes a clean-but-unpushed worktree first
+  (`git push -u origin <branch>`, never forced) so nothing is stuck un-closeable — outward-facing
+  by design; dirty trees, live sessions and detached HEADs are never pushed. Runs daily as
+  `code reap --push` via `[boom] schedule`; run it by hand any time the backlog bites. The
+  one-off escape hatch for a single stuck worktree is the same move manually:
+  `git push -u origin HEAD`. `commit-commands:clean_gone` does **not** catch this case (these
+  branches have no upstream, so there is no `[gone]` signal).
 
 ## Repository merge & branch-protection defaults
 
-alxjrvs's standing preference for his personal repos (confirmed 2026-07-08): **squash-only merges, rebase-preferred branch updates, linear history required, CI must be green before merging.** Apply this when setting up a new repo (e.g. via `ignite:kickoff`) or when asked to align an existing one. This is a **per-repo, explicit-confirmation action**, not a standing authorization to change settings unprompted.
+Standing preference for personal repos: **squash-only merges, rebase-preferred branch updates,
+linear history required, CI green before merging.** Apply when setting up a new repo (e.g. via
+`ignite:kickoff`) or when asked to align an existing one. This is a **per-repo,
+explicit-confirmation action**, not standing authorization to change settings unprompted.
 
-**The executable version of this section is the `agent-friendly-repo` skill** (`dot-claude/skills/agent-friendly-repo/`) — it reads current state, diffs against the checklist below, asks, then applies the merge settings + ruleset (and optionally a merge queue). Use the skill for the full flow; the recipes below are the reference it encodes.
+**The executable version is the `agent-friendly-repo` skill**
+(`dot-claude/skills/agent-friendly-repo/`) — it reads current state, diffs against the checklist,
+asks, then applies the merge settings + ruleset (and optionally a merge queue). Use the skill;
+the recipes below are the reference it encodes.
 
-- **Squash-only — no merge commits, no rebase-merge**: `gh api -X PATCH repos/<owner>/<repo> -F allow_squash_merge=true -F allow_merge_commit=false -F allow_rebase_merge=false`. This is safe to combine with rebase-*preferred updates* below — they're governed by a different setting (see next bullet), not by `allow_rebase_merge`.
-- **Rebase-preferred branch updates**: enable `allow_update_branch=true` (`-F allow_update_branch=true` on the same PATCH) to surface the "Update branch" button. Which method that button offers — merge-commit vs. rebase — is reported to be gated by the branch's `required_linear_history` protection setting (next bullet) rather than by `allow_rebase_merge`, though behavior here has been inconsistent per GitHub community reports, not GitHub's own docs. `required_linear_history` is worth setting regardless, since it's a standalone stated preference (below) independent of whether it also unlocks the rebase-update button. The REST API has no endpoint to force a rebase update itself — only the web UI and `gh pr update-branch --rebase` can do it.
-- **Linear history + CI green, via a ruleset (preferred) — one mechanism, not classic + ruleset both.** GitHub takes the *union* of classic branch protection and rulesets, so having both is a footgun (edit one, the other silently still applies). Make the **ruleset** the single source of truth and delete the redundant classic protection (`gh api -X DELETE repos/<owner>/<repo>/branches/<branch>/protection`) once the ruleset supersets it. Ruleset rules for the default branch: `required_linear_history`, `non_fast_forward`, `deletion`; `required_status_checks` pointing at a **single aggregate gate job** (an `if: always()` job that `needs:` every other job — not each individual check, which strands required checks in "pending" on path-filtered PRs); **no required human PR reviews** (a required review blocks agent auto-merge forever — agents can't approve their own PRs); and `bypass_actors: []` so nobody bypasses, incl. admins → "CI green for everyone" (agents don't need bypass; `--auto` just waits for green). For a one-off emergency, disable+re-enable the ruleset rather than adding a standing bypass. Real check names have no wildcard — find them via `gh api repos/<owner>/<repo>/commits/<branch>/check-runs --jq '.check_runs[].name'`. The `agent-friendly-repo` skill applies all of this (plus the optional merge queue and its `merge_group:`-trigger sequencing hazard).
-  - **Classic protection (legacy fallback only)** — if a repo can't use rulesets, the equivalent classic form is `enforce_admins: true` (CI green for everyone) + a one-off emergency bypass via `gh api -X DELETE .../branches/main/protection/enforce_admins` (disable) / `-X POST` (re-enable):
-    ```
-    gh api -X PUT repos/<owner>/<repo>/branches/main/protection --input - <<'EOF'
-    {
-      "required_status_checks": { "strict": true, "contexts": ["<aggregate-check>"] },
-      "enforce_admins": true,
-      "required_pull_request_reviews": null,
-      "restrictions": null,
-      "required_linear_history": true,
-      "allow_force_pushes": false,
-      "allow_deletions": false
-    }
-    EOF
-    ```
+- **Squash-only**: `gh api -X PATCH repos/<owner>/<repo> -F allow_squash_merge=true
+  -F allow_merge_commit=false -F allow_rebase_merge=false`. Safe to combine with
+  rebase-preferred updates — those are governed by a different setting.
+- **Rebase-preferred branch updates**: `-F allow_update_branch=true` surfaces the "Update branch"
+  button. Which method it offers is gated by `required_linear_history`, not by
+  `allow_rebase_merge`. The REST API cannot force a rebase update — only the web UI and
+  `gh pr update-branch --rebase` can.
+- **Linear history + CI green via a ruleset (preferred) — one mechanism, not classic *and*
+  ruleset.** GitHub takes the *union* of the two, so having both is a footgun (edit one, the
+  other silently still applies). Make the ruleset the single source of truth and delete the
+  redundant classic protection (`gh api -X DELETE repos/<owner>/<repo>/branches/<branch>/protection`)
+  once it supersets. Rules for the default branch: `required_linear_history`, `non_fast_forward`,
+  `deletion`; `required_status_checks` pointing at a **single aggregate gate job** (an
+  `if: always()` job that `needs:` every other job — not each individual check, which strands
+  required checks in "pending" on path-filtered PRs); **no required human PR reviews** (agents
+  can't approve their own PRs, so a required review blocks auto-merge forever); and
+  `bypass_actors: []` so nobody bypasses, admins included. For a one-off emergency,
+  disable+re-enable the ruleset rather than adding a standing bypass. Find real check names via
+  `gh api repos/<owner>/<repo>/commits/<branch>/check-runs --jq '.check_runs[].name'`.
+  - The classic-protection fallback, for repos that cannot use rulesets, is in `DECISIONS.md`.
 
 ## Agent secret access
 
-The agent resolves 1Password secrets through a **service account**, not your desktop biometric session — so a Claude session (interactive *or* headless/cron) gets its secrets with **no Touch ID prompt** and **no dependency on the 1Password desktop app**. This is the 1Password-recommended automation tier ([secure-ai-access](https://www.1password.dev/get-started/secure-ai-access), [developer-quickstart](https://www.1password.dev/get-started/developer-quickstart)).
+The agent resolves 1Password secrets through a **service account**, not your desktop biometric
+session — so a Claude session (interactive *or* headless/cron) gets its secrets with no Touch ID
+prompt and no dependency on the 1Password desktop app. This is the 1Password-recommended
+automation tier.
 
-- **Scope = one vault.** The service account can read only the dedicated `claude-agent` vault (1Password forbids granting a service account access to Personal/Private, *and* an SA's vault access is immutable after creation — so agent secrets are *brought into* this vault rather than the SA being granted others). That vault is the entire blast radius.
-- **Token lives in the macOS login keychain** (`security … -s op-claude-agent`), never on disk in plaintext, never in git. `boom source` runs `op-agent provision`, which creates the vault + service account and stores the token on first run.
-- **The token never enters the model's context.** It's read from keychain *inline* inside the `op-agent` CLI (`op-agent secret op://…`), confined to that one `op` process — so neither the service-account token nor the resolved secret reaches a Bash subprocess, the transcript, or OTEL tool spans. No `claude()` wrapper, no exported env var. (`op-agent` is one verb-dispatched script — `secret`/`header`/`git-credential`/`provision`/`status`.) **The "every verb has a live consumer" claim is only true when the consumers actually run**: on 2026-07-25 two of three configured servers were found **failing to connect**, so their verbs were dead in practice while the docs asserted otherwise. Zero measured calls on an MCP server means "broken or unused" and the two are indistinguishable from usage data alone — check `claude mcp list` before concluding either. Acting on that signal without checking is what deleted the GitHub MCP (and `header` with it) hours before both were restored: the server wasn't unused, it was misconfigured. `boom verify` now fails when any server is down.
-- **MCP secrets follow one canonical pattern.** For servers we install, the launch command is 1Password's `op run --env-file=.env -- <server>` (`boom mcp add`) with `op://` references in a committable `.env` — resolved in-process, off disk. Surfaces we don't control use the tool's *own* native hook fed by `op`: plugin-bundled stdio servers via a `*_COMMAND` resolver var (e.g. spacebase, fed by `op-agent secret`); the GitHub MCP (an `http` server at `api.githubcopilot.com/mcp/`, in the user-scoped `~/.claude.json`) wires Claude Code's `headersHelper` to `op-agent header op://…`, which formats the `{"Authorization":"Bearer …"}` line from the vaulted token. **Claude Desktop is the one surface that can do neither** — no `headersHelper`, and GitHub's remote server authenticates via a registered GitHub App that Desktop's *Add custom connector* OAuth flow doesn't support — so it runs a *local* stdio `github-mcp-server` launched by `~/.local/bin/gh-mcp-stdio`, which resolves the same vault item and exports it in-process (never an `env` block with a literal PAT, which is what GitHub's own docs tell you to do). Vault item titles are space-free (`claude-git-pat`) because every `op://` ref is re-parsed by `sh -c`. A resolved secret never enters git, and never write a `${VAR}` into a git-tracked `.mcp.json` (`claude mcp add` can expand it back into the tracked file). Full model in the dotFiles repo `CLAUDE.md`.
-- **Agent git auth resolves the PAT through `op`, like every other secret.** The agent's git-over-HTTPS credential is a **classic** `repo`+`workflow` PAT (SSO-authorized for the orgs it pushes to), stored in the `claude-agent` vault. It's *classic, not fine-grained, by necessity*: fine-grained PATs are gated on org-owner enablement + approval, which you don't have for the orgs you push to — a classic token is bounded by your own access and is self-SSO-authorizable (member-level), so it's the narrowest credential that actually reaches those org repos. Least-privilege then rests on the SA-scoped vault + a token expiry, not on per-repo scoping. Git's native `credential.helper` is pointed at `op-agent git-credential`, which resolves it on demand via the SA (no biometric, headless-safe) — the same single `op` primitive as `secret`, so the PAT lives only in 1Password (no keychain cache, no second mechanism). Git's built-in `cache` helper amortizes the per-op round-trip; and because the resolve path is `securityd` + network rather than a keychain *file* read, it survives a sandbox `credentials.files` deny on the keychain. (The helper is token-agnostic — rotating is just updating the vault item.)
-- **Your own dev work** still uses desktop biometric + `op run`/`op://`/Environments — the service account is the agent's path, not yours. Full secrets model in the dotFiles repo `CLAUDE.md`.
+- **Scope = one vault.** The service account can read only the dedicated `claude-agent` vault
+  (1Password forbids granting an SA access to Personal/Private, *and* an SA's vault access is
+  immutable after creation — so agent secrets are *brought into* this vault rather than the SA
+  being granted others). That vault is the entire blast radius.
+- **Token lives in the macOS login keychain** (`security … -s op-claude-agent`), never on disk in
+  plaintext, never in git. `boom source` runs `op-agent provision`, which creates the vault +
+  service account and stores the token on first run.
+- **The token never enters the model's context.** It is read from keychain *inline* inside the
+  `op-agent` CLI, confined to that one `op` process — so neither the SA token nor the resolved
+  secret reaches a Bash subprocess, the transcript, or OTEL tool spans. No wrapper, no exported
+  env var. `op-agent` is one verb-dispatched script: `secret` / `header` / `git-credential` /
+  `provision` / `status`.
+- **Zero measured calls on an MCP server means "broken or unused", and the two are
+  indistinguishable from usage data alone.** Check `claude mcp list` before concluding either;
+  `boom verify` fails when any server is down.
+- **MCP secrets follow one canonical pattern.** For servers we install:
+  `op run --env-file=.env -- <server>` (`boom mcp add`) with `op://` references in a committable
+  `.env`, resolved in-process and off disk. Surfaces we don't control use the tool's own native
+  hook fed by `op` — plugin-bundled stdio servers via a `*_COMMAND` resolver var; the GitHub MCP
+  (an `http` server at `api.githubcopilot.com/mcp/`, in the user-scoped `~/.claude.json`) via
+  Claude Code's `headersHelper` → `op-agent header op://…`. Claude Desktop supports neither, so
+  it runs a *local* stdio `github-mcp-server` via `~/.local/bin/gh-mcp-stdio`, which resolves the
+  same vault item in-process — never an `env` block with a literal PAT. A resolved secret never
+  enters git, and never write a `${VAR}` into a git-tracked `.mcp.json` (`claude mcp add` can
+  expand it back into the tracked file).
+- **Agent git auth resolves the PAT through `op`, like every other secret.** A **classic**
+  `repo`+`workflow` PAT (SSO-authorized for the orgs it pushes to), stored in the `claude-agent`
+  vault. Classic, not fine-grained, by necessity: fine-grained PATs need org-owner enablement and
+  approval you don't have for those orgs, whereas a classic token is bounded by your own access
+  and is self-SSO-authorizable at member level. Least privilege therefore rests on the SA-scoped
+  vault + token expiry, not on per-repo scoping. Git's `credential.helper` points at
+  `op-agent git-credential`, so the PAT lives only in 1Password — no keychain cache, no second
+  mechanism. Because the resolve path is `securityd` + network rather than a keychain *file*
+  read, it survives a sandbox `credentials.files` deny. Rotating is just updating the vault item.
+- **Your own dev work** still uses desktop biometric + `op run`/`op://`/Environments — the
+  service account is the agent's path, not yours.
