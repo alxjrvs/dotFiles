@@ -47,7 +47,7 @@ One North Star: **small, exemplary, easily shareable — a senior engineer's sho
 The imperative residue the config can't express. A boom hook is a `hooks/<name>.ts` module exporting `apply`/`verify`/`fix` functions that receive a typed `HookApi` (`with` inputs, `dryRun`, `env`, and `ok`/`warn`/`fail`/`note`); it self-locates this repo via `import.meta.dir`, and `fix` falls back to `apply`.
 
 - **`git-signing.ts`** — converges git commit/tag signing via 1Password `op-ssh-sign` (machine-local `~/.gitconfig.local` + `~/.ssh/allowed_signers`), using the agent key named by `with.key` (default `GitHubSSH`).
-- **`claude_statusline.ts`** — clones the `claude-statusline` repo beside this one and runs its installer.
+- **`claude_statusline.ts`** — clones the `claude-statusline` repo (`repo=` in the boomfile — now `thegnarco/claude-statusline`, the collectively-owned continuation of `alxjrvs/claude-statusline`) beside this one and runs its installer. It re-clones when that input changes, since the Gnar repo was *seeded* from the old one rather than forked: no shared history, so nothing can fast-forward across the switch.
 - **`op-agent.sh`** — NOT a boom hook: a standalone bash CLI for all 1Password-agent machinery (see Secrets), `link`ed onto `PATH` as `op-agent` and driven by `run` steps (`op-agent provision` / `op-agent status`). Stays bash because external programs exec it by path (a plugin `*_COMMAND` resolver; git's `credential.helper`).
 
 Also NOT boom hooks — Claude Code hooks, linked into `~/.claude/hooks/`:

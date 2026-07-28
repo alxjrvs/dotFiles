@@ -540,4 +540,4 @@ name = "claude_statusline"
 name = "claude_statusline"
 
 [section.hook.with]
-repo = "github.com/alxjrvs/claude-statusline"
+repo = "github.com/thegnarco/claude-statusline"
