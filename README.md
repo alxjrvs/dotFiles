@@ -5,7 +5,7 @@ macOS dotfiles for [alxjrvs](https://github.com/alxjrvs), managed by
 engine extracted from this repo. This repo is pure *config*: a `boomfile`, a
 couple of `hooks/`, and the payload boom symlinks into place. The prompt is
 [starship](https://starship.rs); the Claude Code statusline lives in its own
-repo ([thegnarco/claude-statusline](https://github.com/thegnarco/claude-statusline)).
+repo ([TheGnarCo/claude-statusline](https://github.com/TheGnarCo/claude-statusline)).
 
 ## Philosophy
 

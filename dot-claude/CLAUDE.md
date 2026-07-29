@@ -78,7 +78,7 @@ Rules that apply whatever you are touching:
     Netlify/Expo/Convex MCPs, so it must never accumulate copied prose. Drop it if Binfinite work
     stops.
 - **UI / QoL** — custom `statusLine` + `subagentStatusLine` (`~/.local/bin/claude-*statusline`,
-  from [`thegnarco/claude-statusline`](https://github.com/thegnarco/claude-statusline));
+  from [`TheGnarCo/claude-statusline`](https://github.com/TheGnarCo/claude-statusline));
   `editorMode: vim` with `vimInsertModeRemaps: {"jj": "<Esc>"}` (`"<Esc>"` is the only supported
   target, added in 2.1.208); `verbose: true`; quieter UI (`showTurnDuration` and
   `terminalProgressBarEnabled` off, `autoScrollEnabled: true`); `tui: "fullscreen"` +
