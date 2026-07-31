@@ -1,6 +1,6 @@
 ---
 name: agent-friendly-repo
-description: Make a GitHub repo agent-friendly for automated PR → auto-merge — squash-only merge settings, a single ruleset (linear history, non-fast-forward, one aggregate status check, no required human review, no bypass), and optionally a merge queue. Use when the user says "make this repo agent-friendly", "set up auto-merge", "align merge settings + branch protection", "add a merge queue", or bootstraps a repo and wants the agent completion path (`gh pr merge --auto`) to work. The executable version of the "Repository merge & branch-protection defaults" + "Agent worktree & merge workflow" sections in ~/.claude/CLAUDE.md.
+description: Make a GitHub repo agent-friendly for automated PR → auto-merge — squash-only merge settings, a single ruleset (linear history, non-fast-forward, one aggregate status check, no required human review, no bypass), stacked-PR support via the official `github/gh-stack` extension, and optionally a merge queue. Use when the user says "make this repo agent-friendly", "set up auto-merge", "align merge settings + branch protection", "add a merge queue", "set up stacked PRs", or bootstraps a repo and wants the agent completion path (`gh pr merge --auto`) to work. The executable version of the "Repository merge & branch-protection defaults" + "Agent worktree & merge workflow" sections in ~/.claude/CLAUDE.md.
 ---
 
 # agent-friendly-repo
@@ -26,6 +26,40 @@ Ruleset rules for the default branch:
 - `required_status_checks` → a **single aggregate gate job** (e.g. `quality-checks`), not every individual job. An aggregate `if: always()` job that `needs:` every other job and fails if any *actually failed* (path-filtered "skipped" jobs are fine) avoids "required check stuck pending" when per-area jobs are path-filtered out of a given PR.
 - **No required human PR reviews.** A required review blocks agent auto-merge forever — agents can't approve their own PRs. `--auto` waiting on green CI is the gate, not a human.
 - `bypass_actors: []` — nobody bypasses, incl. admins → "CI green for everyone" (the standing preference). Agents don't need bypass; `--auto` just waits for green.
+
+**Stacked PRs — the preferred shape for anything bigger than one reviewable change.**
+Standing preference: split a large change into a stack of small PRs, each based on the one below
+it, using the **official** `github/gh-stack` extension (public preview since 2026-07-30). The
+dotFiles boomfile installs it (`gh extensions` section), so it should already be on the machine —
+`gh extension install github/gh-stack` if not. Beware `gh ext search stack`: four community
+extensions share the name, and only `github/gh-stack` is the one GitHub ships.
+
+This checklist is already stack-compatible, and **two of its items turn out to be preconditions**
+for stacks rather than merely preferred:
+- `required_linear_history` — **precondition.** `gh stack modify` refuses to restructure a stack
+  whose history has merge commits or diverged branches, so linear history is not a taste here.
+- `bypass_actors: []` — **precondition, from the other direction.** Stack merges **cannot** bypass
+  merge requirements at all (`gh stack merge` says so outright), so a repo whose agent path
+  depends on a bypass actor simply can't use stacks.
+- `allow_auto_merge=true` — compatible: auto-merge coexists with stacks, since `gh stack unstack`
+  deliberately leaves a PR stacked when it is queued or has auto-merge enabled.
+- Squash-only is fine — `gh stack merge --squash` picks the method per-merge, *unless* a merge
+  queue is in play (below), where the queue chooses and any method flag is ignored with a warning.
+
+Stack-specific behavior worth knowing before recommending it:
+- `gh stack merge [<stack#>|<pr#>]` merges every PR up to and including the named one as a
+  **single all-or-nothing operation** — if any one can't merge, none do. Branch protection and
+  rulesets are evaluated by GitHub when the merge runs, so a red aggregate check fails the whole
+  batch, not just its layer.
+- **With a merge queue**, the stack is *added to the queue* rather than merged directly, and the
+  selected PRs "may land in separate groups rather than all at once" — so the all-or-nothing
+  guarantee above does **not** hold behind a queue. Queue support for stacks was still rolling
+  out at public preview; verify on the repo before promising it.
+- Local stack state lives in `.git/gh-stack` (untracked), so it is per-clone — an agent worktree
+  cut fresh does not inherit a stack. `gh stack checkout <stack#|pr#|url|branch>` re-attaches.
+- `delete_branch_on_merge` + stacks: not verified here. `gh stack sync` prunes merged branches
+  locally (`--prune` to skip the prompt); if a repo relies on server-side retargeting of child
+  PRs, confirm it on that repo rather than assuming.
 
 **Merge queue — the throughput unlock for parallel agents (optional, gated on CI support).**
 `strict` required-status-checks (require-branch-up-to-date-before-merge) *serializes* parallel PRs: each merge marks every other open PR out-of-date → forced rebase + full CI re-run per PR. A **merge queue** removes that churn while preserving "tested against latest main" (it tests each PR against the merged result). See the sequencing hazard below — enabling it before CI handles `merge_group` hangs every PR.
@@ -100,7 +134,7 @@ Ruleset rules for the default branch:
 
 8. **Merge queue (optional, only if the user wants it).** Follow the sequencing hazard below.
 
-9. **Report** the final state: merge settings, ruleset id + rules, whether classic was removed, aggregate-gate action taken, queue enabled or deferred (and why).
+9. **Report** the final state: merge settings, ruleset id + rules, whether classic was removed, aggregate-gate action taken, queue enabled or deferred (and why), and **stack readiness** — `gh extension list | grep github/gh-stack` for the tool, plus whether `required_linear_history` and empty `bypass_actors` hold (the two rules stacks actually require).
 
 ## Critical sequencing hazard — merge queue
 
@@ -118,4 +152,6 @@ Then agents complete with `gh pr merge --auto --squash`, which adds the PR to th
 - **`enforce_admins`/no-bypass = CI green for everyone, including alxjrvs.** For a genuine one-off emergency, disable+re-enable rather than weakening the default (delete the ruleset temporarily, or from a plain terminal). Don't add a standing bypass.
 - **Aggregate gate, not per-check requirements.** Requiring individual path-filtered jobs strands required checks in "pending". If you can't find/scaffold an aggregate job, stop and surface that — don't require the individual jobs as a fallback.
 - **Merge queue is opt-in and CI-gated.** Never add the `merge_queue` rule before the `merge_group:` trigger is on `main`. If CI has no `merge_group:` trigger, do the CI PR first (or defer the queue) — never enable it speculatively.
+- **Only `github/gh-stack`.** Never install a same-named community fork to satisfy "stacked PRs"; if the official extension is missing, install it or say so — don't substitute.
+- **Stacks are a workflow preference, not a repo mutation.** Nothing in this skill's write path enables them. Recommending stacks costs the repo nothing; the only repo-side facts are that `required_linear_history` and empty `bypass_actors` are prerequisites, and both are already on the checklist.
 - **Reference target:** SU-SRD PR #393 (the `merge_group` CI trigger + `changes` path-filter handling) and SU-SRD ruleset #9182849 are a known-good "after" state.

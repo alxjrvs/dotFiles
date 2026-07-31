@@ -237,6 +237,57 @@ uncloseable. This recurs after *every* squash-merge; it is a Claude Code limitat
 `commit-commands:clean_gone` does not catch it either — the `worktree-*`/`agent-*` branches have no
 upstream, so there is no `[gone]` signal.
 
+### Stacked PRs adopted via `github/gh-stack` (2026-07-31)
+
+GitHub put stacked PRs into public preview on 2026-07-30 with a first-party CLI extension. That is
+what changed the answer: stacking was always the right shape for agent output — many small
+reviewable layers instead of one 40-file PR — but every previous implementation was a third-party
+tool (Graphite, `git-branchless`, four community `gh-stack` forks) carrying its own metadata model,
+its own hosted service, or both. **Native over special** ruled all of them out. A GitHub-shipped
+extension that stores its state in `.git/gh-stack` and drives the stock PR API is the stock
+behavior, so the principle now argues *for* adoption rather than against it.
+
+It is installed through the boomfile rather than by hand because a workflow preference nobody's
+machine can execute is just prose. `gh` has no declarative manifest and boom has no `gh` package
+manager, so the `gh extensions` section is an install-if-absent `run` step — the same shape as the
+Claude CLI install, and for the same reason. It **must** sit after the `packages` section: `gh`
+itself comes from mise, sections run in file order, and a fresh machine has no `gh` on PATH until
+packages has run. The grep matches `github/gh-stack` including the owner, because `gh ext search
+stack` returns four same-named community extensions and only one of them is GitHub's.
+
+It is install-only, and **that is a weaker guarantee than the Claude CLI step it mirrors.** The
+Claude CLI genuinely self-updates after install; `gh` extensions do not — gh "will check for new
+versions once every 24 hours and display an upgrade notice", which is a *notice*, not an install.
+So `gh stack` stays on whatever version first landed until someone runs `gh extension upgrade`.
+For a v0.1.0 public-preview tool that is a real trap, and the daily notice is the only thing that
+surfaces it. An upgrade step was not added because "install this extension" was the ask and a
+network call on every `boom source` is not free; revisit if the version actually drifts far enough
+to bite. The failure mode is documented rather than fixed, deliberately — but it is documented,
+because the first draft of this section wrongly claimed gh auto-updates extensions.
+
+Two things fell out of reading the extension's actual contract rather than assuming:
+
+- **The existing checklist was already a precondition, not merely compatible.** `gh stack modify`
+  refuses a history with merge commits or diverged branches, and `gh stack merge` states outright
+  that bypassing merge requirements is *not supported* for stack merges. So `required_linear_history`
+  and `bypass_actors: []` — already in `agent-friendly-repo` on other grounds — are exactly what
+  stacks need. A repo whose agent path leans on a bypass actor cannot use stacks at all.
+- **The rebase-guard does not see `gh stack`.** It tokenizes for `git push` / `gh pr create`
+  specifically, so `gh stack submit`/`push`/`sync` sail past it. That is a gap in coverage, not a
+  blessing, and it is deliberately *not* fixed by widening the guard: `gh stack sync` already does
+  fetch + cascading rebase + push, so the correct behavior is the rule the guard would have
+  enforced. Widening the guard to deny `gh stack submit` would mean re-deriving stack-aware
+  behind-ness for N branches — a lot of security-relevant shell to duplicate what the tool does
+  natively. The rule lives in `CLAUDE.md` prose instead, with the honest caveat that prose is
+  advisory. Revisit if a stale stack actually gets published.
+
+Deliberately **not** adopted in the same change: `gh skill install github/gh-stack --agent
+claude-code`, which drops a GitHub-authored skill into `~/.claude/skills/` — the same directory
+boom glob-links into. It is a new agent-context surface from outside the repo, and the doctrine is
+that those get enumerated before adoption, not installed as a side effect. Our own
+`agent-friendly-repo` skill now carries the repo-side guidance; if the CLI ergonomics turn out to
+need more, adopt it explicitly then.
+
 ---
 
 ## Branch protection

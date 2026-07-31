@@ -150,6 +150,22 @@ Claude Code isolates background/subagent work into git worktrees by default
 overridden). Each agent gets `.claude/worktrees/<name>` on a **freshly created branch** off
 `origin/<default-branch>`.
 
+- **Prefer a stack of small PRs over one large one**, via the **official** `github/gh-stack`
+  extension (`gh stack`, public preview since 2026-07-30) — installed by the dotFiles boomfile's
+  `gh extensions` section, never a same-named community fork. Reach for it when a change is
+  bigger than one reviewable PR: `gh stack init` → `gh stack add` per layer → `gh stack submit`
+  (one PR per branch, each based on the one below) → `gh stack sync` after a layer lands. It owns
+  the cascading rebase across the whole stack, which is the part that is miserable by hand.
+  - `gh stack submit`/`push`/`sync` are **not** matched by the rebase-guard (which tokenizes for
+    `git push` / `gh pr create` specifically), so the guard is silent on them. That is not
+    permission to publish a stale stack — `gh stack sync` (fetch + cascading rebase + push) is
+    the stack-shaped version of the rebase-before-push rule, so run it first.
+  - `gh stack merge` merges every PR up to the chosen one all-or-nothing, and **cannot bypass**
+    merge requirements — so it needs `required_linear_history` and empty `bypass_actors`, which
+    the `agent-friendly-repo` checklist already sets. Behind a merge queue the stack is *queued*
+    instead, may land in separate groups, and merge-method flags are ignored.
+  - Stack state lives in `.git/gh-stack` (untracked, per-clone), so a fresh agent worktree does
+    not inherit one — `gh stack checkout <stack#|pr#|url|branch>` re-attaches.
 - **Rebase on the target before pushing.** Before the first `git push` / `gh pr create`:
   `git fetch origin && git rebase origin/<default>` (resolve conflicts; re-push with
   `--force-with-lease` if already pushed). `origin/HEAD` moves while an agent works, so even a
@@ -195,7 +211,8 @@ overridden). Each agent gets `.claude/worktrees/<name>` on a **freshly created b
 ## Repository merge & branch-protection defaults
 
 Standing preference for personal repos: **squash-only merges, rebase-preferred branch updates,
-linear history required, CI green before merging.** Apply when setting up a new repo (e.g. via
+linear history required, CI green before merging, and stacked PRs (`gh stack`) for anything
+bigger than one reviewable change.** Apply when setting up a new repo (e.g. via
 `ignite:kickoff`) or when asked to align an existing one. This is a **per-repo,
 explicit-confirmation action**, not standing authorization to change settings unprompted.
 
