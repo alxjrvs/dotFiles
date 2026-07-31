@@ -296,9 +296,17 @@ name = "gh extensions"
 # file order, so a fresh machine has no `gh` on PATH until packages has run.
 #
 # `gh` has no declarative manifest and boom has no `gh` pkg manager (brew/mise/cargo/npm/
-# pipx/gem/apt/dnf/flatpak only), so this is imperative by necessity: install-if-absent, then
-# let gh's own daily extension auto-update keep it current. Not `|| true` — an extension the
-# stacked-PR workflow depends on should fail loudly, not silently go missing.
+# pipx/gem/apt/dnf/flatpak only), so this is imperative by necessity: install-if-absent. Not
+# `|| true` — an extension the stacked-PR workflow depends on should fail loudly, not silently
+# go missing.
+#
+# Deliberately install-only, NOT upgrade. gh does not auto-update extensions: it "will check
+# for new versions once every 24 hours and display an upgrade notice" when the extension runs
+# — a notice, not an install. So this pins nothing and refreshes nothing; `gh stack` stays on
+# whatever version first landed until someone runs `gh extension upgrade gh-stack`. That is a
+# live trap for a v0.1.0 preview tool, and the daily notice is the only thing that surfaces it.
+# Revisit (add an upgrade step, or `boom lock`-style pinning) if the version drifts far enough
+# to bite; don't assume this section keeps it current, because it doesn't.
 #
 # github/gh-stack is the OFFICIAL GitHub extension (public preview since 2026-07-30), which
 # matters because `gh ext search stack` returns four same-named community forks

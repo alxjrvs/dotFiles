@@ -34,14 +34,15 @@ dotFiles boomfile installs it (`gh extensions` section), so it should already be
 `gh extension install github/gh-stack` if not. Beware `gh ext search stack`: four community
 extensions share the name, and only `github/gh-stack` is the one GitHub ships.
 
-This checklist is already stack-compatible, and one item is *required* by stacks rather than
-merely preferred:
-- `required_linear_history` — `gh stack modify` refuses to restructure a stack whose history has
-  merge commits or diverged branches, so linear history is a precondition, not a taste.
-- `bypass_actors: []` — stack merges **cannot** bypass merge requirements at all (`gh stack merge`
-  says so outright). A repo whose agent path depends on bypass simply can't use stacks.
-- `allow_auto_merge=true` — auto-merge coexists with stacks: `gh stack unstack` deliberately
-  leaves a PR stacked when it is queued or has auto-merge enabled.
+This checklist is already stack-compatible, and **two of its items turn out to be preconditions**
+for stacks rather than merely preferred:
+- `required_linear_history` — **precondition.** `gh stack modify` refuses to restructure a stack
+  whose history has merge commits or diverged branches, so linear history is not a taste here.
+- `bypass_actors: []` — **precondition, from the other direction.** Stack merges **cannot** bypass
+  merge requirements at all (`gh stack merge` says so outright), so a repo whose agent path
+  depends on a bypass actor simply can't use stacks.
+- `allow_auto_merge=true` — compatible: auto-merge coexists with stacks, since `gh stack unstack`
+  deliberately leaves a PR stacked when it is queued or has auto-merge enabled.
 - Squash-only is fine — `gh stack merge --squash` picks the method per-merge, *unless* a merge
   queue is in play (below), where the queue chooses and any method flag is ignored with a warning.
 

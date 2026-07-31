@@ -255,6 +255,16 @@ itself comes from mise, sections run in file order, and a fresh machine has no `
 packages has run. The grep matches `github/gh-stack` including the owner, because `gh ext search
 stack` returns four same-named community extensions and only one of them is GitHub's.
 
+It is install-only, and **that is a weaker guarantee than the Claude CLI step it mirrors.** The
+Claude CLI genuinely self-updates after install; `gh` extensions do not — gh "will check for new
+versions once every 24 hours and display an upgrade notice", which is a *notice*, not an install.
+So `gh stack` stays on whatever version first landed until someone runs `gh extension upgrade`.
+For a v0.1.0 public-preview tool that is a real trap, and the daily notice is the only thing that
+surfaces it. An upgrade step was not added because "install this extension" was the ask and a
+network call on every `boom source` is not free; revisit if the version actually drifts far enough
+to bite. The failure mode is documented rather than fixed, deliberately — but it is documented,
+because the first draft of this section wrongly claimed gh auto-updates extensions.
+
 Two things fell out of reading the extension's actual contract rather than assuming:
 
 - **The existing checklist was already a precondition, not merely compatible.** `gh stack modify`
