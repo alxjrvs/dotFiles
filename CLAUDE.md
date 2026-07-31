@@ -62,6 +62,8 @@ Small steps (`chmod 700 ~/.ssh`, `lefthook install`) are inline `run` (`on = "ap
 
 `Brewfile` holds **only** `mise` (bootstrap), casks (GUI apps, fonts), and system libs with no mise equivalent. `mise.toml` holds all language toolchains AND dev CLIs (`jq`, `shellcheck`, `shfmt`). If you're about to add a CLI to `Brewfile`, stop — it goes in `mise.toml` unless it's `mise` itself or a cask.
 
+**`gh` extensions are the one exception to both** — they aren't packages either manager knows about, and boom has no `gh` manager, so the `gh extensions` section carries install-if-absent `run` steps (today: the official `github/gh-stack`, for stacked PRs). That section **must stay after `packages`**: `gh` comes from mise and sections run in file order, so a fresh machine has no `gh` on PATH before it.
+
 ## Terminal: Ghostty (sole terminal)
 
 Ghostty is the only terminal (`TERMINAL=ghostty`, `ghostty/config`) — one symlinked file for rendering + keybinds/visor. Parallel Claude Code sessions run through `claude agents` mode directly (standalone Ghostty, no multiplexer: `claude agents` already does parallel dispatch, session persistence, and git-worktree isolation, so a multiplexing terminal is redundant). `boom code` mirrors `~/Code` into workspaces: `boom code init [DIR]` records the dir, `boom code claude` symlinks every repo into one flat dir and opens `claude agents` there so each repo is `@`-taggable for dispatch. (cmux, a libghostty agent multiplexer, was removed for this reason; `boom code cmux` — the per-repo workspace variant — is an unused engine feature.)
