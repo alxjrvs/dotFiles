@@ -1,0 +1,42 @@
+name: dependabot-auto-merge
+
+# Turns on GitHub's own auto-merge for Dependabot's grouped minor/patch action
+# bumps. It does not merge anything itself: `gh pr merge --auto` hands the PR to
+# GitHub, which waits for the required `lint` check exactly like an agent PR
+# does. Branch protection stays the gate; this only removes the human click.
+#
+# Why a workflow at all: there is no native "auto-merge Dependabot" switch —
+# dependabot.yml has no such key, and the per-PR auto-merge button needs a human.
+#
+# `on: pull_request` (never pull_request_target): Dependabot-triggered runs get a
+# read-only GITHUB_TOKEN by default but have respected the `permissions:` key
+# since Oct 2021, so plain pull_request suffices. pull_request_target would run
+# with a write token in base-branch context — unnecessary risk for a job that
+# never checks out the PR's code.
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dependabot/fetch-metadata@v2
+        id: meta
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # An explicit allowlist, not `!= major`: if update-type ever comes back
+      # empty (a metadata failure, a shape this action doesn't classify), a
+      # denylist would auto-merge it. This fails closed to a manual PR instead.
+      - name: Enable auto-merge (minor + patch only)
+        if: >-
+          steps.meta.outputs.update-type == 'version-update:semver-minor' ||
+          steps.meta.outputs.update-type == 'version-update:semver-patch'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
