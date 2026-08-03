@@ -17,7 +17,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Set mise up (PATH + shims) but skip the full `mise install` — we only
       # need the lint tools, not the whole toolchain (node, bun, neovim…).
