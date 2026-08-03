@@ -1,6 +1,6 @@
 ---
 name: agent-friendly-repo
-description: Make a GitHub repo agent-friendly for automated PR → auto-merge — squash-only merge settings, a single ruleset (linear history, non-fast-forward, one aggregate status check, no required human review, no bypass), stacked-PR support via the official `github/gh-stack` extension, and optionally a merge queue. Use when the user says "make this repo agent-friendly", "set up auto-merge", "align merge settings + branch protection", "add a merge queue", "set up stacked PRs", or bootstraps a repo and wants the agent completion path (`gh pr merge --auto`) to work. The executable version of the "Repository merge & branch-protection defaults" + "Agent worktree & merge workflow" sections in ~/.claude/CLAUDE.md.
+description: Make a GitHub repo agent-friendly for automated PR → auto-merge — squash-only merge settings, a single ruleset (linear history, non-fast-forward, one aggregate status check, no required human review, no bypass), stacked-PR support via the official `github/gh-stack` extension, optional Dependabot auto-merge, and optionally a merge queue. Use when the user says "make this repo agent-friendly", "set up auto-merge", "align merge settings + branch protection", "add a merge queue", "set up stacked PRs", "auto-merge dependabot", or bootstraps a repo and wants the agent completion path (`gh pr merge --auto`) to work. The executable version of the "Repository merge & branch-protection defaults" + "Agent worktree & merge workflow" sections in ~/.claude/CLAUDE.md.
 ---
 
 # agent-friendly-repo
@@ -60,6 +60,58 @@ Stack-specific behavior worth knowing before recommending it:
 - `delete_branch_on_merge` + stacks: not verified here. `gh stack sync` prunes merged branches
   locally (`--prune` to skip the prompt); if a repo relies on server-side retargeting of child
   PRs, confirm it on that repo rather than assuming.
+
+**Dependabot auto-merge — the same completion path, for the bot (optional).**
+This checklist already removes the only real blocker: **no required human review** means a
+Dependabot PR needs nothing but a green aggregate check. But there is **no native switch** —
+`dependabot.yml` has no automerge key (Renovate does; Dependabot doesn't) and the per-PR
+auto-merge button needs a human click. The mechanism is one small workflow that calls
+`gh pr merge --auto` on Dependabot's PRs; GitHub's own gate does the waiting.
+
+```yaml
+name: dependabot-auto-merge
+on: pull_request                    # NOT pull_request_target — see below
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dependabot/fetch-metadata@v2
+        id: meta
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Enable auto-merge (minor + patch only)
+        if: >-
+          steps.meta.outputs.update-type == 'version-update:semver-minor' ||
+          steps.meta.outputs.update-type == 'version-update:semver-patch'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Four things that decide whether this works on a given repo:
+- **`on: pull_request`, not `pull_request_target`.** Dependabot-triggered runs get a read-only
+  `GITHUB_TOKEN` *by default*, but have respected the `permissions:` key since Oct 2021, so plain
+  `pull_request` is sufficient. `pull_request_target` runs with a write token in base-branch
+  context — unnecessary risk for a job that never checks out PR code.
+- **Actions secrets are unavailable to Dependabot-triggered runs** (only *Dependabot* secrets
+  are). If the aggregate gate job needs a secret, it fails on every Dependabot PR and auto-merge
+  simply never fires. Check this before promising it — a hermetic CI is a precondition.
+- **A merge queue breaks it.** `GITHUB_TOKEN` **cannot add a PR to a merge queue**; that needs a
+  PAT or GitHub App token. So the merge-queue step and this step conflict — surface the choice
+  rather than configuring both and leaving Dependabot PRs stuck queued-but-never-added.
+- **A `GITHUB_TOKEN` merge triggers no downstream workflows.** A `push:`-on-default-branch job
+  won't run for these merges. Harmless (the PR was already gated), but not invisible.
+
+Gate on an **allowlist** (`== minor || == patch`), never a denylist (`!= major`): if
+`update-type` ever comes back empty, a denylist auto-merges it. Pair with a `dependabot.yml`
+group scoped to `update-types: ["minor", "patch"]` so majors arrive as separate manual PRs.
+`update-type` is documented as "the highest semver change being made by this PR", so it holds for
+grouped PRs too.
 
 **Merge queue — the throughput unlock for parallel agents (optional, gated on CI support).**
 `strict` required-status-checks (require-branch-up-to-date-before-merge) *serializes* parallel PRs: each merge marks every other open PR out-of-date → forced rebase + full CI re-run per PR. A **merge queue** removes that churn while preserving "tested against latest main" (it tests each PR against the merged result). See the sequencing hazard below — enabling it before CI handles `merge_group` hangs every PR.
@@ -134,7 +186,14 @@ Stack-specific behavior worth knowing before recommending it:
 
 8. **Merge queue (optional, only if the user wants it).** Follow the sequencing hazard below.
 
-9. **Report** the final state: merge settings, ruleset id + rules, whether classic was removed, aggregate-gate action taken, queue enabled or deferred (and why), and **stack readiness** — `gh extension list | grep github/gh-stack` for the tool, plus whether `required_linear_history` and empty `bypass_actors` hold (the two rules stacks actually require).
+9. **Dependabot auto-merge (optional, only if the user wants it).** Confirm the repo actually has
+   a `.github/dependabot.yml` (if not, that's the first question — which ecosystems), that the
+   aggregate gate job needs no Actions secrets, and that no merge queue is enabled. Then add the
+   workflow above plus a minor/patch group, and **ask for the update-type ceiling** rather than
+   assuming it — `github-actions` bumps in particular change code that runs against a
+   write-scoped token.
+
+10. **Report** the final state: merge settings, ruleset id + rules, whether classic was removed, aggregate-gate action taken, queue enabled or deferred (and why), and **stack readiness** — `gh extension list | grep github/gh-stack` for the tool, plus whether `required_linear_history` and empty `bypass_actors` hold (the two rules stacks actually require).
 
 ## Critical sequencing hazard — merge queue
 
@@ -152,6 +211,11 @@ Then agents complete with `gh pr merge --auto --squash`, which adds the PR to th
 - **`enforce_admins`/no-bypass = CI green for everyone, including alxjrvs.** For a genuine one-off emergency, disable+re-enable rather than weakening the default (delete the ruleset temporarily, or from a plain terminal). Don't add a standing bypass.
 - **Aggregate gate, not per-check requirements.** Requiring individual path-filtered jobs strands required checks in "pending". If you can't find/scaffold an aggregate job, stop and surface that — don't require the individual jobs as a fallback.
 - **Merge queue is opt-in and CI-gated.** Never add the `merge_queue` rule before the `merge_group:` trigger is on `main`. If CI has no `merge_group:` trigger, do the CI PR first (or defer the queue) — never enable it speculatively.
+- **Dependabot auto-merge is opt-in, allowlisted, and queue-incompatible.** Never gate it with
+  `!= major` (fails open on an empty `update-type`), never enable it on a repo whose CI needs
+  Actions secrets (they're unavailable to Dependabot runs, so it silently never fires), and never
+  configure it alongside a merge queue without swapping `GITHUB_TOKEN` for a PAT/App token —
+  `GITHUB_TOKEN` cannot add a PR to a queue.
 - **Only `github/gh-stack`.** Never install a same-named community fork to satisfy "stacked PRs"; if the official extension is missing, install it or say so — don't substitute.
 - **Stacks are a workflow preference, not a repo mutation.** Nothing in this skill's write path enables them. Recommending stacks costs the repo nothing; the only repo-side facts are that `required_linear_history` and empty `bypass_actors` are prerequisites, and both are already on the checklist.
 - **Reference target:** SU-SRD PR #393 (the `merge_group` CI trigger + `changes` path-filter handling) and SU-SRD ruleset #9182849 are a known-good "after" state.

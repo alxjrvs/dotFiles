@@ -315,6 +315,34 @@ EOF
 Prefer a ruleset. GitHub takes the *union* of classic protection and rulesets, so running both is a
 footgun: you edit one and the other silently still applies.
 
+### Dependabot auto-merge: a workflow, because there is no switch (2026-08-03)
+
+The agent-friendly checklist already unblocks it — **no required human review** means a Dependabot
+PR needs only a green aggregate check — but nothing fires `--auto` on the bot's behalf:
+`dependabot.yml` has no automerge key (Renovate does; Dependabot doesn't), and the per-PR
+auto-merge button needs a human click. So the mechanism is a one-job workflow calling
+`gh pr merge --auto --squash`, gated on `github.actor == 'dependabot[bot]'`. It merges nothing
+itself; branch protection stays the gate.
+
+Four constraints, each of which quietly breaks it if ignored:
+
+- **`on: pull_request`, never `pull_request_target`.** Dependabot-triggered runs get a read-only
+  `GITHUB_TOKEN` by default but have respected the `permissions:` key since Oct 2021, so
+  `pull_request` suffices. `pull_request_target` would hand a write token to a base-branch-context
+  run for no benefit — this job never checks out PR code.
+- **Actions secrets are unavailable to Dependabot runs** (only *Dependabot* secrets are). A CI job
+  that needs a secret fails on every Dependabot PR, and auto-merge silently never fires. `lint.yml`
+  here is hermetic, which is why this works on this repo.
+- **`GITHUB_TOKEN` cannot add a PR to a merge queue** — so this and the optional merge-queue step
+  are mutually exclusive unless the token is swapped for a PAT/App token.
+- **Allowlist, not denylist.** The gate is `update-type == minor || == patch`, not `!= major`: if
+  `update-type` ever returns empty, a denylist auto-merges the thing it was meant to catch.
+
+Scoped to `github-actions` only — this repo has no npm/bun manifest, so pinned action tags are the
+whole dependency surface. Majors are excluded from the group and stay manual: an action major
+changes what code runs against a write-scoped token, which is the same supply-chain surface the
+*Standing threats* section keeps small.
+
 ---
 
 ## Secrets
