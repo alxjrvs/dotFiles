@@ -241,6 +241,13 @@ the recipes below are the reference it encodes.
   disable+re-enable the ruleset rather than adding a standing bypass. Find real check names via
   `gh api repos/<owner>/<repo>/commits/<branch>/check-runs --jq '.check_runs[].name'`.
   - The classic-protection fallback, for repos that cannot use rulesets, is in `DECISIONS.md`.
+- **Dependabot auto-merge** (opt-in, per repo): no required human review already unblocks it, but
+  nothing fires `--auto` for the bot, so it takes a one-job workflow
+  (`.github/workflows/dependabot-auto-merge.yml` here is the reference). `on: pull_request` with
+  an explicit `permissions:` block — never `pull_request_target`. Gate on an **allowlist**
+  (`update-type == minor || == patch`), never `!= major`. It cannot coexist with a merge queue
+  (`GITHUB_TOKEN` can't add a PR to one), and it silently never fires if CI needs Actions secrets
+  (Dependabot runs get only *Dependabot* secrets). Details in `DECISIONS.md`.
 
 ## Agent secret access
 
