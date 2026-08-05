@@ -21,7 +21,7 @@ jobs:
 
       # Set mise up (PATH + shims) but skip the full `mise install` — we only
       # need the lint tools, not the whole toolchain (node, bun, neovim…).
-      - uses: jdx/mise-action@v4.2.3
+      - uses: jdx/mise-action@v4
         with:
           install: false
       - name: Install lint tools
