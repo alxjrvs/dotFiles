@@ -378,6 +378,50 @@ biting. The prior entry said to revisit "if the version actually drifts far enou
 hasn't, so adding an upgrade step or a version-drift check would be machinery for a hypothetical.
 Re-check when a v0.2 lands.
 
+### Stacks become the default shape, and the merge queue is declined (2026-08-04)
+
+Owner's call, and it reverses the conclusion of the entry above. That entry argued the queue
+"stopped being optional" because `--auto` cannot land a stack and `gh stack merge` doesn't wait
+for green — so without a queue there was no fire-and-forget path. The facts are unchanged; the
+**decision** is that fire-and-forget was never worth its price here.
+
+What the queue actually costs on these repos:
+
+- **It is mutually exclusive with Dependabot auto-merge.** `GITHUB_TOKEN` cannot add a PR to a
+  merge queue, so enabling one silently breaks the workflow adopted in #97 — the thing that
+  removes a human click from every routine action bump. Trading a *daily* automation for an
+  *occasional* one is the wrong way round.
+- **It carries the `merge_group:` sequencing hazard.** Enable it before CI reports on the queue's
+  temp branches and every PR hangs forever. That is a real foot-gun standing between the repo and
+  a merge, permanently, in exchange for convenience on multi-layer changes.
+- **It weakens the guarantee stacks exist for.** Behind a queue a stack may be split across
+  consecutive merge groups, so the all-or-nothing property degrades to per-group.
+
+What "no queue" costs instead: the agent has to watch every layer to green before running
+`gh stack merge`. The earlier entry called that "a babysitting loop, not a completion path" —
+that framing was wrong, or at least overstated. `gh pr checks --watch` is a supported, bounded
+wait; the loop only becomes pathological if `main` moves faster than the stack can settle, which
+is a two-repo-contributor problem this repo does not have. The rule is therefore: sync, retry
+once, then report — never loop indefinitely.
+
+So the doctrine now reads: **stacks are the default shape for multi-part work; they land by
+watching green and merging directly; no queue.** `agent-friendly-repo` still knows how to build a
+queue, gated behind an explicit ask *and* a repo with no Dependabot auto-merge to lose.
+
+The other half of "lean in" is the part tooling can't do: **deciding the layers before writing
+the code.** Once work is one large commit, splitting it is archaeology, so `CLAUDE.md` now carries
+the decomposition test — a layer is something that could be reviewed and reverted on its own
+(an enabling refactor, a schema change ahead of its consumers, a mechanical rename, docs) and
+explicitly *not* a split by file, by commit count, or to hit a size target. With the honest
+counterweight attached: don't stack a single reviewable change, and don't manufacture layers to
+satisfy the rule. A one-layer stack is a PR with extra ceremony.
+
+Worth recording as evidence rather than principle: this doctrine was written across PRs #102 and
+#103, which were *themselves* stack-shaped — #103 built directly on #102's conclusions — and were
+shipped serially anyway, each waiting for the other to merge. The tooling wasn't live yet, which
+is a reason but not a good one. It is the clearest available measure of the gap between having
+the preference written down and actually reaching for it.
+
 Deliberately **not** adopted in the same change: `gh skill install github/gh-stack --agent
 claude-code`, which drops a GitHub-authored skill into `~/.claude/skills/` — the same directory
 boom glob-links into. It is a new agent-context surface from outside the repo, and the doctrine is

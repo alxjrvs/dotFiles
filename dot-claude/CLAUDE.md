@@ -164,12 +164,25 @@ Claude Code isolates background/subagent work into git worktrees by default
 overridden). Each agent gets `.claude/worktrees/<name>` on a **freshly created branch** off
 `origin/<default-branch>`.
 
-- **Prefer a stack of small PRs over one large one**, via the **official** `github/gh-stack`
-  extension (`gh stack`, public preview since 2026-07-30) — installed by the dotFiles boomfile's
-  `gh extensions` section, never a same-named community fork. Reach for it when a change is
-  bigger than one reviewable PR: `gh stack init` → `gh stack add` per layer → `gh stack submit`
-  (one PR per branch, each based on the one below) → `gh stack sync` after a layer lands. It owns
-  the cascading rebase across the whole stack, which is the part that is miserable by hand.
+- **A stack of small PRs is the default shape for multi-part work**, via the **official**
+  `github/gh-stack` extension (`gh stack`, public preview since 2026-07-30) — installed by the
+  dotFiles boomfile's `gh extensions` section, never a same-named community fork.
+  `gh stack init` → `gh stack add` per layer → `gh stack submit` (one PR per branch, each based
+  on the one below) → `gh stack sync` after a layer lands. It owns the cascading rebase across
+  the whole stack, which is the part that is miserable by hand.
+  - **Decide the shape before writing code, not at ship time.** Once the work is one large
+    commit, splitting it is archaeology. If the plan has separable layers, cut the branches up
+    front — that is the entire ergonomic win, and it is unavailable retroactively.
+  - **What earns its own layer:** a change that could be reviewed, and reverted, on its own. In
+    practice that means a refactor that enables the feature (not the feature), a schema or type
+    change ahead of its consumers, a mechanical rename or move separated from behavior, or docs
+    separated from code. **What does not:** splitting by file, by commit count, or to hit a size
+    target. A layer nobody could review in isolation is not a layer.
+  - **Don't stack a single reviewable change.** A one-layer stack is a PR with extra ceremony.
+    The test is whether a reviewer would want the layers separately, not whether the diff is big.
+  - **Stacks are the default, not a mandate.** When work genuinely resists layering — a change
+    that is atomic by nature, or an urgent fix — ship one PR and say why in a sentence. Don't
+    manufacture layers to satisfy the rule.
   - `gh stack submit`/`push`/`sync` are **not** matched by the rebase-guard (which tokenizes for
     `git push` / `gh pr create` specifically), so the guard is silent on them. That is not
     permission to publish a stale stack — `gh stack sync` (fetch + cascading rebase + push) is
@@ -181,12 +194,14 @@ overridden). Each agent gets `.claude/worktrees/<name>` on a **freshly created b
     needs `required_linear_history` and empty `bypass_actors`, which the `agent-friendly-repo`
     checklist already sets. Never enable auto-merge on the bottom PR as a substitute: that lands
     one layer and leaves the rest of the stack rebasing behind it.
-  - **Whether a stack can land *unattended* is a property of the repo, not the stack.** With a
-    merge queue, `gh stack merge` enqueues and the queue lands it once green (the stack may split
-    across groups, and merge-method flags are ignored) — that is the only fire-and-forget path.
-    Without a queue it merges *now*, checking only that each PR is open and non-draft, so a
-    pending or red check fails the whole batch. On a queue-less repo, an unattended job should
-    submit the stack and hand it back rather than merge speculatively.
+  - **Land a stack by watching it green, then merging — no merge queue.** That trade is
+    deliberate (`DECISIONS.md`): a queue would buy fire-and-forget but is mutually exclusive with
+    the Dependabot auto-merge workflow, since `GITHUB_TOKEN` cannot enqueue. So the completion
+    path is `gh pr checks <pr> --watch` on **every** layer, then
+    `gh stack merge --yes --squash`. `gh stack merge` waits for nothing — it checks only that
+    each PR is open and non-draft, and GitHub evaluates the real rules at merge time, so firing
+    it at a pending stack just burns the attempt. If `main` moves while you wait, a `strict`
+    policy rejects the merge: `gh stack sync` and retry once, then report rather than loop.
   - Checks are enforced **per PR against the stack's base branch**, so the default-branch ruleset
     governs every layer — no intermediate PR is an unguarded hole, and a required human review
     would block all of them.
@@ -198,9 +213,14 @@ overridden). Each agent gets `.claude/worktrees/<name>` on a **freshly created b
   `--force-with-lease` if already pushed). `origin/HEAD` moves while an agent works, so even a
   branch cut from a fresh base can be behind by push time. Do this up front and the rebase-guard
   is a silent no-op; skip it and the guard blocks the push with this same instruction.
-- **Completion = commit → push → PR → auto-merge.** `gh pr merge --auto --squash` (never
-  `-d`/`--delete-branch`) is the way to land work — GitHub's gated queue, not a local
-  `git merge`/`git push` into the shared `main` checkout. `delete_branch_on_merge` is enabled
+- **Completion has two shapes, and the stack one is not a special case.**
+  - *Single PR*: commit → push → PR → `gh pr merge --auto --squash`. GitHub waits for green.
+  - *Stack*: `gh stack sync` → `gh stack submit` → watch **every** layer green
+    (`gh pr checks <pr> --watch`) → `gh stack merge --yes --squash`. Nothing waits for you here,
+    so the watch step is mandatory, not diligence.
+
+  Both end at GitHub's own gate; neither is ever a local `git merge`/`git push` into the shared
+  `main` checkout. Never `-d`/`--delete-branch`. `delete_branch_on_merge` is enabled
   repo-wide on `alxjrvs/dotFiles` and `alxjrvs/botu`; check `.delete_branch_on_merge` on any
   other repo the agent pushes to and enable it if false. Where it isn't enabled, delete the
   remote branch manually *after confirming the PR merged* (`gh pr view --json state`):
@@ -238,15 +258,15 @@ overridden). Each agent gets `.claude/worktrees/<name>` on a **freshly created b
 ## Repository merge & branch-protection defaults
 
 Standing preference for personal repos: **squash-only merges, rebase-preferred branch updates,
-linear history required, CI green before merging, and stacked PRs (`gh stack`) for anything
-bigger than one reviewable change.** Apply when setting up a new repo (e.g. via
+linear history required, CI green before merging, stacked PRs (`gh stack`) as the default shape
+for multi-part work, and no merge queue.** Apply when setting up a new repo (e.g. via
 `ignite:kickoff`) or when asked to align an existing one. This is a **per-repo,
 explicit-confirmation action**, not standing authorization to change settings unprompted.
 
 **The executable version is the `agent-friendly-repo` skill**
 (`dot-claude/skills/agent-friendly-repo/`) — it reads current state, diffs against the checklist,
-asks, then applies the merge settings + ruleset (and optionally a merge queue). Use the skill;
-the recipes below are the reference it encodes.
+asks, then applies the merge settings + ruleset. (It can still build a merge queue, but that step
+is skipped by default — see below.) Use the skill; the recipes below are the reference it encodes.
 
 - **Squash-only**: `gh api -X PATCH repos/<owner>/<repo> -F allow_squash_merge=true
   -F allow_merge_commit=false -F allow_rebase_merge=false`. Safe to combine with
@@ -268,12 +288,13 @@ the recipes below are the reference it encodes.
   disable+re-enable the ruleset rather than adding a standing bypass. Find real check names via
   `gh api repos/<owner>/<repo>/commits/<branch>/check-runs --jq '.check_runs[].name'`.
   - The classic-protection fallback, for repos that cannot use rulesets, is in `DECISIONS.md`.
-- **Merge queue** — optional in general, but **required on any repo where agents should land
-  stacks unattended**, since `--auto` cannot merge a stack and `gh stack merge` doesn't wait for
-  green. It carries a `merge_group:` CI sequencing hazard (land the trigger on the default branch
-  *first*, or every PR hangs), which the `agent-friendly-repo` skill handles. It is also mutually
-  exclusive with the Dependabot auto-merge workflow — `GITHUB_TOKEN` cannot enqueue — so a repo
-  picks one: unattended stacks, or unattended Dependabot.
+- **Merge queue — deliberately NOT used.** It is the only fire-and-forget path for a stack, but
+  it is mutually exclusive with the Dependabot auto-merge workflow (`GITHUB_TOKEN` cannot
+  enqueue) and it carries a `merge_group:` CI sequencing hazard that hangs every PR if the
+  trigger isn't on the default branch first. The call: keep Dependabot, land stacks by watching
+  them green and merging directly. **Don't propose a queue as the fix for having to wait** — the
+  waiting is the accepted cost. The `agent-friendly-repo` skill still knows how to set one up if
+  a repo ever justifies it.
 - **Dependabot auto-merge** (opt-in, per repo): no required human review already unblocks it, but
   nothing fires `--auto` for the bot, so it takes a one-job workflow
   (`.github/workflows/dependabot-auto-merge.yml` here is the reference). `on: pull_request` with

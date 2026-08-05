@@ -52,18 +52,31 @@ Same first two steps — **verify** (step 1) and **commit** (step 2) on the curr
 
 4. **Submit**: `gh stack submit` pushes the branches and creates/updates one PR per branch, each based on the one below, then links them into a stack on GitHub. Non-interactively (or with `--auto`) it uses generated titles and creates PRs as **drafts** unless you pass `--open` — so for a stack meant to be reviewed, either write the titles interactively or pass `--open` deliberately.
 
-5. **Land it — and this is where the ordinary pipeline does not transfer.** `gh pr merge --auto` **cannot merge a stack**: GitHub's docs state "Auto-merge is not supported for stacked pull requests", and the legacy merge endpoint `gh pr merge` calls can't merge a stack at all. Use the Stacks API via `gh stack merge [<stack#>|<pr#>] --yes --squash`, which merges every PR up to and including the named one all-or-nothing.
+5. **Land it — watch, then merge.** `gh pr merge --auto` **cannot merge a stack**: GitHub's docs state "Auto-merge is not supported for stacked pull requests", and the legacy merge endpoint `gh pr merge` calls can't merge a stack at all. The Stacks API is the only way in, and **the house default is to use it directly — no merge queue** (see `DECISIONS.md` for why that trade was taken).
 
-   Which mode you're in depends on the repo:
-   - **Merge queue configured** → `gh stack merge` *enqueues* the stack and the queue lands it once checks pass. This is the only fire-and-forget path for a stack, and the closest analogue to `--auto`. The queue picks the merge method, so `--squash` is ignored with a warning; large stacks may be split across consecutive merge groups, so the all-or-nothing guarantee weakens to per-group.
-   - **No merge queue** → `gh stack merge` asks GitHub to merge **now**. It only checks that each PR is open and non-draft; GitHub evaluates the rules at merge time, so a red or still-pending aggregate check fails the whole batch. **Do not run it speculatively on an unattended job.** Either stop after step 4 and report the stack for a human to land, or — if the user explicitly asked you to see it through — wait for checks (`gh pr checks <bottom-pr> --watch`) and merge once green.
+   Because `gh stack merge` does not wait for green, *you* do. The sequence is:
 
-   Either way, never try to fake `--auto` by enabling auto-merge on the bottom PR and calling it done: that lands one layer into `main` and leaves the rest of the stack rebasing behind it.
+   ```
+   gh pr checks <pr> --watch --fail-fast     # for EVERY layer, not just the bottom
+   gh stack merge --yes --squash             # atomic: all layers or none
+   ```
+
+   Four things make this correct rather than a hopeful loop:
+
+   - **Watch every layer.** `gh stack merge` is all-or-nothing and GitHub evaluates branch protection for *each* PR against the stack's base branch at merge time. One red layer fails the whole batch, so a green bottom PR proves nothing about the stack.
+   - **Re-sync if `main` moved while you waited.** Under a `strict` required-status-checks policy the merge is rejected when a branch is behind. That failure is expected, not exceptional: run `gh stack sync` and retry the merge. If you lose that race twice in a row, stop and report — something is landing faster than the stack can settle, and a third attempt won't fix it.
+   - **`--squash` gives one squashed commit per layer**, preserving the layering in `main`'s linear history. That is the point of stacking; don't collapse the stack into a single commit.
+   - **A merge failure is a report, not a retry-forever.** `gh stack merge` surfaces GitHub's own reason (red check, out-of-date branch, unsatisfied rule). Relay it verbatim rather than re-running blind.
+
+   Never fake `--auto` by enabling auto-merge on the bottom PR: that lands one layer into `main` and leaves the rest of the stack rebasing behind it.
+
+   If the user said "don't merge", stop after step 4 and report the stack — same rule as the single-PR path.
 
 ## Guardrails
 
 - If required checks aren't configured on the repo, `--auto` may merge immediately — confirm the repo has branch protection before relying on it for unattended jobs.
 - **Check for a stack first, every time.** `gh pr merge --auto --squash` on a stacked PR merges it into its parent branch, not the default branch. This is the single most damaging way to misuse this skill.
-- **A stack on a queue-less repo has no unattended completion path.** Say so and hand back the stack rather than blocking on a wait loop or merging something that isn't green. If the user wants stacks to land unattended on that repo, the fix is the `agent-friendly-repo` skill's merge-queue step, not a workaround here.
+- **Watching a stack to green is the completion path, not a workaround.** These repos deliberately run without a merge queue, so `gh pr checks --watch` on every layer followed by `gh stack merge` *is* the supported flow. Don't propose a merge queue as the fix for having to wait — that trade was considered and declined (`DECISIONS.md`).
+- **Never merge a stack you haven't watched to green.** `gh stack merge` checks only that each PR is open and non-draft; everything real is evaluated server-side at merge time. Firing it at a pending stack burns the attempt and reports a failure that looks like a bug.
 - If the user said "don't auto-merge" (they sometimes want to land something ahead of this branch), stop after step 5 and report the PR URL.
 - Report the PR URL and the final state (draft/ready, auto-merge enabled) when done.
