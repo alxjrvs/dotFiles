@@ -65,7 +65,7 @@ Rules that apply whatever you are touching:
   and per-subagent. **Fable must never be pinned as the default** — a drift check fails if it is
   (e.g. via `/model`'s "set as default", which rewrites this file).
 - **Plugins** — `enabledPlugins` runs two marketplaces:
-  - `extraKnownMarketplaces.gnar` → `thegnarco/agent-skills` (`autoUpdate`): `audit`, `ignite`,
+  - `extraKnownMarketplaces.gnar` → `TheGnarCo/agent-skills` (`autoUpdate`): `audit`, `ignite`,
     `spacebase`, `gninety`; plus `typescript-lsp`, `commit-commands`, `frontend-design`, `expo`
     from `claude-plugins-official`. No "must-install" set exists — each entry earns its place by
     use (`ideate`/`toolkit` deliberately off). Drop `expo` if the Expo work it serves stops.

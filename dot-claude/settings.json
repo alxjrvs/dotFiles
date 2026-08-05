@@ -119,7 +119,7 @@
     "gnar": {
       "source": {
         "source": "github",
-        "repo": "thegnarco/agent-skills"
+        "repo": "TheGnarCo/agent-skills"
       },
       "autoUpdate": true
     },
