@@ -89,10 +89,15 @@ Rules that apply whatever you are touching:
   classifier's own prescribed mechanism for letting background/unattended jobs land a finished
   PR. It authorizes `gh pr merge --auto` — GitHub's gated queue, which still waits on required
   checks — and does **not** loosen the "no direct `git` merge/push onto `main`" rule.
-  **It does not cover `gh stack merge`**, which is a different command and so an unenumerated
-  decision, not an oversight to be quietly fixed: unlike `--auto`, a queue-less `gh stack merge`
-  merges immediately rather than waiting for green. Adding `Bash(gh stack merge:*)` is the
-  open question; until it is answered, an unattended job submits a stack and hands it back.
+  `permissions.allow` also carries **`Bash(gh stack merge:*)`** (added 2026-08-04), for the same
+  reason applied to stacks: `gh pr merge` literally cannot merge a stack, so without this the
+  preferred shape for large agent work had no completion path at all. It is a **narrower**
+  authorization than it looks — stack merges cannot bypass merge requirements, so on a repo with
+  the `agent-friendly-repo` ruleset it can only land a stack GitHub already considers mergeable.
+  The real caveat is timing, not privilege: queue-less, it merges *now* rather than waiting for
+  green, so an unattended job on a queue-less repo submits the stack and hands it back instead of
+  merging speculatively. That restraint is `ship`'s rule, and it is prose — the permission does
+  not enforce it.
 - **Worktree-checkout guard** — `PreToolUse` hook (matcher `Bash` →
   `~/.claude/hooks/worktree-checkout-guard.sh`, ordered *before* rebase-guard). Denies a
   `git checkout/switch <branch>` that would fail with "'<branch>' is already used by worktree".
@@ -115,15 +120,20 @@ Rules that apply whatever you are touching:
     pre-commit): 33 hermetic cases against throwaway git fixtures, under 2s.
     **Add a case before changing a guard.**
 - **Recorded PR review (`PostToolUse`)** — `~/.claude/hooks/pr-review.sh` fires after
-  `gh pr create` / `git push`; when the repo is in `PR_REVIEW_REPOS` (a bare **owner**, covering
+  `gh pr create` / `git push` / **`gh stack submit`**; when the repo is in `PR_REVIEW_REPOS` (a bare **owner**, covering
   every repo under it, or a fully-qualified `owner/repo`; defaults to `TheGnarCo BinfiniteLLC
   SalvageUnion-io RANDSUM alxjrvs`) it runs the adversarial review locally and posts it as a real
   PR review plus a `claude-review` commit status. It backgrounds itself immediately so it can
   never block a turn, and a failed reviewer reports `success` with "review unavailable (not a
   verdict)" rather than masquerading as a clean bill of health. `if` is a field on an individual
-  hook handler, never on the matcher group — one rule per handler, so two commands means two
-  handlers. **Advisory until a day-30 finding rate justifies requiring it: above ~1 finding per
-  10 PRs that changed code, promote; below, delete it and close the question.**
+  hook handler, never on the matcher group — one rule per handler, so three commands means three
+  handlers. The `gh stack submit` arm exists because that command matches *neither* of the other
+  two — it creates PRs via the Stacks API and pushes inside the gh process, so no `git push` Bash
+  call ever reaches PostToolUse — which meant stacking silently routed the largest changes around
+  the reviewer. It reviews the **checked-out layer only**, not the whole stack, so a green
+  `claude-review` on one layer is not a verdict on the others. **Advisory until a day-30 finding
+  rate justifies requiring it: above ~1 finding per 10 PRs that changed code, promote; below,
+  delete it and close the question.**
 - **Spacebase MCP key** — `SPACEBASE_API_KEY_COMMAND` resolves the gnar `spacebase` plugin's key
   in-process via `op-agent secret op://…`. Paired with deliberately-empty `SPACEBASE_API_KEY` /
   `_URL` / `_PROJECT_ID` so the plugin's `${VAR}` pass-through resolves to `""` (server defaults)

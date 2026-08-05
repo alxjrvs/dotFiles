@@ -336,6 +336,48 @@ stack equivalent belongs there too — but it is a different command with a diff
 is that settings get asked about, not added in passing. Left as an open question with the gap
 written into the contract, so an agent hits documented behavior rather than a silent denial.
 
+### Closing the stack gaps: permission, reviewer, cascade, drift (2026-08-04)
+
+The correction above left the stacked-PR path documented but still not *executable*. Four gaps,
+found by asking of each existing mechanism "does `gh stack` match this?" — the answer was no every
+time, and each no was silent.
+
+- **`Bash(gh stack merge:*)` added to `permissions.allow`.** The previous entry deferred this as an
+  open question. It shouldn't have been: `gh pr merge` cannot merge a stack *at all*, so an
+  unattended job had no way to land one and the "preferred shape for agent work" was unreachable in
+  the mode that matters. It is narrower than it looks — stack merges cannot bypass merge
+  requirements, so under the `agent-friendly-repo` ruleset it can only land what GitHub already
+  considers mergeable. The genuine caveat is timing, not privilege: queue-less it merges *now*
+  instead of waiting for green. That restraint lives in `ship` as prose, and prose is advisory —
+  stated plainly rather than pretended away.
+- **The PR-review hook never fired on a stack.** Its trigger arms were `gh pr create` and
+  `git push`; `gh stack submit` matches neither, because it creates PRs through the Stacks API and
+  pushes *inside the gh process*, so no `git push` Bash call ever reaches `PostToolUse`. The whole
+  argument for that hook was that 1,113 org PRs went unreviewed — and adopting stacks would have
+  routed precisely the largest changes, the ones stacking exists for, around the reviewer. Fixed in
+  both places it has to be fixed (the settings.json `if` handler *and* the script's own belt-and-
+  braces `case` gate). Coverage is honestly partial: it resolves the PR for the checked-out branch,
+  so a submit reviews one layer, not the stack. Reviewing all N would mean N detached `claude -p`
+  runs per submit; each layer gets reviewed when it is the checked-out one instead.
+- **`rebase-prs` hand-rolled the cascade `gh stack sync` does natively.** It told the agent to
+  `git switch` each branch and rebase onto its parent — which is strictly worse than the tool:
+  it force-pushes branch by branch, so a failure midway leaves the stack half-rebased with children
+  on commits that no longer exist, and it cannot reconcile the stack object on GitHub. Straight
+  "native over special": the skill now peels stacks off to `gh stack sync` and keeps its loop for
+  genuinely independent PRs. This also removes the odd situation where the skill that inspired
+  adopting `gh stack` was still competing with it.
+- **Three `gh` extensions were installed by hand and undeclared** — `dlvhdr/gh-dash`,
+  `meiji163/gh-notify`, `actions/gh-actions-cache` — so every fresh machine came up without them.
+  Exactly the drift this repo exists to prevent, and it was invisible because the `gh extensions`
+  section existed and looked complete. Declared rather than uninstalled, since each has a live
+  consumer; the owner-qualified grep is the same discipline gh-stack needed.
+
+**Not** changed, having been checked rather than assumed: `gh stack` is at v0.1.0 and v0.1.0 *is*
+the latest release (2026-07-29), so the documented install-only/no-upgrade trap is not currently
+biting. The prior entry said to revisit "if the version actually drifts far enough to bite" — it
+hasn't, so adding an upgrade step or a version-drift check would be machinery for a hypothetical.
+Re-check when a v0.2 lands.
+
 Deliberately **not** adopted in the same change: `gh skill install github/gh-stack --agent
 claude-code`, which drops a GitHub-authored skill into `~/.claude/skills/` — the same directory
 boom glob-links into. It is a new agent-context surface from outside the repo, and the doctrine is
