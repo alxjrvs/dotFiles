@@ -148,6 +148,10 @@ Symlinked individually into `~/.claude/` (the `Claude` section of the boomfile):
 - **The prompt is starship** (`starship.toml`); keep it minimal.
 - **Neovim is plugin-free** (single `nvim/init.lua`, native LSP, ≥0.11). No plugin manager, no distro.
 - **`link` semantics live in boom, not here** — this repo only *declares* links in the boomfile.
+- **`biome.json` carries only divergences from biome's defaults** — same discipline as `settings.json`. The lint rules are stock: there is no `rules` block, so it is biome's recommended set, and `linter.enabled` is omitted because it already defaults true (verified — omitting the block still catches `noDebugger`; only an explicit `false` disables it). `formatter.enabled` and `indentWidth: 2` were dropped for the same reason. The three keys that remain are each load-bearing, so don't "tidy" them away:
+  - `vcs.useIgnoreFile` — biome does **not** respect `.gitignore` by default. Without it, a bare `biome check` descends into `.claude/worktrees/`, which holds full copies of this repo.
+  - `formatter.indentStyle: "space"` — biome's default is **tab**. `useEditorconfig` defaults to *false*, so `.editorconfig` alone does not make biome agree with the rest of the repo.
+  - `overrides` → `dot-claude/settings.json` `expand: "always"` — stops biome and the Claude Code client rewriting that file past each other (see #91).
 
 ## Gotchas
 
