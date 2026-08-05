@@ -170,7 +170,7 @@ Three things make it the right shape:
 ### Statusline provenance moved to the Gnar repo (2026-07-27)
 
 `~/.local/bin/claude-*statusline` now comes from
-[`thegnarco/claude-statusline`](https://github.com/thegnarco/claude-statusline), migrated from
+[`TheGnarCo/claude-statusline`](https://github.com/TheGnarCo/claude-statusline), migrated from
 `alxjrvs/claude-statusline`, which that repo was seeded from. The scripts were **byte-identical at
 the switch**, so this changed provenance only; future updates now come from the shared Gnar repo.
 

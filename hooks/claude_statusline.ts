@@ -17,7 +17,7 @@ interface Api {
 // hooks/<name>.ts lives in <dotfiles>/hooks, so the repo is one dir up; the
 // statusline checkout sits beside the dotfiles repo (was $BOOM_CONFIG/..).
 const TARGET = join(import.meta.dir, "..", "..", "claude-statusline");
-const DEFAULT_REPO = "github.com/thegnarco/claude-statusline";
+const DEFAULT_REPO = "github.com/TheGnarCo/claude-statusline";
 
 // True when TARGET is a checkout of some *other* remote than `url`. Reads
 // .git/config rather than shelling out, so verify() can stay sync.
