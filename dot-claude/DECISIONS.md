@@ -281,6 +281,61 @@ Two things fell out of reading the extension's actual contract rather than assum
   natively. The rule lives in `CLAUDE.md` prose instead, with the honest caveat that prose is
   advisory. Revisit if a stale stack actually gets published.
 
+### Correction: auto-merge does not land a stack, so the merge queue stopped being optional (2026-08-04)
+
+The adoption above shipped one wrong claim, and it was the load-bearing one. `agent-friendly-repo`
+listed `allow_auto_merge=true` as "compatible: auto-merge coexists with stacks", citing
+`gh stack unstack`'s note that GitHub "leaves stacked" a PR that is queued or has auto-merge
+enabled. That sentence is real, but it describes GitHub **refusing to unstack a PR with a pending
+merge intent** — it says nothing about auto-merge being able to *land* a stack. GitHub's docs say
+the opposite outright: "Auto-merge is not supported for stacked pull requests", and "the legacy
+pull request merge endpoints can't merge a stack" — which is precisely the endpoint `gh pr merge`
+calls. The error was inferring a capability from a tool's edge-case help text instead of reading
+the feature's own contract.
+
+Why it mattered rather than being a footnote: **`--auto` is the entire reason the agent completion
+path is unattended.** It waits for green. `gh stack merge` does not — it verifies only that each PR
+is open and non-draft, then asks GitHub to merge now, and a pending or red aggregate check fails
+the whole all-or-nothing batch. So "stacked PRs are the standing preference for agent work" and
+"agents complete work unattended" were quietly in conflict on every repo without a merge queue:
+the agent could build and submit a stack it had no way to land.
+
+The resolution is to stop treating the queue as a nicety. With a queue, `gh stack merge` *enqueues*
+and the queue lands the stack once checks pass — the only fire-and-forget path a stack has, and the
+true analogue of `--auto`. So the merge queue is now **optional in general, required for unattended
+stacks**, and the skill says which of the two modes a repo ended up in rather than reporting
+"stack-ready" flatly. The cost is honest and worth stating: the queue is mutually exclusive with
+the Dependabot auto-merge workflow (`GITHUB_TOKEN` can't enqueue), so a repo picks one unattended
+path or the other.
+
+Two further facts came from reading the feature contract rather than the CLI help, both of which
+cut *in favor* of the existing checklist:
+
+- **Checks are enforced per PR against the stack's base branch** — merging PR #3 of
+  `main ← #1 ← #2 ← #3` requires #1 and #2 to satisfy the base branch's required checks, reviews
+  and CODEOWNERS. So the default-branch ruleset already governs every layer; an intermediate PR is
+  not an unguarded hole. The mirror image is that a required human review blocks *all* layers,
+  which is another reason "no required human PR reviews" stays on the checklist.
+- **Queue support is complete, not partial.** The original entry hedged that it "was still rolling
+  out at public preview". It isn't: "Stacks fully support merge queues." The real caveats are
+  sizing — the queue lets a merge group exceed its configured maximum by up to 50% to keep a stack
+  together, splits a stack that still doesn't fit across consecutive groups, and ejects every PR
+  above one that leaves the queue.
+
+`ship` was stack-blind and is now stack-first. That was the sharpest edge of the same error: a
+stacked PR's base is the branch below it, so the skill's documented final step —
+`gh pr merge --auto --squash` — would have merged a layer **into its parent branch** rather than
+the default branch, collapsing the stack. It now runs `gh stack view` before anything else and
+branches to a `sync` → `submit` → `merge` pipeline, and on a queue-less repo it submits and hands
+back rather than merging speculatively.
+
+**`Bash(gh stack merge:*)` was deliberately not added to `permissions.allow`.** The existing
+`Bash(gh pr merge:*)` rule exists so unattended jobs can land finished work, and by that logic the
+stack equivalent belongs there too — but it is a different command with a different risk shape
+(queue-less, it merges N PRs immediately instead of waiting for green), and `CLAUDE.md`'s own rule
+is that settings get asked about, not added in passing. Left as an open question with the gap
+written into the contract, so an agent hits documented behavior rather than a silent denial.
+
 Deliberately **not** adopted in the same change: `gh skill install github/gh-stack --agent
 claude-code`, which drops a GitHub-authored skill into `~/.claude/skills/` — the same directory
 boom glob-links into. It is a new agent-context surface from outside the repo, and the doctrine is

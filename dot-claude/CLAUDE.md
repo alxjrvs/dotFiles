@@ -89,6 +89,10 @@ Rules that apply whatever you are touching:
   classifier's own prescribed mechanism for letting background/unattended jobs land a finished
   PR. It authorizes `gh pr merge --auto` — GitHub's gated queue, which still waits on required
   checks — and does **not** loosen the "no direct `git` merge/push onto `main`" rule.
+  **It does not cover `gh stack merge`**, which is a different command and so an unenumerated
+  decision, not an oversight to be quietly fixed: unlike `--auto`, a queue-less `gh stack merge`
+  merges immediately rather than waiting for green. Adding `Bash(gh stack merge:*)` is the
+  open question; until it is answered, an unattended job submits a stack and hands it back.
 - **Worktree-checkout guard** — `PreToolUse` hook (matcher `Bash` →
   `~/.claude/hooks/worktree-checkout-guard.sh`, ordered *before* rebase-guard). Denies a
   `git checkout/switch <branch>` that would fail with "'<branch>' is already used by worktree".
@@ -160,12 +164,25 @@ overridden). Each agent gets `.claude/worktrees/<name>` on a **freshly created b
     `git push` / `gh pr create` specifically), so the guard is silent on them. That is not
     permission to publish a stale stack — `gh stack sync` (fetch + cascading rebase + push) is
     the stack-shaped version of the rebase-before-push rule, so run it first.
-  - `gh stack merge` merges every PR up to the chosen one all-or-nothing, and **cannot bypass**
-    merge requirements — so it needs `required_linear_history` and empty `bypass_actors`, which
-    the `agent-friendly-repo` checklist already sets. Behind a merge queue the stack is *queued*
-    instead, may land in separate groups, and merge-method flags are ignored.
+  - **A stack does not land via `gh pr merge --auto`.** GitHub: "Auto-merge is not supported for
+    stacked pull requests", and the legacy merge endpoint `gh pr merge` calls cannot merge a
+    stack at all. `gh stack merge [<stack#>|<pr#>]` (the Stacks API) is the only way — it merges
+    every PR up to the chosen one all-or-nothing and **cannot bypass** merge requirements, so it
+    needs `required_linear_history` and empty `bypass_actors`, which the `agent-friendly-repo`
+    checklist already sets. Never enable auto-merge on the bottom PR as a substitute: that lands
+    one layer and leaves the rest of the stack rebasing behind it.
+  - **Whether a stack can land *unattended* is a property of the repo, not the stack.** With a
+    merge queue, `gh stack merge` enqueues and the queue lands it once green (the stack may split
+    across groups, and merge-method flags are ignored) — that is the only fire-and-forget path.
+    Without a queue it merges *now*, checking only that each PR is open and non-draft, so a
+    pending or red check fails the whole batch. On a queue-less repo, an unattended job should
+    submit the stack and hand it back rather than merge speculatively.
+  - Checks are enforced **per PR against the stack's base branch**, so the default-branch ruleset
+    governs every layer — no intermediate PR is an unguarded hole, and a required human review
+    would block all of them.
   - Stack state lives in `.git/gh-stack` (untracked, per-clone), so a fresh agent worktree does
-    not inherit one — `gh stack checkout <stack#|pr#|url|branch>` re-attaches.
+    not inherit one — `gh stack checkout <stack#|pr#|url|branch>` re-attaches. Run `gh stack view`
+    before shipping: a branch that is stacked on GitHub can look unstacked locally.
 - **Rebase on the target before pushing.** Before the first `git push` / `gh pr create`:
   `git fetch origin && git rebase origin/<default>` (resolve conflicts; re-push with
   `--force-with-lease` if already pushed). `origin/HEAD` moves while an agent works, so even a
@@ -241,6 +258,12 @@ the recipes below are the reference it encodes.
   disable+re-enable the ruleset rather than adding a standing bypass. Find real check names via
   `gh api repos/<owner>/<repo>/commits/<branch>/check-runs --jq '.check_runs[].name'`.
   - The classic-protection fallback, for repos that cannot use rulesets, is in `DECISIONS.md`.
+- **Merge queue** — optional in general, but **required on any repo where agents should land
+  stacks unattended**, since `--auto` cannot merge a stack and `gh stack merge` doesn't wait for
+  green. It carries a `merge_group:` CI sequencing hazard (land the trigger on the default branch
+  *first*, or every PR hangs), which the `agent-friendly-repo` skill handles. It is also mutually
+  exclusive with the Dependabot auto-merge workflow — `GITHUB_TOKEN` cannot enqueue — so a repo
+  picks one: unattended stacks, or unattended Dependabot.
 - **Dependabot auto-merge** (opt-in, per repo): no required human review already unblocks it, but
   nothing fires `--auto` for the bot, so it takes a one-job workflow
   (`.github/workflows/dependabot-auto-merge.yml` here is the reference). `on: pull_request` with

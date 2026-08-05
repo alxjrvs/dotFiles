@@ -41,8 +41,23 @@ for stacks rather than merely preferred:
 - `bypass_actors: []` — **precondition, from the other direction.** Stack merges **cannot** bypass
   merge requirements at all (`gh stack merge` says so outright), so a repo whose agent path
   depends on a bypass actor simply can't use stacks.
-- `allow_auto_merge=true` — compatible: auto-merge coexists with stacks, since `gh stack unstack`
-  deliberately leaves a PR stacked when it is queued or has auto-merge enabled.
+- `allow_auto_merge=true` — **required for the ordinary path, but it cannot land a stack.**
+  GitHub's docs say it outright: "Auto-merge is not supported for stacked pull requests." A stack
+  lands only through the Stacks API — "the legacy pull request merge endpoints can't merge a
+  stack" — which is the endpoint `gh pr merge` calls. (`gh stack unstack`'s note that GitHub
+  "leaves stacked" a PR that is queued or has auto-merge enabled describes GitHub refusing to
+  *unstack* a PR with a pending merge intent. It is not evidence of an unattended completion
+  path, and reading it as one was this checklist's earlier error.)
+- **A merge queue is therefore not optional if stacks are to land unattended.** `gh pr merge
+  --auto` is the whole reason the ordinary agent path is fire-and-forget — it waits for green.
+  `gh stack merge` does **not** wait: it checks only that each PR is open and non-draft, then
+  asks GitHub to merge *now*, and a red or still-pending aggregate check fails the entire
+  all-or-nothing batch. The only wait-for-green equivalent for a stack is a **merge queue** —
+  with one configured, `gh stack merge` *enqueues* the stack and the queue lands it once checks
+  pass. Without a queue, an agent has to re-run `gh stack merge` after CI goes green, which is a
+  babysitting loop, not a completion path. So: recommending stacks on a repo is cheap;
+  recommending stacks *for unattended agent work* means recommending the queue with them, and
+  the queue carries the `merge_group:` sequencing hazard below.
 - Squash-only is fine — `gh stack merge --squash` picks the method per-merge, *unless* a merge
   queue is in play (below), where the queue chooses and any method flag is ignored with a warning.
 
@@ -53,8 +68,19 @@ Stack-specific behavior worth knowing before recommending it:
   batch, not just its layer.
 - **With a merge queue**, the stack is *added to the queue* rather than merged directly, and the
   selected PRs "may land in separate groups rather than all at once" — so the all-or-nothing
-  guarantee above does **not** hold behind a queue. Queue support for stacks was still rolling
-  out at public preview; verify on the repo before promising it.
+  guarantee above does **not** hold behind a queue. Queue support is otherwise complete, not
+  partial: "Stacks fully support merge queues. All pull requests in the stack are added to the
+  queue in the correct order." Two behaviors follow from that and are worth knowing before
+  sizing a stack — the queue "allows the merge group to exceed its configured maximum size by up
+  to 50 percent" to keep a stack together, and splits a stack that still doesn't fit across
+  consecutive merge groups; and "if a pull request is removed or ejected from the queue, all
+  pull requests above it in the stack are also removed", so one flaky layer ejects everything
+  above it.
+- Checks are enforced **per PR, against the stack's base branch**, not just on the bottom PR:
+  merging PR #3 of `main ← #1 ← #2 ← #3` requires #1 and #2 to satisfy the base branch's required
+  status checks, required reviews, and CODEOWNERS too. So the default-branch ruleset does govern
+  the whole stack — an intermediate PR is not an unguarded hole — and equally, a required human
+  review is fatal to *every* layer, not just the last.
 - Local stack state lives in `.git/gh-stack` (untracked), so it is per-clone — an agent worktree
   cut fresh does not inherit a stack. `gh stack checkout <stack#|pr#|url|branch>` re-attaches.
 - `delete_branch_on_merge` + stacks: not verified here. `gh stack sync` prunes merged branches
@@ -184,7 +210,11 @@ grouped PRs too.
    gh api -X DELETE repos/$o/$r/branches/$def/protection
    ```
 
-8. **Merge queue (optional, only if the user wants it).** Follow the sequencing hazard below.
+8. **Merge queue (optional in general — *required* if agents should land stacks unattended).**
+   Follow the sequencing hazard below. If the user wants stacked PRs as the default agent shape,
+   say up front that this step is the piece that makes it unattended: without a queue there is no
+   wait-for-green path for a stack, because `--auto` doesn't apply and `gh stack merge` merges
+   immediately or fails.
 
 9. **Dependabot auto-merge (optional, only if the user wants it).** Confirm the repo actually has
    a `.github/dependabot.yml` (if not, that's the first question — which ecosystems), that the
@@ -193,7 +223,7 @@ grouped PRs too.
    assuming it — `github-actions` bumps in particular change code that runs against a
    write-scoped token.
 
-10. **Report** the final state: merge settings, ruleset id + rules, whether classic was removed, aggregate-gate action taken, queue enabled or deferred (and why), and **stack readiness** — `gh extension list | grep github/gh-stack` for the tool, plus whether `required_linear_history` and empty `bypass_actors` hold (the two rules stacks actually require).
+10. **Report** the final state: merge settings, ruleset id + rules, whether classic was removed, aggregate-gate action taken, queue enabled or deferred (and why), and **stack readiness** — `gh extension list | grep github/gh-stack` for the tool, whether `required_linear_history` and empty `bypass_actors` hold (the two rules stacks actually require), and **whether a merge queue is configured**, since that is what decides if stacks can land unattended or only under supervision. State which of the two modes the repo ended up in rather than reporting "stack-ready" flatly.
 
 ## Critical sequencing hazard — merge queue
 
@@ -217,5 +247,6 @@ Then agents complete with `gh pr merge --auto --squash`, which adds the PR to th
   configure it alongside a merge queue without swapping `GITHUB_TOKEN` for a PAT/App token —
   `GITHUB_TOKEN` cannot add a PR to a queue.
 - **Only `github/gh-stack`.** Never install a same-named community fork to satisfy "stacked PRs"; if the official extension is missing, install it or say so — don't substitute.
-- **Stacks are a workflow preference, not a repo mutation.** Nothing in this skill's write path enables them. Recommending stacks costs the repo nothing; the only repo-side facts are that `required_linear_history` and empty `bypass_actors` are prerequisites, and both are already on the checklist.
+- **Stacks are mostly a workflow preference — with one repo-side exception.** Recommending stacks costs the repo nothing: `required_linear_history` and empty `bypass_actors` are their prerequisites and both are already on the checklist. But **unattended** stack landing does need a repo mutation, because `gh pr merge --auto` cannot land a stack and `gh stack merge` does not wait for green — so if the user wants agents to fire-and-forget a stack, the merge queue moves from optional to required, and step 8 stops being skippable. Say that plainly rather than implying stacks are free in every mode.
+- **Never claim auto-merge works on a stack.** It does not — GitHub says so explicitly, and the legacy merge endpoint `gh pr merge` calls cannot merge a stack at all. If a repo can't take a merge queue (e.g. it relies on the Dependabot auto-merge workflow, whose `GITHUB_TOKEN` can't enqueue), then on that repo stacks are an interactive workflow only; recommend them for human-driven work and keep unattended agent work on single PRs.
 - **Reference target:** SU-SRD PR #393 (the `merge_group` CI trigger + `changes` path-filter handling) and SU-SRD ruleset #9182849 are a known-good "after" state.
