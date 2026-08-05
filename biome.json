@@ -6,12 +6,7 @@
     "useIgnoreFile": true
   },
   "formatter": {
-    "enabled": true,
-    "indentStyle": "space",
-    "indentWidth": 2
-  },
-  "linter": {
-    "enabled": true
+    "indentStyle": "space"
   },
   "overrides": [
     {
