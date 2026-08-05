@@ -30,7 +30,8 @@
   },
   "permissions": {
     "allow": [
-      "Bash(gh pr merge:*)"
+      "Bash(gh pr merge:*)",
+      "Bash(gh stack merge:*)"
     ],
     "deny": [
       "Bash(security find-generic-password:*)",
@@ -83,6 +84,11 @@
             "type": "command",
             "command": "~/.claude/hooks/pr-review.sh",
             "if": "Bash(git push:*)"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pr-review.sh",
+            "if": "Bash(gh stack submit:*)"
           }
         ]
       }

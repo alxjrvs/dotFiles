@@ -321,6 +321,28 @@ name = "gh extensions"
 on = "sync"
 cmd = "gh extension list | grep -q 'github/gh-stack' || gh extension install github/gh-stack"
 
+# The three below were installed by hand and went undeclared until 2026-08-04, so every fresh
+# machine came up without them — the exact drift this repo exists to prevent. Declared now
+# rather than uninstalled because each has a live consumer; drop any that stops earning it.
+#
+# Same shape as gh-stack: install-if-absent, no `|| true`, owner-qualified grep. These three are
+# community extensions (no official equivalent), which is why the owner in each grep matters at
+# least as much as it does for gh-stack.
+[[section.run]]
+on = "sync"
+# `gh dash` — the PR/issue dashboard. The one that makes a multi-repo agent backlog reviewable.
+cmd = "gh extension list | grep -q 'dlvhdr/gh-dash' || gh extension install dlvhdr/gh-dash"
+
+[[section.run]]
+on = "sync"
+# `gh notify` — GitHub notifications in the terminal.
+cmd = "gh extension list | grep -q 'meiji163/gh-notify' || gh extension install meiji163/gh-notify"
+
+[[section.run]]
+on = "sync"
+# `gh actions-cache` — inspect/evict Actions caches. Published by the `actions` org itself.
+cmd = "gh extension list | grep -q 'actions/gh-actions-cache' || gh extension install actions/gh-actions-cache"
+
 [[section]]
 name = "macOS defaults"
 

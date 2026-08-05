@@ -53,7 +53,7 @@ The imperative residue the config can't express. A boom hook is a `hooks/<name>.
 Also NOT boom hooks — Claude Code hooks, linked into `~/.claude/hooks/`:
 
 - **`rebase-guard.sh` / `worktree-checkout-guard.sh`** — `PreToolUse` guards (see `dot-claude/CLAUDE.md`). They are the only deterministic enforcement in the setup.
-- **`pr-review.sh`** — `PostToolUse`: runs the adversarial review locally after `gh pr create` / `git push` and posts it as a PR review + a `claude-review` commit status. Backgrounds itself so it can never block a turn.
+- **`pr-review.sh`** — `PostToolUse`: runs the adversarial review locally after `gh pr create` / `git push` / `gh stack submit` and posts it as a PR review + a `claude-review` commit status. Backgrounds itself so it can never block a turn. The `gh stack submit` arm matches neither of the others (Stacks API + in-process push, so no `git push` Bash call), and covers the checked-out layer only.
 - **`hooks/tests/`** — `run.sh` + `cases.tsv`, a hermetic regression suite for the two guards (throwaway git fixtures in `$TMPDIR`, no network, <2s). Wired into `lint.yml` and lefthook pre-commit. **Add a case before changing a guard**: these are 200+ lines of security-relevant shell, and shipping them untested is how a `--dry-run` substring in an unrelated commit message came to disable the no-push-to-main rule.
 
 Small steps (`chmod 700 ~/.ssh`, `lefthook install`) are inline `run` (`on = "apply"`) entries, not files.
@@ -62,7 +62,7 @@ Small steps (`chmod 700 ~/.ssh`, `lefthook install`) are inline `run` (`on = "ap
 
 `Brewfile` holds **only** `mise` (bootstrap), casks (GUI apps, fonts), and system libs with no mise equivalent. `mise.toml` holds all language toolchains AND dev CLIs (`jq`, `shellcheck`, `shfmt`). If you're about to add a CLI to `Brewfile`, stop — it goes in `mise.toml` unless it's `mise` itself or a cask.
 
-**`gh` extensions are the one exception to both** — they aren't packages either manager knows about, and boom has no `gh` manager, so the `gh extensions` section carries install-if-absent `run` steps (today: the official `github/gh-stack`, for stacked PRs). That section **must stay after `packages`**: `gh` comes from mise and sections run in file order, so a fresh machine has no `gh` on PATH before it.
+**`gh` extensions are the one exception to both** — they aren't packages either manager knows about, and boom has no `gh` manager, so the `gh extensions` section carries install-if-absent `run` steps (today: the official `github/gh-stack` for stacked PRs, plus `dlvhdr/gh-dash`, `meiji163/gh-notify`, and `actions/gh-actions-cache`). Each grep is **owner-qualified** — `gh ext search stack` alone returns four same-named community forks, so a bare name is not an identity. That section **must stay after `packages`**: `gh` comes from mise and sections run in file order, so a fresh machine has no `gh` on PATH before it.
 
 ## Terminal: Ghostty (sole terminal)
 

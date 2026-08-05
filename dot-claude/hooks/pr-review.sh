@@ -38,8 +38,20 @@ exit_ok() { exit 0; }
 command -v jq > /dev/null 2>&1 || exit_ok
 input=$(cat 2> /dev/null) || exit_ok
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2> /dev/null) || exit_ok
+# `gh stack submit` is the stacked-PR equivalent of `gh pr create` + `git push`,
+# and matches NEITHER: it creates PRs through the Stacks API and pushes inside
+# the gh process, so no `git push` Bash call ever reaches PostToolUse. Without
+# this arm, adopting stacks would silently route the largest changes — the ones
+# stacking exists for — around the reviewer entirely.
+#
+# `gh stack sync` also pushes (force-with-lease, every branch) and is deliberately
+# NOT here. It is maintenance: a cascade-rebase onto a moved trunk replays the
+# same content under new SHAs, so firing on it would mean a full review per layer
+# every time trunk moves — cost without new signal, and the per-SHA lock can't
+# dedupe it because the rebase is what changes the SHA. Review on submit, when the
+# content is what changed.
 case "$cmd" in
-  *"gh pr create"* | *"git push"*) ;;
+  *"gh pr create"* | *"git push"* | *"gh stack submit"*) ;;
   *) exit_ok ;;
 esac
 
@@ -67,7 +79,13 @@ for entry in $PR_REVIEW_REPOS; do
 done
 [ "$allowed" = 1 ] || exit_ok
 
-# Only when there is an open PR for this branch.
+# Only when there is an open PR for this branch. NOTE for stacks: `gh stack
+# submit` creates/updates one PR per branch, but this resolves the PR for the
+# CHECKED-OUT branch only, so a submit reviews that one layer, not the whole
+# stack. That is partial coverage, deliberately — reviewing every layer would
+# mean N detached `claude -p` runs per submit, and each layer gets reviewed on
+# its own when it is the checked-out one. Don't read a green `claude-review`
+# status on one layer as a verdict on the stack.
 pr=$(gh pr view --json number -q .number 2> /dev/null) || exit_ok
 [ -n "$pr" ] || exit_ok
 
