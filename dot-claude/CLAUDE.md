@@ -88,23 +88,49 @@ Rules that apply whatever you are touching:
   and run no server-side advisor. Fable/Opus/Sonnet stay freely selectable per-session (`/model`)
   and per-subagent. **Fable must never be pinned as the default** — a drift check fails if it is
   (e.g. via `/model`'s "set as default", which rewrites this file).
-- **Plugins** — `enabledPlugins` runs two marketplaces. **Both are `autoUpdate: false`** (changed
-  2026-08-05): with `autoUpdate` on, a merge to either upstream's main was unattended code
+- **Plugins** — `enabledPlugins` runs **one** marketplace, at `autoUpdate: false` (changed
+  2026-08-05): with `autoUpdate` on, a merge to the upstream's main was unattended code
   execution here — new skills, new MCP servers, arbitrary code from a marketplace — reaching a
   session that runs `defaultMode: auto` with credentials available. The cost is updating by hand;
   that is the trade, and it is the same argument the *Standing threats* section already makes for
   keeping the plugin surface minimal.
-  - `extraKnownMarketplaces.gnar` → `TheGnarCo/agent-skills`: `audit`, `ignite`,
-    `spacebase`, `gninety`; plus `typescript-lsp`, `commit-commands`, `frontend-design`, `expo`
-    from `claude-plugins-official`. No "must-install" set exists — each entry earns its place by
-    use (`ideate`/`toolkit` deliberately off). Drop `expo` if the Expo work it serves stops.
-  - `extraKnownMarketplaces.binfinite` → `BinfiniteLLC/binfinite-app`, enabling
-    `binfinite-context@binfinite`. **A private repo**, so it silently fails to load anywhere the
-    credential helper can't reach `BinfiniteLLC` — a CI/Cowork box gets no plugin and no error
-    worth noticing. Its `project-registry` skill is a **resolver, not a store** —
-    it holds the app→site→EAS-app→Convex mapping and routes everything else to the
-    Netlify/Expo/Convex MCPs, so it must never accumulate copied prose. Drop it if Binfinite work
-    stops.
+  - `extraKnownMarketplaces.gnar` → `TheGnarCo/agent-skills`: `ignite`, `gninety`; plus
+    `typescript-lsp`, `commit-commands`, `frontend-design` from `claude-plugins-official`. No
+    "must-install" set exists — each entry earns its place by use (`ideate`/`toolkit` deliberately
+    off). `ignite` is greenfield-kickoff and therefore **cannot** be narrowed to a project by
+    nature; it is user-scoped or nothing.
+  - **User scope is the exception, not the default** (audited 2026-08-06). A user-scoped plugin
+    injects its skill list into *every* session, including repos it can never serve, so anything
+    that belongs to one project is declared in **that repo's checked-in
+    `.claude/settings.json`** — which also carries the marketplace, so no user-level
+    `extraKnownMarketplaces` entry is needed. `BinfiniteLLC/BinfiniteApp` is the worked example:
+    it declares `expo@expo-plugins`, `binfinite-context@binfinite`, `stripe`, `convex`, `posthog`
+    and both marketplaces itself. **Measure before keeping**: count real invocations
+    (`"skill": "<name>:` and `"name":"mcp__plugin_<name>` in `~/.claude/projects/**/*.jsonl`), not
+    bare name matches — a user-scoped plugin's own prompt injection makes it look ubiquitous.
+  - Four entries were dropped on 2026-08-06 after that audit, and the reasons are worth keeping:
+    - **`audit@gnar`** — the gnar catalog stopped publishing it on 2026-07-22 (PR #420); the
+      pipeline moved to `TheGnarCo/solutions-architect-skills` (private). The local cache was
+      pinned at 0.5.1 against an upstream 0.5.4, unfixable via this marketplace at any
+      `autoUpdate` setting, while costing **14 skills** every session. Re-add from the new
+      marketplace if the pipeline is wanted back — don't re-add it here.
+    - **`expo@claude-plugins-official`** — the *same* plugin as the `expo@expo-plugins` that
+      BinfiniteApp already declares project-scoped, and its bundled MCP server reported
+      `Needs authentication` at user scope. 22 skills + 1 agent for a duplicate.
+    - **`binfinite-context@binfinite`** — already project-scoped on BinfiniteApp, so the
+      user-scoped copy was pure duplication. Its `project-registry` skill is a **resolver, not a
+      store** — it holds the app→site→EAS-app→Convex mapping and routes everything else to the
+      Netlify/Expo/Convex MCPs, so it must never accumulate copied prose. Contrary to how it
+      reads, it bundles **no** MCP server and no secret resolver: one `SKILL.md`, nothing else.
+      Dropping it also retired the user-level `binfinite` marketplace — **a private repo**, so it
+      silently failed to load anywhere the credential helper couldn't reach `BinfiniteLLC` (a
+      CI/Cowork box got no plugin and no error worth noticing). BinfiniteApp declares that
+      marketplace itself, so nothing was lost.
+    - **`spacebase@gnar`** — a genuine bundled MCP server, verified healthy (`✔ Connected`) and
+      still **zero** tool invocations across 3,331 transcripts. Health was checked first
+      precisely because *broken* and *unused* are indistinguishable from usage data alone; it was
+      dropped as unused, not as broken. Its `SPACEBASE_*` env resolvers are retained (see
+      *Spacebase MCP key*) so re-enabling is a one-line change.
 - **UI / QoL** — custom `statusLine` + `subagentStatusLine` (`~/.local/bin/claude-*statusline`,
   from [`TheGnarCo/claude-statusline`](https://github.com/TheGnarCo/claude-statusline));
   `editorMode: vim` with `vimInsertModeRemaps: {"jj": "<Esc>"}` (`"<Esc>"` is the only supported
@@ -182,6 +208,11 @@ Rules that apply whatever you are touching:
   `_URL` / `_PROJECT_ID` so the plugin's `${VAR}` pass-through resolves to `""` (server defaults)
   instead of a literal `"${VAR}"`. Keep the `op://` ref **quoted** inside the `_COMMAND` value —
   the consumer runs it through `/bin/sh -c`, so a space would word-split it.
+  **Currently consumer-less** (2026-08-06): `spacebase@gnar` was dropped from `enabledPlugins`, so
+  nothing reads these four vars. They are retained deliberately — the resolver is the fiddly part
+  and re-enabling the plugin should not mean rediscovering it — but this is the one entry here
+  that is *not* load-bearing today. Delete all four if Spacebase work is done for good; the
+  vaulted `spacebase-api-key` item is untouched either way.
 - **Ninety (EOS) MCP token** — `NINETY_API_TOKEN_COMMAND` resolves the `gninety` plugin's
   Ninety.io PAT via `op-agent secret op://claude-agent/gninety/credential`. The empty
   `NINETY_API_TOKEN` / `NINETY_BASE_URL` are **load-bearing, not cosmetic**: `auth.ts` checks
