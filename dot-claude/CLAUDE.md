@@ -354,26 +354,54 @@ prompt and no dependency on the 1Password desktop app. This is the 1Password-rec
 automation tier.
 
 - **Scope = one vault.** The service account can read only the dedicated `claude-agent` vault
-  (1Password forbids granting an SA access to Personal/Private, *and* an SA's vault access is
-  immutable after creation — so agent secrets are *brought into* this vault rather than the SA
-  being granted others). That vault is the entire blast radius.
+  (1Password forbids granting an SA access to Personal/Private/Employee **or your default Shared
+  vault**, *and* an SA's vault access is immutable after creation — confirmed still true in 2026 at
+  both the CLI and web-UI docs — so agent secrets are *brought into* this vault rather than the SA
+  being granted others). That vault is the entire blast radius **of the service account**.
+  - It is **not** the blast radius of *the agent*, and the difference matters. The agent runs as
+    you, on your machine, so your desktop `op` integration is reachable from an ordinary Bash tool
+    call: `op vault list` enumerates every vault in the account (verified 2026-08-05, no prompt,
+    while `op whoami` reported "not signed in" — the CLI *session* is signed out; the desktop
+    integration answered). Item reads outside `claude-agent` do raise an approval prompt, so an
+    unattended job cannot satisfy one; the exposure is an *attended* session where a prompt is
+    approved reflexively. The gate's scope was not characterized — desktop integration typically
+    authorizes per-session, not per-item — so treat it as zero-to-one approvals, not one per read.
+    `Bash(op:*)` in `permissions.deny` is what removes the Bash path to this.
 - **Token lives in the macOS login keychain** (`security … -s op-claude-agent`), never on disk in
   plaintext, never in git. `boom source` runs `op-agent provision`, which creates the vault +
-  service account and stores the token on first run.
-- **The token never enters the model's context.** It is read from keychain *inline* inside the
-  `op-agent` CLI, confined to that one `op` process — so neither the SA token nor the resolved
-  secret reaches a Bash subprocess, the transcript, or OTEL tool spans. No wrapper, no exported
-  env var. `op-agent` is one verb-dispatched script: `secret` / `header` / `git-credential` /
-  `provision` / `status`.
+  service account and stores the token on first run, with `--expires-in` (90d default).
+- **The SA token never enters the model's context.** It is read from keychain *inline* inside the
+  `op-agent` CLI, confined to that one `op` process — so the SA token itself reaches neither a Bash
+  subprocess, the transcript, nor OTEL tool spans.
+  - **Resolved secrets are a different story, and the deny list is what covers them.** `op-agent`
+    prints its results to stdout by design — that is how a resolver returns a value — so `header`
+    and `git-credential get` each emit a live credential, and Bash stdout *is* model context.
+    Nothing structural prevents that; `Bash(op-agent:*)` does. `op-agent` is one verb-dispatched
+    script: `secret` / `header` / `git-credential` / `provision` / `status`.
+  - "No wrapper, no exported env var" holds for Claude Code, not everywhere: `gh-mcp-stdio` does
+    `export GITHUB_PERSONAL_ACCESS_TOKEN` into a long-lived server process, because Claude Desktop
+    supports neither `headersHelper` nor a `*_COMMAND` resolver. It is the best available there and
+    still beats a literal PAT in `claude_desktop_config.json` — just don't read the general claim
+    as covering it.
 - **Zero measured calls on an MCP server means "broken or unused", and the two are
   indistinguishable from usage data alone.** Check `claude mcp list` before concluding either;
   `boom verify` fails when any server is down.
 - **MCP secrets follow one canonical pattern.** For servers we install:
   `op run --env-file=.env -- <server>` (`boom mcp add`) with `op://` references in a committable
-  `.env`, resolved in-process and off disk. Surfaces we don't control use the tool's own native
-  hook fed by `op` — plugin-bundled stdio servers via a `*_COMMAND` resolver var; the GitHub MCP
-  (an `http` server at `api.githubcopilot.com/mcp/`, in the user-scoped `~/.claude.json`) via
-  Claude Code's `headersHelper` → `op-agent header op://…`. Claude Desktop supports neither, so
+  `.env`, resolved in-process and off disk. **This is 1Password's own published recommendation for
+  MCP servers** (their Nov 2025 guidance prescribes exactly it), so it is vendor-endorsed rather
+  than invented here — but note **it currently has zero instances in this repo**: every live
+  consumer is one of the native-hook paths below, which the framing calls the exception. Treat it
+  as the pattern for the next server we install, not as a description of what runs today.
+  Surfaces we don't control use the tool's own native hook fed by `op` — plugin-bundled stdio
+  servers via a `*_COMMAND` resolver var; the GitHub MCP
+  (an `http` server at `api.githubcopilot.com/mcp/`) via
+  Claude Code's `headersHelper` → `op-agent header op://…`. That server is **project-scoped** to
+  `~/Code/SU-SRD` in `~/.claude.json`, not user-scoped — so outside that directory, including this
+  repo, there is no GitHub MCP. A second `headersHelper` consumer lives beside it, the **`render`**
+  server on `op://claude-agent/render-api-key/credential`. **Neither is declared in the boomfile**,
+  so a fresh machine reproduces neither, and `boom verify`'s `claude mcp list | grep ✘` check
+  cannot see an *absent* server — only a configured-and-failing one. Claude Desktop supports neither, so
   it runs a *local* stdio `github-mcp-server` via `~/.local/bin/gh-mcp-stdio`, which resolves the
   same vault item in-process — never an `env` block with a literal PAT. A resolved secret never
   enters git, and never write a `${VAR}` into a git-tracked `.mcp.json` (`claude mcp add` can
@@ -384,8 +412,39 @@ automation tier.
   approval you don't have for those orgs, whereas a classic token is bounded by your own access
   and is self-SSO-authorizable at member level. Least privilege therefore rests on the SA-scoped
   vault + token expiry, not on per-repo scoping. Git's `credential.helper` points at
-  `op-agent git-credential`, so the PAT lives only in 1Password — no keychain cache, no second
+  `op-agent git-credential`, so the PAT is stored only in 1Password — no keychain cache, no second
   mechanism. Because the resolve path is `securityd` + network rather than a keychain *file*
-  read, it survives a sandbox `credentials.files` deny. Rotating is just updating the vault item.
+  read, it survives a sandbox `credentials.files` deny. Rotating the PAT is just updating the
+  vault item (rotating the **SA token** is not — that is web-UI only, see below).
+  - **"Lives only in 1Password" is about storage, not residency.** `credential.helper` is fronted
+    by git's `cache --timeout=900`, so for 15 minutes after any agent git operation the plaintext
+    PAT is held in `git-credential-cache--daemon`'s memory behind a socket in `~/.cache/git`. The
+    socket dir is `0700` so it is not a cross-user hole, but any *same-user* process — which the
+    agent is — can read it back with `git credential fill`, reaching the PAT with no `op` command
+    at all. `Bash(git credential:*)` in `permissions.deny` is what closes that path. The cache is
+    still worth keeping: 1Password's daily rate limit is **per account** (1,000 combined reads on
+    Individual/Family), so it is doing quota work, not just latency work.
+  - **`repo` + `workflow` is the scope to keep an eye on.** `workflow` permits writing
+    `.github/workflows/*`, and a merged workflow runs with that repo's `secrets.*` and its OIDC
+    identity — so repo write converts to the org's CI secret set. Combined with no required human
+    review (necessary, since agents can't approve their own PRs) and `gh pr merge` in
+    `permissions.allow`, that loop closes with no human in it. Drop `workflow` unless something
+    actually needs it.
+- **SA token rotation is web-UI only, and unscriptable.** `op service-account` has exactly two
+  subcommands — `create` and `ratelimit` — and nothing has been added in over two years. Rotate at
+  1Password.com → Service accounts → Token → Rotate Token, which issues a new token, keeps the same
+  permissions, and lets you expire the old one Now / 1 hour / 3 days. It does **not** let you add an
+  expiry to an existing token, so an open-ended SA can only gain one by being replaced. None of this
+  can be a boom step or a cron job; `op-agent status` warns ahead of time precisely because the fix
+  is manual.
+- **There may be no audit trail at all — check the plan tier.** The audit log, usage reports, and
+  the Events API are **1Password Business** features. On Individual/Family a service account's
+  `op read` leaves *no retrievable per-item, per-timestamp record*; the only signal is an aggregate
+  counter via `op service-account ratelimit`. So if this account is personal, "auditability" is not
+  part of the security story here and scope + expiry are the whole of it. Don't cite 1Password's
+  marketing claim about Activity Log visibility without checking which tier it applies to.
+- **Docs moved**: `developer.1password.com/docs/*` now redirects to `www.1password.dev/*`. Old
+  links still resolve but are no longer canonical.
 - **Your own dev work** still uses desktop biometric + `op run`/`op://`/Environments — the
-  service account is the agent's path, not yours.
+  service account is the agent's path, not yours. Note `Bash(op:*)` means an in-session Claude
+  can't run `op run -- npm publish` for you; that one runs from your terminal.
