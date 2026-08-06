@@ -105,28 +105,17 @@
     "command": "~/.local/bin/claude-subagent-statusline"
   },
   "enabledPlugins": {
-    "audit@gnar": true,
     "ignite@gnar": true,
-    "spacebase@gnar": true,
     "gninety@gnar": true,
     "typescript-lsp@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true,
-    "expo@claude-plugins-official": true,
-    "binfinite-context@binfinite": true
+    "frontend-design@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "gnar": {
       "source": {
         "source": "github",
         "repo": "TheGnarCo/agent-skills"
-      },
-      "autoUpdate": false
-    },
-    "binfinite": {
-      "source": {
-        "source": "github",
-        "repo": "BinfiniteLLC/binfinite-app"
       },
       "autoUpdate": false
     }
