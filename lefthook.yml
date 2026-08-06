@@ -31,11 +31,11 @@ pre-commit:
       run: gitleaks protect --staged --redact -v --no-banner
     settings-json-validity:
       # Backstop against committing a broken settings.json (breaks every Claude
-      # session), PLUS the same three content guardrails boomfile.toml's `boom
-      # verify` runs against the live ~/.claude/settings.json (MCP auto-approve
-      # keys, osxkeychain git-helper regression, Fable pinned as default model) —
-      # applied here to the staged file so a bad commit is caught immediately
-      # instead of waiting for the nightly launchd verify run.
+      # session), PLUS the same content guardrails boomfile.toml's `boom verify`
+      # runs against the live ~/.claude/settings.json (MCP auto-approve keys,
+      # osxkeychain git-helper regression, Fable pinned as default model,
+      # secret-path deny floor) — applied here to the staged file so a bad commit
+      # is caught immediately instead of waiting for the nightly launchd verify run.
       glob: "dot-claude/settings*.json"
       run: |
         for f in {staged_files}; do
@@ -44,6 +44,18 @@ pre-commit:
           grep -q 'op-agent git-credential' "$f" || { echo "agent git helper not wired to op-agent git-credential in $f"; exit 1; }
           ! grep -q 'osxkeychain' "$f" || { echo "forbidden osxkeychain git helper (cached-PAT regression) in $f"; exit 1; }
           ! grep -qE '"model"[[:space:]]*:[[:space:]]*"[^"]*fable' "$f" || { echo "Fable pinned as default model in $f"; exit 1; }
+          # The deny floor — the Bash path to a resolved secret. `op-agent header`
+          # and `op-agent git-credential get` each print a live credential to
+          # stdout, and stdout is model context; `op-agent header` is the command
+          # that leaked a PAT into a transcript on 2026-07-25. Until 2026-08-05 the
+          # deny array had no assertion, so it could be deleted and every gate
+          # stayed green. -F because these are literals stuffed with regex
+          # metacharacters: without it the pattern quietly means something else
+          # (as a regex `Bash(op:*)` matches "Bashop", not the real line), and
+          # which something depends on the grep dialect. -F removes the question.
+          for d in 'Bash(op:*)' 'Bash(op-agent:*)' 'Bash(git credential:*)'; do
+            grep -qF "\"$d\"" "$f" || { echo "missing deny entry $d in $f (secret-path floor)"; exit 1; }
+          done
         done
     toml-validity:
       # The boomfile.toml IS the repo — a parse error only surfaces at `boom
