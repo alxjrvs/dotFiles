@@ -54,26 +54,54 @@ Rules that apply whatever you are touching:
   classification.
   - `permissions.deny` is the deterministic floor that survives `auto`/bypass (deny is evaluated
     first): keychain reads of the agent token (`security find-generic-password`), raw private-key
-    and cloud-credential files, and the Bash path to secret resolution (`op-agent secret`,
-    `op read`, `op item get`). Denying those breaks nothing — the `*_COMMAND` resolvers and
-    `credential.helper` are exec'd by the MCP client and by git, not through the Bash tool.
-  - Be honest about what that buys: **defense-in-depth against an unsophisticated injected
-    one-liner, not a floor**, since `git push` authenticates with the same PAT. Least privilege
-    rests on the SA-scoped vault plus a token expiry (see *Agent secret access*).
+    and cloud-credential files, and the Bash path to secret resolution — **scoped to the binary,
+    not the verb**: `Bash(op:*)`, `Bash(op-agent:*)`, `Bash(~/.local/bin/op-agent:*)`,
+    `Bash(git credential:*)`. Denying those breaks nothing — the `*_COMMAND` resolvers and `credential.helper` are exec'd by the MCP
+    client and by git, and boom's `run` steps spawn `op-agent` as a child of boom, none of which
+    go through the Bash tool. The one real cost: asking Claude in-session to run
+    `op run -- npm publish` is now denied too. Run it from your own terminal.
+  - **Why the binary and not the verb** (changed 2026-08-05). Enumerating verbs is what failed:
+    the list blocked `op-agent secret`, `op read` and `op item get` but not `op-agent header` or
+    `op-agent git-credential get` — both of which print a live credential to stdout, and stdout is
+    model context. `op-agent header` is the command that leaked a PAT into a transcript on
+    2026-07-25 (`DECISIONS.md`), so the one verb with a confirmed incident was the one left
+    reachable, while `op-agent secret`, which never leaked, was blocked twice. `git credential
+    fill` reached the same PAT with no `op` command at all. Four entries out, four in.
+  - **Matching is token-aware, not raw string prefix** — verified: `op readx` runs despite a
+    `Bash(op read:*)` rule, because `readx` is a different token than `read`. Two consequences,
+    and they pull opposite ways. Good: `Bash(op:*)` matches the `op` binary only and does **not**
+    catch `open`. Bad: it does not catch a *differently spelled path* to the same binary either,
+    which is why `~/.local/bin/op-agent` is enumerated separately — that is the spelling this very
+    file uses in its `*_COMMAND` values, so it is the one most likely to be copied. Absolute paths
+    remain uncovered and are not coverable here.
+  - The floor now has a **regression check** in all three enforcement points (`boomfile.toml`
+    `[[section.check]]`, `lefthook.yml`, `lint.yml`). Before that it had none: the whole `deny`
+    array could be deleted and every gate stayed green. Note the boomfile patterns are
+    regex-escaped — these checks take JS regexes, and bare `Bash(op:*)` matches "Bashop".
+  - Be honest about what that buys: **defense-in-depth, not a boundary.** `git push` still
+    authenticates with the same PAT; deny matches command *spelling*, so an absolute path
+    (`/opt/homebrew/bin/op …`) is not covered and nothing in the permission model can cover it;
+    and everything unmatched falls to the auto-mode classifier, which is probabilistic and was
+    observed deciding two identically-shaped commands differently. Least privilege rests on the
+    PAT's scopes and the SA-scoped vault (see *Agent secret access*).
 - **Models** — no `model` or `advisorModel` pinned: sessions use Claude Code's built-in default
   and run no server-side advisor. Fable/Opus/Sonnet stay freely selectable per-session (`/model`)
   and per-subagent. **Fable must never be pinned as the default** — a drift check fails if it is
   (e.g. via `/model`'s "set as default", which rewrites this file).
-- **Plugins** — `enabledPlugins` runs two marketplaces:
-  - `extraKnownMarketplaces.gnar` → `TheGnarCo/agent-skills` (`autoUpdate`): `audit`, `ignite`,
+- **Plugins** — `enabledPlugins` runs two marketplaces. **Both are `autoUpdate: false`** (changed
+  2026-08-05): with `autoUpdate` on, a merge to either upstream's main was unattended code
+  execution here — new skills, new MCP servers, arbitrary code from a marketplace — reaching a
+  session that runs `defaultMode: auto` with credentials available. The cost is updating by hand;
+  that is the trade, and it is the same argument the *Standing threats* section already makes for
+  keeping the plugin surface minimal.
+  - `extraKnownMarketplaces.gnar` → `TheGnarCo/agent-skills`: `audit`, `ignite`,
     `spacebase`, `gninety`; plus `typescript-lsp`, `commit-commands`, `frontend-design`, `expo`
     from `claude-plugins-official`. No "must-install" set exists — each entry earns its place by
     use (`ideate`/`toolkit` deliberately off). Drop `expo` if the Expo work it serves stops.
-  - `extraKnownMarketplaces.binfinite` → `BinfiniteLLC/binfinite-app` (`autoUpdate`), enabling
+  - `extraKnownMarketplaces.binfinite` → `BinfiniteLLC/binfinite-app`, enabling
     `binfinite-context@binfinite`. **A private repo**, so it silently fails to load anywhere the
     credential helper can't reach `BinfiniteLLC` — a CI/Cowork box gets no plugin and no error
-    worth noticing. `autoUpdate` means a merge to that repo's main changes agent context
-    everywhere on the next update. Its `project-registry` skill is a **resolver, not a store** —
+    worth noticing. Its `project-registry` skill is a **resolver, not a store** —
     it holds the app→site→EAS-app→Convex mapping and routes everything else to the
     Netlify/Expo/Convex MCPs, so it must never accumulate copied prose. Drop it if Binfinite work
     stops.

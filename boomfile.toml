@@ -248,6 +248,31 @@ absent = ['"model"\s*:\s*"[^"]*fable']
 missing_file = "skip"
 message = "Fable pinned as default model in ~/.claude/settings.json (Fable is /model per-session only)"
 
+[[section.check]]
+# The deny floor — the Bash path to a *resolved* secret, not just to `op`.
+# `op-agent header` and `op-agent git-credential get` each print a live credential
+# to stdout, and stdout is model context. `op-agent header` is the exact command
+# that put a live PAT into a session transcript on 2026-07-25; that postmortem
+# produced a prose rule ("never echo a secret") and no deny entry, so the command
+# with a confirmed incident stayed reachable while `op-agent secret`, which never
+# leaked, was blocked twice. This is that gap closed in enforcement.
+#
+# Until 2026-08-05 this array had NO assertion anywhere: it could be deleted
+# wholesale and lefthook, CI and `boom verify` all stayed green. A floor with no
+# regression test is not a floor.
+#
+# The patterns are regex-ESCAPED on purpose. These checks take JS regexes (see the
+# Fable pattern above) and the deny strings are literals full of metacharacters, so
+# unescaped `Bash(op:*)` is the regex `Bash` + group `op:*` — it matches "Bashop"
+# and does NOT match the real line. Both spellings therefore fail loudly here rather
+# than passing while asserting nothing, because this is a `present` check; the same
+# mistake in an `absent` check would silently never fire. Escaped is still the
+# correct form, and it stays correct if boom ever matches these literally.
+path = "~/.claude/settings.json"
+present = ['"Bash\(op:\*\)"', '"Bash\(op-agent:\*\)"', '"Bash\(git credential:\*\)"']
+missing_file = "skip"
+message = "secret-path deny floor missing from ~/.claude/settings.json (op / op-agent / git credential)"
+
 # An MCP server can die silently and stay dead. Two of three configured servers
 # were failing to connect for an unknown period — spacebase (its resolver command
 # word-split an op:// ref containing spaces) and github (same bug, so no auth

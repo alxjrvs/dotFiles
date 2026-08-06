@@ -47,12 +47,12 @@ jobs:
       - name: settings.json validity
         run: jq -e . dot-claude/settings.json > /dev/null
 
-      # Mirrors lefthook's settings-json-validity: the same three content
-      # guardrails boomfile.toml's `boom verify` runs against the live
+      # Mirrors lefthook's settings-json-validity: the same content guardrails
+      # boomfile.toml's `boom verify` runs against the live
       # ~/.claude/settings.json (MCP auto-approve keys, osxkeychain git-helper
-      # regression, Fable pinned as default model), applied here to the
-      # committed file so CI catches drift immediately, not just the nightly
-      # launchd verify run on the live machine.
+      # regression, Fable pinned as default model, secret-path deny floor),
+      # applied here to the committed file so CI catches drift immediately, not
+      # just the nightly launchd verify run on the live machine.
       - name: settings.json content guardrails
         run: |
           f=dot-claude/settings.json
@@ -60,6 +60,20 @@ jobs:
           grep -q 'op-agent git-credential' "$f" || { echo "agent git helper not wired to op-agent git-credential in $f"; exit 1; }
           ! grep -q 'osxkeychain' "$f" || { echo "forbidden osxkeychain git helper (cached-PAT regression) in $f"; exit 1; }
           ! grep -qE '"model"[[:space:]]*:[[:space:]]*"[^"]*fable' "$f" || { echo "Fable pinned as default model in $f"; exit 1; }
+          # The deny floor. Until 2026-08-05 this array had no assertion at all:
+          # it could be deleted wholesale and every gate here stayed green. These
+          # three entries are the Bash path to a resolved secret — `op-agent
+          # header` and `op-agent git-credential get` each print a live credential
+          # to stdout, and stdout is model context. `op-agent header` is the exact
+          # command that leaked a PAT into a transcript on 2026-07-25; that
+          # postmortem produced a prose rule and no deny entry, which is the gap
+          # this closes. -F because the patterns are literals stuffed with regex
+          # metacharacters: without it the pattern quietly means something else
+          # (as a regex `Bash(op:*)` matches "Bashop", not the real line), and
+          # which something depends on the grep dialect. -F removes the question.
+          for d in 'Bash(op:*)' 'Bash(op-agent:*)' 'Bash(git credential:*)'; do
+            grep -qF "\"$d\"" "$f" || { echo "missing deny entry $d in $f (secret-path floor)"; exit 1; }
+          done
 
       # The boomfile.toml IS the repo — gate that every tracked TOML parses, so a
       # syntax error is caught here, not at `boom apply` time on a real machine.
