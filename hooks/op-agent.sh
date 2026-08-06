@@ -46,6 +46,14 @@ VAULT="${BOOM_vault:-claude-agent}"
 # quotes it — a silent failure that took down two MCP servers on 2026-07-25.
 # Renamed 'Claude Git PAT' → 'claude-git-pat' so quoting stops being load-bearing.
 PAT_REF="op://$VAULT/claude-git-pat/credential"
+# Lifetime for a NEWLY minted service-account token, and the warn threshold for an
+# existing one. 90d is a deliberate pick, not a vendor default: 1Password documents
+# no rotation cadence and no default/maximum for --expires-in. Long enough not to be
+# busywork on a machine that reprovisions rarely, short enough that a leaked token
+# has a horizon. Rotation is manual (web UI only), so the warning window has to be
+# wide enough to act on.
+SA_EXPIRY="${BOOM_sa_expiry:-90d}"
+SA_WARN_DAYS="${BOOM_sa_warn_days:-14}"
 
 # Load the SA token from the login keychain into THIS process only (no biometric,
 # headless-safe). Empty/missing → op falls back to desktop auth.
@@ -54,6 +62,45 @@ _load_sa() {
   t="$(security find-generic-password -s "$KEYCHAIN" -w 2> /dev/null || true)"
   [[ -n "$t" ]] && export OP_SERVICE_ACCOUNT_TOKEN="$t"
   return 0
+}
+
+# Print the SA token's `exp` claim (unix epoch) to stdout, or fail silently.
+#
+# 1Password provides NO way to see when a service-account token expires: there is
+# no `op service-account list`/`get`, no expiry field in the UI's token view, and
+# no pre-expiry email or Watchtower alert. So when a token does lapse, every agent
+# secret resolve starts failing at once with no warning — the same failure shape as
+# the PAT probe below, which is why it lives in the same place.
+#
+# The tokens are JWTs behind an `ops_` scanner prefix, so the claim is readable
+# locally: no network, no extra 1Password call, no vault convention to maintain.
+# It reads the token already in this process's env and prints ONLY the epoch —
+# never the token, never any other claim. Any malformed/unexpected shape fails
+# closed to "unknown", which the caller treats as advisory rather than guessing.
+_sa_expiry_epoch() {
+  local tok payload exp
+  tok="${OP_SERVICE_ACCOUNT_TOKEN:-}"
+  [[ -n "$tok" ]] || return 1
+  command -v jq > /dev/null 2>&1 || return 1
+
+  tok="${tok#ops_}"
+  payload="$(printf '%s' "$tok" | cut -d. -f2)"
+  [[ -n "$payload" ]] || return 1
+
+  # base64url -> base64, then re-pad to a multiple of 4.
+  payload="${payload//-/+}"
+  payload="${payload//_//}"
+  case $((${#payload} % 4)) in
+    2) payload="$payload==" ;;
+    3) payload="$payload=" ;;
+    1) return 1 ;;
+  esac
+
+  # macOS shipped `-D` long before `-d`; try both rather than assume a version.
+  exp="$(printf '%s' "$payload" | { base64 -d 2> /dev/null || base64 -D 2> /dev/null; } |
+    jq -r '.exp // empty' 2> /dev/null)" || return 1
+  [[ "$exp" =~ ^[0-9]+$ ]] || return 1
+  printf '%s' "$exp"
 }
 
 # Emit one secret value to stdout (the `op read` contract: value on success,
@@ -136,7 +183,16 @@ cmd_provision() {
     local host sa token
     host="$(scutil --get LocalHostName 2> /dev/null || hostname -s)"
     sa="claude-agent-$host"
-    if token="$(op service-account create "$sa" --vault "$VAULT:read_items" --raw 2> /dev/null)" && [[ -n "$token" ]]; then
+    # --expires-in is CREATE-time only. 1Password's "Rotate Token" issues a new
+    # token but keeps the existing permissions and offers no way to add an expiry,
+    # and there is no CLI/API for it at all (`op service-account` has exactly two
+    # subcommands, `create` and `ratelimit`). So a long-lived SA can only gain an
+    # expiry by being REPLACED, and this flag only takes effect on a fresh
+    # provision — a new machine, or after deliberately deleting the keychain item
+    # and the old service account. Without it the token is open-ended, which is
+    # what the docs' "SA-scoped vault plus a token expiry" was resting on while no
+    # code passed the flag.
+    if token="$(op service-account create "$sa" --vault "$VAULT:read_items" --expires-in "$SA_EXPIRY" --raw 2> /dev/null)" && [[ -n "$token" ]]; then
       security add-generic-password -U -a "$USER" -s "$KEYCHAIN" -w "$token" 2> /dev/null && echo "op-agent: SA $sa created"
     else
       echo "op-agent: SA create failed (needs owner/admin token)"
@@ -163,6 +219,24 @@ cmd_status() {
     return 1
   }
   echo "op-agent: SA token in keychain ($KEYCHAIN)"
+
+  # SA token expiry. Checked before the PAT probe because it needs no network and
+  # no `op`: a lapsed SA token breaks every secret path at once, including the PAT
+  # resolve below, so reporting "PAT not resolvable" first would be a symptom
+  # masking its own cause. Expired fails verify (like the PAT's 401); an unreadable
+  # or absent claim is silent, since an open-ended token is the pre-2026-08-05
+  # normal and not itself a fault.
+  _load_sa
+  local sa_exp sa_days
+  if sa_exp="$(_sa_expiry_epoch)"; then
+    sa_days=$(((sa_exp - $(date +%s)) / 86400))
+    if [[ $sa_days -lt 0 ]]; then
+      echo "op-agent: SA token EXPIRED $((-sa_days))d ago — mint a new service account and re-run: op-agent provision" >&2
+      return 1
+    elif [[ $sa_days -le $SA_WARN_DAYS ]]; then
+      echo "op-agent: SA token expires in ${sa_days}d — rotation is 1Password web UI only (no CLI/API)"
+    fi
+  fi
 
   # PAT liveness. The agent's git PAT is a classic token with an expiry: when it
   # lapses, git-credential silently returns a dead token and every agent push then
