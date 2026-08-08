@@ -424,7 +424,9 @@ automation tier.
     as covering it.
 - **Zero measured calls on an MCP server means "broken or unused", and the two are
   indistinguishable from usage data alone.** Check `claude mcp list` before concluding either;
-  `boom verify` fails when any server is down.
+  `boom verify` fails when a server reports `✘` or `! Needs authentication` — but it only
+  sees servers visible from its CWD, and the launchd job sets none, so the project-scoped
+  `github`/`render` servers are invisible to it.
 - **MCP secrets follow one canonical pattern.** For servers we install:
   `op run --env-file=.env -- <server>` (`boom mcp add`) with `op://` references in a committable
   `.env`, resolved in-process and off disk. **This is 1Password's own published recommendation for
