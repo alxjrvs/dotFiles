@@ -21,24 +21,29 @@ input=$(cat)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2> /dev/null) || allow
 [ -n "$cmd" ] || allow
 
+# Shared parsing (quote-aware splitting, token normalization) lives beside this
+# file so both guards cannot drift apart again. Fail OPEN if it is missing.
+# shellcheck source=dot-claude/hooks/guard-lib.sh
+. "$(dirname -- "$0")/guard-lib.sh" 2> /dev/null || allow
+
 # Tokenize each simple command to find a real `git checkout`/`git switch` and the
 # branch it targets — a substring scan can't tell `echo git checkout main` or a
 # commit message from the real thing. A leading `cd <path>` retargets the repo.
 target=''
 work_dir=''
-segs=$(printf '%s' "$cmd" | sed -E 's/(\|\||&&|[;&|])/\n/g')
+segs=$(_split "$cmd")
 while IFS= read -r seg; do
-  seg="${seg#"${seg%%[![:space:]]*}"}"
   [ -n "$seg" ] || continue
   set -f
-  # shellcheck disable=SC2086 # intentional word-split of one shell segment
-  set -- $seg
+  # shellcheck disable=SC2046 # intentional word-split: _norm emits space-separated tokens
+  set -- $(_norm "$seg")
   set +f
-  prog=${1:-}
+  [ $# -gt 0 ] || continue
+  # basename, so `/usr/bin/git` is git. _norm has already dropped `command`,
+  # `env`, a leading `FOO=bar`, and shell-construct keywords.
+  prog=${1##*/}
   if [ "$prog" = cd ] && [ -n "${2:-}" ]; then
-    work_dir=$2
-    work_dir=${work_dir%\"}
-    work_dir=${work_dir#\"}
+    work_dir=$(_unquote "$2")
     case "$work_dir" in
       '~') work_dir=$HOME ;;
       '~'/*) work_dir=$HOME/${work_dir#'~'/} ;;
@@ -47,42 +52,59 @@ while IFS= read -r seg; do
   fi
   [ "$prog" = git ] || continue
   shift
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      -C | -c | --git-dir | --work-tree | --namespace | --exec-path)
-        shift
-        [ $# -gt 0 ] && shift
-        ;;
-      -*) shift ;;
-      *) break ;;
-    esac
-  done
+  set -f
+  # shellcheck disable=SC2046 # intentional word-split: _skip_global emits space-separated tokens
+  set -- $(_skip_global "$@")
+  set +f
   [ "${1:-}" = checkout ] || [ "${1:-}" = switch ] || continue
   shift
   # Creating or detaching is never the reflex this guards, and never collides.
+  cand=''
+  pathmode=0
+  positionals=0
   while [ $# -gt 0 ]; do
     case "$1" in
       -b | -B | -c | -C | --orphan) allow ;;
       --detach | -d) allow ;;
-      --) break ;;
+      --)
+        pathmode=1
+        break
+        ;;
+      # Redirections are not arguments. `git checkout feature-b 2>&1 | tail`
+      # tokenizes a trailing `2>`, which would otherwise count as a second
+      # positional and be misread as a path checkout. An operator that stands
+      # alone (`>`, `2>`) also consumes the filename token after it.
+      *'>'* | *'<'*)
+        case "$1" in
+          *'>' | *'<')
+            shift
+            [ $# -gt 0 ] && shift
+            ;;
+          *) shift ;;
+        esac
+        ;;
       -*) shift ;;
       *)
-        target=$1
-        break
+        positionals=$((positionals + 1))
+        [ -z "$cand" ] && cand=$(_unquote "$1")
+        shift
         ;;
     esac
   done
-  [ -n "$target" ] && break
+  # `git checkout <tree-ish> -- <path>` (and the `--`-less two-positional form)
+  # RESTORES files from that ref. It does not check the branch out, it succeeds
+  # against a branch held by another worktree (verified against real git), and it
+  # is a working recovery move — denying it blocked real work.
+  [ "$pathmode" = 1 ] && continue
+  [ "$positionals" -gt 1 ] && continue
+  if [ -n "$cand" ]; then
+    target=$cand
+    break
+  fi
 done << EOF
 $segs
 EOF
 [ -n "$target" ] || allow
-# Strip quotes so `git checkout "main"` — an accepted false negative before — is
-# now caught like any other spelling.
-target=${target%\"}
-target=${target#\"}
-target=${target%\'}
-target=${target#\'}
 
 GIT() {
   if [ -n "$work_dir" ]; then

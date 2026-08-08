@@ -9,7 +9,7 @@
 #
 # Builds throwaway git fixtures in $TMPDIR, pipes a synthetic PreToolUse payload
 # into each guard from inside the right fixture, and asserts on
-# .hookSpecificOutput.permissionDecision. No network, no side effects, <2s.
+# .hookSpecificOutput.permissionDecision. No network, no side effects, ~5s.
 set -u
 
 HERE=$(cd -- "$(dirname -- "$0")" && pwd)
@@ -127,6 +127,11 @@ while IFS=$'\t' read -r guard fixture command expected || [ -n "${guard:-}" ]; d
     fail=$((fail + 1))
     continue
   }
+
+  # `\n` in a case's command becomes a real newline, so multi-line commands and
+  # heredoc bodies — both of which the guards must treat differently from a
+  # single line — can still be written on one TSV row.
+  command=$(printf '%b' "$command")
 
   out=$(cd "$fd" && printf '%s' "$command" |
     jq -Rs '{tool_name:"Bash", tool_input:{command:.}}' |

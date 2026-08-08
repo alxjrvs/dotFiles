@@ -85,8 +85,13 @@ pre-commit:
     guard-tests:
       # The PreToolUse guards are the enforcement floor; a regression there is
       # silent and security-relevant. Runs whenever a guard or its cases change.
-      # Hermetic (throwaway git fixtures in $TMPDIR), no network, <2s.
-      glob: "dot-claude/hooks/*.sh"
+      # Hermetic (throwaway git fixtures in $TMPDIR), no network, ~5s.
+      #
+      # cases.tsv is in the glob because editing ONLY the expectations — which is
+      # how you weaken a suite — previously ran nothing. `tests/*` also covers the
+      # runner itself. Note this globs guard-lib.sh too, which is correct: it is
+      # sourced by both guards, so a change there can regress either one.
+      glob: "{dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
       run: dot-claude/hooks/tests/run.sh
 
 # commit-msg: forward-only hygiene guard. Rejects throwaway subjects (bare

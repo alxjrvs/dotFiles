@@ -43,6 +43,87 @@ rebase	wt-c	gh pr create	deny
 # --- rebase-guard: fail-open contract ---------------------------------------
 rebase	nonrepo	git push origin main	allow
 
+# --- 2026-08-08 audit: spellings that reached `main` -------------------------
+# All of these were ALLOWED by the pre-fix guard, reproduced through this very
+# harness. The suite had grown from two past incidents, so it tested THE FIXES
+# rather than THE RULE — and the rule has many more spellings than the rule's
+# two known violations.
+
+# The single highest-value miss: the natural agent spelling. `HEAD` is not the
+# literal string `main`, and two positionals meant it wasn't a "bare" push.
+rebase	primary	git push origin HEAD	deny
+rebase	primary	git push -u origin HEAD	deny
+
+# A `#` comment is not a dry run. This is the 2026-07-25 incident in a new
+# spelling: the old `case " $push_seg " in *" --dry-run "*` scanned the segment
+# as text, so anything after a comment marker still disabled the guard.
+rebase	primary	git push origin main # --dry-run	deny
+
+# Last-push-wins: `push_seg=$seg` overwrote, so only the FINAL push segment was
+# ever examined and the real push ahead of it was never seen.
+rebase	primary	git push origin main && git push origin main --dry-run	deny
+
+# Quoting. The destination regex required a whitespace/EOL/separator boundary
+# after the branch name, and a quote is none of those.
+rebase	primary	git push origin 'main'	deny
+rebase	primary	git push origin "main"	deny
+rebase	primary	git push "origin" "main"	deny
+
+# Refspec spellings. `+main` force-pushes main; the optional `([^[:space:]]*:)?`
+# group required a trailing colon, so a leading `+` was never absorbed.
+rebase	primary	git push origin +main	deny
+rebase	primary	git push origin refs/heads/main	deny
+rebase	primary	git push origin HEAD:refs/heads/main	deny
+rebase	primary	git push origin --delete main	deny
+
+# `pushargs=${push_seg#*push}` stripped through the FIRST literal "push", which
+# `-c push.default=…` supplies — leaving ".default=current push" to tokenize.
+rebase	primary	git -c push.default=current push	deny
+
+# Shell constructs: `prog` was `(git`, `then`, `do` — never the bare token `git`.
+rebase	primary	(git push origin main)	deny
+rebase	primary	if true; then git push origin main; fi	deny
+rebase	primary	for i in 1; do git push origin main; done	deny
+
+# Wrappers, env prefixes and absolute paths. Claude Code's own matcher strips
+# these before matching; this guard tokenizes independently and stripped none.
+rebase	primary	GIT_SSH_COMMAND=ssh git push origin main	deny
+rebase	primary	/usr/bin/git push origin main	deny
+rebase	primary	command git push origin main	deny
+rebase	primary	env git push origin main	deny
+
+# A TRAILING `cd` retargeted GIT() at a non-repo AFTER the push was matched, so
+# the guard fell through its own fail-open path. Only a `cd` that precedes the
+# push can change which repo is pushed.
+rebase	primary	git push origin main && cd ..	deny
+
+# Heredoc bodies are DATA, not command structure. Writing the commit message for
+# this very change was DENIED by the guard because the message explained
+# `git push origin main`. Prose apostrophes ("lefthook's") also unbalance the
+# quote tracking, so a heredoc cannot be parsed as if it were shell text.
+# `\n` is expanded to a real newline by run.sh.
+rebase	primary	git commit -F - << 'MSG'\nexplain git push origin main here\nMSG	allow
+rebase	primary	git commit -F - << 'MSG'\nlefthook's guard denied this\ngit push origin main\nMSG	allow
+rebase	wt-a	gh pr create --body - << 'EOF'\nthis PR changes git push origin main\nEOF	allow
+# A herestring has no body and must NOT swallow the rest of the command.
+rebase	primary	grep -q x <<< "text" ; git push origin main	deny
+
+# A newline separates simple commands exactly as `;` does. Without this the whole
+# multi-line command collapsed into one segment and the push was never seen.
+rebase	primary	git status\ngit push origin main	deny
+rebase	wt-a	git status\ngit push origin feature-a	allow
+
+# Redirections are not refspecs, and must not shift the positional analysis.
+rebase	primary	git push origin main > /dev/null	deny
+rebase	primary	git push origin main 2>&1	deny
+rebase	wt-a	git push origin feature-a > /dev/null	allow
+
+# FALSE POSITIVES: the guard denied real work because segmentation ignored
+# quoting. The first spelling denied an actual tool call during the audit.
+rebase	wt-a	git commit -m "run cd . && git push origin main to ship"	allow
+rebase	primary	git commit -m "wip; git push"	allow
+rebase	wt-a	git commit -m "see 'git push origin main' in the docs"	allow
+
 # --- worktree-checkout-guard ------------------------------------------------
 # feature-b is held by another worktree in every fixture below.
 worktree	primary	git checkout feature-b	deny
@@ -69,3 +150,17 @@ worktree	wt-a	git checkout -- README.md	allow
 worktree	wt-a	echo git checkout main	allow
 worktree	wt-a	git commit -m "git checkout main is a bad idea"	allow
 worktree	nonrepo	git checkout main	allow
+
+# --- 2026-08-08 audit: worktree-guard -----------------------------------------
+# FALSE POSITIVE: `git checkout <branch> -- <path>` restores a file FROM a branch.
+# It does not check the branch out, succeeds against a branch held elsewhere
+# (verified against real git), and is a working recovery move the guard denied.
+worktree	wt-a	git checkout feature-b -- README.md	allow
+worktree	wt-a	git checkout main -- README.md	allow
+# Same prog-token blind spot as the rebase guard.
+worktree	wt-a	/usr/bin/git checkout feature-b	deny
+worktree	wt-a	GIT_PAGER=cat git checkout feature-b	deny
+worktree	wt-a	command git switch feature-b	deny
+# TRUE NEGATIVE, pinned deliberately: this detaches HEAD rather than colliding,
+# so allowing it is correct behaviour and not an accident.
+worktree	wt-a	git checkout refs/heads/feature-b	allow
