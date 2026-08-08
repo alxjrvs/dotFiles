@@ -227,13 +227,25 @@ cmd_status() {
   # or absent claim is silent, since an open-ended token is the pre-2026-08-05
   # normal and not itself a fault.
   _load_sa
-  local sa_exp sa_days
+  local sa_exp sa_days sa_now sa_ago
   if sa_exp="$(_sa_expiry_epoch)"; then
-    sa_days=$(((sa_exp - $(date +%s)) / 86400))
-    if [[ $sa_days -lt 0 ]]; then
-      echo "op-agent: SA token EXPIRED $((-sa_days))d ago — mint a new service account and re-run: op-agent provision" >&2
+    sa_now=$(date +%s)
+    # Compare EPOCHS, not a day count. `(exp - now) / 86400` truncates toward
+    # zero, so for the first 24h after the token lapsed sa_days was 0 — which is
+    # not `-lt 0`, so this fell through to the warn branch, printed the
+    # reassuring "expires in 0d" and returned 0. `boom verify` therefore stayed
+    # green for a full day after every agent secret path was already dead.
+    if [[ $sa_exp -le $sa_now ]]; then
+      sa_ago=$((sa_now - sa_exp))
+      if [[ $sa_ago -lt 86400 ]]; then
+        echo "op-agent: SA token EXPIRED (<1d ago) — mint a new service account and re-run: op-agent provision" >&2
+      else
+        echo "op-agent: SA token EXPIRED $((sa_ago / 86400))d ago — mint a new service account and re-run: op-agent provision" >&2
+      fi
       return 1
-    elif [[ $sa_days -le $SA_WARN_DAYS ]]; then
+    fi
+    sa_days=$(((sa_exp - sa_now) / 86400))
+    if [[ $sa_days -le $SA_WARN_DAYS ]]; then
       echo "op-agent: SA token expires in ${sa_days}d — rotation is 1Password web UI only (no CLI/API)"
     fi
   fi

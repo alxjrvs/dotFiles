@@ -181,6 +181,16 @@ src = "dot-claude/hooks/pr-review.sh"
 dst = "~/.claude/hooks/pr-review.sh"
 mode = "755"
 
+# The reviewer's confinement boundary, loaded via `claude --settings`. It must sit
+# beside pr-review.sh, which resolves it as `$(dirname "$0")/pr-review-settings.json`.
+# `--allowedTools` alone does NOT confine (measured: it is additive pre-approval,
+# so anything unlisted falls to the auto-mode classifier and runs). A bare tool
+# name in `permissions.deny` does — deny is evaluated first, survives `auto`, and
+# removes the tool from the model's context entirely.
+[[section.link]]
+src = "dot-claude/hooks/pr-review-settings.json"
+dst = "~/.claude/hooks/pr-review-settings.json"
+
 # Regression suite for the two PreToolUse guards. Linked so it can be run on the
 # machine, not just in CI; `mode` keeps the runner executable.
 [[section.link]]
@@ -248,7 +258,6 @@ absent = ['"model"\s*:\s*"[^"]*fable']
 missing_file = "skip"
 message = "Fable pinned as default model in ~/.claude/settings.json (Fable is /model per-session only)"
 
-[[section.check]]
 # The deny floor — the Bash path to a *resolved* secret, not just to `op`.
 # `op-agent header` and `op-agent git-credential get` each print a live credential
 # to stdout, and stdout is model context. `op-agent header` is the exact command
@@ -261,17 +270,25 @@ message = "Fable pinned as default model in ~/.claude/settings.json (Fable is /m
 # wholesale and lefthook, CI and `boom verify` all stayed green. A floor with no
 # regression test is not a floor.
 #
-# The patterns are regex-ESCAPED on purpose. These checks take JS regexes (see the
-# Fable pattern above) and the deny strings are literals full of metacharacters, so
-# unescaped `Bash(op:*)` is the regex `Bash` + group `op:*` — it matches "Bashop"
-# and does NOT match the real line. Both spellings therefore fail loudly here rather
-# than passing while asserting nothing, because this is a `present` check; the same
-# mistake in an `absent` check would silently never fire. Escaped is still the
-# correct form, and it stays correct if boom ever matches these literally.
-path = "~/.claude/settings.json"
-present = ['"Bash\(op:\*\)"', '"Bash\(op-agent:\*\)"', '"Bash\(git credential:\*\)"']
-missing_file = "skip"
-message = "secret-path deny floor missing from ~/.claude/settings.json (op / op-agent / git credential)"
+# This was a `[[section.check]]` until 2026-08-08, and a check could not express
+# the assertion that actually matters. `present` matches file CONTENT, so
+# `"Bash(op:*)"` appearing anywhere satisfied it — moving an entry out of `deny`
+# and into `allow` INVERTED the control while this check, lefthook and CI all
+# stayed green. It also asserted only 3 of the 7 entries, leaving the keychain
+# read, both `Read()` rules, and `Bash(~/.local/bin/op-agent:*)` (the path
+# spelling this repo's own docs call the most likely to be copied) deletable with
+# every gate green. `jq index` asserts membership of the deny ARRAY, and --arg
+# passes each value as data rather than a pattern — which is what the regex
+# escaping was working around. The `[ -f ]` guard preserves `missing_file = "skip"`.
+[[section.run]]
+on = "verify"
+cmd = '''
+f=~/.claude/settings.json
+[ -f "$f" ] || exit 0
+for d in 'Bash(security find-generic-password:*)' 'Bash(op:*)' 'Bash(op-agent:*)' 'Bash(~/.local/bin/op-agent:*)' 'Bash(git credential:*)' 'Read(~/.ssh/id_*)' 'Read(~/.aws/credentials)'; do
+  jq -e --arg d "$d" '.permissions.deny | index($d)' "$f" >/dev/null || { echo "secret-path deny floor: missing $d in .permissions.deny of ~/.claude/settings.json"; exit 1; }
+done
+'''
 
 # An MCP server can die silently and stay dead. Two of three configured servers
 # were failing to connect for an unknown period — spacebase (its resolver command
