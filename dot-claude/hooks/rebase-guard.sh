@@ -14,6 +14,11 @@
 # untouched. It FAILS OPEN (allow) on any ambiguity — a guard must never wedge the
 # agent: a missing jq, a non-repo cwd, an unresolvable target, or a parse error
 # all let the command through.
+#
+# Portability: written for bash 3.2 (`/bin/bash`), NOT the homebrew bash 5 that
+# happens to be first on PATH here — `bash` is not in the Brewfile, so a fresh
+# machine runs 3.2. No arrays; state is carried in scalars and positional params,
+# which is also why the segment list is walked twice rather than accumulated.
 set -u
 
 allow() { exit 0; }
@@ -26,31 +31,32 @@ input=$(cat)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2> /dev/null) || allow
 [ -n "$cmd" ] || allow
 
-# Detect a REAL `git push` / `gh pr create` — the subcommand, not a substring.
-# Split on shell separators and, for each simple command, skip leading global
-# options (and the arg of `-c`/`-C`/etc.) to find the actual subcommand.
+# Shared parsing (quote-aware splitting, token normalization) lives beside this
+# file so both guards cannot drift apart again. Fail OPEN if it is missing —
+# a guard that wedges the agent is worse than one that lets a command through.
+# shellcheck source=dot-claude/hooks/guard-lib.sh
+. "$(dirname -- "$0")/guard-lib.sh" 2> /dev/null || allow
+
+segs=$(_split "$cmd")
+
+# --- pass 1: what kind of command is this, and against which repo? -----------
 is_push=0
 is_prcreate=0
-push_seg='' # the matched `git push` segment ONLY — never the whole command
-pr_base=''  # `gh pr create --base <branch>`, when given
+pr_base=''
 work_dir='' # a leading `cd <path>` decides which repo the push actually targets
-segs=$(printf '%s' "$cmd" | sed -E 's/(\|\||&&|[;&|])/\n/g')
 while IFS= read -r seg; do
-  seg="${seg#"${seg%%[![:space:]]*}"}" # strip leading whitespace
   [ -n "$seg" ] || continue
   set -f
-  # shellcheck disable=SC2086 # intentional word-split of one shell segment
-  set -- $seg
+  # shellcheck disable=SC2046 # intentional word-split: _norm emits space-separated tokens
+  set -- $(_norm "$seg")
   set +f
-  prog=${1:-}
-  # `cd <path> && git push …` pushes from <path>, not the session cwd. Remember
-  # the last one so every check below evaluates the repo actually being pushed.
-  if [ "$prog" = cd ] && [ -n "${2:-}" ]; then
-    work_dir=$2
-    work_dir=${work_dir%\"}
-    work_dir=${work_dir#\"}
-    work_dir=${work_dir%\'}
-    work_dir=${work_dir#\'}
+  [ $# -gt 0 ] || continue
+  prog=${1##*/}
+  # Only a `cd` BEFORE the push can change which repo is pushed. Honouring a
+  # trailing one let `git push origin main && cd ..` retarget GIT() at a
+  # non-repo, so the guard fell through its own fail-open path.
+  if [ "$prog" = cd ] && [ "$is_push" = 0 ] && [ -n "${2:-}" ]; then
+    work_dir=$(_unquote "$2")
     case "$work_dir" in
       '~') work_dir=$HOME ;;
       '~'/*) work_dir=$HOME/${work_dir#'~'/} ;;
@@ -70,10 +76,7 @@ while IFS= read -r seg; do
     esac
   done
   sub=${1:-}
-  if [ "$prog" = git ] && [ "$sub" = push ]; then
-    is_push=1
-    push_seg=$seg
-  fi
+  [ "$prog" = git ] && [ "$sub" = push ] && is_push=1
   if [ "$prog" = gh ] && [ "$sub" = pr ] && [ "${2:-}" = create ]; then
     is_prcreate=1
     # A stacked PR (`--base <parent>`) must be judged against ITS base, not
@@ -83,9 +86,9 @@ while IFS= read -r seg; do
       case "$1" in
         --base)
           shift
-          pr_base=${1:-}
+          pr_base=$(_unquote "${1:-}")
           ;;
-        --base=*) pr_base=${1#--base=} ;;
+        --base=*) pr_base=$(_unquote "${1#--base=}") ;;
       esac
       shift
     done
@@ -116,52 +119,104 @@ else
   target=${target:-origin/main}
   branch=${target#origin/}
 fi
-def_re=$(printf '%s' "$branch" | sed 's/[^[:alnum:]_-]/\\&/g')
+cur_branch=$(GIT symbolic-ref --quiet --short HEAD 2> /dev/null || printf '')
 
-# --- Direct-push-to-default guard (real pushes only) ------------------------
+# --- pass 2: direct-push-to-default guard (real pushes only) -----------------
+# EVERY push segment is judged, not just the last. `push_seg=$seg` used to
+# overwrite, so `git push origin main && git push origin main --dry-run` was
+# allowed on the strength of the trailing dry run while the real push ahead of it
+# was never examined.
 if [ "$is_push" = 1 ]; then
-  # Every check below reads $push_seg, NOT $cmd. Scanning the whole command let
-  # unrelated text decide the verdict both ways: `git commit -m "… --dry-run …"
-  # && git push origin main` was ALLOWED (a real push to the default branch),
-  # and `git commit -m "…push to main…" && git push origin feature` was DENIED.
-  # A dry run never mutates the remote — let it through entirely.
-  case " $push_seg " in
-    *" --dry-run "*) allow ;;
-  esac
-
-  push_to_default=0
-  # Explicit destination is the default branch, from ANY current branch:
-  #   git push <remote> <def>            git push <remote> <src>:<def>
-  #   git push <remote> HEAD:<def>       (a single positional is the REMOTE, not
-  # a dest, so `git push main` is NOT matched here).
-  printf '%s' "$push_seg" |
-    grep -Eq "push([[:space:]]+-[^[:space:]]+)*[[:space:]]+[^[:space:]]+[[:space:]]+([^[:space:]]*:)?${def_re}([[:space:]]|\$|[;&|])" &&
-    push_to_default=1
-
-  # Bare push (no refspec — at most a remote, otherwise only flags) while HEAD is
-  # the default branch → it pushes the default. Tokenize just the push args.
-  if [ "$push_to_default" = 0 ] && [ "$(GIT symbolic-ref --quiet --short HEAD 2> /dev/null)" = "$branch" ]; then
-    pushargs=${push_seg#*push}
-    pushargs=${pushargs%%[;&|]*}
+  while IFS= read -r seg; do
+    [ -n "$seg" ] || continue
     set -f
-    positionals=0
-    hascolon=0
-    # shellcheck disable=SC2086 # intentional word-split of the push args
-    for tok in $pushargs; do
-      case "$tok" in
-        -*) ;;
-        *:*)
-          hascolon=1
-          positionals=$((positionals + 1))
+    # shellcheck disable=SC2046 # intentional word-split: _norm emits space-separated tokens
+    set -- $(_norm "$seg")
+    set +f
+    [ $# -gt 0 ] || continue
+    [ "${1##*/}" = git ] || continue
+    shift
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        -c | -C | --git-dir | --work-tree | --namespace | --exec-path)
+          shift
+          [ $# -gt 0 ] && shift
           ;;
-        *) positionals=$((positionals + 1)) ;;
+        -*) shift ;;
+        *) break ;;
       esac
     done
-    set +f
-    [ "$hascolon" = 0 ] && [ "$positionals" -le 1 ] && push_to_default=1
-  fi
+    [ "${1:-}" = push ] || continue
+    shift
 
-  [ "$push_to_default" = 1 ] && deny "Refusing a direct push to the default branch (${branch}). Cut a feature branch and open a PR instead: git switch -c <branch> && git push -u origin <branch> && gh pr create, then land it with gh pr merge --auto --squash. (Run the push from a plain terminal, not Claude, for a genuine emergency bypass.)"
+    # Walk the push arguments as TOKENS. The old code did
+    # `pushargs=${push_seg#*push}`, which strips through the first literal
+    # "push" anywhere in the segment — `git -c push.default=current push` left
+    # ".default=current push" to tokenize, so it never looked like a bare push.
+    dry=0
+    skipnext=0
+    remote_seen=0
+    refspecs=''
+    while [ $# -gt 0 ]; do
+      tok=$(_unquote "$1")
+      shift
+      if [ "$skipnext" = 1 ]; then
+        skipnext=0
+        continue
+      fi
+      case "$tok" in
+        --dry-run | -n) dry=1 ;;
+        # Options that consume the following token; without this their value
+        # would be counted as a positional and shift the refspec analysis.
+        -o | --push-option | --receive-pack | --exec | --repo) skipnext=1 ;;
+        # Redirections are not refspecs. An operator that stands alone (`>`,
+        # `2>`) also consumes the filename token after it.
+        *'>'* | *'<'*)
+          case "$tok" in
+            *'>' | *'<') skipnext=1 ;;
+          esac
+          ;;
+        -*) ;;
+        *)
+          if [ "$remote_seen" = 0 ]; then
+            remote_seen=1
+          else
+            refspecs="$refspecs $tok"
+          fi
+          ;;
+      esac
+    done
+
+    # A dry run never mutates the remote — let it through.
+    [ "$dry" = 1 ] && continue
+
+    # No refspec (at most a remote) → this pushes the CURRENT branch.
+    if [ -z "$refspecs" ]; then
+      [ -n "$cur_branch" ] && [ "$cur_branch" = "$branch" ] && push_to_default=1 && break
+      continue
+    fi
+
+    # Otherwise every refspec's DESTINATION decides. `+main` (force), `:main`
+    # (delete), `HEAD:main`, `refs/heads/main` and a bare `main` all name it.
+    for r in $refspecs; do
+      r=${r#+}
+      case "$r" in
+        *:*) dest=${r#*:} ;;
+        *) dest=$r ;;
+      esac
+      dest=${dest#refs/heads/}
+      [ "$dest" = HEAD ] && dest=$cur_branch
+      if [ -n "$dest" ] && [ "$dest" = "$branch" ]; then
+        push_to_default=1
+        break
+      fi
+    done
+    [ "${push_to_default:-0}" = 1 ] && break
+  done << EOF
+$segs
+EOF
+
+  [ "${push_to_default:-0}" = 1 ] && deny "Refusing a direct push to the default branch (${branch}). Cut a feature branch and open a PR instead: git switch -c <branch> && git push -u origin <branch> && gh pr create, then land it with gh pr merge --auto --squash. (Run the push from a plain terminal, not Claude, for a genuine emergency bypass.)"
 fi
 
 # --- Behind-target rebase guard (push or pr-create) -------------------------

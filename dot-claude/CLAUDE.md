@@ -171,8 +171,16 @@ Rules that apply whatever you are touching:
   (PreToolUse fires before the permission classifier) and applies to every Claude session, never
   to plain terminal `git`.
   - **Both guards have a regression suite** (`dot-claude/hooks/tests/`, wired into `lint.yml` and
-    pre-commit): 33 hermetic cases against throwaway git fixtures, under 2s.
-    **Add a case before changing a guard.**
+    pre-commit): 71 hermetic cases against throwaway git fixtures, ~5s wall.
+    **Add a case before changing a guard.** The 2026-08-08 audit is why the count
+    doubled: the suite had grown from two past incidents, so it tested *the fixes* rather than
+    *the rule*, and 26 new cases — every one of them a reproduction through this same harness —
+    failed on the guards as shipped. `git push origin HEAD` was the highest-value miss.
+  - **Both guards share `guard-lib.sh`** (quote-aware command splitting, token normalization),
+    sourced as `$(dirname "$0")/guard-lib.sh`. They each carried their own copy until 2026-08-08
+    and had already drifted three ways, so a fix landed in one and not the other. It is
+    **load-bearing**: if that file is missing both guards fail open, which is why it has its own
+    boomfile link beside theirs.
 - **Recorded PR review (`PostToolUse`)** — `~/.claude/hooks/pr-review.sh` fires after
   `gh pr create` / `git push` / **`gh stack submit`**; when the repo is in `PR_REVIEW_REPOS` (a bare **owner**, covering
   every repo under it, or a fully-qualified `owner/repo`; defaults to `TheGnarCo BinfiniteLLC

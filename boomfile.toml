@@ -154,6 +154,15 @@ dst = "~/.claude/CLAUDE.md"
 src = "dot-claude/settings.json"
 dst = "~/.claude/settings.json"
 
+# Shared parsing for both PreToolUse guards (quote-aware command splitting, token
+# normalization). LOAD-BEARING: each guard sources it as
+# `$(dirname "$0")/guard-lib.sh`, so if this link is missing they both fail OPEN
+# and every push/checkout sails through. It must sit in the same directory as
+# them. Not executable — it is sourced, never run.
+[[section.link]]
+src = "dot-claude/hooks/guard-lib.sh"
+dst = "~/.claude/hooks/guard-lib.sh"
+
 # PreToolUse guard referenced by settings.json `hooks.PreToolUse`: blocks an
 # agent's `git push` / `gh pr create` when its branch is behind origin/HEAD, so
 # it rebases onto the latest target before publishing. Logic lives in a script
