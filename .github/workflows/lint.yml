@@ -96,6 +96,34 @@ jobs:
       - name: TOML validity
         run: taplo check --no-schema $(git ls-files '*.toml')
 
+      # launchd does NOT expand `~` or `$HOME` in plist values: it fails the job
+      # with EX_CONFIG (78) BEFORE running it, so the only symptom is a job that
+      # silently never runs. com.alxjrvs.boom-verify.plist reported runs=0 from
+      # 2026-07-10 to 2026-08-08 for exactly this reason, while the identical bug
+      # had already been found and fixed in the capslock plist on 2026-07-13 and
+      # not carried across. 28 days of `boom verify` guardrails never executing.
+      #
+      # Structural validity does NOT catch it — both plists parsed cleanly
+      # throughout — so this is deliberately two assertions. `plutil` is macOS
+      # only; plistlib is the portable equivalent for this runner.
+      - name: plist validity
+        run: |
+          for f in $(git ls-files 'launchd/*.plist'); do
+            python3 -c "import plistlib,sys; plistlib.load(open(sys.argv[1],'rb'))" "$f"
+            ! grep -nE '<string>[~$]' "$f" || { echo "launchd does not expand ~ or \$HOME in $f — use an absolute path (EX_CONFIG 78, job silently never runs)"; exit 1; }
+          done
+
+      # The interactive shell payload runs on EVERY shell startup and was linted
+      # by nothing. shellcheck's file set is `*.sh`, and shellcheck cannot parse
+      # zsh at all ("Unknown shell: zsh"), so excluding these files was correct —
+      # but nothing replaced it. `zsh -n` is the native no-exec syntax check.
+      - name: zsh syntax
+        run: |
+          command -v zsh > /dev/null 2>&1 || sudo apt-get install -y -qq zsh
+          for f in $(git ls-files '*.zsh' '.zshrc' '.zprofile' '.zshenv'); do
+            zsh -n "$f" || { echo "zsh syntax error in $f"; exit 1; }
+          done
+
       # The two PreToolUse guards are the only deterministic enforcement in the
       # setup — and they shipped untested, which is how a `--dry-run` substring in
       # an unrelated commit message came to disable the direct-push-to-main rule.

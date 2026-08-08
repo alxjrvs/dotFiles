@@ -313,7 +313,28 @@ on = "verify"
 # red, green on servers that were all fine. This timer desktop-notifies, so a check
 # that cries wolf is worse than no check: it trains you to ignore the alarm. Exits
 # on the first clean read; only a fault that survives three reads is real.
-cmd = "for i in 1 2 3; do claude mcp list 2>&1 | grep -q '✘' || exit 0; sleep 3; done; claude mcp list 2>&1 | grep '✘'; echo 'an MCP server is failing to connect (3 consecutive checks)'; exit 1"
+#
+# Matches `!` as well as `✘` (fixed 2026-08-08). `claude mcp list` reports a
+# server needing re-auth as "! Needs authentication", not "✘", so a server that
+# cannot answer at all passed this check silently — observed live on Google
+# Calendar. Different symbol, same outcome: the server does not work.
+#
+# KNOWN LIMIT, do not read this check as broader than it is: `claude mcp list`
+# reports the servers visible from the CWD. `github` and `render` are
+# project-scoped to ~/Code/SU-SRD in ~/.claude.json, and the launchd job sets no
+# WorkingDirectory, so this cannot see either of them — the two 1Password-wired
+# servers whose silent breakage on 2026-07-25 is the reason this check exists.
+# Fixing that means declaring them somewhere reproducible (they are in no
+# boomfile today), not hardcoding a path here.
+cmd = '''
+for i in 1 2 3; do
+  claude mcp list 2>&1 | grep -qE '✘|! Needs authentication' || exit 0
+  sleep 3
+done
+claude mcp list 2>&1 | grep -E '✘|! Needs authentication'
+echo 'an MCP server is failing to connect or needs authentication (3 consecutive checks)'
+exit 1
+'''
 
 # `~/.claude/settings.json` symlinks into boom's own clone, so an uncommitted edit
 # THERE is live on the machine while being invisible to both CI (which lints the
