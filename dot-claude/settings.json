@@ -17,10 +17,6 @@
     "GIT_CONFIG_VALUE_3": "cache --timeout=900",
     "GIT_CONFIG_KEY_4": "credential.https://github.com.helper",
     "GIT_CONFIG_VALUE_4": "!~/.local/bin/op-agent git-credential",
-    "SPACEBASE_API_KEY_COMMAND": "~/.local/bin/op-agent secret \"op://claude-agent/spacebase-api-key/credential\"",
-    "SPACEBASE_API_KEY": "",
-    "SPACEBASE_URL": "",
-    "SPACEBASE_PROJECT_ID": "",
     "NINETY_API_TOKEN_COMMAND": "~/.local/bin/op-agent secret \"op://claude-agent/gninety/credential\"",
     "NINETY_API_TOKEN": "",
     "NINETY_BASE_URL": ""
@@ -97,7 +93,6 @@
   "statusLine": {
     "type": "command",
     "command": "~/.local/bin/claude-statusline",
-    "padding": 0,
     "refreshInterval": 10
   },
   "subagentStatusLine": {
@@ -132,7 +127,6 @@
     "jj": "<Esc>"
   },
   "verbose": true,
-  "autoScrollEnabled": true,
   "showTurnDuration": false,
   "terminalProgressBarEnabled": false,
   "teammateMode": "in-process",
@@ -140,6 +134,5 @@
   "skipAutoPermissionPrompt": true,
   "autoMode": {
     "classifyAllShell": true
-  },
-  "voiceEnabled": true
+  }
 }
