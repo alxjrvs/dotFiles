@@ -155,7 +155,7 @@ Symlinked individually into `~/.claude/` (the `Claude` section of the boomfile):
 
 ## Gotchas
 
-- **dot-claude vs .claude**: `dot-claude/` is the source of truth for **user/global** Claude config (committed, symlinked into `~/.claude/`). The repo-root `.claude/` is this repo's **project-scoped**, gitignored config. Don't conflate them.
+- **dot-claude vs .claude**: `dot-claude/` is the source of truth for **user/global** Claude config (committed, symlinked into `~/.claude/`). The repo-root `.claude/` is this repo's **project-scoped** config, gitignored **except** the one tracked `.claude/settings.json` carrying the `project.name` telemetry tag — attribution is a property of the repo, not of a machine, so it is checked in rather than left to a per-clone `settings.local.json`. Don't conflate them.
 - **Sheldon plugin order**: `fast-syntax-highlighting` must be last in `sheldon/plugins.toml` (it wraps every existing ZLE widget at load).
 - **`gh` auth is keychain-backed**: token in the login keychain (gh secure storage); `~/.config/gh/hosts.yml` carries only non-secret metadata. Never `gh auth login --insecure-storage`.
 - **The engine is `boom`** (the BoomTube project): anything about apply/verify/fix/rollback semantics, symlink internals, the manifest/journal, or orphan reaping lives in `github.com/alxjrvs/boom`, not here. This repo is config.
