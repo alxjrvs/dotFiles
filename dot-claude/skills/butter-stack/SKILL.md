@@ -175,6 +175,19 @@ Before flagging a deviation, check whether it is on this list or has a comment e
 4. Run `bun install && bun run check` and confirm green before handing back.
 5. Run the `agent-friendly-repo` skill to set merge settings and the ruleset — the `CI Success` gate is only real once it is the required check.
 
+## Landing work: stacks, never a merge queue
+
+**Squash-only merges, linear history required, and `gh stack` for anything multi-part. No merge queue on any repo.** A queue looks like the answer to "I do not want to babysit this", and the cost is not obvious until you are inside it:
+
+- It is **mutually exclusive with Dependabot auto-merge** — `GITHUB_TOKEN` cannot enqueue — so adopting one silently gives up unattended dependency updates.
+- It carries a `merge_group:` CI sequencing hazard that hangs every PR if the trigger is not on the default branch first.
+
+The accepted cost of not having one is waiting: watch every layer green, then merge. **Do not propose a queue as the fix for having to wait** — the waiting is the trade.
+
+**Multi-part work is a stack** (`gh stack init` → `gh stack add` per layer → `gh stack submit` → `gh stack sync` after a layer lands). Decide the shape *before* writing code; splitting one large commit afterwards is archaeology. A layer earns its place if it could be reviewed and reverted alone — a refactor that enables a feature, a schema change ahead of its consumers, a rename separated from behaviour. Splitting by file or to hit a size target is not layering.
+
+> **A stack whose layers fix each other's gates cannot land.** Checks are enforced per PR against its own base, so if the bottom layer fails a gate the top layer repairs, the bottom can never go green and the stack never merges — reordering only swaps which job is red. When two fixes are mutually entangled like that, they are one PR, not a stack. Catch it when choosing the shape; by submit time the only exits are retargeting the top layer at the default branch or rebuilding.
+
 ```
 package.json          private · workspaces · catalog · overrides
 bunfig.toml           linker · test preload · install policy
