@@ -26,10 +26,10 @@ Two modes. **Scaffold** a new repo onto it, or **audit** an existing one and rep
 
 **Two tiers, and the difference matters when auditing.**
 
-- **Unanimous (4/4)** — Bun, the workspace shape, the internal graph, *having* a shared base tsconfig, and the CI gate. A deviation here is a finding. Note the tsconfig entry covers the file and the core flag set only: three flags inside that block are themselves marked 3/4 and keep that weaker status — do not inherit unanimous-tier severity for them from the section heading.
-- **Standard (not yet universal)** — Lefthook, knip, catalogs, `.bun-version`, `bun run check`. Adoption is uneven and moves; `optfall` is the furthest behind and has open issues for most of them. **Check the repo rather than trusting this line** — it was already wrong once (it claimed optfall lacked Biome after Biome had landed there). A deviation is a finding unless an open issue already tracks it, in which case link that issue instead of re-reporting.
+- **Unanimous (4/4)** — Bun, the workspace shape, the internal graph, *having* a shared base tsconfig, and the CI gate. A deviation here is a finding. Note the tsconfig entry covers the file and the core flag set only: the three flags marked *(standard)* inside that block keep the weaker status — do not inherit unanimous-tier severity for them from the section heading.
+- **Standard (not yet universal)** — Biome, Lefthook, knip, catalogs, `.bun-version`, `bun run check`. Adoption is uneven and moves. **Check the repo rather than trusting this list** — it was already wrong once, claiming optfall lacked Biome after Biome had landed there. A deviation is a finding unless an open issue already tracks it, in which case link that issue instead of re-reporting.
 
-Everything below is marked accordingly. Do not promote a 3/4 item to unanimous when reporting.
+Items below are tagged *(standard)* where they belong to the second tier. Never report a *(standard)* item at unanimous severity, and never infer adoption from this page — the tier says what the item is, the repo says whether it is there.
 
 **Bun is everything, not just the installer.** Runtime, package manager, workspace host, test runner, script runner. Cross-package work goes through `bun run --filter '<pkg>' <script>` — never Turbo, never Nx. Every repo carries a `bunfig.toml`, and it is where operational knowledge lives (linker choice, test preloads, install policy), so it is never empty boilerplate.
 
@@ -48,7 +48,7 @@ Everything below is marked accordingly. Do not promote a 3/4 item to unanimous w
 "resolveJsonModule": true,
 "skipLibCheck": true,
 "forceConsistentCasingInFileNames": true,
-// three of four, and worth having:
+// (standard) — not yet everywhere, and worth having:
 "exactOptionalPropertyTypes": true,
 "noImplicitOverride": true,
 "verbatimModuleSyntax": true
@@ -78,11 +78,11 @@ Everything below is marked accordingly. Do not promote a 3/4 item to unanimous w
 
 These are two *different* failure modes with the same symptom — a green gate that gates nothing. The first is a broken job, the second an incomplete `needs:` list. Check for both.
 
-**Biome is the single lint + format tool.** *(standard, 3/4)* Prettier is removed, not merely unused. `biome.json` carries **only divergences from Biome's defaults** — in practice `vcs.useIgnoreFile: true` (Biome ignores `.gitignore` by default, and without this it descends into `.claude/worktrees/`) and `formatter.indentStyle: "space"` (Biome defaults to tab, and `useEditorconfig` is false). Accept that Biome parses neither Markdown nor YAML; do not reintroduce a second formatter to cover it.
+**Biome is the single lint + format tool.** *(standard)* Prettier is removed, not merely unused. `biome.json` carries **only divergences from Biome's defaults** — in practice `vcs.useIgnoreFile: true` (Biome ignores `.gitignore` by default, and without this it descends into `.claude/worktrees/`) and `formatter.indentStyle: "space"` (Biome defaults to tab, and `useEditorconfig` is false). Accept that Biome parses neither Markdown nor YAML; do not reintroduce a second formatter to cover it.
 
-**Lefthook, two tiers.** *(standard, 3/4)* Pre-commit is staged-files-only (`biome check --write {staged_files}` with `stage_fixed: true`, and `--no-errors-on-unmatched`, which is required — Biome exits 1 rather than skipping when every staged file is out of scope). Pre-push is the expensive tier: typecheck, tests, build. Guard `prepare` with `[ -n "$CI" ] || lefthook install`.
+**Lefthook, two tiers.** *(standard)* Pre-commit is staged-files-only (`biome check --write {staged_files}` with `stage_fixed: true`, and `--no-errors-on-unmatched`, which is required — Biome exits 1 rather than skipping when every staged file is out of scope). Pre-push is the expensive tier: typecheck, tests, build. Guard `prepare` with `[ -n "$CI" ] || lefthook install`.
 
-*(standard, 3/4)* **Knip**, with per-workspace `entry`/`project` globs. **Bun catalogs** for shared versions. **`.bun-version`** pinned and read by CI. **`bun run check`** as the one full-check entry point.
+*(standard)* **Knip**, with per-workspace `entry`/`project` globs. **Bun catalogs** for shared versions. **`.bun-version`** pinned and read by CI. **`bun run check`** as the one full-check entry point.
 
 ## The signature habit
 
@@ -132,10 +132,21 @@ Before flagging a deviation, check whether it is on this list or has a comment e
 0. **Fetch first. A local checkout is not the repo.**
 
    ```sh
-   git -C <repo> fetch origin && git -C <repo> rev-list --left-right --count origin/main...HEAD
+   cd <repo> && git fetch origin
+   DEF=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
+   DEF=${DEF:-main}
+   git rev-list --left-right --count "origin/$DEF...HEAD"   # left = commits you are BEHIND
    ```
 
-   If the left number is non-zero the working copy is behind, and **every finding you produce from it may already be fixed**. Either pull, or read the files from the remote (`gh api "repos/<owner>/<repo>/contents/<path>?ref=main"`).
+   Resolve the default branch rather than hardcoding `main`: on a repo that uses anything else, `origin/main` fails with `unknown revision` and the check silently degrades to "no check performed" — which is the exact failure this step exists to prevent.
+
+   If the left number is non-zero the working copy is behind, and **every finding you produce from it may already be fixed**. Either pull, or read each file from the fetched remote ref:
+
+   ```sh
+   git show "origin/$DEF:<path>"
+   ```
+
+   Use that rather than the API — `gh api "repos/<o>/<r>/contents/<path>"` returns JSON with base64-encoded `content`, so reading it literally gets you an unusable blob. (If you do need the API, `-H "Accept: application/vnd.github.raw"` returns the file.)
 
    > This step exists because skipping it produced a whole sweep of wrong findings. Five of six checkouts were behind — one by 34 commits — and an entire framework migration had landed ten hours before the audit that claimed it was still pending. The audit filed an issue to adopt a tool that was already adopted, and another to gate a workbench that had been deleted. Reading a file off disk *feels* like reading the repo. It is not.
 
