@@ -110,6 +110,14 @@ Coverage is uneven, which is the point of auditing: most of those exist in one o
 > - **The stylesheet is much larger than "the bits objects cannot express"** — it also carries every *resting* value those rules override.
 > - **A `filter: brightness()` hover is a warning sign.** It appears to work only because `filter` is a different property from the one it is imitating, so it dodges the collision instead of resolving it. It cannot express a specific hover colour, and approximating one is a re-tone.
 
+> ⚠️ **Verify a real consumer actually loads the stylesheet, and check the built bundle — not the workbench.** Creating the package stylesheet is not the same as shipping it, and the gap between them is invisible to every ordinary check.
+>
+> Ladle and Storybook wire their own CSS entry, so the workbench renders perfectly whether or not an app imports the file. Tests, typecheck and lint all pass, because none of them load CSS at all. A library can therefore migrate fully onto a stylesheet **no app has ever loaded**, and every surface you would think to check reports success — the workbench does not merely stay silent, it actively reassures. This happened: both SU-SRD apps had migrated components pointed at `--su-*` rules that production never fetched, and it was found by grepping the entry sheets rather than by any gate.
+>
+> Two things follow:
+> - **Add a check that the entry sheets import it, and that the import is layered.** An unlayered `@import` is the *tidier-looking* spelling and it flattens every utility, so both failure modes need catching. Prove the check fires by breaking it each way — a guard nobody has seen fail is indistinguishable from no guard.
+> - **Confirm the layer order in the built output and in dev.** Vite serves CSS differently from the production build; correct in one and wrong in the other is the same trap, found later by whoever runs the dev server.
+
 ## Platform
 
 - **Netlify** — every web surface.
