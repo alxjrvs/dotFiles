@@ -102,6 +102,22 @@ Coverage is uneven, which is the point of auditing: most of those exist in one o
 
 **Styling** → a framework-agnostic tokens package as the single brand source, style objects for static values, and **one package-level stylesheet** for everything objects cannot express (`:hover`, `@media`, `:focus-visible`, `:disabled`, pseudo-elements). Both halves are required — a style-object-only approach silently drops interaction and responsive state. No Tailwind. No CSS Modules.
 
+> ⚠️ **Split per PROPERTY, never per component.** An inline `style=` declaration outranks any author stylesheet rule regardless of selector specificity or state, because it sits higher in the cascade origin order. So if a property's resting value goes inline and its `:hover` goes to a class, **the hover never fires** — and nothing errors. Measured, not inferred: an element with `style="background-color: green"` and a `:hover` class setting red computes `rgb(0,128,0)` while hovered; move the resting value into the class and the hover applies.
+>
+> The rule therefore reads: **a property with any stateful or responsive variant goes wholly to the stylesheet, resting value included. A property with none stays inline.** One component routinely splits down the middle of its own style — padding and font inline, `background-color` and `border-color` in a class — and that is correct, not a smell.
+>
+> Two consequences to expect rather than discover:
+> - **The stylesheet is much larger than "the bits objects cannot express"** — it also carries every *resting* value those rules override.
+> - **A `filter: brightness()` hover is a warning sign.** It appears to work only because `filter` is a different property from the one it is imitating, so it dodges the collision instead of resolving it. It cannot express a specific hover colour, and approximating one is a re-tone.
+
+> ⚠️ **Verify a real consumer actually loads the stylesheet, and check the built bundle — not the workbench.** Creating the package stylesheet is not the same as shipping it, and the gap between them is invisible to every ordinary check.
+>
+> Ladle and Storybook wire their own CSS entry, so the workbench renders perfectly whether or not an app imports the file. Tests, typecheck and lint all pass, because none of them load CSS at all. A library can therefore migrate fully onto a stylesheet **no app has ever loaded**, and every surface you would think to check reports success — the workbench does not merely stay silent, it actively reassures. This happened: both SU-SRD apps had migrated components pointed at `--su-*` rules that production never fetched, and it was found by grepping the entry sheets rather than by any gate.
+>
+> Two things follow:
+> - **Add a check that the entry sheets import it, and that the import is layered.** An unlayered `@import` is the *tidier-looking* spelling and it flattens every utility, so both failure modes need catching. Prove the check fires by breaking it each way — a guard nobody has seen fail is indistinguishable from no guard.
+> - **Confirm the layer order in the built output and in dev.** Vite serves CSS differently from the production build; correct in one and wrong in the other is the same trap, found later by whoever runs the dev server.
+
 ## Platform
 
 - **Netlify** — every web surface.
@@ -166,6 +182,19 @@ Before flagging a deviation, check whether it is on this list or has a comment e
 3. Write the skeleton below.
 4. Run `bun install && bun run check` and confirm green before handing back.
 5. Run the `agent-friendly-repo` skill to set merge settings and the ruleset — the `CI Success` gate is only real once it is the required check.
+
+## Landing work: stacks, never a merge queue
+
+**Squash-only merges, linear history required, and `gh stack` for anything multi-part. No merge queue on any repo.** A queue looks like the answer to "I do not want to babysit this", and the cost is not obvious until you are inside it:
+
+- It is **mutually exclusive with Dependabot auto-merge** — `GITHUB_TOKEN` cannot enqueue — so adopting one silently gives up unattended dependency updates.
+- It carries a `merge_group:` CI sequencing hazard that hangs every PR if the trigger is not on the default branch first.
+
+The accepted cost of not having one is waiting: watch every layer green, then merge. **Do not propose a queue as the fix for having to wait** — the waiting is the trade.
+
+**Multi-part work is a stack** (`gh stack init` → `gh stack add` per layer → `gh stack submit` → `gh stack sync` after a layer lands). Decide the shape *before* writing code; splitting one large commit afterwards is archaeology. A layer earns its place if it could be reviewed and reverted alone — a refactor that enables a feature, a schema change ahead of its consumers, a rename separated from behaviour. Splitting by file or to hit a size target is not layering.
+
+> **A stack whose layers fix each other's gates cannot land.** Checks are enforced per PR against its own base, so if the bottom layer fails a gate the top layer repairs, the bottom can never go green and the stack never merges — reordering only swaps which job is red. When two fixes are mutually entangled like that, they are one PR, not a stack. Catch it when choosing the shape; by submit time the only exits are retargeting the top layer at the default branch or rebuilding.
 
 ```
 package.json          private · workspaces · catalog · overrides
