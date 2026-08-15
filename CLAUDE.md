@@ -141,6 +141,20 @@ Symlinked individually into `~/.claude/` (the `Claude` section of the boomfile):
 
 - `CLAUDE.md` — user-level global instructions (identity, preferences).
 - `settings.json` — **deliberately minimal**; only divergences from defaults (enumerated in `dot-claude/CLAUDE.md`). Don't add settings without asking.
+- `skills/*` — glob-linked into `~/.claude/skills/`, so a new directory is picked up with no boomfile change. Today: `agent-friendly-repo`, `ship`, `rebase-prs`, `butter-stack`.
+
+### The Butter Stack (`dot-claude/skills/butter-stack/`)
+
+**Butter, because it goes on the Bun** — the house shape for personal TypeScript work, and the one place it is written down so an agent can copy it rather than re-derive it per repo: **B**un · **U**nified workspace (`apps/*` + `packages/*`) · **T**ypeScript (strict-plus) · **T**anStack · **E**dge-deployed (Netlify/Render/Convex) · **R**eact.
+
+It is descriptive before it is prescriptive. `@RANDSUM`, `SU-SRD`, `OptFall` and `BinfiniteLLC/BinfiniteApp` arrived at it **independently**, never templated from one another — that convergence is the evidence, and it is why the skill records what four repos re-decided under pressure rather than a preferred toolchain.
+
+Two things in it matter more than the tool list:
+
+- **The signature habit** — conventions get promoted from prose into executable `check:*` gates wired into the aggregate CI job. A rule nothing enforces is a rule that has already drifted; this repo's own guard tests are the same instinct.
+- **The deliberate-exceptions table** — Binfinite's vitest / TS 6 / `hoisted` linker, and randsum's off-catalog TS 6.0.3 pins for `@astrojs/check`. Each looks like drift and is load-bearing. The table exists so a tidying pass doesn't remove them; **check it before calling anything drift**.
+
+The skill audits (read-only) or scaffolds (writes only after a go-ahead), and hands off to `agent-friendly-repo` for merge settings — a `CI Success` gate is only real once it is the required check.
 
 ## Guardrails
 
