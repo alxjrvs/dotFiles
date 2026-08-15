@@ -152,7 +152,7 @@ It is descriptive before it is prescriptive. `RANDSUM/randsum`, `SalvageUnion-io
 Two things in it matter more than the tool list:
 
 - **The signature habit** — conventions get promoted from prose into executable `check:*` gates wired into the aggregate CI job. A rule nothing enforces is a rule that has already drifted; this repo's own guard tests are the same instinct.
-- **The deliberate-exceptions table** — Binfinite's vitest / TS 6 / `hoisted` linker, and randsum's off-catalog TS 6.0.3 pins for `@astrojs/check`. Each looks like drift and is load-bearing. The table exists so a tidying pass doesn't remove them; **check it before calling anything drift**.
+- **The deliberate-exceptions table** — a set of per-repo deviations that each look like drift and are load-bearing, so a tidying pass doesn't remove them. **Read it in the skill and check it before calling anything drift.** Deliberately not summarized here: copying those rows into always-loaded context is the same hand-maintained-duplicate problem as the skills roster above, and the table is the one thing in the skill that must never be consulted from a stale copy.
 
 The skill audits (read-only) or scaffolds (writes only after a go-ahead), and hands off to `agent-friendly-repo` for merge settings — a `CI Success` gate is only real once it is the required check.
 

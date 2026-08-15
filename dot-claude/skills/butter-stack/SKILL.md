@@ -120,7 +120,7 @@ A deviation is only drift if nothing requires it. These are required:
 | `binfinite-app` | `linker = "hoisted"` | Expo single-instancing; isolated duplicates the tree and trips `expo-doctor` |
 | `binfinite-app` | `expo lint` for `apps/platform` | Biome ignores that app by design |
 | `randsum` | `apps/site`, `apps/rdn` pin TS 6.0.3 off-catalog | `@astrojs/check` needs the TS6 compiler API, which TS7 does not ship |
-| `optfall` | **Svelte, not React** | A deliberate choice, not drift. It also means Biome cannot parse `.svelte` — `svelte-check` covers those, and Prettier is still not reintroduced. Do not propose a React migration off the back of the `R` invariant. |
+| `optfall` | **Svelte, not React** | A deliberate choice, not drift. Do not propose a React migration off the back of the `R` invariant. Note this shapes the *pending* Biome adoption rather than exempting it: Biome cannot parse `.svelte`, so when it lands there `svelte-check` keeps covering those files and Prettier is still not reintroduced. |
 | `randsum`, `SU-SRD`, `Hermuz` | Discord bots build for and run on **Node**, not Bun | See the platform section — this is the current state everywhere, so it is not a per-repo finding |
 
 Before flagging a deviation, check whether it is on this list or has a comment explaining itself. Removing a load-bearing pin because it looks untidy is the failure mode this table exists to prevent.
