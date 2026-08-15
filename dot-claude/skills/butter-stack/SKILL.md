@@ -5,7 +5,9 @@ description: The Butter Stack — the house Bun/TypeScript monorepo shape (Bun �
 
 # butter-stack
 
-**Butter, because it goes on the Bun.** The recurring shape across `@RANDSUM`, `SU-SRD`, `OptFall` and `BinfiniteLLC/BinfiniteApp` — four monorepos that converged on it independently, never templated from one another. That convergence is the evidence: these are the choices that got re-made under pressure, not a wishlist.
+**Butter, because it goes on the Bun.** The recurring shape across `RANDSUM/randsum`, `SalvageUnion-io/SU-SRD`, `alxjrvs/optfall` and `BinfiniteLLC/binfinite-app` — four monorepos that converged on it independently, never templated from one another. That convergence is the evidence: these are the choices that got re-made under pressure, not a wishlist.
+
+> Repo names below are the **GitHub** names, which differ from the local checkout directories under `~/Code` (`@RANDSUM`, `SU-SRD`, `OptFall`, `BinfiniteLLC/BinfiniteApp`). `BinfiniteLLC/BinfiniteApp` is a directory name and **does not resolve on GitHub** — use `BinfiniteLLC/binfinite-app` for anything that hits the API.
 
 | | | |
 |---|---|---|
@@ -47,7 +49,23 @@ These are unanimous across all four repos. Treat a deviation as a finding, not a
 
 **CI is filter → fan out → one gate.** A `changes` job (`dorny/paths-filter`) computes affected workspaces; per-concern jobs run in parallel gated on it; and **one job with `if: always()` that `needs:` every other job** is the sole required status check. Name it **`CI Success`**. Add `concurrency` with `cancel-in-progress`.
 
-> The `needs:` list is hand-maintained, and **a job missing from it can never fail the required check** — the gate silently stops gating with no symptom. Ship `check:ci-aggregator` (parse `ci.yml`, diff job keys against `needs:`) at the same time as the gate itself, not later.
+```yaml
+  CI-Success:
+    name: CI Success
+    if: always()
+    needs: [changes, lint, typecheck, test, build]   # EVERY other job
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any dependency failed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+```
+
+> ⚠️ **That last step is the whole job — do not omit it.** `if: always()` makes the job *run* regardless of its dependencies; it does not make it *fail* with them. A job whose steps never inspect `needs.*.result` **succeeds when everything it needs failed**, so the sole required status check goes permanently green and red-CI PRs merge clean through the ruleset. Testing `failure`/`cancelled` (not `success`) is deliberate: a path-filtered job reports `skipped`, which must stay passing.
+
+> The `needs:` list is also hand-maintained, and **a job missing from it can never fail the required check** — the gate silently stops gating with no symptom. Ship `check:ci-aggregator` (parse `ci.yml`, diff job keys against `needs:`) at the same time as the gate itself, not later.
+
+These are two *different* failure modes with the same symptom — a green gate that gates nothing. The first is a broken job, the second an incomplete `needs:` list. Check for both.
 
 **Biome is the single lint + format tool.** Prettier is removed, not merely unused. `biome.json` carries **only divergences from Biome's defaults** — in practice `vcs.useIgnoreFile: true` (Biome ignores `.gitignore` by default, and without this it descends into `.claude/worktrees/`) and `formatter.indentStyle: "space"` (Biome defaults to tab, and `useEditorconfig` is false). Accept that Biome parses neither Markdown nor YAML; do not reintroduce a second formatter to cover it.
 
@@ -64,8 +82,8 @@ The rule: if you find yourself writing a convention into `CLAUDE.md` and hoping 
 ## Surface layer — chosen per app, not per repo
 
 - **Stateful application** → React 19 + **TanStack Router** (file-based routes, generated `routeTree.gen.ts`) on Vite. Add **Query** when there is a server. **Lean on TanStack wherever it applies** — this is the default reach, not a per-app deliberation.
-- **Content / marketing site** → **TanStack Start**. Astro is being retired across the portfolio.
-- **Headless service, bot, CLI** → plain Bun, no framework. Discord work is built directly on `discord.js` v14 with nothing in between.
+- **Content / marketing site** → **TanStack Start**. Astro is being retired across the portfolio — but this is a *direction*, not a completed migration, and it has **one recorded blocker**: `binfinite-app`'s `apps/marketing` ships zero JavaScript, machine-asserted against built HTML by `check:marketing-zero-js` with Lighthouse gating per-PR. TanStack Start is SSR-plus-hydration by design, so following this rule there breaks an existing check. Until that is settled, marketing stays on Astro. Do not propose the migration for an app with a zero-JS gate without naming the conflict.
+- **Headless service, bot, CLI** → no framework. Discord work is built directly on `discord.js` v14 with nothing in between. **Note the runtime caveat in the platform section — the bots run on Node today, and that is the current state everywhere, not drift.**
 
 **Component workbench lives inside the component library package**, never in an app. Ladle or Storybook — the tool is not the standard, the rule is: *one public component = one co-located story = one nav leaf, with a title matching a closed taxonomy*, enforced by a checked-in test or script. Start the allowlist empty and assert that no entry in it is stale.
 
@@ -74,9 +92,11 @@ The rule: if you find yourself writing a convention into `CLAUDE.md` and hoping 
 ## Platform
 
 - **Netlify** — every web surface.
-- **Render** — workers and bots (`region: oregon`, `plan: starter`). Set `BUN_VERSION` so Render uses Bun rather than defaulting to Node.
+- **Render** — workers and bots (`region: oregon`, `plan: starter`).
 - **Convex** — the backend, where there is one. Schema is the source of truth; check the generated API into git behind a CI freshness gate.
-- **Expo / EAS** — mobile only. `BinfiniteLLC/binfinite-app` `apps/platform` is the reference implementation; copy its conventions rather than re-deriving them. Note it is a single-vendor dependency spanning build, hosting, updates and store submission — treat as concentration risk.
+- **Expo / EAS** — mobile only. `BinfiniteLLC/binfinite-app` → `apps/platform` is the reference implementation; copy its conventions rather than re-deriving them. Note it is a single-vendor dependency spanning build, hosting, updates and store submission — treat as concentration risk.
+
+> **Bun does not reach the Discord bots, and that is the measured current state.** All three (`randsum`, `SU-SRD`, `Hermuz`) build for Node and start with it — `bunup` or `bun build --target node`, then `node dist/index.js` — and their Render services declare `runtime: node`. **Do not report this as drift**, and do not set `BUN_VERSION` on an existing bot as a "fix": it changes the production runtime of a working service. Hermuz's `render.yaml` documents the lever (Render uses Bun when `BUN_VERSION` is set and a `bun.lock` is present) if this is ever taken on deliberately, as its own change with its own testing.
 
 ## Deliberate exceptions — do not "fix" these
 
@@ -89,6 +109,8 @@ A deviation is only drift if nothing requires it. These are required:
 | `binfinite-app` | `linker = "hoisted"` | Expo single-instancing; isolated duplicates the tree and trips `expo-doctor` |
 | `binfinite-app` | `expo lint` for `apps/platform` | Biome ignores that app by design |
 | `randsum` | `apps/site`, `apps/rdn` pin TS 6.0.3 off-catalog | `@astrojs/check` needs the TS6 compiler API, which TS7 does not ship |
+| `optfall` | **Svelte, not React** | A deliberate choice, not drift. It also means Biome cannot parse `.svelte` — `svelte-check` covers those, and Prettier is still not reintroduced. Do not propose a React migration off the back of the `R` invariant. |
+| `randsum`, `SU-SRD`, `Hermuz` | Discord bots build for and run on **Node**, not Bun | See the platform section — this is the current state everywhere, so it is not a per-repo finding |
 
 Before flagging a deviation, check whether it is on this list or has a comment explaining itself. Removing a load-bearing pin because it looks untidy is the failure mode this table exists to prevent.
 

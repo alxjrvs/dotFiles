@@ -147,7 +147,7 @@ Symlinked individually into `~/.claude/` (the `Claude` section of the boomfile):
 
 **Butter, because it goes on the Bun** — the house shape for personal TypeScript work, and the one place it is written down so an agent can copy it rather than re-derive it per repo: **B**un · **U**nified workspace (`apps/*` + `packages/*`) · **T**ypeScript (strict-plus) · **T**anStack · **E**dge-deployed (Netlify/Render/Convex) · **R**eact.
 
-It is descriptive before it is prescriptive. `@RANDSUM`, `SU-SRD`, `OptFall` and `BinfiniteLLC/BinfiniteApp` arrived at it **independently**, never templated from one another — that convergence is the evidence, and it is why the skill records what four repos re-decided under pressure rather than a preferred toolchain.
+It is descriptive before it is prescriptive. `RANDSUM/randsum`, `SalvageUnion-io/SU-SRD`, `alxjrvs/optfall` and `BinfiniteLLC/binfinite-app` arrived at it **independently**, never templated from one another — that convergence is the evidence, and it is why the skill records what four repos re-decided under pressure rather than a preferred toolchain. (Those are the GitHub names; the local checkouts under `~/Code` are spelled differently, and `BinfiniteLLC/BinfiniteApp` is a directory name that does not resolve on GitHub.)
 
 Two things in it matter more than the tool list:
 
