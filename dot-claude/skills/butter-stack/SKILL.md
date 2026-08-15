@@ -26,7 +26,7 @@ Two modes. **Scaffold** a new repo onto it, or **audit** an existing one and rep
 
 **Two tiers, and the difference matters when auditing.**
 
-- **Unanimous (4/4)** — Bun, the workspace shape, the internal graph, the base tsconfig, and the CI gate. A deviation here is a finding.
+- **Unanimous (4/4)** — Bun, the workspace shape, the internal graph, *having* a shared base tsconfig, and the CI gate. A deviation here is a finding. Note the tsconfig entry covers the file and the core flag set only: three flags inside that block are themselves marked 3/4 and keep that weaker status — do not inherit unanimous-tier severity for them from the section heading.
 - **Standard (3/4 today)** — Biome, Lefthook, knip, catalogs, `.bun-version`, `bun run check`. `optfall` lacks these and has open issues to adopt them; every other repo has them. A deviation here is a finding *unless the repo is optfall*, where it is already tracked — say so and link the issue rather than re-reporting it.
 
 Everything below is marked accordingly. Do not promote a 3/4 item to unanimous when reporting.
@@ -90,6 +90,8 @@ These are two *different* failure modes with the same symptom — a green gate t
 
 The rule: if you find yourself writing a convention into `CLAUDE.md` and hoping it holds, write the check instead. A rule nothing enforces is a rule that has already drifted.
 
+Coverage is uneven, which is the point of auditing: most of those exist in one or two repos, not all four. `check:ci-aggregator` in particular lives only in `binfinite-app` (`scripts/check-ci-aggregator.ts`, wired into `verify`) — it is a real precedent to copy from, *and* the thing the other three still need to ship.
+
 ## Surface layer — chosen per app, not per repo
 
 - **Stateful application** → React 19 + **TanStack Router** (file-based routes, generated `routeTree.gen.ts`) on Vite. Add **Query** when there is a server. **Lean on TanStack wherever it applies** — this is the default reach, not a per-app deliberation.
@@ -107,7 +109,7 @@ The rule: if you find yourself writing a convention into `CLAUDE.md` and hoping 
 - **Convex** — the backend, where there is one. Schema is the source of truth; check the generated API into git behind a CI freshness gate.
 - **Expo / EAS** — mobile only. `BinfiniteLLC/binfinite-app` → `apps/platform` is the reference implementation; copy its conventions rather than re-deriving them. Note it is a single-vendor dependency spanning build, hosting, updates and store submission — treat as concentration risk.
 
-> **Bun does not reach the Discord bots, and that is the measured current state.** All three (`randsum`, `SU-SRD`, `Hermuz`) build for Node and start with it — `bunup` or `bun build --target node`, then `node dist/index.js` — and their Render services declare `runtime: node`. **Do not report this as drift**, and do not set `BUN_VERSION` on an existing bot as a "fix": it changes the production runtime of a working service. Hermuz's `render.yaml` documents the lever (Render uses Bun when `BUN_VERSION` is set and a `bun.lock` is present) if this is ever taken on deliberately, as its own change with its own testing.
+> **Bun does not reach the Discord bots, and that is the measured current state.** All three (`RANDSUM/randsum`, `SalvageUnion-io/SU-SRD`, `alxjrvs/Hermuz` — the last is a fifth repo, older than the four the stack was derived from) build for Node and start with it — `bunup` or `bun build --target node`, then `node dist/index.js` — and their Render services declare `runtime: node`. **Do not report this as drift**, and do not set `BUN_VERSION` on an existing bot as a "fix": it changes the production runtime of a working service. Hermuz's `render.yaml` documents the lever (Render uses Bun when `BUN_VERSION` is set and a `bun.lock` is present) if this is ever taken on deliberately, as its own change with its own testing.
 
 ## Deliberate exceptions — do not "fix" these
 
@@ -121,7 +123,7 @@ A deviation is only drift if nothing requires it. These are required:
 | `binfinite-app` | `expo lint` for `apps/platform` | Biome ignores that app by design |
 | `randsum` | `apps/site`, `apps/rdn` pin TS 6.0.3 off-catalog | `@astrojs/check` needs the TS6 compiler API, which TS7 does not ship |
 | `optfall` | **Svelte, not React** | A deliberate choice, not drift. Do not propose a React migration off the back of the `R` invariant. Note this shapes the *pending* Biome adoption rather than exempting it: Biome cannot parse `.svelte`, so when it lands there `svelte-check` keeps covering those files and Prettier is still not reintroduced. |
-| `randsum`, `SU-SRD`, `Hermuz` | Discord bots build for and run on **Node**, not Bun | See the platform section — this is the current state everywhere, so it is not a per-repo finding |
+| `RANDSUM/randsum`, `SalvageUnion-io/SU-SRD`, `alxjrvs/Hermuz` | Discord bots build for and run on **Node**, not Bun | See the platform section — this is the current state everywhere, so it is not a per-repo finding |
 
 Before flagging a deviation, check whether it is on this list or has a comment explaining itself. Removing a load-bearing pin because it looks untidy is the failure mode this table exists to prevent.
 
