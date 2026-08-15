@@ -27,7 +27,7 @@ Two modes. **Scaffold** a new repo onto it, or **audit** an existing one and rep
 **Two tiers, and the difference matters when auditing.**
 
 - **Unanimous (4/4)** — Bun, the workspace shape, the internal graph, *having* a shared base tsconfig, and the CI gate. A deviation here is a finding. Note the tsconfig entry covers the file and the core flag set only: three flags inside that block are themselves marked 3/4 and keep that weaker status — do not inherit unanimous-tier severity for them from the section heading.
-- **Standard (3/4 today)** — Biome, Lefthook, knip, catalogs, `.bun-version`, `bun run check`. `optfall` lacks these and has open issues to adopt them; every other repo has them. A deviation here is a finding *unless the repo is optfall*, where it is already tracked — say so and link the issue rather than re-reporting it.
+- **Standard (not yet universal)** — Lefthook, knip, catalogs, `.bun-version`, `bun run check`. Adoption is uneven and moves; `optfall` is the furthest behind and has open issues for most of them. **Check the repo rather than trusting this line** — it was already wrong once (it claimed optfall lacked Biome after Biome had landed there). A deviation is a finding unless an open issue already tracks it, in which case link that issue instead of re-reporting.
 
 Everything below is marked accordingly. Do not promote a 3/4 item to unanimous when reporting.
 
@@ -122,12 +122,22 @@ A deviation is only drift if nothing requires it. These are required:
 | `binfinite-app` | `linker = "hoisted"` | Expo single-instancing; isolated duplicates the tree and trips `expo-doctor` |
 | `binfinite-app` | `expo lint` for `apps/platform` | Biome ignores that app by design |
 | `randsum` | `apps/site`, `apps/rdn` pin TS 6.0.3 off-catalog | `@astrojs/check` needs the TS6 compiler API, which TS7 does not ship |
-| `optfall` | **Svelte, not React** | A deliberate choice, not drift. Do not propose a React migration off the back of the `R` invariant. Note this shapes the *pending* Biome adoption rather than exempting it: Biome cannot parse `.svelte`, so when it lands there `svelte-check` keeps covering those files and Prettier is still not reintroduced. |
+| `optfall` | No component workbench in the usual sense | It has no Storybook or Ladle. Its workbench is the generated `design-system/` HTML bundle, so apply the story rule against that rather than reporting a missing workbench. |
 | `RANDSUM/randsum`, `SalvageUnion-io/SU-SRD`, `alxjrvs/Hermuz` | Discord bots build for and run on **Node**, not Bun | See the platform section — this is the current state everywhere, so it is not a per-repo finding |
 
 Before flagging a deviation, check whether it is on this list or has a comment explaining itself. Removing a load-bearing pin because it looks untidy is the failure mode this table exists to prevent.
 
 ## Procedure — audit
+
+0. **Fetch first. A local checkout is not the repo.**
+
+   ```sh
+   git -C <repo> fetch origin && git -C <repo> rev-list --left-right --count origin/main...HEAD
+   ```
+
+   If the left number is non-zero the working copy is behind, and **every finding you produce from it may already be fixed**. Either pull, or read the files from the remote (`gh api "repos/<owner>/<repo>/contents/<path>?ref=main"`).
+
+   > This step exists because skipping it produced a whole sweep of wrong findings. Five of six checkouts were behind — one by 34 commits — and an entire framework migration had landed ten hours before the audit that claimed it was still pending. The audit filed an issue to adopt a tool that was already adopted, and another to gate a workbench that had been deleted. Reading a file off disk *feels* like reading the repo. It is not.
 
 1. Read `package.json`, `bunfig.toml`, `tsconfig*.json`, `biome.json`, `lefthook.yml`, `knip.json`, `.github/workflows/ci.yml`.
 2. Diff against the invariants above. Classify each gap: **missing**, **drifted**, or **deliberate exception**.
