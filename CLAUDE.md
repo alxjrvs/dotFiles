@@ -141,7 +141,7 @@ Symlinked individually into `~/.claude/` (the `Claude` section of the boomfile):
 
 - `CLAUDE.md` — user-level global instructions (identity, preferences).
 - `settings.json` — **deliberately minimal**; only divergences from defaults (enumerated in `dot-claude/CLAUDE.md`). Don't add settings without asking.
-- `skills/*` — glob-linked into `~/.claude/skills/`, so a new directory is picked up with no boomfile change. Today: `agent-friendly-repo`, `ship`, `rebase-prs`, `butter-stack`.
+- `skills/*` — glob-linked into `~/.claude/skills/`, so a new directory is picked up with no boomfile change. **Read the directory for the roster; it is deliberately not enumerated here** — a hand-maintained list of a glob-linked directory goes stale the next time a skill is added or removed, with no symptom, and nothing checks it.
 
 ### The Butter Stack (`dot-claude/skills/butter-stack/`)
 

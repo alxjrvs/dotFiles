@@ -18,11 +18,18 @@ description: The Butter Stack — the house Bun/TypeScript monorepo shape (Bun �
 | **E** | Edge-deployed | Netlify · Render · Convex |
 | **R** | React | 19, behind a shared component library |
 
-Two modes. **Scaffold** a new repo onto it, or **audit** an existing one and report drift. Both read first and print a diff; scaffolding writes only after you approve. Auditing never writes.
+Two modes. **Scaffold** a new repo onto it, or **audit** an existing one and report drift. Both read first and print a diff; scaffolding writes only after you approve.
+
+**Audit never touches the repo** — no files, no config, no settings. It may *offer* to file issues once it has reported, since that is how findings become work, but filing is outward-facing and needs an explicit yes first. Reporting is free; everything else is gated.
 
 ## The invariants
 
-These are unanimous across all four repos. Treat a deviation as a finding, not a preference.
+**Two tiers, and the difference matters when auditing.**
+
+- **Unanimous (4/4)** — Bun, the workspace shape, the internal graph, the base tsconfig, and the CI gate. A deviation here is a finding.
+- **Standard (3/4 today)** — Biome, Lefthook, knip, catalogs, `.bun-version`, `bun run check`. `optfall` lacks these and has open issues to adopt them; every other repo has them. A deviation here is a finding *unless the repo is optfall*, where it is already tracked — say so and link the issue rather than re-reporting it.
+
+Everything below is marked accordingly. Do not promote a 3/4 item to unanimous when reporting.
 
 **Bun is everything, not just the installer.** Runtime, package manager, workspace host, test runner, script runner. Cross-package work goes through `bun run --filter '<pkg>' <script>` — never Turbo, never Nx. Every repo carries a `bunfig.toml`, and it is where operational knowledge lives (linker choice, test preloads, install policy), so it is never empty boilerplate.
 
@@ -63,15 +70,19 @@ These are unanimous across all four repos. Treat a deviation as a finding, not a
 
 > ⚠️ **That last step is the whole job — do not omit it.** `if: always()` makes the job *run* regardless of its dependencies; it does not make it *fail* with them. A job whose steps never inspect `needs.*.result` **succeeds when everything it needs failed**, so the sole required status check goes permanently green and red-CI PRs merge clean through the ruleset. Testing `failure`/`cancelled` (not `success`) is deliberate: a path-filtered job reports `skipped`, which must stay passing.
 
-> The `needs:` list is also hand-maintained, and **a job missing from it can never fail the required check** — the gate silently stops gating with no symptom. Ship `check:ci-aggregator` (parse `ci.yml`, diff job keys against `needs:`) at the same time as the gate itself, not later.
+> The `needs:` list is also hand-maintained, and **a job missing from it can never fail the required check** — the gate silently stops gating with no symptom. Ship `check:ci-aggregator` at the same time as the gate itself, not later: parse the workflow, collect job keys, and diff them against the aggregate job's `needs:`.
+>
+> Two things that implementation must get right, or the check that guards the gate fails on its own repo and gets weakened away:
+> - **Exclude the aggregate job from its own diff.** A job cannot `needs:` itself, so a naive key-set comparison always reports it as missing.
+> - **Scope it per workflow.** `needs:` reaches only inside one file, so a repo with several workflows needs the check run per workflow — and any status context required from a *different* workflow (CodeQL, for example) is outside what this check can see. Say so in its output rather than implying full coverage.
 
 These are two *different* failure modes with the same symptom — a green gate that gates nothing. The first is a broken job, the second an incomplete `needs:` list. Check for both.
 
-**Biome is the single lint + format tool.** Prettier is removed, not merely unused. `biome.json` carries **only divergences from Biome's defaults** — in practice `vcs.useIgnoreFile: true` (Biome ignores `.gitignore` by default, and without this it descends into `.claude/worktrees/`) and `formatter.indentStyle: "space"` (Biome defaults to tab, and `useEditorconfig` is false). Accept that Biome parses neither Markdown nor YAML; do not reintroduce a second formatter to cover it.
+**Biome is the single lint + format tool.** *(standard, 3/4)* Prettier is removed, not merely unused. `biome.json` carries **only divergences from Biome's defaults** — in practice `vcs.useIgnoreFile: true` (Biome ignores `.gitignore` by default, and without this it descends into `.claude/worktrees/`) and `formatter.indentStyle: "space"` (Biome defaults to tab, and `useEditorconfig` is false). Accept that Biome parses neither Markdown nor YAML; do not reintroduce a second formatter to cover it.
 
-**Lefthook, two tiers.** Pre-commit is staged-files-only (`biome check --write {staged_files}` with `stage_fixed: true`, and `--no-errors-on-unmatched`, which is required — Biome exits 1 rather than skipping when every staged file is out of scope). Pre-push is the expensive tier: typecheck, tests, build. Guard `prepare` with `[ -n "$CI" ] || lefthook install`.
+**Lefthook, two tiers.** *(standard, 3/4)* Pre-commit is staged-files-only (`biome check --write {staged_files}` with `stage_fixed: true`, and `--no-errors-on-unmatched`, which is required — Biome exits 1 rather than skipping when every staged file is out of scope). Pre-push is the expensive tier: typecheck, tests, build. Guard `prepare` with `[ -n "$CI" ] || lefthook install`.
 
-**Knip**, with per-workspace `entry`/`project` globs. **Bun catalogs** for shared versions. **`.bun-version`** pinned and read by CI. **`bun run check`** as the one full-check entry point.
+*(standard, 3/4)* **Knip**, with per-workspace `entry`/`project` globs. **Bun catalogs** for shared versions. **`.bun-version`** pinned and read by CI. **`bun run check`** as the one full-check entry point.
 
 ## The signature habit
 
@@ -155,7 +166,7 @@ apps/
 
 ## Guardrails
 
-- **Audit never writes.** Scaffold writes only after an explicit go-ahead.
+- **Audit never touches the repo.** It may offer to file issues after reporting — that is the one outward-facing thing it does, and it needs an explicit yes.
 - **Never file issues without asking**, and never file one issue per file — one per reviewable change.
 - **Do not standardize a deviation on the exceptions table.** Check for a comment explaining it before treating anything as drift.
 - **`.bun-version`, the catalog, and `overrides` are security surface**, not formatting. Changing them is a real change; call it out.
