@@ -102,6 +102,14 @@ Coverage is uneven, which is the point of auditing: most of those exist in one o
 
 **Styling** → a framework-agnostic tokens package as the single brand source, style objects for static values, and **one package-level stylesheet** for everything objects cannot express (`:hover`, `@media`, `:focus-visible`, `:disabled`, pseudo-elements). Both halves are required — a style-object-only approach silently drops interaction and responsive state. No Tailwind. No CSS Modules.
 
+> ⚠️ **Split per PROPERTY, never per component.** An inline `style=` declaration outranks any author stylesheet rule regardless of selector specificity or state, because it sits higher in the cascade origin order. So if a property's resting value goes inline and its `:hover` goes to a class, **the hover never fires** — and nothing errors. Measured, not inferred: an element with `style="background-color: green"` and a `:hover` class setting red computes `rgb(0,128,0)` while hovered; move the resting value into the class and the hover applies.
+>
+> The rule therefore reads: **a property with any stateful or responsive variant goes wholly to the stylesheet, resting value included. A property with none stays inline.** One component routinely splits down the middle of its own style — padding and font inline, `background-color` and `border-color` in a class — and that is correct, not a smell.
+>
+> Two consequences to expect rather than discover:
+> - **The stylesheet is much larger than "the bits objects cannot express"** — it also carries every *resting* value those rules override.
+> - **A `filter: brightness()` hover is a warning sign.** It appears to work only because `filter` is a different property from the one it is imitating, so it dodges the collision instead of resolving it. It cannot express a specific hover colour, and approximating one is a re-tone.
+
 ## Platform
 
 - **Netlify** — every web surface.
