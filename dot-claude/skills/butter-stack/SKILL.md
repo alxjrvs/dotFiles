@@ -26,10 +26,10 @@ Two modes. **Scaffold** a new repo onto it, or **audit** an existing one and rep
 
 **Two tiers, and the difference matters when auditing.**
 
-- **Unanimous (4/4)** — Bun, the workspace shape, the internal graph, *having* a shared base tsconfig, and the CI gate. A deviation here is a finding. Note the tsconfig entry covers the file and the core flag set only: three flags inside that block are themselves marked 3/4 and keep that weaker status — do not inherit unanimous-tier severity for them from the section heading.
-- **Standard (3/4 today)** — Biome, Lefthook, knip, catalogs, `.bun-version`, `bun run check`. `optfall` lacks these and has open issues to adopt them; every other repo has them. A deviation here is a finding *unless the repo is optfall*, where it is already tracked — say so and link the issue rather than re-reporting it.
+- **Unanimous (4/4)** — Bun, the workspace shape, the internal graph, *having* a shared base tsconfig, and the CI gate. A deviation here is a finding. Note the tsconfig entry covers the file and the core flag set only: the three flags marked *(standard)* inside that block keep the weaker status — do not inherit unanimous-tier severity for them from the section heading.
+- **Standard (not yet universal)** — Biome, Lefthook, knip, catalogs, `.bun-version`, `bun run check`. Adoption is uneven and moves. **Check the repo rather than trusting this list** — it was already wrong once, claiming optfall lacked Biome after Biome had landed there. A deviation is a finding unless an open issue already tracks it, in which case link that issue instead of re-reporting.
 
-Everything below is marked accordingly. Do not promote a 3/4 item to unanimous when reporting.
+Items below are tagged *(standard)* where they belong to the second tier. Never report a *(standard)* item at unanimous severity, and never infer adoption from this page — the tier says what the item is, the repo says whether it is there.
 
 **Bun is everything, not just the installer.** Runtime, package manager, workspace host, test runner, script runner. Cross-package work goes through `bun run --filter '<pkg>' <script>` — never Turbo, never Nx. Every repo carries a `bunfig.toml`, and it is where operational knowledge lives (linker choice, test preloads, install policy), so it is never empty boilerplate.
 
@@ -37,7 +37,7 @@ Everything below is marked accordingly. Do not promote a 3/4 item to unanimous w
 
 **The internal graph has one shape.** Zero-dependency domain core at the bottom → data/reference layer → shared component library → apps. Apps consume and never re-export. Siblings at the same level never depend on each other. In practice: `@randsum/roller`, `optfall-legality`, `salvageunion-reference`, `@binfinite/core` are all the same slot in four different repos.
 
-**One base tsconfig, extended everywhere.** Beyond `strict`, the set that appears in all four:
+**One base tsconfig, extended everywhere.** Beyond `strict` — the first block is unanimous, the tagged block is not:
 
 ```jsonc
 "noUncheckedIndexedAccess": true,
@@ -48,7 +48,7 @@ Everything below is marked accordingly. Do not promote a 3/4 item to unanimous w
 "resolveJsonModule": true,
 "skipLibCheck": true,
 "forceConsistentCasingInFileNames": true,
-// three of four, and worth having:
+// (standard) — not yet everywhere, and worth having:
 "exactOptionalPropertyTypes": true,
 "noImplicitOverride": true,
 "verbatimModuleSyntax": true
@@ -78,11 +78,11 @@ Everything below is marked accordingly. Do not promote a 3/4 item to unanimous w
 
 These are two *different* failure modes with the same symptom — a green gate that gates nothing. The first is a broken job, the second an incomplete `needs:` list. Check for both.
 
-**Biome is the single lint + format tool.** *(standard, 3/4)* Prettier is removed, not merely unused. `biome.json` carries **only divergences from Biome's defaults** — in practice `vcs.useIgnoreFile: true` (Biome ignores `.gitignore` by default, and without this it descends into `.claude/worktrees/`) and `formatter.indentStyle: "space"` (Biome defaults to tab, and `useEditorconfig` is false). Accept that Biome parses neither Markdown nor YAML; do not reintroduce a second formatter to cover it.
+**Biome is the single lint + format tool.** *(standard)* Prettier is removed, not merely unused. `biome.json` carries **only divergences from Biome's defaults** — in practice `vcs.useIgnoreFile: true` (Biome ignores `.gitignore` by default, and without this it descends into `.claude/worktrees/`) and `formatter.indentStyle: "space"` (Biome defaults to tab, and `useEditorconfig` is false). Accept that Biome parses neither Markdown nor YAML; do not reintroduce a second formatter to cover it.
 
-**Lefthook, two tiers.** *(standard, 3/4)* Pre-commit is staged-files-only (`biome check --write {staged_files}` with `stage_fixed: true`, and `--no-errors-on-unmatched`, which is required — Biome exits 1 rather than skipping when every staged file is out of scope). Pre-push is the expensive tier: typecheck, tests, build. Guard `prepare` with `[ -n "$CI" ] || lefthook install`.
+**Lefthook, two tiers.** *(standard)* Pre-commit is staged-files-only (`biome check --write {staged_files}` with `stage_fixed: true`, and `--no-errors-on-unmatched`, which is required — Biome exits 1 rather than skipping when every staged file is out of scope). Pre-push is the expensive tier: typecheck, tests, build. Guard `prepare` with `[ -n "$CI" ] || lefthook install`.
 
-*(standard, 3/4)* **Knip**, with per-workspace `entry`/`project` globs. **Bun catalogs** for shared versions. **`.bun-version`** pinned and read by CI. **`bun run check`** as the one full-check entry point.
+*(standard)* **Knip**, with per-workspace `entry`/`project` globs. **Bun catalogs** for shared versions. **`.bun-version`** pinned and read by CI. **`bun run check`** as the one full-check entry point.
 
 ## The signature habit
 
@@ -122,12 +122,37 @@ A deviation is only drift if nothing requires it. These are required:
 | `binfinite-app` | `linker = "hoisted"` | Expo single-instancing; isolated duplicates the tree and trips `expo-doctor` |
 | `binfinite-app` | `expo lint` for `apps/platform` | Biome ignores that app by design |
 | `randsum` | `apps/site`, `apps/rdn` pin TS 6.0.3 off-catalog | `@astrojs/check` needs the TS6 compiler API, which TS7 does not ship |
-| `optfall` | **Svelte, not React** | A deliberate choice, not drift. Do not propose a React migration off the back of the `R` invariant. Note this shapes the *pending* Biome adoption rather than exempting it: Biome cannot parse `.svelte`, so when it lands there `svelte-check` keeps covering those files and Prettier is still not reintroduced. |
+| `optfall` | No component workbench in the usual sense | It has no Storybook or Ladle. Its workbench is the generated `design-system/` HTML bundle, so apply the story rule against that rather than reporting a missing workbench. |
 | `RANDSUM/randsum`, `SalvageUnion-io/SU-SRD`, `alxjrvs/Hermuz` | Discord bots build for and run on **Node**, not Bun | See the platform section — this is the current state everywhere, so it is not a per-repo finding |
 
 Before flagging a deviation, check whether it is on this list or has a comment explaining itself. Removing a load-bearing pin because it looks untidy is the failure mode this table exists to prevent.
 
 ## Procedure — audit
+
+0. **Fetch first. A local checkout is not the repo.**
+
+   ```sh
+   cd <repo>
+   REM=$(git remote | head -1)                                    # usually origin — don't assume
+   git fetch "$REM"
+   DEF=$(git ls-remote --symref "$REM" HEAD | sed -n 's|^ref: refs/heads/\(.*\)[[:space:]]HEAD$|\1|p')
+   [ -n "$DEF" ] || { echo "cannot resolve default branch — stop and resolve by hand"; exit 1; }
+   git rev-list --left-right --count "$REM/$DEF...HEAD"           # left = commits you are BEHIND
+   ```
+
+   Ask the remote for the default branch, and **fail loudly if you cannot get it**. Do not fall back to `main`: `refs/remotes/origin/HEAD` is simply absent on a `git init` + `git remote add` clone and on Git before 2.47, so a `master`/`develop` repo would get compared against a nonexistent `origin/main`, and the check would degrade to nothing — the exact failure this step exists to prevent. A staleness check that quietly performs no check is worse than none, because it reads as a clean bill of health.
+
+   If the left number is non-zero the working copy is behind, and **every finding you produce from it may already be fixed**. Read each file from the fetched remote ref:
+
+   ```sh
+   git show "$REM/$DEF:<path>"
+   ```
+
+   **Do not `git pull` to fix it.** A pull writes the branch ref and the working tree, and on a dirty checkout or a feature branch it can leave a merge commit or unresolved conflicts behind — mutating a repo this skill promises never to touch, as a side effect of a read-only audit. `git fetch` + `git show` reads the true remote state and changes nothing. If the user wants the checkout updated, that is their call to make separately.
+
+   Use `git show` rather than the API — `gh api "repos/<o>/<r>/contents/<path>"` returns JSON with base64-encoded `content`, so reading it literally gets you an unusable blob. (If you do need the API, `-H "Accept: application/vnd.github.raw"` returns the file.)
+
+   > This step exists because skipping it produced a whole sweep of wrong findings. Five of six checkouts were behind — one by 34 commits — and an entire framework migration had landed ten hours before the audit that claimed it was still pending. The audit filed an issue to adopt a tool that was already adopted, and another to gate a workbench that had been deleted. Reading a file off disk *feels* like reading the repo. It is not.
 
 1. Read `package.json`, `bunfig.toml`, `tsconfig*.json`, `biome.json`, `lefthook.yml`, `knip.json`, `.github/workflows/ci.yml`.
 2. Diff against the invariants above. Classify each gap: **missing**, **drifted**, or **deliberate exception**.
