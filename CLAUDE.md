@@ -141,6 +141,20 @@ Symlinked individually into `~/.claude/` (the `Claude` section of the boomfile):
 
 - `CLAUDE.md` — user-level global instructions (identity, preferences).
 - `settings.json` — **deliberately minimal**; only divergences from defaults (enumerated in `dot-claude/CLAUDE.md`). Don't add settings without asking.
+- `skills/*` — glob-linked into `~/.claude/skills/`, so a new directory is picked up with no boomfile change. **Read the directory for the roster; it is deliberately not enumerated here** — a hand-maintained list of a glob-linked directory goes stale the next time a skill is added or removed, with no symptom, and nothing checks it.
+
+### The Butter Stack (`dot-claude/skills/butter-stack/`)
+
+**Butter, because it goes on the Bun** — the house shape for personal TypeScript work, and the one place it is written down so an agent can copy it rather than re-derive it per repo: **B**un · **U**nified workspace (`apps/*` + `packages/*`) · **T**ypeScript (strict-plus) · **T**anStack · **E**dge-deployed (Netlify/Render/Convex) · **R**eact.
+
+It is descriptive before it is prescriptive. `RANDSUM/randsum`, `SalvageUnion-io/SU-SRD`, `alxjrvs/optfall` and `BinfiniteLLC/binfinite-app` arrived at it **independently**, never templated from one another — that convergence is the evidence, and it is why the skill records what four repos re-decided under pressure rather than a preferred toolchain. (Those are the GitHub names; the local checkouts under `~/Code` are spelled differently, and `BinfiniteLLC/BinfiniteApp` is a directory name that does not resolve on GitHub.)
+
+Two things in it matter more than the tool list:
+
+- **The signature habit** — conventions get promoted from prose into executable `check:*` gates wired into the aggregate CI job. A rule nothing enforces is a rule that has already drifted; this repo's own guard tests are the same instinct.
+- **The deliberate-exceptions table** — a set of per-repo deviations that each look like drift and are load-bearing, so a tidying pass doesn't remove them. **Read it in the skill and check it before calling anything drift.** Deliberately not summarized here: copying those rows into always-loaded context is the same hand-maintained-duplicate problem as the skills roster above, and the table is the one thing in the skill that must never be consulted from a stale copy.
+
+The skill audits (read-only) or scaffolds (writes only after a go-ahead), and hands off to `agent-friendly-repo` for merge settings — a `CI Success` gate is only real once it is the required check.
 
 ## Guardrails
 
