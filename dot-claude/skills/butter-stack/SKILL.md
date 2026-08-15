@@ -37,7 +37,7 @@ Items below are tagged *(standard)* where they belong to the second tier. Never 
 
 **The internal graph has one shape.** Zero-dependency domain core at the bottom → data/reference layer → shared component library → apps. Apps consume and never re-export. Siblings at the same level never depend on each other. In practice: `@randsum/roller`, `optfall-legality`, `salvageunion-reference`, `@binfinite/core` are all the same slot in four different repos.
 
-**One base tsconfig, extended everywhere.** Beyond `strict`, the set that appears in all four:
+**One base tsconfig, extended everywhere.** Beyond `strict` — the first block is unanimous, the tagged block is not:
 
 ```jsonc
 "noUncheckedIndexedAccess": true,
@@ -132,21 +132,25 @@ Before flagging a deviation, check whether it is on this list or has a comment e
 0. **Fetch first. A local checkout is not the repo.**
 
    ```sh
-   cd <repo> && git fetch origin
-   DEF=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
-   DEF=${DEF:-main}
-   git rev-list --left-right --count "origin/$DEF...HEAD"   # left = commits you are BEHIND
+   cd <repo>
+   REM=$(git remote | head -1)                                    # usually origin — don't assume
+   git fetch "$REM"
+   DEF=$(git ls-remote --symref "$REM" HEAD | sed -n 's|^ref: refs/heads/\(.*\)[[:space:]]HEAD$|\1|p')
+   [ -n "$DEF" ] || { echo "cannot resolve default branch — stop and resolve by hand"; exit 1; }
+   git rev-list --left-right --count "$REM/$DEF...HEAD"           # left = commits you are BEHIND
    ```
 
-   Resolve the default branch rather than hardcoding `main`: on a repo that uses anything else, `origin/main` fails with `unknown revision` and the check silently degrades to "no check performed" — which is the exact failure this step exists to prevent.
+   Ask the remote for the default branch, and **fail loudly if you cannot get it**. Do not fall back to `main`: `refs/remotes/origin/HEAD` is simply absent on a `git init` + `git remote add` clone and on Git before 2.47, so a `master`/`develop` repo would get compared against a nonexistent `origin/main`, and the check would degrade to nothing — the exact failure this step exists to prevent. A staleness check that quietly performs no check is worse than none, because it reads as a clean bill of health.
 
-   If the left number is non-zero the working copy is behind, and **every finding you produce from it may already be fixed**. Either pull, or read each file from the fetched remote ref:
+   If the left number is non-zero the working copy is behind, and **every finding you produce from it may already be fixed**. Read each file from the fetched remote ref:
 
    ```sh
-   git show "origin/$DEF:<path>"
+   git show "$REM/$DEF:<path>"
    ```
 
-   Use that rather than the API — `gh api "repos/<o>/<r>/contents/<path>"` returns JSON with base64-encoded `content`, so reading it literally gets you an unusable blob. (If you do need the API, `-H "Accept: application/vnd.github.raw"` returns the file.)
+   **Do not `git pull` to fix it.** A pull writes the branch ref and the working tree, and on a dirty checkout or a feature branch it can leave a merge commit or unresolved conflicts behind — mutating a repo this skill promises never to touch, as a side effect of a read-only audit. `git fetch` + `git show` reads the true remote state and changes nothing. If the user wants the checkout updated, that is their call to make separately.
+
+   Use `git show` rather than the API — `gh api "repos/<o>/<r>/contents/<path>"` returns JSON with base64-encoded `content`, so reading it literally gets you an unusable blob. (If you do need the API, `-H "Accept: application/vnd.github.raw"` returns the file.)
 
    > This step exists because skipping it produced a whole sweep of wrong findings. Five of six checkouts were behind — one by 34 commits — and an entire framework migration had landed ten hours before the audit that claimed it was still pending. The audit filed an issue to adopt a tool that was already adopted, and another to gate a workbench that had been deleted. Reading a file off disk *feels* like reading the repo. It is not.
 
