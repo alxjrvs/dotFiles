@@ -299,9 +299,19 @@ overridden). Each agent gets `.claude/worktrees/<name>` on a **freshly created b
   - Checks are enforced **per PR against the stack's base branch**, so the default-branch ruleset
     governs every layer — no intermediate PR is an unguarded hole, and a required human review
     would block all of them.
-  - Stack state lives in `.git/gh-stack` (untracked, per-clone), so a fresh agent worktree does
-    not inherit one — `gh stack checkout <stack#|pr#|url|branch>` re-attaches. Run `gh stack view`
-    before shipping: a branch that is stacked on GitHub can look unstacked locally.
+  - Stack state lives in `.git/worktrees/<name>/gh-stack` for a linked worktree — untracked and
+    **per worktree, not per clone**, so two worktrees of one clone share none of it and a fresh
+    agent worktree inherits nothing. `gh stack checkout <stack#|pr#|url|branch>` re-attaches. Run
+    `gh stack view` before shipping: a branch that is stacked on GitHub can look unstacked locally.
+    Two further gotchas, both measured on 2026-08-15: `gh stack init` **requires** a branch
+    argument (the bare form dies on "interactive input required", which strands an unattended
+    agent), and it anchors the trunk to the **local** `main` ref rather than `origin/main` — so on
+    a machine where nobody checks out `main`, the persisted `trunk.head` can sit tens of commits
+    behind. `gh stack sync` cannot advance it either (git refuses to force-update a branch checked
+    out in another worktree, which it reports as a `fatal:` nested inside a warning on an
+    otherwise successful command). **Do not read `trunk.head` as truth, and do not "fix" that
+    warning** by removing the worktree or forcing the local ref — the tool falls back to
+    `origin/main`, which is the ref you wanted, and exits 0.
 - **Rebase on the target before pushing.** Before the first `git push` / `gh pr create`:
   `git fetch origin && git rebase origin/<default>` (resolve conflicts; re-push with
   `--force-with-lease` if already pushed). `origin/HEAD` moves while an agent works, so even a
