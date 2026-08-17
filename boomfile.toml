@@ -183,8 +183,9 @@ mode = "755"
 
 # PostToolUse hook: after `gh pr create` / `git push`, run the adversarial review
 # locally (subscription-covered, unlike an agent in GitHub Actions) and post it as
-# a PR review plus a `claude-review` commit status — which a ruleset can require.
-# Backgrounds itself so it can never block a turn. Advisory + one repo to start.
+# a PR review. No commit status — it is advisory, no ruleset ever required it, and
+# a check that cannot fail a merge only dilutes the checks list.
+# Backgrounds itself so it can never block a turn.
 [[section.link]]
 src = "dot-claude/hooks/pr-review.sh"
 dst = "~/.claude/hooks/pr-review.sh"
