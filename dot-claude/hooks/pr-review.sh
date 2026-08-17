@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
-# Post the agentic review we ALREADY perform as a durable artifact on the PR,
-# plus a `claude-review` commit status.
+# Post the agentic review we ALREADY perform as a durable artifact on the PR.
+#
+# NO COMMIT STATUS. The review is a PR comment and nothing else, so it never
+# appears in the checks list. It used to post a `claude-review` status, which was
+# required by no ruleset in any repo — an advisory check that can never fail a
+# merge earns nothing and costs attention, because a checks list containing one
+# entry that never matters teaches people to skim the whole list.
 #
 # Why this shape:
 #   - The review already exists (Binfinite's issue-ship.js runs two adversarial
@@ -9,13 +14,10 @@
 #   - It runs LOCALLY, so it draws on the Claude subscription. Running an agent in
 #     GitHub Actions bills real metered money — at ~8.8 PRs/day that is ~1,600
 #     paid runs per half-year for work already covered.
-#   - A commit status posted with your own token is a valid
-#     `required_status_checks` context in a ruleset. That is how Jenkins and
-#     Buildkite have always gated GitHub: real blocking enforcement, with zero LLM
-#     tokens inside CI.
 #   - `gh pr review --comment` creates a real PullRequestReview node, so escape
 #     rate becomes measurable with the same GraphQL query that found there were 7
-#     human approvals across 1,113 org PRs.
+#     human approvals across 1,113 org PRs. That node is also what makes the
+#     day-30 finding-rate decision countable without a status to tally.
 #
 # Wired as a PostToolUse hook on `gh pr create` / `git push`. Backgrounds itself,
 # so it NEVER blocks a turn — a review must not become a thing that stops work.
@@ -84,15 +86,17 @@ done
 # CHECKED-OUT branch only, so a submit reviews that one layer, not the whole
 # stack. That is partial coverage, deliberately — reviewing every layer would
 # mean N detached `claude -p` runs per submit, and each layer gets reviewed on
-# its own when it is the checked-out one. Don't read a green `claude-review`
-# status on one layer as a verdict on the stack.
+# its own when it is the checked-out one. Don't read a review on one layer as a
+# verdict on the stack.
 pr=$(gh pr view --json number -q .number 2> /dev/null) || exit_ok
 [ -n "$pr" ] || exit_ok
 
 sha=$(git rev-parse HEAD 2> /dev/null) || exit_ok
 
-# Re-entrancy: the status is per-SHA, so a second push re-runs it, but two hooks
-# firing on the same SHA must not double-review.
+# Re-entrancy: the lock is per-SHA, so a second push re-reviews the new SHA, but
+# two hooks firing on the same SHA must not double-review. This matters more now
+# that the output is a comment rather than a status: a status overwrites itself
+# per context, a duplicate comment just sits there twice.
 lock="${TMPDIR:-/tmp}/claude-review.${repo//\//_}.${sha}.lock"
 mkdir "$lock" 2> /dev/null || exit_ok
 
@@ -100,13 +104,21 @@ mkdir "$lock" 2> /dev/null || exit_ok
 (
   trap 'rmdir "$lock" 2>/dev/null || true' EXIT
 
-  status() { # $1=state $2=description
-    gh api -X POST "repos/$repo/statuses/$sha" \
-      -f state="$1" -f context=claude-review -f description="$2" \
-      > /dev/null 2>&1 || true
+  # The review is a PR COMMENT and nothing else — no commit status, so it never
+  # appears as a check. That is deliberate: it is advisory, it was required by no
+  # ruleset, and a check that cannot fail a merge is a check that trains people
+  # to ignore the checks list.
+  #
+  # But dropping the status removed the only channel the FAILURE paths had. This
+  # whole block is `> /dev/null 2>&1 &`, so a reviewer that dies, returns an
+  # unparseable body, or cannot post now vanishes without trace — and silence
+  # here is indistinguishable from "reviewed, nothing found". So every path that
+  # used to post a not-a-verdict status posts a short comment saying so instead.
+  # A review that failed must never be mistaken for a review that passed.
+  note() { # $1=why
+    printf '_claude-review did not complete: %s. This is not a verdict — the diff was not reviewed._\n' "$1" |
+      gh pr comment "$pr" --body-file - > /dev/null 2>&1 || true
   }
-
-  status pending "review running locally"
 
   out="${TMPDIR:-/tmp}/claude-review.$$"
 
@@ -140,17 +152,19 @@ mkdir "$lock" 2> /dev/null || exit_ok
   # layer re-reviewed every layer beneath it.
   settings_file="$(dirname -- "$0")/pr-review-settings.json"
   if ! gh pr diff "$pr" > "$out.diff" 2> /dev/null || [ ! -s "$out.diff" ]; then
-    status success "review unavailable (not a verdict)"
+    note "the PR diff could not be fetched"
     rm -f "$out.diff"
     exit 0
   fi
 
-  # The status is derived from a machine-readable trailer the reviewer must emit,
-  # NOT from prose. The previous counter grepped for bolded `- **blocking` list
-  # items; the reviewer writes ``- `file:line` — description``, so it matched
-  # nothing and every one of 15 reviews posted "no blocking findings" while
-  # carrying real findings (9 on PR #111 alone). A status derived from the
-  # FORMATTING of LLM prose is a status that silently reports what it cannot see.
+  # The verdict line is derived from a machine-readable trailer the reviewer must
+  # emit, NOT from prose. The previous counter grepped for bolded `- **blocking`
+  # list items; the reviewer writes ``- `file:line` — description``, so it matched
+  # nothing and every one of 15 reviews reported "no blocking findings" while
+  # carrying real findings (9 on PR #111 alone). A count derived from the
+  # FORMATTING of LLM prose silently reports what it cannot see. That is why the
+  # trailer survived the removal of the status — it was never the status that
+  # made the count trustworthy, it was the trailer.
   read -r -d '' prompt << PROMPT || true
 Review the pull request diff at $out.diff. Read it with the Read tool.
 
@@ -175,8 +189,8 @@ PROMPT
     --allowedTools "Read,Grep,Glob" \
     > "$out.md" 2> /dev/null; then
     # A failed reviewer must never look like a clean bill of health, and must
-    # never wedge the PR either — report neutral and move on.
-    status success "review unavailable (not a verdict)"
+    # never wedge the PR either — say so and move on.
+    note "the reviewer exited non-zero"
     rm -f "$out.md" "$out.diff"
     exit 0
   fi
@@ -186,32 +200,35 @@ PROMPT
   # swallowed it, and the count defaulted to 0.
   summary=$(grep -oE 'CLAUDE-REVIEW-SUMMARY findings=[0-9]+ blocking=[0-9]+' "$out.md" 2> /dev/null | tail -1)
   if [ ! -s "$out.md" ] || [ -z "$summary" ]; then
-    status success "review unparseable (not a verdict)"
+    note "the reviewer returned an empty or unparseable body"
     rm -f "$out.md" "$out.diff"
     exit 0
   fi
 
+  # The trailer is still parsed, and still required. It no longer drives a status
+  # — it drives the one-line verdict prepended to the review, so the finding
+  # count is legible without reading the whole body, and the day-30
+  # promote/delete decision still has a real numerator to count.
   findings=${summary#*findings=}
   findings=${findings%% *}
   blocking=${summary##*blocking=}
 
-  if ! gh pr review "$pr" --comment --body-file "$out.md" > /dev/null 2>&1; then
-    status success "review not posted (not a verdict)"
-    rm -f "$out.md" "$out.diff"
-    exit 0
-  fi
-
-  # Advisory by design: findings are surfaced in the description so the day-30
-  # promote/delete decision has a real numerator, but only a BLOCKING finding
-  # turns the status red.
   if [ "$blocking" -gt 0 ]; then
-    status failure "$blocking blocking of $findings finding(s) — see the review"
+    verdict="⚠️ **$blocking blocking** of $findings finding(s)"
   elif [ "$findings" -gt 0 ]; then
-    status success "$findings finding(s), none blocking — see the review"
+    verdict="$findings finding(s), none blocking"
   else
-    status success "no findings"
+    verdict="no findings"
   fi
-  rm -f "$out.md" "$out.diff"
+  printf '**claude-review** — %s\n\n---\n\n' "$verdict" > "$out.body"
+  cat "$out.md" >> "$out.body"
+
+  # If this fails there is nowhere left to report it: posting a comment is the
+  # only channel, and it is the thing that just failed. Nothing to do but leave
+  # the PR with no review, which is at least honest — an absent review reads as
+  # absent, where a green status would have read as approval.
+  gh pr review "$pr" --comment --body-file "$out.body" > /dev/null 2>&1 || true
+  rm -f "$out.md" "$out.body" "$out.diff"
 ) > /dev/null 2>&1 &
 
 exit 0

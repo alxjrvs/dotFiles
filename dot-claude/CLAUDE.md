@@ -191,22 +191,29 @@ Rules that apply whatever you are touching:
   `gh pr create` / `git push` / **`gh stack submit`**; when the repo is in `PR_REVIEW_REPOS` (a bare **owner**, covering
   every repo under it, or a fully-qualified `owner/repo`; defaults to `TheGnarCo BinfiniteLLC
   SalvageUnion-io RANDSUM alxjrvs`) it runs the adversarial review locally and posts it as a real
-  PR review plus a `claude-review` commit status. It backgrounds itself immediately so it can
-  never block a turn, and a failed reviewer reports `success` with "review unavailable (not a
-  verdict)" rather than masquerading as a clean bill of health. `if` is a field on an individual
+  PR review — **and nothing else. There is no commit status, so it never appears as a check**
+  (removed 2026-08-17). It was required by no ruleset in any repo, and an advisory check that can
+  never fail a merge costs attention without buying enforcement: one permanently-irrelevant entry
+  teaches people to skim the whole checks list. It backgrounds itself immediately so it can
+  never block a turn, and **every failure path posts a short "did not complete … this is not a
+  verdict" comment** rather than exiting silently — the whole block is `> /dev/null 2>&1 &`, so
+  without that a dead reviewer would be indistinguishable from a clean one. `if` is a field on an individual
   hook handler, never on the matcher group — one rule per handler, so three commands means three
   handlers. The `gh stack submit` arm exists because that command matches *neither* of the other
   two — it creates PRs via the Stacks API and pushes inside the gh process, so no `git push` Bash
   call ever reaches PostToolUse — which meant stacking silently routed the largest changes around
-  the reviewer. It reviews the **checked-out layer only**, not the whole stack, so a green
-  `claude-review` on one layer is not a verdict on the others. **Advisory until a day-30 finding rate justifies
-  requiring it: above ~1 finding per 10 PRs that changed code, promote; below, delete it and close
-  the question.** That clock restarts 2026-08-08, because until then the numerator was a lie: the
-  status came from `grep -ciE '^[-*] **(blocking|critical)'` over review prose, the reviewer writes
-  ``- `file:line` — description``, and so all 15 reviews on this repo posted "no blocking findings"
-  while carrying real ones — 9 on #111 alone, several of which this audit then re-found
-  independently. The status now comes from a machine-readable trailer the reviewer must emit, and
-  fails CLOSED on an empty or unparseable body. **Do not judge this hook on pre-2026-08-08 data.**
+  the reviewer. It reviews the **checked-out layer only**, not the whole stack, so a review on one
+  layer is not a verdict on the others. **Advisory until a day-30 finding rate justifies
+  promoting it: above ~1 finding per 10 PRs that changed code, keep and consider requiring; below,
+  delete it and close the question.** That clock restarts 2026-08-08, because until then the
+  numerator was a lie: the count came from `grep -ciE '^[-*] **(blocking|critical)'` over review
+  prose, the reviewer writes ``- `file:line` — description``, and so all 15 reviews on this repo
+  reported "no blocking findings" while carrying real ones — 9 on #111 alone, several of which
+  this audit then re-found independently. The count now comes from a machine-readable trailer the
+  reviewer must emit, and an empty or unparseable body posts a not-a-verdict comment instead of a
+  clean bill of health. **Do not judge this hook on pre-2026-08-08 data.** Dropping the status did
+  not cost the numerator: the trailer is still parsed and now leads the review body, so findings
+  stay countable by reading reviews.
   - **The reviewer is confined by `permissions.deny`, not by `--allowedTools`** (corrected
     2026-08-08). It reads attacker-controlled text — a diff, a README, a fixture, from any
     contributor to a `PR_REVIEW_REPOS` repo — while running detached under the *user-scope*
