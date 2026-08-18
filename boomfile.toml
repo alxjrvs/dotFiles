@@ -346,6 +346,38 @@ exit 1
 on = "verify"
 cmd = "git -C ~/.local/state/boom/config-repo diff --quiet -- dot-claude/ || { echo 'live Claude config diverges from the committed contract (dirty boom config-repo)'; exit 1; }"
 
+# `git maintenance` registers repos in ~/.gitconfig.local and installs three launchd agents
+# (org.git-scm.git.{hourly,daily,weekly}) that run whether or not those paths still exist. Found
+# pointing at /Users/jarvis/dotFiles and /Users/jarvis/Code/dotFiles — neither of which exists,
+# a layout from before boom moved the clone into the state dir — so all three agents had been
+# firing on schedule and exiting 1 every single time, for as long as they had been installed.
+# The real config repo and every ~/Code repo got no maintenance at all.
+#
+# Exactly the failure class DECISIONS.md already has an incident for ("the scheduled boom verify
+# has never run — 28 days, runs=0"): a job that is registered, fires, fails, and reports only
+# into a log nobody reads. This asserts the general rule rather than the two paths, so the next
+# time a repo is moved or removed it surfaces here instead of rotting.
+#
+# Verify-only: repointing maintenance is a human call (which repos deserve it), not something to
+# repair automatically.
+#
+# Note the deliberate absence of `--global`. The keys live in ~/.gitconfig.local, pulled in by an
+# `[include]` from ~/.gitconfig — and `git config --global --get-all` does NOT follow includes
+# into other files, so it returns nothing here and the check would be permanently, silently
+# green. Full resolution sees them. (Found the hard way: the first version of this check used
+# --global and passed against a machine that was visibly broken.)
+[[section.run]]
+on = "verify"
+timeout = 20
+cmd = '''
+missing=0
+while IFS= read -r r; do
+  [ -z "$r" ] && continue
+  [ -d "$r" ] || { echo "git maintenance registered for a path that does not exist: $r"; missing=1; }
+done <<< "$(git config --get-all maintenance.repo 2>/dev/null)"
+[ "$missing" -eq 0 ] || { echo "fix with: git maintenance unregister --force <path>  (or repoint at a repo that exists)"; exit 1; }
+'''
+
 [[section]]
 name = "zsh fragments"
 
