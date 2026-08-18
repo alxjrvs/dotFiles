@@ -506,10 +506,21 @@ automation tier.
   expand it back into the tracked file).
 - **Agent git auth resolves the PAT through `op`, like every other secret.** A **classic**
   `repo`+`workflow` PAT (SSO-authorized for the orgs it pushes to), stored in the `claude-agent`
-  vault. Classic, not fine-grained, by necessity: fine-grained PATs need org-owner enablement and
-  approval you don't have for those orgs, whereas a classic token is bounded by your own access
-  and is self-SSO-authorizable at member level. Least privilege therefore rests on the SA-scoped
-  vault + token expiry, not on per-repo scoping. Git's `credential.helper` points at
+  vault. Classic, not fine-grained — but **the stated reason was wrong (corrected 2026-08-18)**.
+  It read: "fine-grained PATs need org-owner enablement and approval you don't have for those
+  orgs." Both halves are off. GitHub: "By default, both Personal access tokens (classic) and
+  fine-grained personal access tokens are enabled", and "fine-grained personal access tokens
+  created by organization owners will not need approval" — while personal repos (`alxjrvs/*`,
+  where dotFiles and boom live) need no approval at all. So the classic PAT is a *status quo*,
+  not a necessity, and least privilege currently rests on the SA-scoped vault + token expiry
+  rather than on per-repo scoping because nothing has narrowed it, not because nothing could.
+  - **This is the unresolved half of the `workflow`-scope note below.** That note says to drop
+    `workflow` "unless something actually needs it" — something does (the agent edits
+    `.github/workflows` in this very repo), so dropping is unavailable and it was left alone.
+    *Scoping* is available even though dropping isn't: fine-grained PATs carry a **per-repo**
+    Workflows permission, replacing an account-wide grant that today spans every repo the agent
+    can push to. Deliberately not migrated in the same change — that is a credential rotation
+    across every repo the agent touches, and wants its own window. Git's `credential.helper` points at
   `op-agent git-credential`, so the PAT is stored only in 1Password — no keychain cache, no second
   mechanism. Because the resolve path is `securityd` + network rather than a keychain *file*
   read, it survives a sandbox `credentials.files` deny. Rotating the PAT is just updating the

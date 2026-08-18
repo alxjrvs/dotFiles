@@ -58,13 +58,15 @@ Same first two steps — **verify** (step 1) and **commit** (step 2) on the curr
 
    ```
    gh pr checks <pr> --watch --fail-fast     # for EVERY layer, not just the bottom
-   gh stack merge --yes --squash             # atomic: all layers or none
+   gh stack merge --yes --squash             # merges bottom-up; STOPS at the first failure
    ```
 
    Four things make this correct rather than a hopeful loop:
 
-   - **Watch every layer.** `gh stack merge` is all-or-nothing and GitHub evaluates branch protection for *each* PR against the stack's base branch at merge time. One red layer fails the whole batch, so a green bottom PR proves nothing about the stack.
+   - **Watch every layer.** GitHub evaluates branch protection for *each* PR against the stack's base branch at merge time, so a green bottom PR proves nothing about the stack.
+     **This is not atomic, despite `gh stack merge --help` saying "all-or-nothing".** GitHub's own docs are explicit: "If a failure occurs part way through, merging stops at that pull request" — remedy is to "resolve the issue on the failed PR, then retry the merge for the remaining stack". The feature docs describe merging "your entire stack, a single pull request, or a portion of the stack", and the word *atomic* appears on neither page. Corrected 2026-08-18; the old wording came from the CLI's help text, not the feature's contract.
    - **Re-sync if `main` moved while you waited.** Under a `strict` required-status-checks policy the merge is rejected when a branch is behind. That failure is expected, not exceptional: run `gh stack sync` and retry the merge. If you lose that race twice in a row, stop and report — something is landing faster than the stack can settle, and a third attempt won't fix it.
+     **Re-read state before retrying.** Because the merge is not atomic, a partial failure may have already landed the lower layers in `main`. Retrying blind assumes nothing merged. `gh stack view --json` enumerates the current PRs and their state — use it rather than inferring from the exit code.
    - **`--squash` gives one squashed commit per layer**, preserving the layering in `main`'s linear history. That is the point of stacking; don't collapse the stack into a single commit.
    - **A merge failure is a report, not a retry-forever.** `gh stack merge` surfaces GitHub's own reason (red check, out-of-date branch, unsatisfied rule). Relay it verbatim rather than re-running blind.
 
