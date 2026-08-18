@@ -18,6 +18,28 @@ brew "mise"
 # installs don't ship a broken sheldon binary.
 brew "openssl@3"
 
+# ── System utilities + services ───────────────────────────────────────
+# The second exception: things that are not "dev CLIs with a mise home". These were all
+# installed by hand and declared nowhere — `brew leaves` reported ten entries against two
+# declared, so a fresh machine reproduced none of them. Declaring them is the point of this
+# file; leaving them undeclared is the drift.
+#
+# Each is here for a reason that mise does not serve:
+brew "bash"        # modern bash for scripts that need >3.2 (macOS ships 3.2 for licensing)
+brew "coreutils"   # GNU coreutils (g-prefixed) — not a versioned toolchain
+brew "moreutils"   # sponge/ts/vipe — same
+brew "mysql"       # a database + brew service, not a CLI toolchain
+brew "cocoapods"   # iOS dependency manager, tied to the system Ruby/Xcode toolchain
+
+# NOT here, deliberately, though brew had installed them:
+#   gh          — declared in mise.toml. The brew copy was a genuine policy violation: both
+#                 were installed, and brew's won on PATH, so mise's pin was inert.
+#   node        — arrived only as a dependency of netlify-cli. A second node is exactly the
+#                 hazard the mise pin exists to prevent (see .zprofile's PATH comment).
+#   shellcheck  — same shape, arrived as a dependency of actionlint; mise declares it.
+#   netlify-cli — redundant: deploys invoke a version-pinned `bunx netlify-cli@<ver>`, so
+#                 nothing needs it globally, and installing it globally is what pulled node in.
+
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"
 cask "1password"
@@ -37,7 +59,7 @@ cask "font-fira-code-nerd-font"
 # ── Terminal ──────────────────────────────────────────────────────────
 # Ghostty is the canonical daily-driver terminal (TERMINAL=ghostty, set in
 # zsh/00-exports.zsh): a fast Metal-GPU emulator, configured by ghostty/config
-# (symlinked by boom apply).
+# (symlinked by `boom source` — there is no `boom apply` verb).
 cask "ghostty"
 
 cask "google-chrome"
@@ -45,6 +67,12 @@ cask "google-chrome"
 # Caps Lock → Control is done natively via hidutil (a RunAtLoad LaunchAgent,
 # launchd/com.alxjrvs.capslock-control.plist) — no Karabiner kernel extension
 # for a single modifier remap.
+#
+# This comment described a removal that never actually happened: `karabiner-elements` is still
+# installed as a cask on this machine, undeclared. It is deliberately NOT declared here — the
+# hidutil agent is the supported path — but the cask needs removing by hand
+# (`brew uninstall --cask karabiner-elements`), since `brew bundle` does not uninstall what a
+# Brewfile omits.
 
 cask "notunes"
 
