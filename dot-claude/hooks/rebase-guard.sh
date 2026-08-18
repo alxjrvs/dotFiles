@@ -67,7 +67,28 @@ while IFS= read -r seg; do
   shift
   while [ $# -gt 0 ]; do
     case "$1" in
-      -c | -C | --git-dir | --work-tree | --namespace | --exec-path)
+      # `git -C <path>` names the repo the command acts on exactly as a leading
+      # `cd` does, so it has to set work_dir rather than being skipped with the
+      # other value-taking flags. Discarding it judged every cross-repo push
+      # against the SESSION's cwd repo: a legitimate push blocked by an
+      # unrelated checkout's staleness, and — worse — a push to another repo's
+      # default branch judged against the wrong default, or waved through
+      # entirely when the cwd was not a repo at all.
+      #
+      # Same "before the push only" doctrine as `cd`: a `-C` on a later segment
+      # cannot retarget a push that was already matched.
+      -C)
+        shift
+        if [ $# -gt 0 ] && [ "$is_push" = 0 ]; then
+          work_dir=$(_unquote "$1")
+          case "$work_dir" in
+            '~') work_dir=$HOME ;;
+            '~'/*) work_dir=$HOME/${work_dir#'~'/} ;;
+          esac
+        fi
+        [ $# -gt 0 ] && shift
+        ;;
+      -c | --git-dir | --work-tree | --namespace | --exec-path)
         shift
         [ $# -gt 0 ] && shift
         ;;

@@ -97,6 +97,26 @@ rebase	primary	env git push origin main	deny
 # push can change which repo is pushed.
 rebase	primary	git push origin main && cd ..	deny
 
+# `git -C <path>` names the repo being pushed just as surely as a leading `cd`,
+# but the flag-skipping loop discarded its value, so the guard judged every
+# cross-repo push against the SESSION's cwd repo instead of the target.
+#
+# Found bootstrapping a brand-new empty repo: `git -C ~/Code/butter push` was
+# denied with "Branch is behind origin/main" — true of the dotFiles checkout the
+# session happened to be sitting in, and meaningless for a remote that had no
+# branches at all. Both directions are wrong, and the second one is the one that
+# matters:
+#
+#   FALSE DENY  — a legitimate push blocked by an unrelated repo's staleness,
+#                 which makes bootstrapping any new repo impossible in-session.
+#   FALSE ALLOW — the default-branch rule resolves `origin/HEAD` from the cwd
+#                 repo too, so a push to another repo's default is judged
+#                 against the wrong default, and a non-repo cwd fails open and
+#                 waves it through entirely.
+rebase	wt-c	git -C ../primary push origin feature-x	allow
+rebase	primary	git -C ../wt-c push origin feature-c	deny
+rebase	nonrepo	git -C ../primary push origin main	deny
+
 # Heredoc bodies are DATA, not command structure. Writing the commit message for
 # this very change was DENIED by the guard because the message explained
 # `git push origin main`. Prose apostrophes ("lefthook's") also unbalance the
