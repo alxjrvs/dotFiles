@@ -1,5 +1,10 @@
-# Completions — must run after fpath extensions (sheldon adds zsh-completions
-# in 30-plugins.zsh) and BEFORE plugins that wrap ZLE.
+# Completions — must run after fpath extensions (sheldon adds zsh-completions in
+# 30-plugins.zsh) and BEFORE fzf-tab, which wraps the completion system.
+#
+# That second half used to read "BEFORE plugins that wrap ZLE", which states the requirement
+# backwards and let the real ordering bug hide: sheldon sources fzf-tab in 30-plugins.zsh, i.e.
+# *before* this file, and fzf's own init in 60-tools.zsh then rebinds ^I after both. fzf-tab is
+# re-enabled at the end of 60-tools.zsh — see the comment there.
 autoload -Uz compinit
 # Glob qualifiers don't expand inside [[ ]]; evaluate via an array assignment.
 # `N` = nullglob (empty when no match). `_fresh` matches the dump only when it

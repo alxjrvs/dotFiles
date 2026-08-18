@@ -1,6 +1,22 @@
 # fzf shell integration (modern)
 eval "$(fzf --zsh)"
 
+# Re-take Tab for fzf-tab, because the line above just took it away.
+#
+# fzf-tab is loaded by sheldon in 30-plugins.zsh, which is too early on both counts its README
+# names: it must load AFTER compinit (40-completions.zsh), and it must be "the last plugin to
+# bind ^I". `fzf --zsh` above binds ^I to fzf-completion, so fzf-tab lost every time — its widget
+# was defined and simply never reachable, which is why this was invisible: Tab still completed,
+# just with plain fzf-completion, and the entire fzf-tab zstyle block in 40-completions.zsh
+# (git-log/git-diff/ps/ssh previews, switch-group) silently did nothing.
+#
+# Verified: `zsh -i -c 'bindkey "^I"'` reported `fzf-completion` before this line and
+# `fzf-tab-complete` after it.
+#
+# Guarded, so a machine where sheldon hasn't cloned the plugin yet still gets a working shell
+# rather than an error on every startup.
+(( $+functions[enable-fzf-tab] )) && enable-fzf-tab
+
 # Atuin shell history — Ctrl-R fuzzy search. Must load AFTER fzf: both bind
 # Ctrl-R and whichever inits last wins the binding; atuin's synced/encrypted
 # history is meant to be the source of truth (see zsh/10-options.zsh), so it
