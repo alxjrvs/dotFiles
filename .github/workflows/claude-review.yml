@@ -37,6 +37,26 @@ name: claude-review
 #
 # Accept going in: this does not restore a blocking check. Even the managed Code Review product
 # completes its check run neutral by design, so that leg is dead either way.
+#
+# Measured 2026-08-18 — reason (1) is now confirmed dead by the docs verbatim: "If you
+# authenticate with an OAuth token, runs use your Claude subscription instead of API billing."
+# The weekly-limit question (E2) is still unanswered: it needs a real run, which needs a token
+# from `claude setup-token` — an interactive browser OAuth flow.
+#
+# Two coverage differences found while checking, which matter BEFORE swapping the local hook out
+# — this is not a like-for-like replacement:
+#
+#   - Claude "skips draft and closed pull requests, pull requests it judges not to need a review,
+#     such as automated or trivial ones, and pull requests that already have a comment from
+#     Claude." The local hook reviews everything it is invoked on. Coverage goes up (2% → most)
+#     but becomes non-deterministic, and a PR you WANT reviewed may be judged trivial.
+#   - "On public repositories, GitHub withholds secrets from runs triggered by fork pull
+#     requests, so the review runs only on pull requests from branches in the same repository."
+#     Fork PRs get no review at all, silently.
+#
+# Also worth a look before committing to a workflow file: the managed Code Review product does
+# automatic per-PR review with no workflow to maintain (code.claude.com/docs/en/code-review).
+# It was previously discounted as Team/Enterprise-gated — recheck against the current plan.
 
 on:
   workflow_dispatch:
