@@ -106,6 +106,45 @@ The generalisable lesson is not about 1Password: **when an incident postmortem p
 check that the rule landed in the layer that can enforce it.** A prose rule written in response to
 an accidental leak does nothing about the deliberate case, which is strictly easier to trigger.
 
+### The sandbox measured: egress works, and `credentials.files` would break op-agent (2026-08-18)
+
+The sandbox had never been evaluated as a control. The word appeared exactly once across 83 KB of
+`CLAUDE.md` + this file — at `CLAUDE.md:499`, explaining why a sandbox feature does *not* protect
+something — and `settings.json` had no sandbox keys at all. Config knowledge topped out around
+v2.1.208 while the client was on 2.1.234; `sandbox.filesystem.disabled` (2.1.216),
+`network.strictAllowlist` (2.1.219) and credential masking (2.1.224) all landed in that gap.
+
+Four measurements, using `security list-keychains` as the probe — same securityd Mach IPC as a
+keychain read, no secret touched, and outside the `find-generic-password` deny:
+
+1. **Egress enforcement is real.** With `strictAllowlist` and `allowedDomains: [api.github.com]`,
+   a sandboxed Bash `curl` returned `200` for the allowlisted host and `000 / rc=56` (transport
+   failure) for a non-allowlisted one. This is the thing `permissions.deny` structurally cannot
+   do: deny matches command *spelling*, this blocks the destination.
+2. **The sandbox does not break Claude's own auth**, even with the Anthropic API absent from the
+   allowlist — the allowlist governs sandboxed commands, not the client's control-plane traffic.
+   (An earlier "Not logged in" result was `--bare` stripping auth, caught by a control run. Worth
+   recording as a near-miss: without the control it would have read as the sandbox breaking login.)
+3. **The keychain survives the recommended config.** Sandbox on, network allowlisted, no
+   `credentials.files` deny → `login.keychain-db` still in the search list, so `op-agent` works.
+4. **`credentials.files: deny` breaks it.** With keychain file reads denied, `list-keychains`
+   returns only `System.keychain` — `login.keychain-db` vanishes. `CLAUDE.md` claimed the resolve
+   "survives" this because it goes through securityd rather than a file read. The premise is true
+   and the conclusion is false: the file deny removes the keychain from scope before the IPC is
+   reached. Corrected in place.
+
+So the useful shape is **egress, not credential-at-rest**: blocking the keychain read is not the
+goal — op-agent needs it — and the 2026-07-25 harm was a resolved credential *leaving the machine*,
+which is exactly what an allowlist addresses and a deny list cannot.
+
+Not enabled in the same change. What remains unmeasured is not whether it works but **what the
+allowlist must contain** for this machine to keep functioning day to day (brew, mise, GitHub, npm,
+1Password), and that is empirical over days rather than one run. `allowUnsandboxedCommands: false`
+matters if it is adopted, or the retry path re-opens everything. Do **not** set
+`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` alongside it: it buys nothing here (the SA token is read inline
+inside op-agent's own process and never enters the parent env) and it makes Claude Code ignore
+`filesystem.disabled` from every source.
+
 ### What `permissions.deny` actually buys
 
 It blocks the Bash path to secret resolution and raw credential files, and it survives `auto` and

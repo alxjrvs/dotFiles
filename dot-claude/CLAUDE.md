@@ -498,8 +498,15 @@ automation tier.
     can push to. Deliberately not migrated in the same change — that is a credential rotation
     across every repo the agent touches, and wants its own window. Git's `credential.helper` points at
   `op-agent git-credential`, so the PAT is stored only in 1Password — no keychain cache, no second
-  mechanism. Because the resolve path is `securityd` + network rather than a keychain *file*
-  read, it survives a sandbox `credentials.files` deny. Rotating the PAT is just updating the
+  mechanism. ~~Because the resolve path is `securityd` + network rather than a keychain *file*
+  read, it survives a sandbox `credentials.files` deny.~~ **Measured false, 2026-08-18 — it does
+  not survive, and this is the one sandbox setting to keep OFF.** Under a Seatbelt profile denying
+  reads of the keychain files, `security list-keychains` returns only
+  `/Library/Keychains/System.keychain`: `~/Library/Keychains/login.keychain-db`, where
+  `op-claude-agent` lives, **drops out of the search list entirely**, and an item lookup cannot
+  succeed against a keychain that is not in the search list. The reasoning was sound — the resolve
+  really does go through securityd — but the file deny takes the keychain out of scope before the
+  IPC is reached. Rotating the PAT is just updating the
   vault item (rotating the **SA token** is not — that is web-UI only, see below).
   - **"Lives only in 1Password" is about storage, not residency.** `credential.helper` is fronted
     by git's `cache --timeout=900`, so for 15 minutes after any agent git operation the plaintext
