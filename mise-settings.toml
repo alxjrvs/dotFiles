@@ -14,3 +14,16 @@
 
 [settings]
 trusted_config_paths = ["~/**/.worktrees"]
+
+# Keep mise.lock current automatically. Until now `node = "25"` was the only pin in mise.toml
+# and ~25 other tools sat at "latest", so "two machines converge" was true of the tool LIST but
+# not of the versions — the largest remaining reproducibility hole here. The lockfile also
+# carries SHA256 checksums, sizes and URLs (plus GitHub provenance attestations where the
+# backend supplies them), which adds supply-chain verification across 28 binaries pulled from
+# aqua, GitHub and npm.
+#
+# `lockfile`, deliberately NOT `locked`. This one auto-creates and updates the file; `locked`
+# ENFORCES it — and per jdx (jdx/mise#8663) "ALL settings are global no matter where they are
+# defined", so `locked = true` would apply to every project on the machine and warn on any tool
+# absent from a lockfile. That is a much larger commitment than pinning this config.
+lockfile = true
