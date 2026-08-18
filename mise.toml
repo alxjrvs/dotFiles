@@ -56,6 +56,17 @@ shellcheck = "latest"
 biome = "latest"                          # JS/TS/JSON linter+formatter — `biome check`
                                           # (lefthook + CI + nvim format-on-save); registry
                                           # short-name → aqua:biomejs/biome
+actionlint = "latest"                     # GitHub Actions workflow linter. Was a `brew leaves`
+                                          # entry — a dev CLI, so it belongs here per the policy
+                                          # at the top of this file. Registry short-name →
+                                          # aqua:rhysd/actionlint (verified with `mise registry`).
+                                          # Its brew build is also what pulled in a second
+                                          # shellcheck as a dependency.
+
+# ── Security scanning ─────────────────────────────────────────────────
+osv-scanner = "latest"                    # OSV vulnerability scanner. Also a former undeclared
+                                          # `brew leaves` entry; registry short-name →
+                                          # aqua:google/osv-scanner.
 
 # ── Neovim language servers (nvim/init.lua wires these in) ────────────
 # rust-analyzer is not global — it comes with a per-project `rust` toolchain,
