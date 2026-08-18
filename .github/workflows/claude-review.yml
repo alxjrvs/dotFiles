@@ -52,7 +52,11 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
+  pull-requests: read
+  issues: read
+  # Required for the action's default GitHub App authentication — without it the run fails at
+  # "Could not fetch an OIDC token". Omitting this is what broke the first trial run.
+  id-token: write
 
 jobs:
   review:
