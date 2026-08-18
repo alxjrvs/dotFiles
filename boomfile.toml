@@ -315,7 +315,7 @@ on = "verify"
 cmd = '''
 f=~/.claude/settings.json
 [ -f "$f" ] || exit 0
-for d in 'Bash(security find-generic-password:*)' 'Bash(op:*)' 'Bash(op-agent:*)' 'Bash(~/.local/bin/op-agent:*)' 'Bash(git credential:*)' 'Read(~/.ssh/id_*)' 'Read(~/.aws/credentials)'; do
+for d in 'Bash(security find-generic-password:*)' 'Bash(op:*)' 'Bash(op-agent:*)' 'Bash(~/.local/bin/op-agent:*)' 'Bash(git credential:*)' 'Read(~/.ssh/id_*)' 'Read(~/.aws/credentials)' 'Bash(*/op *)' 'Bash(*/op-agent *)'; do
   jq -e --arg d "$d" '.permissions.deny | index($d)' "$f" >/dev/null || { echo "secret-path deny floor: missing $d in .permissions.deny of ~/.claude/settings.json"; exit 1; }
 done
 '''
