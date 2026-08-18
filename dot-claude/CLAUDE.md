@@ -138,31 +138,7 @@ Rules that apply whatever you are touching:
     and both marketplaces itself. **Measure before keeping**: count real invocations
     (`"skill": "<name>:` and `"name":"mcp__plugin_<name>` in `~/.claude/projects/**/*.jsonl`), not
     bare name matches — a user-scoped plugin's own prompt injection makes it look ubiquitous.
-  - Four entries were dropped on 2026-08-06 after that audit, and the reasons are worth keeping:
-    - **`audit@gnar`** — the gnar catalog stopped publishing it on 2026-07-22 (PR #420); the
-      pipeline moved to `TheGnarCo/solutions-architect-skills` (private). The local cache was
-      pinned at 0.5.1 against an upstream 0.5.4, unfixable via this marketplace at any
-      `autoUpdate` setting, while costing **14 skills** every session. Re-add from the new
-      marketplace if the pipeline is wanted back — don't re-add it here.
-    - **`expo@claude-plugins-official`** — the *same* plugin as the `expo@expo-plugins` that
-      BinfiniteApp already declares project-scoped, and its bundled MCP server reported
-      `Needs authentication` at user scope. 22 skills + 1 agent for a duplicate.
-    - **`binfinite-context@binfinite`** — already project-scoped on BinfiniteApp, so the
-      user-scoped copy was pure duplication. Its `project-registry` skill is a **resolver, not a
-      store** — it holds the app→site→EAS-app→Convex mapping and routes everything else to the
-      Netlify/Expo/Convex MCPs, so it must never accumulate copied prose. Contrary to how it
-      reads, it bundles **no** MCP server and no secret resolver: one `SKILL.md`, nothing else.
-      Dropping it also retired the user-level `binfinite` marketplace — **a private repo**, so it
-      silently failed to load anywhere the credential helper couldn't reach `BinfiniteLLC` (a
-      CI/Cowork box got no plugin and no error worth noticing). BinfiniteApp declares that
-      marketplace itself, so nothing was lost.
-    - **`spacebase@gnar`** — a genuine bundled MCP server, verified healthy (`✔ Connected`) and
-      still **zero** tool invocations across 3,331 transcripts. Health was checked first
-      precisely because *broken* and *unused* are indistinguishable from usage data alone; it was
-      dropped as unused, not as broken. Its four `SPACEBASE_*` env resolvers were retained for a
-      day and then deleted on 2026-08-08: nothing read them, and the "the resolver is the fiddly
-      part" argument for keeping them does not hold, because `NINETY_API_TOKEN_COMMAND` is the
-      identical shape two lines away. The vaulted `spacebase-api-key` item is untouched.
+  - Four user-scoped plugins were dropped on 2026-08-06 after that audit (`audit@gnar`, `expo@claude-plugins-official`, `binfinite-context@binfinite`, `spacebase@gnar`) — the per-plugin reasoning, and the one "don't re-add it here" caveat, are in `DECISIONS.md`.
 - **UI / QoL** — custom `statusLine` + `subagentStatusLine` (`~/.local/bin/claude-*statusline`,
   from [`TheGnarCo/claude-statusline`](https://github.com/TheGnarCo/claude-statusline));
   `editorMode: vim` with `vimInsertModeRemaps: {"jj": "<Esc>"}` (`"<Esc>"` is the only supported
