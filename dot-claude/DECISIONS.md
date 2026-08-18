@@ -12,6 +12,51 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 
 ---
 
+## The 2026-08-18 audit
+
+A five-agent sweep across dotfiles, boom and the Claude Code config. 22 candidate findings were
+dropped on the spot because this file had already considered and settled them, which is the
+system working. What survived clustered almost entirely in one place, and that pattern is the
+finding worth keeping:
+
+**Everything that broke, broke where nobody was watching.** Three live bugs, all in unattended
+paths, all invisible from a terminal:
+
+- `code fetch` had never warmed the HTTPS org repos it exists for — 11,641 logged
+  `gh: command not found`, four repos failing 50/50 for a month. Generated launchd plists carry
+  no environment, so the timer got a minimal PATH and `gh` (installed via mise) wasn't on it.
+- `git maintenance` had never once succeeded: `maintenance.repo` pointed at
+  `~/dotFiles` and `~/Code/dotFiles`, neither of which exists, from a layout predating the move
+  into the state dir. Three launchd agents, firing on schedule, exit 1 every run.
+- Login shells resolved a *different major version of node* than the terminal (v26 vs the pinned
+  v25) because macOS `path_helper` rebuilds PATH in `/etc/zprofile` and demoted the mise shims to
+  position 15. Interactive shells were correct, which is precisely why nobody saw it.
+
+This file already had an incident of exactly that shape — *"the scheduled boom verify has never
+run — 28 days, runs=0"*. The class was diagnosed then; the sweep for siblings never happened, and
+these are the siblings. The durable fix is not the three patches but **making unattended failure
+visible**: boom now reports a timer whose last run failed, and a verify check now asserts that
+every registered `git maintenance` path exists.
+
+**What the audit itself got wrong**, recorded because the corrections were more instructive than
+the findings:
+
+- The PATH bug was first diagnosed as `brew shellenv` shadowing the shims. Wrong — and the fix
+  that follows from it (reorder `~/.zprofile`) does not work, because `path_helper` has already
+  run in `/etc/zprofile` and re-sorts regardless. Caught before publishing, by a second agent.
+- A claim that the guard suite had drifted to 91 cases was a counting artifact; running it
+  reports 71, matching `CLAUDE.md`.
+- The hypothesis that the stacking doctrine wasn't being *reached for* — the gap this file
+  flagged about itself on 2026-08-04 — was measured and closed: 20 of 27 boom PRs since then were
+  genuinely stacked (base ≠ main).
+- "Five tools installed via both brew and mise" was three, and only `gh` was a real policy
+  violation; `node` and `shellcheck` arrived as dependencies of undeclared brew leaves.
+- A first attempt at the `git maintenance` check used `git config --global --get-all`, which does
+  **not** follow `[include]` into `~/.gitconfig.local` — it returned nothing and passed against a
+  visibly broken machine. The same failure shape as the bug it was written to catch.
+
+---
+
 ## Permissions & security
 
 ### The GitHub MCP was deleted for looking unused, then restored (2026-07-25)
@@ -148,6 +193,28 @@ The freed `SessionStart` slot is now the keep-awake hook.
 ---
 
 ## Hooks
+
+### v2.1.211 removed the classifier's default-branch backstop, silently (recorded 2026-08-18)
+
+Not a decision — a change that happened *underneath* the setup and was never written down, which
+makes it the more important kind of entry.
+
+Claude Code's auto-mode docs, on common boundaries: *"Auto mode allows pushes to any branch of the
+repository you're working in, including the default branch… Before v2.1.211, the classifier
+allowed pushes only to your working branch, branches Claude created, and routine pushes to the
+default branch."* And: *"Before v2.1.211, the context slots also included a Default / protected
+branches entry that treated `main` and `master` as protected until you named others. v2.1.211
+removed it."*
+
+So `rebase-guard.sh`'s default-branch arm went from belt-and-braces to **sole enforcement**, in a
+client update, with no signal. Everything still worked, which is exactly why it needed noticing:
+the guard has been carrying that rule alone for some number of releases.
+
+This is the strongest available argument for keeping that guard, and it had been sitting outside
+the record. If a second layer is ever wanted back, `permissions.ask: ["Bash(git push *)"]` is the
+documented mechanism — content-scoped ask rules are evaluated before the classifier and force a
+prompt even in auto mode. Not adopted here: this machine pushes constantly and the prompt fatigue
+would be the greater cost. Noted so the option is a choice rather than a rediscovery.
 
 ### Worktree-checkout guard: rewritten to test the condition, not the name (2026-07-25)
 
@@ -460,10 +527,20 @@ for green — so without a queue there was no fire-and-forget path. The facts ar
 
 What the queue actually costs on these repos:
 
-- **It is mutually exclusive with Dependabot auto-merge.** `GITHUB_TOKEN` cannot add a PR to a
-  merge queue, so enabling one silently breaks the workflow adopted in #97 — the thing that
-  removes a human click from every routine action bump. Trading a *daily* automation for an
-  *occasional* one is the wrong way round.
+- ~~**It is mutually exclusive with Dependabot auto-merge.** `GITHUB_TOKEN` cannot add a PR to a
+  merge queue, so enabling one silently breaks the workflow adopted in #97.~~
+  **Withdrawn 2026-08-18 — unsupported, and it was the leg this entry led with.** No GitHub doc
+  carves `GITHUB_TOKEN` out of enqueueing; the merge-queue docs say plainly that `gh pr merge`
+  "automatically adds the pull request to the queue if required checks have passed". The one
+  primary source found reports the *inverse* and is still open — [cli/cli#8352](https://github.com/cli/cli/issues/8352):
+  "running the same command in Github Actions with a `GITHUB_TOKEN`, the command succeeds as
+  expected and the PR gets added to the merge queue" — it is the **PAT** that fails there. The
+  likely origin of the belief is a different mechanism entirely: a `GITHUB_TOKEN` *push* does not
+  re-trigger workflows, so automerge stalls. Same error shape this file already catalogues for
+  `gh stack unstack`: inferring a capability from adjacent behavior instead of reading the
+  feature's contract.
+  **The decision does not change** — the two legs below are untouched and still carry it. But it
+  now rests on two verified reasons rather than three, one of which was wrong.
 - **It carries the `merge_group:` sequencing hazard.** Enable it before CI reports on the queue's
   temp branches and every PR hangs forever. That is a real foot-gun standing between the repo and
   a merge, permanently, in exchange for convenience on multi-layer changes.
