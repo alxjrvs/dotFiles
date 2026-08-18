@@ -115,6 +115,19 @@ dst = "~/.config/mise/config.toml"
 src = "mise-settings.toml"
 dst = "~/.config/mise/conf.d/settings.toml"
 
+# The lockfile, and this link is what makes it count. mise resolves a lockfile against the
+# *config root*, which for the global config is ~/.config/mise/ — not this repo, because
+# ~/.config/mise/config.toml is a symlink INTO the repo rather than the repo itself. Without
+# this link, `lockfile = true` would happily maintain ~/.config/mise/mise.lock outside version
+# control and the pinning would never actually be committed: the feature would look enabled and
+# land nothing.
+#
+# Linked rather than copied so mise's own updates write through into the repo, keeping the
+# committed lockfile current instead of immediately stale.
+[[section.link]]
+src = "mise.lock"
+dst = "~/.config/mise/mise.lock"
+
 [[section.link]]
 src = "sheldon/plugins.toml"
 dst = "~/.config/sheldon/plugins.toml"
