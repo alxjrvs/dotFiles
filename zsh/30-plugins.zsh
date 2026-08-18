@@ -1,6 +1,11 @@
-# Startup baseline (measured 2026-06-13, Apple Silicon): `zsh -i -c exit` ≈ 199 ms
-# avg over 10 runs. Per-eval breakdown: sheldon 59, atuin 47, starship 29,
-# mise 29, fzf 22, compinit 11 (ms). No single call is pathological; the only
+# Startup baseline (re-measured 2026-08-18, Apple Silicon): `zsh -i -c exit` ≈ 250 ms
+# (0.29/0.24/0.24 s, first run cold). Per-eval breakdown: sheldon 52, atuin 40,
+# mise 36, starship 32, fzf 4, zoxide 2 (ms). Was ≈ 199 ms on 2026-06-13; the
+# drift is tool growth, not a regression here. Caching the six evals to files
+# measured 188.6 → 88.5 ms of eval time (~250 → ~150 startup) and was rejected:
+# it buys ~100 ms paid only on new tabs, in exchange for a cache dir plus
+# version-keyed invalidation, and Ghostty's quick terminal keeps its surface
+# alive so the cost is rarely paid at all. No single call is pathological; the only
 # ways to cut the two largest are dropping plugins (sheldon) or deferring atuin
 # init (loses instant Ctrl-R history) — both are UX tradeoffs, so the baseline
 # is accepted as-is. Re-measure with: zsh -i -c exit under `time`.
