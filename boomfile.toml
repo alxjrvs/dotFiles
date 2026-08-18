@@ -661,11 +661,21 @@ message = "a plaintext GitHub PAT is configured in claude_desktop_config.json (u
 name = "boom-verify launchd"
 
 # The `boom verify` guardrails above (MCP auto-approve, osxkeychain regression, Fable-default
-# drift) only fire when someone runs `boom verify` — so drift can sit undetected. This custom
-# plist runs `boom verify` on a timer AND fires a desktop notification on drift (which a
-# batteries-included `[boom] schedule` timer for `verify` doesn't), so it stays a plist — but
-# the `launchd` resource collapses the old link + `launchctl unload;load -w` pair into one
-# stanza that owns the load/unload lifecycle itself.
+# drift) only fire when someone runs `boom verify` — so drift can sit undetected. This plist
+# runs it on a timer; the `launchd` resource collapses the old link + `launchctl unload;load -w`
+# pair into one stanza that owns the load/unload lifecycle itself.
+#
+# It used to say the plist stayed because a `[boom] schedule` timer for `verify` "doesn't fire a
+# desktop notification on drift". That was false, and had been since `notify = true` was adopted:
+# notify is VERB-driven, not schedule-gated (settings.ts's applyNotify returns early only on
+# `ctx.verb !== "verify"`), so a scheduled verify notifies identically. The plist was also
+# carrying its own `|| osascript`, so every drift raised TWO notifications; that half is gone.
+#
+# What actually keeps it a plist is timing, which is a real difference: this uses
+# StartCalendarInterval (21:47 daily, wall-clock), while `[boom] schedule` only renders
+# StartInterval — elapsed-time, which drifts relative to the clock. Collapsing it into the
+# schedule array would trade a fixed daily slot for a drifting one; that is the trade, stated
+# honestly, rather than a capability claim that stopped being true.
 [[section.launchd]]
 src = "launchd/com.alxjrvs.boom-verify.plist"
 
