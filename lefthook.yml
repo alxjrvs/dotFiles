@@ -71,7 +71,9 @@ pre-commit:
             'Bash(~/.local/bin/op-agent:*)' \
             'Bash(git credential:*)' \
             'Read(~/.ssh/id_*)' \
-            'Read(~/.aws/credentials)'; do
+            'Read(~/.aws/credentials)' \
+            'Bash(*/op *)' \
+            'Bash(*/op-agent *)'; do
             jq -e --arg d "$d" '.permissions.deny | index($d)' "$f" > /dev/null \
               || { echo "missing deny entry $d in .permissions.deny of $f (secret-path floor)"; exit 1; }
           done

@@ -36,7 +36,9 @@
       "Bash(~/.local/bin/op-agent:*)",
       "Bash(git credential:*)",
       "Read(~/.ssh/id_*)",
-      "Read(~/.aws/credentials)"
+      "Read(~/.aws/credentials)",
+      "Bash(*/op *)",
+      "Bash(*/op-agent *)"
     ],
     "defaultMode": "auto"
   },
@@ -133,6 +135,40 @@
   "inputNeededNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
   "autoMode": {
-    "classifyAllShell": true
-  }
+    "classifyAllShell": true,
+    "environment": [
+      "### Org-wide",
+      "**Organization**: BinfiniteLLC (this project only; remote github.com/BinfiniteLLC/binfinite-app)",
+      "**Cloud provider(s)**: Convex (app backend + separate catalog deployment), Netlify (admin, marketing, binfinite-design Storybook site), EAS / Expo Hosting (apps/platform native + web), Stripe (payments platform, not infrastructure)",
+      "**Repository visibility**: private (gh API: BinfiniteLLC/binfinite-app is private)",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: 1Password `op://` references only; never plaintext in any file (.env, eas.json, Convex config). CI secret names referenced: CONVEX_DEPLOY_KEY, CONVEX_PROD_DEPLOY_KEY, DEPLOY_MARKER_WEBHOOK_SECRET, EXPO_TOKEN, NETLIFY_AUTH_TOKEN, OP_SERVICE_ACCOUNT_TOKEN",
+      "**Default / protected branches**: default branch `main`; ruleset `main protection` active; protected branch `main`. Squash-only merges, linear history required, single required check `CI Success`",
+      "**CI/CD deploy targets**: GitHub Actions (.github/workflows/ci.yml is the gate; deploy-prod.yml is workflow_dispatch-only and refuses to run unless the latest main CI is green). Targets: Convex dev + prod deployments (packages/backend, packages/catalog), Netlify sites (admin, marketing, binfinite-design), EAS Build / EAS Hosting for apps/platform. Auto-deploy to prod is intentionally OFF",
+      "**Network posture**: None configured",
+      "**Source control**: The trusted repo and its remote(s) only (no additional orgs configured) — github.com/BinfiniteLLC/binfinite-app, as scoped by the Trusted repo and Repository visibility entries above",
+      "**Trusted internal domains**: binfinite.io (live prod Expo Web app), binfinite.app plus admin. and design. subdomains (marketing, admin console, Storybook). A .io → .app redirect anywhere is a bug",
+      "**Trusted cloud buckets**: None configured",
+      "**Key internal services**: Convex app backend (packages/backend, source of truth) and the separate catalog Convex service read over HTTP via CATALOG_SERVICE_URL with an x-catalog-token header; Stripe (Connect Express, payments/payouts/webhooks); PostHog (analytics, feature flags, /posthog/alert sink); Resend (transactional email); Expo push",
+      "**Internal package registry**: None configured (Bun workspace monorepo; public npm registry, bun.lock; deploy CLIs are version-pinned `bunx netlify-cli@27.0.0` / `bunx eas-cli@21.2.0` invocations)",
+      "**Sensitive data locations & audiences**: any file or store holding personal data, confidential business data, credentials, regulated data, or similarly sensitive material; preserve exact handles when known and share only with audiences cleared at the [named+specifics] bar. In this repo specifically: Convex prod data (users, orders, disputes, messages, payouts), Stripe customer/Connect data, and the .env / .env.local family (gitignored; .env.example is the only committed template)",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: any namespace, host, or container whose name carries `prod` or `production` as a whole word or name segment (hyphen/underscore/dot-delimited — e.g. matches `prod-db`, not `producer`). Here that includes the prod Convex deployments, the production EAS Hosting alias, and CONVEX_PROD_DEPLOY_KEY-scoped operations",
+      "**Protected deployment namespaces / environments**: the production Convex deployments (app backend and catalog), the EAS Hosting production alias / binfinite.io custom domain, and the Netlify production sites; prod deploy is manual, CI-gated, workflow_dispatch-only",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment. Also: GitHub branch protection / the `main protection` ruleset, .github/workflows/*, the `CI Success` aggregator needs: list, and repo merge settings",
+      "### User-specific",
+      "**Primary use of Claude Code**: software development on this monorepo (Expo/React Native + TanStack Start + Astro front ends, Convex backend), driven by GitHub issues on BinfiniteLLC/binfinite-app and org Project #1",
+      "**Trusted repo**: BinfiniteLLC/binfinite-app (private) and its `origin` remote, including the agent worktrees under .claude/worktrees/. Confidential material is fine in this private repo; secrets and sensitive data are never cleared into any repo by its visibility",
+      "**Org-specific CLIs**: bun / bunx (workspace scripts, `bun run check` is the gate), gh (issues, PRs, stacks), boom (dotfiles/config runner), op / op-agent (1Password secret resolution — denied to the Bash tool by user settings), eas, netlify, botu, mise",
+      "**Routine under this repo's prefix**: `bun run check` and the individual `check:*` gates, `bun run test` / `test:convex`, `bun run typecheck:workspaces`, `biome check .`, `bun install` in fresh worktrees, and `gh issue view --repo BinfiniteLLC/binfinite-app` are routine read/verify actions"
+    ],
+    "allow": [
+      "$defaults",
+      "Bash(bun run check:*)",
+      "Bash(bun run test:*)",
+      "Bash(bun run typecheck:workspaces)",
+      "Bash(gh issue view:*)"
+    ]
+  },
+  "askUserQuestionTimeout": "10m"
 }

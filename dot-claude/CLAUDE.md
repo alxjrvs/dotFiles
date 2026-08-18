@@ -54,6 +54,27 @@ Rules that apply whatever you are touching:
   auto-mode classifier, not just arbitrary-code-exec patterns — the classifier still runs and can
   deny under `skipAutoPermissionPrompt`, which suppresses only the interactive prompt, not
   classification.
+  - `autoMode.environment` / `allow` / `soft_deny` are the classifier's own prose-rule surface,
+    and they exist here for the reason `DECISIONS.md` recorded and then left unfixed: *"two
+    commands identical in binary, verb and shape, differing only in a vault name, were decided
+    differently. A control that decides identical shapes differently is a filter, not a floor."*
+    The docs name that exact cause — the classifier "trusts only the working directory and the
+    current repo's configured remotes", and *"repeated denials for the same destination usually
+    mean the classifier is missing context. Add that destination to `autoMode.environment`."*
+    So `environment` names the orgs and cloud surfaces this machine legitimately touches, and
+    `allow` the routine verify commands. Both make auto mode *smoother* — the classifier stops
+    second-guessing destinations it should already trust. A custom `soft_deny` was deliberately
+    NOT added: the built-in defaults already cover force push, `curl | bash`, production deploys
+    and data exfiltration, and auto mode is valued here for not interrupting.
+    **This improves the filter; it does not create a floor** — `permissions.deny` below is still
+    the only deterministic layer. Every array leads with the literal `"$defaults"`, which is
+    load-bearing: omitting it silently discards the built-in rules for that section, including
+    force-push, `curl | bash`, production deploys and data exfiltration.
+    User-scope only — `autoMode` is *ignored* in project `.claude/settings.json` and
+    `settings.local.json`, so this cannot be pushed down into a repo that would rather own it.
+  - `askUserQuestionTimeout: "10m"` — the default is *never*. With `defaultMode: auto`,
+    background jobs and `/loop`, an unattended run that hits a dialog otherwise blocks forever
+    with nobody there to answer it.
   - `permissions.deny` is the deterministic floor that survives `auto`/bypass (deny is evaluated
     first): keychain reads of the agent token (`security find-generic-password`), raw private-key
     and cloud-credential files, and the Bash path to secret resolution — **scoped to the binary,
@@ -74,8 +95,15 @@ Rules that apply whatever you are touching:
     and they pull opposite ways. Good: `Bash(op:*)` matches the `op` binary only and does **not**
     catch `open`. Bad: it does not catch a *differently spelled path* to the same binary either,
     which is why `~/.local/bin/op-agent` is enumerated separately — that is the spelling this very
-    file uses in its `*_COMMAND` values, so it is the one most likely to be copied. Absolute paths
-    remain uncovered and are not coverable here.
+    file uses in its `*_COMMAND` values, so it is the one most likely to be copied.
+    **Correction (2026-08-18): absolute paths ARE coverable, and are now covered.** Wildcards may
+    appear at any position in a rule, so `Bash(*/op *)` and `Bash(*/op-agent *)` match any path
+    spelling of those binaries; both are in the array. Measured with a control rather than read
+    off the docs — `deny Bash(*/touch *)` blocks `/usr/bin/touch`, while a negative control
+    (`Bash(*/zzznotacommand *)`) does not, which is what proves the deny came from the rule and
+    not from ambient policy. The honest residue is narrower than the old claim: deny cannot cover
+    an arbitrary *interpreter* — `sh -c 'op read …'` still walks past — which is an argument for
+    the sandbox, not for spelling more rules.
   - The floor now has a **regression check** in all three enforcement points (`boomfile.toml`
     `[[section.check]]`, `lefthook.yml`, `lint.yml`). Before that it had none: the whole `deny`
     array could be deleted and every gate stayed green. Note the boomfile patterns are
@@ -491,7 +519,13 @@ automation tier.
     PAT is held in `git-credential-cache--daemon`'s memory behind a socket in `~/.cache/git`. The
     socket dir is `0700` so it is not a cross-user hole, but any *same-user* process — which the
     agent is — can read it back with `git credential fill`, reaching the PAT with no `op` command
-    at all. `Bash(git credential:*)` in `permissions.deny` is what closes that path. The cache is
+    at all. `Bash(git credential:*)` in `permissions.deny` narrows that path but — **correction
+    (2026-08-18)** — does not *close* it, which is what this used to claim. Two ways past it,
+    neither matching the rule: `git credential-cache exit` is a different token (the same
+    word-boundary mechanism this file already documents for `op readx`), and the cache is a plain
+    Unix socket, so any same-user process can speak the helper protocol straight to it with
+    `nc -U` and no `git` token in the command line at all. Defense-in-depth, like the rest of the
+    array; the thing that would actually close it is egress control, not spelling. The cache is
     still worth keeping: 1Password's daily rate limit is **per account** (1,000 combined reads on
     Individual/Family), so it is doing quota work, not just latency work.
   - **`repo` + `workflow` is the scope to keep an eye on.** `workflow` permits writing
