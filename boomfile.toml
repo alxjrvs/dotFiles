@@ -232,10 +232,17 @@ dst = "~/.claude/skills/"
 
 [[section.run]]
 # Claude Code CLI via the official native installer (self-updating); never
-# brew/npm, whose builds do not auto-update. Idempotent — only installs when
-# `claude` is missing; the CLI updates itself thereafter.
+# brew/npm, whose builds do not auto-update. Only installs when `claude` is
+# missing; the CLI updates itself thereafter.
+#
+# The predicate is `unless` rather than hand-rolled into `cmd` (boom >= 0.22): a skipped step
+# now says so in the report instead of a `||` short-circuit pretending to converge. `timeout`
+# because this is a network fetch piped to a shell — reachable from an unattended sync, where a
+# hang would block the whole reconcile with nobody watching.
 on = "sync"
-cmd = "command -v claude >/dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash"
+unless = "command -v claude >/dev/null 2>&1"
+timeout = 180
+cmd = "curl -fsSL https://claude.ai/install.sh | bash"
 
 # The three settings.json guardrails below were escaping-heavy `grep`-in-a-`run` steps; they
 # are now declarative `check` resources (boom >= 0.13.0), evaluated on `boom verify` and folded
@@ -344,7 +351,7 @@ exit 1
 # exist. Fail while it is dirty.
 [[section.run]]
 on = "verify"
-cmd = "git -C ~/.local/state/boom/config-repo diff --quiet -- dot-claude/ || { echo 'live Claude config diverges from the committed contract (dirty boom config-repo)'; exit 1; }"
+cmd = "git diff --quiet -- dot-claude/ || { echo 'live Claude config diverges from the committed contract (dirty boom config-repo)'; exit 1; }"
 
 # `git maintenance` registers repos in ~/.gitconfig.local and installs three launchd agents
 # (org.git-scm.git.{hourly,daily,weekly}) that run whether or not those paths still exist. Found
@@ -548,9 +555,29 @@ mode = "700"
 [[section]]
 name = "lefthook"
 
+# `creates` guards the re-run: lefthook install rewrote .git/hooks on every single sync, which
+# is harmless but dishonest — the report claimed work that was a no-op. The generated pre-commit
+# hook is the artifact, so its existence is the predicate.
 [[section.run]]
 on = "sync"
+creates = ".git/hooks/pre-commit"
+timeout = 60
 cmd = "lefthook install"
+
+# The one uninstall binding worth adding. Nothing in this file bound `on = "uninstall"` at all,
+# so a teardown left lefthook's generated .git/hooks behind, pointing at a lefthook that may no
+# longer be installed. Safe and reversible: it removes generated hooks and nothing else.
+#
+# Deliberately NOT bound for the others, and the reasons are the point:
+#   - `op-agent provision` — teardown would destroy a live 1Password service account. Automating
+#     credential destruction is worse than leaving one behind; that is a human decision.
+#   - the Claude CLI — self-updating and self-managing; boom did not install its updater.
+#   - claude-desktop-mcp.sh — it MERGES a key into a file boom does not own, so a blind reversal
+#     could clobber unrelated edits made since.
+[[section.run]]
+on = "uninstall"
+timeout = 60
+cmd = "lefthook uninstall || true"
 
 [[section]]
 name = "tldr cache"
@@ -560,8 +587,11 @@ name = "tldr cache"
 # fetched once. Do it at sync time so a fresh machine is ready. `|| true` keeps
 # an offline sync from failing on a non-critical cache; re-run with
 # `boom source --only="tldr cache"` once networked.
+# `|| true` stays: an offline sync must not fail on a non-critical cache (see above). Only a
+# timeout is added — this is a network fetch reachable from an unattended sync.
 [[section.run]]
 on = "sync"
+timeout = 120
 cmd = "tldr --update || true"
 
 [[section]]
@@ -571,12 +601,17 @@ name = "op-agent"
 src = "hooks/op-agent.sh"
 dst = "~/.local/bin/op-agent"
 
+# No `unless`: op-agent.sh already short-circuits on `security find-generic-password`, so the
+# predicate would duplicate logic that lives (correctly) with the thing it guards. Timeout only —
+# provisioning talks to 1Password over the network.
 [[section.run]]
 on = "sync"
+timeout = 120
 cmd = "op-agent provision"
 
 [[section.run]]
 on = "verify"
+timeout = 60
 cmd = "op-agent status"
 
 [[section]]
@@ -604,7 +639,7 @@ mode = "755"
 # owns that file and rewrites it continuously. See the script header.
 [[section.run]]
 on = "sync"
-cmd = "~/.local/state/boom/config-repo/hooks/claude-desktop-mcp.sh"
+cmd = "./hooks/claude-desktop-mcp.sh"
 
 [[section.check]]
 # The Desktop entry must never carry an inline token. GitHub's documented config
