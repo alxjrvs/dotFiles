@@ -96,7 +96,19 @@ Rules that apply whatever you are touching:
       *whole* `op-agent` binary. That split is deliberate: `op` is a tool an agent has legitimate
       non-printing uses for, while `op-agent` is plumbing — MCP resolvers and git exec it
       themselves, so nothing is lost by keeping it binary-scoped, and it is the one with a
-      confirmed leak. Only `op-agent status` (a verdict, no secret) is reachable, via the guard.
+      confirmed leak.
+    - **`op-agent status` is NOT reachable, and this file claimed for a day that it was**
+      (corrected 2026-08-19). The old sentence read "Only `op-agent status` (a verdict, no
+      secret) is reachable, via the guard." Measured: **denied.** `Bash(op-agent:*)` is
+      binary-scoped, `permissions.deny` is evaluated *first*, and `op-guard.sh` by design never
+      emits `allow` — so the guard's allow-list entry for `status` can never be reached. The
+      other statement in this file, *"it can subtract permission and never add it"*, is the
+      correct one; these two were in direct contradiction. The cost is real: nothing on this
+      machine can check SA-token expiry or PAT health, which is the pre-flight `boom verify` is
+      supposed to run. **To restore it, the deny must be narrowed to the leaking verbs**
+      (`Bash(op-agent secret:*)`, `Bash(op-agent header:*)`,
+      `Bash(op-agent git-credential:*)`) so the guard's allow-list governs the rest — the guard
+      cannot do it alone. Until that lands, treat `op-agent status` as terminal-only.
   - **Why a verb list is safe NOW when it failed before** (this is the whole argument — do not
     re-broaden the rule without it). Enumerating verbs failed in 2026-08-05 because a **deny-list
     fails open**: the list blocked `op-agent secret`, `op read` and `op item get` but not
@@ -221,7 +233,11 @@ Rules that apply whatever you are touching:
   boundary rather than an ergonomic one). It is what makes `op` usable by agents: an **allow-list**
   of shapes that provably do not put a secret value on stdout — `op run [--env-file=F] -- CMD`,
   `op inject -i TPL -o OUT`, `op whoami`, `op --version`, `op service-account ratelimit`, and
-  `op-agent status`. Everything else `op`-shaped is denied by default.
+  `op-agent status`. Everything else `op`-shaped is denied by default. **The `op-agent status`
+  entry is currently dead letter** — `permissions.deny` carries binary-scoped `Bash(op-agent:*)`
+  and is evaluated before any hook, so that shape is denied before this guard is consulted. It is
+  kept here so the allow-list stays correct the moment the deny is narrowed; do not read its
+  presence as evidence the command works.
   - **`op vault list` / `op item list` are deliberately NOT on it**, though they print no secret
     value. This file records separately that `op vault list` "enumerates every vault in the
     account (verified 2026-08-05, no prompt)" through the desktop integration, far outside
@@ -517,11 +533,22 @@ session — so a Claude session (interactive *or* headless/cron) gets its secret
 prompt and no dependency on the 1Password desktop app. This is the 1Password-recommended
 automation tier.
 
-- **Scope = one vault.** The service account can read only the dedicated `claude-agent` vault
-  (1Password forbids granting an SA access to Personal/Private/Employee **or your default Shared
-  vault**, *and* an SA's vault access is immutable after creation — confirmed still true in 2026 at
-  both the CLI and web-UI docs — so agent secrets are *brought into* this vault rather than the SA
-  being granted others). That vault is the entire blast radius **of the service account**.
+- **Scope = one vault — by our choice, not by platform limit** (clarified 2026-08-19). The
+  service account can read only the dedicated `claude-agent` vault. Two of the three constraints
+  here are real, one was our own framing:
+  - **Real:** 1Password forbids granting an SA access to Personal/Private/Employee **or your
+    default Shared vault**, and an SA's vault and Environment access is **immutable after
+    creation** — *"If you want to grant a service account access to additional vaults or
+    Environments … you'll need to create a new service account."*
+  - **Not a limit:** an SA **can** be granted **multiple vaults at creation**. This file used to
+    read as though one-vault were imposed by 1Password; it is not. It is a good default (it is
+    1Password's own "dedicated vault, permissioned for the task at hand"), but it means the right
+    response to a second concern is **a second SA + vault pair**, not piling unrelated items into
+    `claude-agent`.
+  - Consequence for hygiene: because access is immutable, a vault cannot be narrowed later — only
+    replaced. So **the vault's contents are the only lever you have**, and every item in it that
+    no live consumer resolves is standing exposure bought for nothing. Audit membership, not just
+    permissions.
   - It is **not** the blast radius of *the agent*, and the difference matters. The agent runs as
     you, on your machine, so your desktop `op` integration is reachable from an ordinary Bash tool
     call: `op vault list` enumerates every vault in the account (verified 2026-08-05, no prompt,
