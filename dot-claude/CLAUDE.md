@@ -145,8 +145,12 @@ Rules that apply whatever you are touching:
     the old regex-escaping was working around). Each also asserts `op-guard.sh` is wired, since
     `permissions.allow` pre-approves `Bash(op run:*)` on the strength of that guard.
   - Be honest about what that buys: **defense-in-depth, not a boundary.** `git push` still
-    authenticates with the same PAT; deny matches command *spelling*, so an absolute path
-    (`/opt/homebrew/bin/op …`) is not covered and nothing in the permission model can cover it;
+    authenticates with the same PAT; deny matches command *spelling*, so an unspelled path or
+    interpreter slips it — though for `op` specifically both are now covered, the first by the
+    `Bash(*/op *)` wildcards and the second by `op-guard.sh`'s tokenizer, which is why the
+    stale "nothing in the permission model can cover it" was struck here on 2026-08-18: the
+    correction two bullets up had measured the opposite and this sentence was never updated to
+    match. It remains true for the rest of the array;
     and everything unmatched falls to the auto-mode classifier, which is probabilistic and was
     observed deciding two identically-shaped commands differently. Least privilege rests on the
     PAT's scopes and the SA-scoped vault (see *Agent secret access*).
@@ -154,6 +158,20 @@ Rules that apply whatever you are touching:
   and run no server-side advisor. Fable/Opus/Sonnet stay freely selectable per-session (`/model`)
   and per-subagent. **Fable must never be pinned as the default** — a drift check fails if it is
   (e.g. via `/model`'s "set as default", which rewrites this file).
+- **MCP (user scope)** — exactly one entry in `~/.claude.json` `.mcpServers`: **`1password`** →
+  `/Applications/1Password.app/Contents/MacOS/1password-mcp` (added 2026-08-18). A stdio server
+  shipped inside the desktop app; **no token, no `op://` ref, no `headersHelper`** — the only
+  server here whose config contains no secret, because it structurally cannot return one
+  (*"The server cannot return secret values stored in 1Password to the client, even if an agent
+  requests them"*). It manages **Environments**, not vaults, so it replaces nothing `op-agent`
+  does. Measured before adopting: it reports `✔ Connected` unattended (the approval gate is at
+  tool-call time, per Environment), so it does **not** trip the `claude mcp list | grep ✘` check
+  on the nightly `boom verify`; but a tool call really does block on a desktop prompt, so build
+  nothing unattended on it. Beta, zero consumers today — on the same "earn its place by use"
+  clock as the plugins below, and it should move to a specific repo's checked-in
+  `.claude/settings.json` once one project owns an Environment. Rationale in the repo-root
+  `CLAUDE.md`; registration is reproduced by a boomfile `sync` step and asserted by a `verify`
+  step, since `~/.claude.json` is tracked by nothing.
 - **Plugins** — `enabledPlugins` runs **one** marketplace, at `autoUpdate: false` (changed
   2026-08-05): with `autoUpdate` on, a merge to the upstream's main was unattended code
   execution here — new skills, new MCP servers, arbitrary code from a marketplace — reaching a

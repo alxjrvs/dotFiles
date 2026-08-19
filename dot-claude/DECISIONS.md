@@ -85,6 +85,57 @@ A related gap survives: neither this server nor the `render` server beside it (a
 boomfile, so a fresh machine reproduces neither, and the `claude mcp list | grep ✘` check cannot
 detect an *absent* server — only a configured-and-failing one.
 
+### The 1Password Environments MCP server was adopted, on a condition (2026-08-18)
+
+Adopted the same day the `op` guard landed, and the sequence matters: the first research pass
+concluded *against* it — "runs in the desktop app, needs a human approving prompts, so it cannot
+serve a headless session." alxjrvs overruled that with a condition: **"if they recommend it,
+that's fine."** They do. It is 1Password's shipped, documented product for exactly this job, and
+the earlier quote used to argue against it — *"No strong revocation model exists once secrets are
+passed into context"* — turns out to be the reason this server is built the way it is, not an
+argument against it. **The objection was to the wrong thing: unattended-ness, not safety.**
+
+What settled it was measurement, not more reading:
+
+- **It ships inside the app.** `/Applications/1Password.app/Contents/MacOS/1password-mcp`
+  (+ an `onepassword-mcp` symlink), found by listing the bundle rather than trusting docs that
+  say only "`1password-mcp`, on PATH" — it is *not* on PATH here. It ignores `--help` and speaks
+  JSON-RPC immediately, which is how the stdio transport was confirmed.
+- **The tool list came from the server, not the docs.** A hand-written `initialize` +
+  `tools/list` handshake returned all eight tools and both doc resources. Worth doing: the
+  server's own instruction string says "read and update environment variables", which reads as
+  though values come back, while the actual tool description is *"Retrieve a list of environment
+  variable **names**"*. The docs are right and the blurb is loose.
+- **`✔ Connected` with nobody present.** This was the adoption blocker and it evaporated on
+  contact: approval is at *tool-call* time and per Environment, not at connect. Had it been
+  otherwise, `boom verify`'s `claude mcp list | grep ✘` would have failed on every nightly
+  unattended run. Verified by registering it and re-running `boom verify` — clean.
+- **Tool calls really do block.** A probe calling `authenticate` hung until killed. Useless in a
+  background job; harmless there. Do not build anything unattended on it.
+
+Decisions that fell out:
+
+- **`boom mcp add` is deliberately not used.** It wraps its argument in `op run --env-file`,
+  which is precisely wrong for the one server whose design is that no secret ever passes through
+  it. This is the first server here with *no* secret in its configuration, and that is not a gap
+  to fill.
+- **User scope, with a stated migration path.** `CLAUDE.md` says user scope is the exception, and
+  the honest reading is that this belongs in whichever repo owns an Environment — except no repo
+  does yet, so per-repo scoping would register it nowhere. User scope until a project claims it.
+- **A `verify` step, not just a `sync` step.** The `gh extensions` section already records that a
+  `run` bound to `on = "sync"` is invisible to `verify` by construction, so a hand-removed thing
+  goes unnoticed until the next sync silently restores it. There is no boom package manager for
+  MCP servers, so the sync step cannot become a `pkg` entry and the verify half is hand-written.
+- **It closes a documented reproducibility gap by one.** `CLAUDE.md` notes the project-scoped
+  `github`/`render` servers are "not declared in the boomfile, so a fresh machine reproduces
+  neither". `~/.claude.json` is still tracked by nothing; the boomfile step is what makes this
+  one reproduce. The other two remain open.
+
+**It replaces nothing.** Environments are a separate object type from vaults, and this machine's
+agent secrets live in the `claude-agent` *vault*. Zero consumers today, so it is on the same
+"earn its place by use" clock as the plugins — count `"name":"mcp__1password__` invocations
+before treating it as settled, and delete it if the count stays at zero.
+
 ### `op` became usable by agents by inverting the list, not by loosening it (2026-08-18)
 
 The ask was "I want op to be usable by the bots, according to 1Password best practices." The

@@ -273,6 +273,40 @@ unless = "command -v claude >/dev/null 2>&1"
 timeout = 180
 cmd = "curl -fsSL https://claude.ai/install.sh | bash"
 
+# The 1Password Environments MCP server, user-scoped. It ships INSIDE the desktop app
+# (`/Applications/1Password.app/Contents/MacOS/1password-mcp`, a stdio server — verified by
+# speaking a JSON-RPC `initialize` to it directly), so there is nothing to install and, unlike
+# every other server here, nothing to authenticate: it takes no token, no `op://` ref and no
+# `headersHelper`. `boom mcp add` is deliberately NOT used — it wraps its argument in
+# `op run --env-file`, which is exactly wrong for a server whose whole design is that no secret
+# ever passes through it.
+#
+# `unless` keys off the registration, not the binary, so this converges once and stays quiet.
+# Registration lives in `~/.claude.json`, which nothing tracks — that is the same gap CLAUDE.md
+# records for the project-scoped `github`/`render` servers ("neither is declared in the boomfile,
+# so a fresh machine reproduces neither"). This step closes it for this one server.
+[[section.run]]
+on = "sync"
+unless = '''test ! -x /Applications/1Password.app/Contents/MacOS/1password-mcp || jq -e '.mcpServers["1password"]' ~/.claude.json >/dev/null 2>&1'''
+cmd = "claude mcp add --scope user 1password -- /Applications/1Password.app/Contents/MacOS/1password-mcp"
+
+# A `run` bound to `on = "sync"` is invisible to `verify` BY CONSTRUCTION — the lesson the
+# `gh extensions` section records after a hand-removed extension went unnoticed until the next
+# sync silently reinstalled it. There is no boom package manager for MCP servers, so the
+# sync step above cannot become a `pkg` entry; this is the verify half, hand-written.
+#
+# It asserts registration only. Health is already covered by the existing `claude mcp list`
+# check — and note that server reports `✔ Connected` even with nobody at the keyboard, because
+# its human approval gate is at TOOL-CALL time, per Environment, not at connect. That was
+# measured before adopting it precisely because a server that needed auth to connect would have
+# failed `boom verify` on every unattended nightly run.
+[[section.run]]
+on = "verify"
+cmd = '''
+[ -x /Applications/1Password.app/Contents/MacOS/1password-mcp ] || exit 0
+jq -e '.mcpServers["1password"]' ~/.claude.json >/dev/null 2>&1 || { echo "1Password Environments MCP not registered (user scope) — boom source, or: claude mcp add --scope user 1password -- /Applications/1Password.app/Contents/MacOS/1password-mcp"; exit 1; }
+'''
+
 # The three settings.json guardrails below were escaping-heavy `grep`-in-a-`run` steps; they
 # are now declarative `check` resources (boom >= 0.13.0), evaluated on `boom verify` and folded
 # into its exit code + `--json` report. `missing_file = "skip"` preserves the old `|| exit 0`
