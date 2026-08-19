@@ -75,6 +75,46 @@ Ghostty is the only terminal (`TERMINAL=ghostty`, `ghostty/config`) — one syml
 - **Interactive dev (you)** — desktop app + biometric; resolve via `op run` / `op://` refs / Environments.
 - **Hands-off agent (Claude, MCP, cron)** — a **service account** scoped to the `claude-agent` vault; no biometric, no desktop dependency.
 
+### The standard we hold ourselves to (1Password's own, verified 2026-08-19)
+
+1Password publishes a four-step pattern for agent credential access ([SDK AI-agent
+tutorial](https://www.1password.dev/sdks/ai-agent), [service accounts + agentic
+AI](https://1password.com/blog/service-accounts-sdks-agentic-ai)). It is the yardstick for
+everything below, so it is recorded here rather than paraphrased per-decision:
+
+1. **"Store credentials in a dedicated vault that's permissioned for the task at hand."**
+2. **"Create a service account token with read-only access to that vault."**
+3. **"Fetch credentials at runtime using secret reference URIs."**
+4. **"Pass the secrets to your agent without hardcoding or exposing sensitive data"** — and,
+   explicitly: *"Exposing raw credentials directly to an AI model carries significant risks.
+   Where possible, avoid passing secrets to the model."*
+
+Where we sit against it, honestly:
+
+- **Steps 1–3: met.** Dedicated vault, `read_items`-only SA, `op://` refs resolved at runtime.
+- **Step 4: exceeded.** 1Password says *"where possible, avoid passing secrets to the model"*;
+  `op-guard.sh` plus the `permissions.deny` floor make it structurally impossible for a Claude
+  session to put a resolved value on stdout. That is stronger than the published guidance, and
+  it is the part of this setup worth keeping unchanged.
+- **The gap is step 1** — *"permissioned for the task at hand"*. One vault serving personal,
+  Binfinite, Gnar and CI concerns at once is not task-permissioning; it is a shared bucket that
+  happens to be separate from `Private`. Since SA vault access is **immutable after creation**,
+  the contents of the vault are the only lever available, so membership discipline *is* the
+  control.
+- **Two published guardrails we cannot use.** *"Activity Log auditability"* and service-account
+  **usage reports** are **1Password Business/Teams only** — an Individual/Family account (ours,
+  evidenced by a built-in `Private` vault) gets **no per-item, per-timestamp record** of what the
+  SA read. The only signal is the aggregate counter from `op service-account ratelimit`.
+  **So do not cite auditability as part of our security story.** Least privilege here rests
+  entirely on *vault scope* + *token expiry* + *vault membership*, and that is precisely why the
+  first two being immutable makes the third non-negotiable.
+
+**Environments are now programmatically readable** (beta: *"Secrets can now be fetched
+programmatically from 1Password Environments at runtime through the CLI and SDKs"*), and SDK
+desktop auth is GA with authorization *"time-bound … expires after 10 minutes of inactivity"*.
+That is a genuine future option for project env vars; it is **not** adopted here yet, and the
+Environments MCP below still cannot return secret values.
+
 ### Agent secrets — the `op-agent` CLI
 
 `hooks/op-agent.sh` is the single script for all agent-1Password machinery, dispatched by verb:
@@ -97,7 +137,7 @@ Every verb has a live consumer — no speculative surface. **This is a rule, not
 
 Servers we control launch via 1Password's `op run --env-file=.env -- <server>` with `op://` references in a committable `.env` (`boom mcp add`). Plugin-bundled stdio servers use their own `*_COMMAND` resolver (gninety's `NINETY_API_TOKEN_COMMAND` → `op-agent secret op://claude-agent/gninety/credential`; the parallel `SPACEBASE_*` set was deleted on 2026-08-08 with the plugin that read it). HTTP servers that bearer-authenticate use Claude Code's `headersHelper` → `op-agent header` (the GitHub MCP). Plugins that check a literal-token env var *before* their `_COMMAND` (gninety does) also need that var pinned to `""` in `settings.json`, else Claude Code's unset-`${VAR}` passthrough feeds the literal placeholder in as the token.
 
-**Vault item titles are kept space-free, and every `op://` ref is quoted anyway.** Refs run through `/bin/sh -c`, so a title with spaces word-splits into separate arguments and the resolve fails. On 2026-07-25 this had **spacebase and the GitHub MCP both failing to connect** — spacebase logging `SPACEBASE_API_KEY_COMMAND failed`, and the GitHub helper emitting `{}` (op-agent's failure path), so no `Authorization` header was sent and the client fell back to OAuth discovery with the misleading error *"does not support dynamic client registration"* — an error naming neither 1Password nor the helper, which is why it was misread as an OAuth incompatibility and the server was deleted rather than fixed. `gninety`'s ref had no spaces, which is exactly why it was the only server still working. **Every item in the `claude-agent` vault was renamed to a space-free `kebab-case` title on 2026-07-25**, so quoting is now belt-and-braces everywhere rather than load-bearing anywhere: `Claude Git PAT`→`claude-git-pat`, `Spacebase API Key`→`spacebase-api-key`, `Render API Key`→`render-api-key`, `Claude Github PAT`→`claude-github-pat`, `Boom Release PAT`→`boom-release-pat`, `SUSRD RElease PAT`→`susrd-release-pat`, `Google Slides API IMP`→`google-slides-api-imp`, `npm publish token`→`npm-publish-token`, and `Gninety`→`gninety` (case, so the title matches the ref that was already lowercase). **New items in this vault MUST be `kebab-case`** — the invariant only holds if nothing re-introduces a space. Item *IDs* are stable across a rename, so renaming never invalidates a ref that uses an ID. Other vaults (`Private` 52, `Binfinite` 28, `Gnar` 22 spaced titles) are deliberately untouched: their consumers are Environments, CI, and other machines that can't be verified from here. `boom verify` fails when an MCP server is down or needs re-auth, with the CWD caveat above. **Never write a `${VAR}` placeholder into a git-tracked `.mcp.json`/`.env`** (a later `claude mcp add` can expand it). The `git-template` pre-commit fails on a `${VAR}` in a tracked `.mcp.json` and on a resolved-token literal in any tracked `.mcp.json`/`.env`; `boom verify` has no such check today.
+**Vault item titles are kept space-free, and every `op://` ref is quoted anyway.** Refs run through `/bin/sh -c`, so a title with spaces word-splits into separate arguments and the resolve fails. On 2026-07-25 this had **spacebase and the GitHub MCP both failing to connect** — spacebase logging `SPACEBASE_API_KEY_COMMAND failed`, and the GitHub helper emitting `{}` (op-agent's failure path), so no `Authorization` header was sent and the client fell back to OAuth discovery with the misleading error *"does not support dynamic client registration"* — an error naming neither 1Password nor the helper, which is why it was misread as an OAuth incompatibility and the server was deleted rather than fixed. `gninety`'s ref had no spaces, which is exactly why it was the only server still working. **Every item in the `claude-agent` vault was renamed to a space-free `kebab-case` title on 2026-07-25**, so quoting is now belt-and-braces everywhere rather than load-bearing anywhere: `Claude Git PAT`→`claude-git-pat`, `Spacebase API Key`→`spacebase-api-key`, `Render API Key`→`render-api-key`, `Claude Github PAT`→`claude-github-pat`, `Boom Release PAT`→`boom-release-pat`, `SUSRD RElease PAT`→`susrd-release-pat`, `Google Slides API IMP`→`google-slides-api-imp`, `npm publish token`→`npm-publish-token`, and `Gninety`→`gninety` (case, so the title matches the ref that was already lowercase). **New items in this vault MUST be `kebab-case`** — the invariant only holds if nothing re-introduces a space. **It is prose only, nothing enforces it, and it has already been broken** (measured 2026-08-19): `CloudflarePersonalAgentKey` and `PersonalCloudflareGithubCIKey`, both added 2026-08-18, are PascalCase. Neither contains a space, so the `sh -c` word-split bug did not fire — the invariant held by luck, not by design. This is the exact failure mode `dot-claude/CLAUDE.md` names: *"CLAUDE.md is advisory context, never enforcement; anything that must hold is pinned by permissions/hooks/run guardrails, not prose."* It wants a `boom verify` step asserting every agent-vault title matches `^[a-z0-9]+(-[a-z0-9]+)*$`. Item *IDs* are stable across a rename, so renaming never invalidates a ref that uses an ID. Other vaults (`Private` 52, `Binfinite` 28, `Gnar` 22 spaced titles) are deliberately untouched: their consumers are Environments, CI, and other machines that can't be verified from here. `boom verify` fails when an MCP server is down or needs re-auth, with the CWD caveat above. **Never write a `${VAR}` placeholder into a git-tracked `.mcp.json`/`.env`** (a later `claude mcp add` can expand it). The `git-template` pre-commit fails on a `${VAR}` in a tracked `.mcp.json` and on a resolved-token literal in any tracked `.mcp.json`/`.env`; `boom verify` has no such check today.
 
 ### The 1Password Environments MCP server — the one exception to all of the above (adopted 2026-08-18)
 
@@ -141,7 +181,7 @@ Headless, no biometric (SA token via `securityd`); the `cache` helper amortizes 
 
 - Never commit a plaintext token. Use `op://` references or `op run --`.
 - Controlled servers → `op run --env-file`; plugin servers → their `*_COMMAND` (→ `op-agent secret`); HTTP servers that bearer-authenticate → `headersHelper` (→ `op-agent header`); a stdio server for Claude Desktop → a launcher that exports the token in-process (→ `op-agent secret`), never an `env` block in `claude_desktop_config.json`.
-- npm registry auth → `npm/npmrc` (linked to `~/.npmrc`, the canonical userconfig) carries `_authToken=${NPM_TOKEN}`, expanded by npm at read time; publish via `op run -- npm publish`. Daily public installs need no token, so nothing exports a secret to the session env.
+- npm registry auth → `npm/npmrc` (linked to `~/.npmrc`, the canonical userconfig) carries `_authToken=${NPM_TOKEN}`, expanded by npm at read time. Daily public installs need no token, so nothing exports a secret to the session env. **`op run -- npm publish` alone does NOT work** (measured 2026-08-19): `op run` injects only what it is given, and nothing anywhere defines `NPM_TOKEN` as an `op://` reference — no `--env-file`, no shell export, no `.env`. `NPM_TOKEN` stays unset and npm reads an empty `_authToken`. The storage side is correct (the file holds the literal placeholder, never a token); the **resolution** side was never wired. Publish needs an env file mapping `NPM_TOKEN=op://<agent-vault>/npm-publish-token/credential` and `op run --env-file=… -- npm publish`.
 - If you find a plaintext token anywhere, revoke first, then migrate.
 
 ### Standing threats (keep the surface small)
