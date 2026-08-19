@@ -58,6 +58,12 @@ jobs:
           f=dot-claude/settings.json
           ! grep -qE '(enableAllProjectMcpServers|enabledMcpjsonServers)' "$f" || { echo "forbidden auto-approve MCP key in $f"; exit 1; }
           grep -q 'op-agent git-credential' "$f" || { echo "agent git helper not wired to op-agent git-credential in $f"; exit 1; }
+          # op-guard.sh is the allow-list that makes `op` usable without
+          # reopening the stdout leak, and `permissions.allow` pre-approves
+          # `Bash(op run:*)` on the strength of it. Un-wiring the hook while
+          # leaving the allow entry is the single edit that turns this change
+          # from narrower into wider, so it is asserted rather than trusted.
+          grep -q 'op-guard.sh' "$f" || { echo "op-guard PreToolUse hook not wired in $f, but permissions.allow pre-approves Bash(op run:*)"; exit 1; }
           ! grep -q 'osxkeychain' "$f" || { echo "forbidden osxkeychain git helper (cached-PAT regression) in $f"; exit 1; }
           ! grep -qE '"model"[[:space:]]*:[[:space:]]*"[^"]*fable' "$f" || { echo "Fable pinned as default model in $f"; exit 1; }
           # The deny floor. Until 2026-08-05 this array had no assertion at all:
@@ -80,7 +86,9 @@ jobs:
           # every gate green.
           for d in \
             'Bash(security find-generic-password:*)' \
-            'Bash(op:*)' \
+            'Bash(op read:*)' \
+            'Bash(op item get:*)' \
+            'Bash(op document get:*)' \
             'Bash(op-agent:*)' \
             'Bash(~/.local/bin/op-agent:*)' \
             'Bash(git credential:*)' \

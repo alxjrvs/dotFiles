@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regression suite for the two PreToolUse guards.
+# Regression suite for the three PreToolUse guards.
 #
 # The guards are 200+ lines of load-bearing, security-relevant shell — they are
 # the only deterministic enforcement in the setup, and they had no tests. Two
@@ -99,6 +99,7 @@ guard_path() {
   case "$1" in
     rebase) printf '%s' "$GUARD_DIR/rebase-guard.sh" ;;
     worktree) printf '%s' "$GUARD_DIR/worktree-checkout-guard.sh" ;;
+    op) printf '%s' "$GUARD_DIR/op-guard.sh" ;;
     *) return 1 ;;
   esac
 }

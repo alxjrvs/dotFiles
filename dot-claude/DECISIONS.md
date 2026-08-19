@@ -85,6 +85,77 @@ A related gap survives: neither this server nor the `render` server beside it (a
 boomfile, so a fresh machine reproduces neither, and the `claude mcp list | grep ✘` check cannot
 detect an *absent* server — only a configured-and-failing one.
 
+### `op` became usable by agents by inverting the list, not by loosening it (2026-08-18)
+
+The ask was "I want op to be usable by the bots, according to 1Password best practices." The
+starting state was `permissions.deny` → `Bash(op:*)`, scoped to the whole binary, which is the
+control the 2026-08-05 entry below argues for. Measured first, from a live session: **`op --version`
+was denied.** So was `op run -- npm publish`. `CLAUDE.md` had already conceded that second one as
+"the one real cost" with the advice "run it from your own terminal" — an honest note that had
+quietly become the whole story, because the *only* things left were the ones that print secrets.
+
+**`op run` is the shape the vendor recommends, and it is safe for a different reason than the
+allow-list usually relies on.** 1Password: *"If a subprocess used with `op run` prints a secret to
+`stdout`, the secret will be concealed by default"* — a PTY wrapper, with `--no-masking` as an
+explicit opt-out. So `op run` is not merely "doesn't print a secret"; it actively defends the
+stdout channel that the 2026-07-25 incident leaked through. `op read` and `op inject` carry no such
+guarantee (`op read` prints by contract; bare `op inject` renders the whole template to stdout).
+That asymmetry, not taste, is where the line got drawn.
+
+**The real argument is direction, and it is the generalisable part.** The 2026-08-05 entry is
+right that enumerating verbs failed — but it failed *as a deny-list*, and a deny-list fails **open**
+on the verb nobody thought of. That is precisely how `op-agent header`, the one command with a
+confirmed leak, stayed reachable while `op-agent secret`, which never leaked, was blocked twice.
+The fix is not a better-curated deny-list; it is an **allow-list**, which fails **closed**. So
+`op-guard.sh` (a third `PreToolUse` guard, ordered first) permits a named set of non-printing
+shapes and denies everything else `op`-shaped. `op read`, `op document get`, `op item delete`, a
+verb 1Password ships next year, and a typo now fail the same closed way.
+
+Consequences worth keeping:
+
+- **The deny entries stopped being the control and became the residue.** They now cover the three
+  printing `op` verbs and the whole `op-agent` binary — the paths with a confirmed incident — and
+  exist for the case where the guard is unreachable. `op-agent` stays binary-scoped because it is
+  plumbing: MCP resolvers and git exec it themselves, so nothing is lost.
+- **A hook that only ever denies.** `op-guard.sh` never emits `permissionDecision: "allow"`,
+  because a hook `allow` bypasses the permission system and would put the guard *above*
+  `permissions.deny`. Denying-or-silent means it can subtract permission and never add it, so the
+  two layers compose instead of racing. Worth copying to any future security hook.
+- **Allow-listing `op run` opened a hole in a *different* guard, and it was closed in the same
+  commit.** `op run -- git push origin main` presents `op` as the program, so `rebase-guard.sh` —
+  which tokenizes for a `git`/`gh` program — never sees the push. op-guard denies a `git`/`gh`
+  child for that reason alone; neither gets credentials from `op run` anyway. The general lesson:
+  when you permit a *wrapper*, check what every other guard's tokenizer now fails to see.
+- **The interpreter residue is closed for `op`.** `CLAUDE.md` records that deny "cannot cover an
+  arbitrary interpreter — `sh -c 'op read …'` still walks past". A hook that tokenizes can: op-guard
+  takes a basename (every path spelling) and scans an interpreter's payload for an `op`
+  subcommand, anchored on the subcommand so `xargs grep op foo` and `bash -c 'echo loop'` do not
+  trip it. Still open for everything else deny covers.
+- **Scope creep was declined explicitly.** `op vault list` / `op item list` print no secret value
+  and would pass a naive "does it print a secret" test, but this file's own 2026-08-05 measurement
+  is that `op vault list` enumerates every vault in the account through the desktop integration,
+  well outside `claude-agent`. They were denied before and stay denied. **An allow-list is where
+  scope creep is cheapest to add and hardest to notice** — every future addition should have to
+  name the consumer that needs it.
+- **The pairing is asserted, not trusted.** `permissions.allow` carries `Bash(op run:*)` so the
+  recommended shape is deterministic rather than left to the probabilistic classifier — which this
+  file already records deciding identically-shaped commands differently. That pre-approval is only
+  safe with the guard in front of it, so all three enforcement points (`boomfile.toml`,
+  `lefthook.yml`, `lint.yml`) now also assert `op-guard.sh` is wired. Un-wiring the hook while
+  leaving the allow entry is the single edit that would turn this change from narrower into wider.
+- **53 regression cases written before the deny list was relaxed**, and a negative control run
+  afterwards (inverting two expectations produced exactly two failures), because a new block that
+  passes first try is indistinguishable from a harness that defaults to `allow`.
+
+What was researched and **not** adopted: 1Password ships an Environments MCP Server, but it runs
+inside the desktop app and gates on interactive approval prompts, so it cannot serve a headless or
+unattended session; 1Password for Claude is Desktop/Chrome autofill only; and the Claude Code shell
+plugin manages `ANTHROPIC_API_KEY`, not vault access. Their documented recommendation for
+unattended agents is still service account + `op://` at runtime — which is what `op-agent` already
+is. 1Password's own position also argues against routing secrets through MCP at all: *"No strong
+revocation model exists once secrets are passed into context."* So the architecture needed no
+change; only the control in front of it did.
+
 ### A diagnostic printed a live PAT into a transcript (2026-07-25)
 
 A command ran `op-agent header` without redirecting stdout, so a live PAT landed in a session
@@ -101,6 +172,14 @@ one verb with a confirmed incident, a rotated token and a written postmortem sta
 while the verb that never leaked was blocked twice over. The control shipped as prose in a file
 this same document elsewhere disclaims as "advisory context, never enforcement". Deny is now scoped
 to the binary (`Bash(op-agent:*)`), which covers every verb including ones not yet written.
+
+**Superseded in direction on 2026-08-18 (entry above), and only in direction.** Binary scope was
+the right response *given a deny-list*, and the diagnosis here — that verb enumeration left the one
+leaking command reachable — is still exactly right. What it missed is that the failure was
+structural to deny-*listing*, not to enumeration: a deny-list fails open on the verb nobody listed.
+Flipping to an allow-list keeps "every verb including ones not yet written" covered while restoring
+the shapes that never printed anything. `Bash(op-agent:*)` itself did not loosen — the binary this
+incident actually involved is still denied whole.
 
 The generalisable lesson is not about 1Password: **when an incident postmortem produces a rule,
 check that the rule landed in the layer that can enforce it.** A prose rule written in response to
