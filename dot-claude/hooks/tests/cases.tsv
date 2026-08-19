@@ -184,3 +184,108 @@ worktree	wt-a	command git switch feature-b	deny
 # TRUE NEGATIVE, pinned deliberately: this detaches HEAD rather than colliding,
 # so allowing it is correct behaviour and not an accident.
 worktree	wt-a	git checkout refs/heads/feature-b	allow
+
+# --- op-guard: the shapes an agent MUST be able to use ----------------------
+# This whole block is the point of the 2026-08-18 change. Every one of these was
+# DENIED by the old binary-scoped `Bash(op:*)` rule, including `op --version`,
+# which prints no secret at all. `op run --` is 1Password's own documented shape:
+# "If a subprocess used with op run prints a secret to stdout, the secret will be
+# concealed by default."
+op	nonrepo	op run --env-file=.env -- npm publish	allow
+op	nonrepo	op run -- npm publish	allow
+op	nonrepo	op run --env-file=.env -- bun run dev	allow
+op	nonrepo	op --version	allow
+op	nonrepo	op	allow
+op	nonrepo	op whoami	allow
+op	nonrepo	op service-account ratelimit	allow
+# Inventory browsing is NOT part of this change and stays denied. These print no
+# secret VALUE, so a naive "does it print a secret" allow-list would include them
+# — but CLAUDE.md records that `op vault list` "enumerates every vault in the
+# account (verified 2026-08-05, no prompt)" via the desktop integration, well
+# outside claude-agent. They were denied before 2026-08-18 and are denied after;
+# widening to them would be a second, unasked-for change riding along with this one.
+op	nonrepo	op item list	deny
+op	nonrepo	op vault list	deny
+op	nonrepo	op account list	deny
+# Global flags must be skipped to reach the subcommand, or `--format` would eat
+# the verb and `op --format json read op://x` would resolve its subcommand to `json`.
+op	nonrepo	op --format json item list	deny
+# `op inject` is safe ONLY when it writes to a file instead of stdout.
+op	nonrepo	op inject -i .env.tpl -o .env	allow
+op	nonrepo	op inject -i .env.tpl --out-file=.env	allow
+# op-agent is plumbing, but its one non-printing verb is the health check that
+# `boom verify` runs; an agent debugging the secret path needs it.
+op	nonrepo	op-agent status	allow
+
+# --- op-guard: must NOT fire out of turn ------------------------------------
+# The false positive this suite exists to prevent: prose mentioning the guarded
+# command. A `git` segment is never substring-scanned, so a commit message about
+# op is ordinary work.
+op	nonrepo	git commit -m "make op usable by the bots" && git push origin feature-a	allow
+op	nonrepo	git commit -m "op read is denied; use op run --"	allow
+op	nonrepo	echo "op read is the denied shape"	allow
+# Word-boundary, not substring: none of these contain an `op` command.
+op	nonrepo	chmod +x loop.sh	allow
+op	nonrepo	cp -r src dst	allow
+op	nonrepo	bash -c 'echo loop'	allow
+op	nonrepo	xargs grep op foo	allow
+
+# --- op-guard: values on stdout stay denied ---------------------------------
+# stdout is model context. These are the paths with a confirmed incident.
+op	nonrepo	op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	op item get claude-git-pat	deny
+op	nonrepo	op item get claude-git-pat --fields credential	deny
+op	nonrepo	op document get mydoc	deny
+# Bare `op inject` renders the template, secrets and all, to STDOUT.
+op	nonrepo	op inject -i .env.tpl	deny
+# Masking is the property that makes `op run` safe; the flag that removes it
+# converts the allowed shape back into a printing one.
+op	nonrepo	op run --no-masking -- npm publish	deny
+# A child whose whole job is to print the environment defeats masking.
+op	nonrepo	op run -- env	deny
+op	nonrepo	op run -- printenv	deny
+op	nonrepo	op run -- bash -c 'printenv'	deny
+# REGRESSION-BY-CONSTRUCTION: `op run -- git push` would hide the push from
+# rebase-guard.sh, which tokenizes for a `git` PROGRAM and sees `op` here.
+# Allowing `op run` without this would have opened a hole in a different guard.
+op	nonrepo	op run -- git push origin main	deny
+op	nonrepo	op run -- gh pr create	deny
+# No `--` means the guard cannot tell which words are the child command.
+op	nonrepo	op run npm publish	deny
+
+# --- op-guard: op-agent's printing verbs ------------------------------------
+# `op-agent header` is the exact command that put a live PAT into a transcript
+# on 2026-07-25.
+op	nonrepo	op-agent secret op://claude-agent/gninety/credential	deny
+op	nonrepo	op-agent header op://claude-agent/claude-github-pat/credential	deny
+op	nonrepo	op-agent git-credential get	deny
+op	nonrepo	op-agent provision	deny
+
+# --- op-guard: the spellings `permissions.deny` structurally cannot cover ----
+# CLAUDE.md: deny matches command SPELLING, so an absolute path is not covered,
+# and "deny cannot cover an arbitrary interpreter — sh -c 'op read …' still walks
+# past". The guard takes a basename and scans interpreter payloads, so both are.
+op	nonrepo	/opt/homebrew/bin/op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	~/.local/bin/op-agent secret op://claude-agent/gninety/credential	deny
+op	nonrepo	sh -c 'op read op://claude-agent/claude-git-pat/credential'	deny
+op	nonrepo	bash -c "op item get claude-git-pat"	deny
+op	nonrepo	xargs op read	deny
+# `_norm` strips a leading `env` / assignment, so neither disguises the program.
+op	nonrepo	env op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	FOO=bar op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	op --account myacct read op://claude-agent/claude-git-pat/credential	deny
+# Segmentation: a denied verb anywhere in a compound command is still denied.
+op	nonrepo	echo hi && op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	op whoami; op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	echo op://x | xargs op read	deny
+
+# --- op-guard: allow-list means UNKNOWN fails closed ------------------------
+# This is the inversion the change is built on. Under the old deny-list a verb
+# nobody enumerated sailed through — that is exactly how `op-agent header`, the
+# one command with a confirmed leak, stayed reachable. Destructive and
+# not-yet-invented verbs now fail the same closed way as the printing ones.
+op	nonrepo	op item delete claude-git-pat	deny
+op	nonrepo	op vault delete claude-agent	deny
+op	nonrepo	op item edit claude-git-pat credential=hunter2	deny
+op	nonrepo	op service-account create --expires-in 90d	deny
+op	nonrepo	op somefutureverb --print-everything	deny

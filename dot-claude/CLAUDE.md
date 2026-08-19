@@ -77,19 +77,45 @@ Rules that apply whatever you are touching:
     with nobody there to answer it.
   - `permissions.deny` is the deterministic floor that survives `auto`/bypass (deny is evaluated
     first): keychain reads of the agent token (`security find-generic-password`), raw private-key
-    and cloud-credential files, and the Bash path to secret resolution — **scoped to the binary,
-    not the verb**: `Bash(op:*)`, `Bash(op-agent:*)`, `Bash(~/.local/bin/op-agent:*)`,
+    and cloud-credential files, and the Bash path to secret resolution: `Bash(op read:*)`,
+    `Bash(op item get:*)`, `Bash(op document get:*)`, `Bash(op-agent:*)`,
+    `Bash(~/.local/bin/op-agent:*)`, `Bash(*/op *)`, `Bash(*/op-agent *)`,
     `Bash(git credential:*)`. Denying those breaks nothing — the `*_COMMAND` resolvers and `credential.helper` are exec'd by the MCP
     client and by git, and boom's `run` steps spawn `op-agent` as a child of boom, none of which
-    go through the Bash tool. The one real cost: asking Claude in-session to run
-    `op run -- npm publish` is now denied too. Run it from your own terminal.
-  - **Why the binary and not the verb** (changed 2026-08-05). Enumerating verbs is what failed:
-    the list blocked `op-agent secret`, `op read` and `op item get` but not `op-agent header` or
-    `op-agent git-credential get` — both of which print a live credential to stdout, and stdout is
-    model context. `op-agent header` is the command that leaked a PAT into a transcript on
-    2026-07-25 (`DECISIONS.md`), so the one verb with a confirmed incident was the one left
-    reachable, while `op-agent secret`, which never leaked, was blocked twice. `git credential
-    fill` reached the same PAT with no `op` command at all. Four entries out, four in.
+    go through the Bash tool.
+  - **`op` itself is usable by agents again (changed 2026-08-18); `op-agent` is not.** The rule
+    used to be `Bash(op:*)`, scoped to the whole binary, and the cost was not "one real cost" as
+    this file claimed — it was everything. `op --version` was denied. So was
+    `op run -- npm publish`, which is **1Password's own documented shape** and prints no secret at
+    all: *"If a subprocess used with `op run` prints a secret to `stdout`, the secret will be
+    concealed by default"* ([`op run` reference](https://www.1password.dev/cli/reference/commands/run)),
+    with `--no-masking` as the opt-out. A control that blocks the vendor's recommended pattern is
+    not a floor, it is an outage, and the advice it forced ("run it from your own terminal") took
+    the agent out of the loop for the one task the vault exists to serve.
+    - The deny entries are now the three `op` verbs that put a secret VALUE on stdout, and the
+      *whole* `op-agent` binary. That split is deliberate: `op` is a tool an agent has legitimate
+      non-printing uses for, while `op-agent` is plumbing — MCP resolvers and git exec it
+      themselves, so nothing is lost by keeping it binary-scoped, and it is the one with a
+      confirmed leak. Only `op-agent status` (a verdict, no secret) is reachable, via the guard.
+  - **Why a verb list is safe NOW when it failed before** (this is the whole argument — do not
+    re-broaden the rule without it). Enumerating verbs failed in 2026-08-05 because a **deny-list
+    fails open**: the list blocked `op-agent secret`, `op read` and `op item get` but not
+    `op-agent header` or `op-agent git-credential get`, both of which print a live credential to
+    stdout. `op-agent header` is the command that leaked a PAT into a transcript on 2026-07-25
+    (`DECISIONS.md`), so the one verb with a confirmed incident was the one left reachable, while
+    `op-agent secret`, which never leaked, was blocked twice. `git credential fill` reached the
+    same PAT with no `op` command at all.
+    - What changed is not the diligence of the list, it is the **direction**. `op-guard.sh`
+      (below) is an **allow-list**: it permits a named set of shapes proven not to print a value
+      and denies everything else `op`-shaped. A forgotten verb, a verb 1Password ships next year,
+      a destructive `op item delete`, and a typo now all fail the *same closed way*. The deny
+      entries are no longer the control — they are the **residue that survives the guard being
+      unreachable**, and they cover exactly the paths with a confirmed incident.
+    - Read that pairing as load-bearing in both directions. `permissions.allow` carries
+      `Bash(op run:*)`; without the guard in front of it, that pre-approves `--no-masking` and an
+      env-dumping child. All three gates (`boomfile.toml`, `lefthook.yml`, `lint.yml`) assert the
+      hook is wired for that reason. **Never add `Bash(op run:*)` to `allow` anywhere `op-guard.sh`
+      is not also installed.**
   - **Matching is token-aware, not raw string prefix** — verified: `op readx` runs despite a
     `Bash(op read:*)` rule, because `readx` is a different token than `read`. Two consequences,
     and they pull opposite ways. Good: `Bash(op:*)` matches the `op` binary only and does **not**
@@ -104,10 +130,20 @@ Rules that apply whatever you are touching:
     not from ambient policy. The honest residue is narrower than the old claim: deny cannot cover
     an arbitrary *interpreter* — `sh -c 'op read …'` still walks past — which is an argument for
     the sandbox, not for spelling more rules.
-  - The floor now has a **regression check** in all three enforcement points (`boomfile.toml`
-    `[[section.check]]`, `lefthook.yml`, `lint.yml`). Before that it had none: the whole `deny`
-    array could be deleted and every gate stayed green. Note the boomfile patterns are
-    regex-escaped — these checks take JS regexes, and bare `Bash(op:*)` matches "Bashop".
+    **That residue is now closed for `op` specifically (2026-08-18)**, not by spelling more rules
+    but by moving the decision into a hook that tokenizes: `op-guard.sh` takes a basename (so
+    every path spelling resolves) and scans an interpreter's payload for an `op` subcommand (so
+    `sh -c 'op read …'`, `bash -c "op item get …"` and `xargs op read` are denied). Both are
+    regression cases. It remains true for everything else deny covers, and it remains an argument
+    for the sandbox — `sh -c 'security find-generic-password …'` is still unspelled.
+  - The floor has a **regression check** in all three enforcement points (`boomfile.toml`,
+    `lefthook.yml`, `lint.yml`). Before that it had none: the whole `deny` array could be deleted
+    and every gate stayed green. All three now assert **array membership** via
+    `jq -e --arg d … '.permissions.deny | index($d)'` — a `[[section.check]]`/`grep` matches file
+    *content*, so moving an entry from `deny` into `allow` inverted the control while every gate
+    stayed green, and `--arg` passes each value as data rather than as a pattern (which is what
+    the old regex-escaping was working around). Each also asserts `op-guard.sh` is wired, since
+    `permissions.allow` pre-approves `Bash(op run:*)` on the strength of that guard.
   - Be honest about what that buys: **defense-in-depth, not a boundary.** `git push` still
     authenticates with the same PAT; deny matches command *spelling*, so an absolute path
     (`/opt/homebrew/bin/op …`) is not covered and nothing in the permission model can cover it;
@@ -162,8 +198,35 @@ Rules that apply whatever you are touching:
   green, so an unattended job on a queue-less repo submits the stack and hands it back instead of
   merging speculatively. That restraint is `ship`'s rule, and it is prose — the permission does
   not enforce it.
+- **op guard** — `PreToolUse` hook (matcher `Bash` → `~/.claude/hooks/op-guard.sh`, ordered
+  **first**, ahead of both workflow guards because it is the only one enforcing a security
+  boundary rather than an ergonomic one). It is what makes `op` usable by agents: an **allow-list**
+  of shapes that provably do not put a secret value on stdout — `op run [--env-file=F] -- CMD`,
+  `op inject -i TPL -o OUT`, `op whoami`, `op --version`, `op service-account ratelimit`, and
+  `op-agent status`. Everything else `op`-shaped is denied by default.
+  - **`op vault list` / `op item list` are deliberately NOT on it**, though they print no secret
+    value. This file records separately that `op vault list` "enumerates every vault in the
+    account (verified 2026-08-05, no prompt)" through the desktop integration, far outside
+    `claude-agent`. They were denied before this change and stay denied: the change is scoped to
+    *using* a secret without reading it, and inventory browsing is a different capability that
+    nobody asked for. An allow-list is where scope creep is cheapest to add and hardest to see.
+  - The specific denials worth knowing, each a regression case: `--no-masking` (the flag that
+    removes the property making `op run` safe); `op run` with no `--` (the guard will not guess
+    which words are the child); an env-dumping child (`env`, `printenv`, `set`) or an interpreter
+    child; bare `op inject` (renders the template **to stdout**, secrets and all); and
+    `op run -- git push` / `-- gh pr create`, which would otherwise hide the push from
+    rebase-guard, since that guard tokenizes for a `git` *program* and sees `op` here. That last
+    one is a hole this change would have opened had it not been closed in the same commit.
+  - **It never emits `permissionDecision: "allow"`.** A hook `allow` bypasses the permission
+    system entirely, which would put the guard *above* `permissions.deny`. It only denies or stays
+    silent, so it can subtract permission and never add it, and the deny floor still applies
+    underneath. The two compose instead of racing.
+  - Fails **open** on missing `jq`/`guard-lib.sh`, like its siblings — defensible here only
+    because the residual deny entries still cover the confirmed-incident paths, so fail-open
+    degrades to roughly the old floor minus binary scope on `op`, not to nothing. The link is
+    declared in the boomfile so an absent guard is drift `boom verify` reports.
 - **Worktree-checkout guard** — `PreToolUse` hook (matcher `Bash` →
-  `~/.claude/hooks/worktree-checkout-guard.sh`, ordered *before* rebase-guard). Denies a
+  `~/.claude/hooks/worktree-checkout-guard.sh`, ordered after op-guard and *before* rebase-guard). Denies a
   `git checkout/switch <branch>` that would fail with "'<branch>' is already used by worktree".
   It tokenizes the command (so `echo git checkout main` and commit messages mentioning it pass),
   then asks git directly — `git worktree list --porcelain | grep -qxF "branch refs/heads/<target>"`
@@ -180,17 +243,22 @@ Rules that apply whatever you are touching:
   parse error — a guard must never wedge the agent. `deny` works even under `defaultMode: auto`
   (PreToolUse fires before the permission classifier) and applies to every Claude session, never
   to plain terminal `git`.
-  - **Both guards have a regression suite** (`dot-claude/hooks/tests/`, wired into `lint.yml` and
-    pre-commit): 71 hermetic cases against throwaway git fixtures, ~5s wall.
+  - **All three guards share one regression suite** (`dot-claude/hooks/tests/`, wired into
+    `lint.yml` and pre-commit): 127 hermetic cases against throwaway git fixtures, ~6s wall.
     **Add a case before changing a guard.** The 2026-08-08 audit is why the count
     doubled: the suite had grown from two past incidents, so it tested *the fixes* rather than
     *the rule*, and 26 new cases — every one of them a reproduction through this same harness —
-    failed on the guards as shipped. `git push origin HEAD` was the highest-value miss.
-  - **Both guards share `guard-lib.sh`** (quote-aware command splitting, token normalization),
-    sourced as `$(dirname "$0")/guard-lib.sh`. They each carried their own copy until 2026-08-08
-    and had already drifted three ways, so a fix landed in one and not the other. It is
-    **load-bearing**: if that file is missing both guards fail open, which is why it has its own
-    boomfile link beside theirs.
+    failed on the guards as shipped. `git push origin HEAD` was the highest-value miss. The 53
+    `op` cases arrived with op-guard on 2026-08-18, written *before* the deny list was relaxed —
+    the point of the suite is that widening a control is only safe when the narrowing is measured.
+    Run a **negative control** when a new block passes first try: inverting two expectations
+    (`op read` → allow, `op run -- npm publish` → deny) must produce exactly two failures, which
+    is what proves the harness discriminates rather than defaulting to `allow`.
+  - **All three guards share `guard-lib.sh`** (quote-aware command splitting, token
+    normalization), sourced as `$(dirname "$0")/guard-lib.sh`. They each carried their own copy
+    until 2026-08-08 and had already drifted three ways, so a fix landed in one and not the other.
+    It is **load-bearing**: if that file is missing all three fail open, which is why it has its
+    own boomfile link beside theirs.
 - **Recorded PR review (`PostToolUse`)** — `~/.claude/hooks/pr-review.sh` fires after
   `gh pr create` / `git push` / **`gh stack submit`**; when the repo is in `PR_REVIEW_REPOS` (a bare **owner**, covering
   every repo under it, or a fully-qualified `owner/repo`; defaults to `TheGnarCo BinfiniteLLC
@@ -438,7 +506,10 @@ automation tier.
     unattended job cannot satisfy one; the exposure is an *attended* session where a prompt is
     approved reflexively. The gate's scope was not characterized — desktop integration typically
     authorizes per-session, not per-item — so treat it as zero-to-one approvals, not one per read.
-    `Bash(op:*)` in `permissions.deny` is what removes the Bash path to this.
+    `op-guard.sh` is what removes the Bash path to this: `op vault list` is not on its allow-list,
+    so it is denied by default. (Until 2026-08-18 the binary-scoped `Bash(op:*)` did this job;
+    when that rule was narrowed so agents could use `op run`, enumeration was deliberately left
+    denied rather than allowed to ride along.)
 - **Token lives in the macOS login keychain** (`security … -s op-claude-agent`), never on disk in
   plaintext, never in git. `boom source` runs `op-agent provision`, which creates the vault +
   service account and stores the token on first run, with `--expires-in` (90d default).
@@ -544,5 +615,7 @@ automation tier.
 - **Docs moved**: `developer.1password.com/docs/*` now redirects to `www.1password.dev/*`. Old
   links still resolve but are no longer canonical.
 - **Your own dev work** still uses desktop biometric + `op run`/`op://`/Environments — the
-  service account is the agent's path, not yours. Note `Bash(op:*)` means an in-session Claude
-  can't run `op run -- npm publish` for you; that one runs from your terminal.
+  service account is the agent's path, not yours. **An in-session Claude can now run
+  `op run -- npm publish` for you** (changed 2026-08-18) — it is on `op-guard.sh`'s allow-list and
+  pre-approved in `permissions.allow`, because `op run` injects into the child's environment and
+  masks any secret the child prints. It still cannot `op read` the token, which is the point.

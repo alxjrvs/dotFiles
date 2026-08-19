@@ -42,6 +42,14 @@ pre-commit:
           jq -e . "$f" > /dev/null
           ! grep -qE '(enableAllProjectMcpServers|enabledMcpjsonServers)' "$f" || { echo "forbidden auto-approve MCP key in $f"; exit 1; }
           grep -q 'op-agent git-credential' "$f" || { echo "agent git helper not wired to op-agent git-credential in $f"; exit 1; }
+          # op-guard.sh is the allow-list that makes `op` usable without
+          # reopening the stdout leak. `permissions.allow` pre-approves
+          # `Bash(op run:*)`, and this guard is what strips the unsafe variants
+          # of that shape (`--no-masking`, an env-dumping child, `op run -- git
+          # push` slipping past rebase-guard) BEFORE the permission system sees
+          # it. Un-wiring the hook while leaving the allow entry is the one edit
+          # that silently converts this change from "narrower" into "wider".
+          grep -q 'op-guard.sh' "$f" || { echo "op-guard PreToolUse hook not wired in $f, but permissions.allow pre-approves Bash(op run:*)"; exit 1; }
           ! grep -q 'osxkeychain' "$f" || { echo "forbidden osxkeychain git helper (cached-PAT regression) in $f"; exit 1; }
           ! grep -qE '"model"[[:space:]]*:[[:space:]]*"[^"]*fable' "$f" || { echo "Fable pinned as default model in $f"; exit 1; }
           # The deny floor — the Bash path to a resolved secret. `op-agent header`
@@ -66,7 +74,9 @@ pre-commit:
           # docs call the one most likely to be copied.
           for d in \
             'Bash(security find-generic-password:*)' \
-            'Bash(op:*)' \
+            'Bash(op read:*)' \
+            'Bash(op item get:*)' \
+            'Bash(op document get:*)' \
             'Bash(op-agent:*)' \
             'Bash(~/.local/bin/op-agent:*)' \
             'Bash(git credential:*)' \
