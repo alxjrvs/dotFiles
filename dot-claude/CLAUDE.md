@@ -355,6 +355,12 @@ Claude Code isolates background/subagent work into git worktrees by default
 overridden). Each agent gets `.claude/worktrees/<name>` on a **freshly created branch** off
 `origin/<default-branch>`.
 
+- **Never post an issue to a foreign repository without express permission.** Foreign means
+  anything outside `alxjrvs/*` and the orgs this machine works in (`TheGnarCo`, `BinfiniteLLC`,
+  `SalvageUnion-io`, `RANDSUM`) — i.e. an upstream, a dependency, a repo hit while debugging.
+  Filing there is outward-facing publishing under alxjrvs's name and is not covered by any
+  standing authorization: draft the body, show it, wait for a yes. Same for every other write to
+  a foreign repo — PR, comment, review. This is prose, not a permission rule; `gh` is not denied.
 - **A stack of small PRs is the default shape for multi-part work**, via the **official**
   `github/gh-stack` extension (`gh stack`, public preview since 2026-07-30) — installed by the
   dotFiles boomfile's `gh extensions` section, never a same-named community fork.
