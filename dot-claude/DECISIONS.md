@@ -59,6 +59,27 @@ the findings:
 
 ## Permissions & security
 
+### No issues on foreign repos without express permission (2026-08-19)
+
+Asked for directly by alxjrvs. The gap it closes is real: `permissions.allow` carries
+`Bash(gh pr merge:*)` and `Bash(gh stack merge:*)`, `defaultMode: auto` +
+`skipAutoPermissionPrompt` remove the per-call human gate, and nothing anywhere denies
+`gh issue create`. So an agent that hit a bug in a dependency while working could file upstream —
+publicly, under alxjrvs's name, on someone else's project — with no human in the loop, and the
+first anyone would know is the notification. The blast radius is reputational rather than
+technical, which is exactly the kind the permission model does not model.
+
+**Deliberately prose, not a `permissions.deny` entry.** A deny rule would have to spell
+`gh issue create` and would then be a filter, not a floor, by this file's own standard: `gh api -X
+POST repos/<owner>/<repo>/issues` walks past it, as does the GitHub MCP, which reaches the API
+with no Bash command at all. Denying the spelling would buy the *appearance* of enforcement over
+one of at least three paths. The honest framing is the one in `CLAUDE.md`: this is a rule to obey,
+the deterministic floor does not cover it, and the boundary that does exist is the PAT's scopes.
+
+The org list (`TheGnarCo`, `BinfiniteLLC`, `SalvageUnion-io`, `RANDSUM`) is the same one
+`PR_REVIEW_REPOS` already defaults to — reused rather than invented, so there is one answer to
+"which repos are ours" and it drifts in one place.
+
 ### The GitHub MCP was deleted for looking unused, then restored (2026-07-25)
 
 Usage data showed "0 calls in 3,410 transcripts", which read as *unused* and got the server
