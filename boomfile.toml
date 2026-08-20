@@ -1,4 +1,4 @@
-# boom's own self-wiring, folded into the reconcile it already runs (boom >= 0.14.0) —
+# boom's own self-wiring, folded into the reconcile it already runs (baseline: boom 0.26.0) —
 # so these stop being hand-rolled `run`/plist steps below:
 #   - skill_on_sync: regenerate ~/.claude/skills/boom/SKILL.md from the running binary each
 #     sync, so the self-describing skill never lags a `boom upgrade` (replaces the
@@ -13,7 +13,7 @@
 skill_on_sync = true
 upgrade_on_sync = "check"
 # Desktop-notify (macOS osascript) when a scheduled `boom verify` finds drift, so the
-# boom-verify launchd timer's signal surfaces instead of dying in its log. (needs boom >= 0.17.0)
+# boom-verify launchd timer's signal surfaces instead of dying in its log.
 notify = true
 # `code reap --push` daily, as a BACKSTOP to the publish-at-idle hook (see the end of this
 # comment): Claude Code keeps an agent worktree whenever a commit reachable from
@@ -771,16 +771,80 @@ cmd = "op-agent audit agent-vault.txt"
 # than reproduces: that file is app-owned and rewritten continuously, so a sync
 # step that wrote into it would fight the client (the same reason
 # claude_desktop_config.json is merged, never linked).
+# FIXED: this step used to assert only that a helper STRING mentioning each ref appeared
+# somewhere in the file. That is why it stayed green while the GitHub MCP was dead — the
+# `github` server's helper had been repointed at `~/.local/bin/gh-mcp-auth-header`, a path that
+# exists nowhere and is tracked by no repo, so no Authorization header was sent and the client
+# reported "does not support dynamic client registration": the same misleading error that once
+# got this server deleted instead of fixed. A name match cannot catch that; an executability
+# check can. `render-api-key` is dropped because no `render` server exists in any scope, so
+# requiring its helper was asserting a consumer that had already been removed.
 [[section.run]]
 on = "verify"
 cmd = '''
 f=~/.claude.json
 [ -f "$f" ] || exit 0
 command -v jq >/dev/null 2>&1 || exit 0
-for ref in claude-git-pat render-api-key; do
-  jq -e --arg r "$ref" '[.. | objects | .headersHelper? // empty] | map(select(test($r))) | length > 0' "$f" >/dev/null 2>&1 \
-    || { echo "MCP headersHelper resolving op://<agent-vault>/$ref is missing from ~/.claude.json — the GitHub/render MCP servers are declared by no boomfile step, so this is the only signal a fresh machine never got them"; exit 1; }
+jq -e '[.. | objects | .headersHelper? // empty] | map(select(test("claude-git-pat"))) | length > 0' "$f" >/dev/null 2>&1 \
+  || { echo "no MCP headersHelper resolves op://<agent-vault>/claude-git-pat in ~/.claude.json — the GitHub MCP is declared by no boomfile step, so this is the only signal a fresh machine never got it"; exit 1; }
+# A `for` over command substitution, NOT `jq | while read`: the right side of a pipe runs in a
+# subshell, so an `exit 1` in there only fails the step while the pipeline happens to be the last
+# command in this cmd. Appending any line below would have silently turned this assertion into a
+# no-op — a fail-open control that still looks like enforcement, which is the exact defect class
+# this whole verify step exists to catch. Measured both ways before choosing this form.
+# jq emits only the first field, so word-splitting is safe even though a helper string has spaces.
+bad=""
+for bin in $(jq -r '[.. | objects | .headersHelper? // empty] | .[] | split(" ")[0]' "$f" 2>/dev/null); do
+  case "$bin" in "~"*) bin="$HOME${bin#\~}" ;; esac
+  command -v "$bin" >/dev/null 2>&1 || [ -x "$bin" ] || bad="$bad $bin"
 done
+[ -z "$bad" ] || { echo "MCP headersHelper is not executable:$bad — the server fails to connect with a misleading auth error, not a missing-file error"; exit 1; }
+'''
+
+# Every skill's `description` frontmatter is injected into EVERY session; only the body is
+# on-demand. `~/.claude/skills/` is a glob DESTINATION, so boom places the managed symlinks
+# there and has no opinion about anything else sharing the directory. Thirteen hand-installed
+# real directories accumulated that way — 5,145 B / ~1,286 tokens, 58% of live skill cost, one
+# invocation between them — and nothing could see it: the boomfile globs the SOURCE, and
+# lint.yml has no ~/.claude to inspect, so CI is blind to this BY CONSTRUCTION. That is why the
+# check lives here and not in the workflow. `boom` is exempt: `[boom] skill_on_sync` generates it.
+[[section.run]]
+on = "verify"
+cmd = '''
+d=~/.claude/skills
+[ -d "$d" ] || exit 0
+orphans=""
+for e in "$d"/*/; do
+  [ -e "$e" ] || continue
+  n=$(basename "$e")
+  [ -L "${e%/}" ] && continue
+  [ "$n" = "boom" ] && continue
+  orphans="$orphans $n"
+done
+[ -z "$orphans" ] && exit 0
+echo "unmanaged skill dirs in ~/.claude/skills — each description loads into every session,"
+echo "and no boomfile glob or CI check can see them:$orphans"
+exit 1
+'''
+
+# A managed destination can stop being a symlink without the config repo ever going dirty, and
+# every other check reads the COMMITTED copy, so nothing notices. That happened: a real file sat
+# over ~/.claude/settings.json holding a superseded 10-entry `enabledPlugins`, so a documented
+# plugin removal never took effect for ~13 days while every session paid ~13,840 extra bytes of
+# skill descriptions. The clean-clone check cannot catch it by design — it asks whether the
+# SOURCE changed, never whether the destination still points at the source.
+[[section.run]]
+on = "verify"
+cmd = '''
+bad=""
+for dst in ~/.claude/CLAUDE.md ~/.claude/settings.json; do
+  [ -e "$dst" ] || continue
+  [ -L "$dst" ] || bad="$bad $dst"
+done
+[ -z "$bad" ] && exit 0
+echo "managed path is a real file, not a symlink into the config repo:$bad"
+echo "the committed copy is no longer what this machine loads — re-run a sync to restore it"
+exit 1
 '''
 
 [[section]]

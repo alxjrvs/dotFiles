@@ -134,6 +134,34 @@ jobs:
             zsh -n "$f" || { echo "zsh syntax error in $f"; exit 1; }
           done
 
+      # A skill's `description` frontmatter is injected into EVERY session; only the
+      # body is on-demand. So a description is always-loaded context and gets a cap,
+      # while the body it belongs to stays free. All four house skills exceeded this
+      # before the rewrite (108/83/79/73 words) — `agent-friendly-repo` was
+      # enumerating ruleset internals and naming which CLAUDE.md sections it
+      # implements, both body material. The trigger phrases are the load-bearing
+      # half: they are what a session matches on, so they stay and prose goes.
+      #
+      # This cannot cover ~/.claude/skills — a runner has no home dir to inspect, so
+      # unmanaged skill dirs are invisible here BY CONSTRUCTION. That check lives in
+      # boomfile.toml as a `verify` step; see the Claude section.
+      - name: skill description cap
+        run: |
+          fail=0
+          for f in dot-claude/skills/*/SKILL.md; do
+            [ -f "$f" ] || continue
+            d=$(awk '/^description:/{sub(/^description:[[:space:]]*/,""); print; exit}' "$f")
+            [ -n "$d" ] || { echo "$f: frontmatter has no description:"; fail=1; continue; }
+            w=$(printf '%s' "$d" | wc -w | tr -d ' ')
+            if [ "$w" -gt 60 ]; then
+              echo "$f: description is $w words (cap 60) — it loads into EVERY session"
+              fail=1
+            else
+              echo "ok $f ($w words)"
+            fi
+          done
+          [ "$fail" -eq 0 ] || exit 1
+
       # The two PreToolUse guards are the only deterministic enforcement in the
       # setup — and they shipped untested, which is how a `--dry-run` substring in
       # an unrelated commit message came to disable the direct-push-to-main rule.

@@ -1,6 +1,6 @@
 ---
 name: ship
-description: Ship the current worktree — verify, commit, rebase, push, open a PR, and enable auto-merge — in one step, with a separate stack-aware path (`gh stack sync`/`submit`/`merge`) when the branch is part of a stacked PR. Use when work is done and the user says "ship it", "commit + push + PR", "open a PR and auto-merge", "land the stack", or otherwise asks to land the branch. Encodes alxjrvs's standard completion pipeline so it never has to be re-typed.
+description: Land the current worktree: verify, commit, rebase, push, open a PR, enable auto-merge — with a stack-aware path via gh stack when the branch is stacked. Use for "ship it", "commit + push + PR", "open a PR and auto-merge", "land the stack".
 ---
 
 # ship

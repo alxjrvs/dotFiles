@@ -1,6 +1,6 @@
 ---
 name: rebase-prs
-description: Rebase every open PR (or a named subset) in the current repo onto the fresh default branch and re-push; delegates stacked PRs to `gh stack sync` rather than walking them by hand. Use when the user says "rebase all open PRs against main", "get all my PRs up to date", "refresh the stack", or after the default branch has moved and several branches are behind. Automates a multi-PR fan-out alxjrvs does by hand.
+description: Rebase every open PR in this repo onto the fresh default branch and re-push; delegates stacked PRs to gh stack sync. Use for "rebase all open PRs against main", "get all my PRs up to date", "refresh the stack", or when the default branch has moved.
 ---
 
 # rebase-prs
