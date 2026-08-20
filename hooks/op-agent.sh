@@ -326,6 +326,19 @@ cmd_status() {
 # Titles are not secrets, so they may be printed; no field VALUE is ever read.
 # Fails closed on drift, advisory on tooling gaps — a broken `op` must never
 # wedge verify, the same contract `status` follows.
+# printf with a multi-line string as a QUOTED argument prints the format once and
+# lets the embedded newlines through, so only the first line got its bullet and
+# the remaining twelve came out flush-left. Measured on the first real drift
+# report, 2026-08-19. Reading line by line keeps titles with spaces intact, which
+# word-splitting would not.
+_prefixed() { # $1 = prefix; lines on stdin
+  local _l
+  while IFS= read -r _l; do
+    [[ -n "$_l" ]] && printf '%s%s\n' "$1" "$_l"
+  done
+  return 0
+}
+
 cmd_audit() {
   local manifest="${1:-}"
   if [[ -z "$manifest" ]]; then
@@ -362,7 +375,7 @@ cmd_audit() {
   bad_titles="$(printf '%s\n' "$actual" | grep -vE '^[a-z0-9]+(-[a-z0-9]+)*$' || true)"
   if [[ -n "$bad_titles" ]]; then
     echo "op-agent: vault ($VAULT) has non-kebab-case titles — every op:// ref is re-parsed by sh -c:" >&2
-    printf '  %s\n' "$bad_titles" >&2
+    printf '%s\n' "$bad_titles" | _prefixed '  ' >&2
     rc=1
   fi
 
@@ -373,13 +386,13 @@ cmd_audit() {
   missing="$(comm -13 <(printf '%s\n' "$actual") <(printf '%s\n' "$expected"))"
   if [[ -n "$undeclared" ]]; then
     echo "op-agent: vault ($VAULT) holds items not declared in $manifest:" >&2
-    printf '  + %s\n' "$undeclared" >&2
+    printf '%s\n' "$undeclared" | _prefixed '  + ' >&2
     echo "  Everything here is readable by the service account. Move it out, or declare it." >&2
     rc=1
   fi
   if [[ -n "$missing" ]]; then
     echo "op-agent: $manifest declares items absent from vault ($VAULT):" >&2
-    printf '  - %s\n' "$missing" >&2
+    printf '%s\n' "$missing" | _prefixed '  - ' >&2
     rc=1
   fi
 

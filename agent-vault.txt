@@ -27,51 +27,22 @@
 #     bug that took down two MCP servers on 2026-07-25.
 #   - One title per line. Trailing `#` comments are stripped.
 #   - An entry earns its place by having a NAMED CONSUMER. If nothing resolves
-#     it, it does not belong in a vault an agent can read.
+#     it, it does not belong in a vault an agent can read. There is no
+#     "probably useful later" tier — that is how this vault reached sixteen
+#     items while three were in use.
+#
+# STATE: reduced from 16 items to 4 on 2026-08-19. Twelve items were MOVED, not
+# deleted, into `Archive`, `Projects`, `Binfinite` and `Gnar`. None had a
+# consumer on this machine, so the service account's reach shrank by three
+# quarters with nothing to re-point and no new service account required: SA
+# access is granted per VAULT, so removing an item from the vault removes it
+# from the agent's reach immediately. That is also why this file is the control
+# — scope was fixed at creation and cannot be narrowed, but membership can.
+#
+# Every line below is a credential this machine actually resolves. Adding one
+# means naming what resolves it, in the comment, in the same commit.
 
-# ---------------------------------------------------------------------------
-# LIVE — a consumer on this machine resolves these. Verified 2026-08-19.
-# ---------------------------------------------------------------------------
 claude-git-pat            # git credential.helper; GitHub MCP headersHelper; Desktop gh-mcp-stdio
 render-api-key            # Claude Code `render` MCP headersHelper
 gninety                   # NINETY_API_TOKEN_COMMAND in dot-claude/settings.json
 npm-publish-token         # npm/publish.env -> `op run --env-file=npm/publish.env -- npm publish`
-
-# ---------------------------------------------------------------------------
-# PENDING MIGRATION — declared so `boom verify` is green while the move is
-# staged, NOT because they belong here. Each has no consumer on this machine.
-# Remove the line as the item leaves the vault; the check then holds the new,
-# smaller state. Nothing is deleted in 1Password — these are moves.
-#
-#   -> Archive vault (superseded / dead, kept for recovery)
-# ---------------------------------------------------------------------------
-spacebase-api-key         # dead: plugin removed 2026-08-08
-claude-github-pat         # superseded by claude-git-pat; also the lone SECURE_NOTE
-render                    # duplicate of an item already in Private
-
-#   -> CI (GitHub Actions secrets, or 1Password Credential Broker)
-#      These are consumed by workflows, never by this machine. Holding them here
-#      widens the local agent's reach for zero local benefit.
-boom-release-pat
-susrd-release-pat
-google-slides-api-imp
-
-#   -> Project vaults / Environments. Sentry DSNs ship inside client bundles,
-#      so they are not secrets in the sense this vault exists to protect.
-sentry-dsn-srd
-sentry-dsn-itun
-sentry-dsn-itun-functions
-sentry-dsn-discord-bot
-
-#   -> UNVERIFIED. Renamed into compliance on 2026-08-19 (they were added the day
-#      before as `CloudflarePersonalAgentKey` / `PersonalCloudflareGithubCIKey`,
-#      the first real catch by the kebab-case rule now that it is enforced rather
-#      than merely written down). Item IDs survived the rename, so any ref using
-#      an ID is unaffected.
-#
-#      They now satisfy the naming invariant but still have NO consumer found on
-#      this machine, which is the other half of the membership test. Confirm what
-#      resolves them; if nothing does, they belong in a project vault rather than
-#      one a service account can read.
-cloudflare-personal-agent-key
-personal-cloudflare-github-ci-key
