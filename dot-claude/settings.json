@@ -148,7 +148,6 @@
     "command": "~/.local/bin/claude-subagent-statusline"
   },
   "enabledPlugins": {
-    "ignite@gnar": true,
     "gninety@gnar": true,
     "typescript-lsp@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
@@ -178,7 +177,6 @@
   "verbose": true,
   "showTurnDuration": false,
   "terminalProgressBarEnabled": false,
-  "teammateMode": "in-process",
   "inputNeededNotifEnabled": true,
   "autoMode": {
     "classifyAllShell": true,
