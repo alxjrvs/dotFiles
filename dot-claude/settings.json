@@ -160,7 +160,6 @@
   "terminalProgressBarEnabled": false,
   "teammateMode": "in-process",
   "inputNeededNotifEnabled": true,
-  "skipAutoPermissionPrompt": true,
   "autoMode": {
     "classifyAllShell": true,
     "environment": [
@@ -194,7 +193,12 @@
       "Bash(bun run check:*)",
       "Bash(bun run test:*)",
       "Bash(bun run typecheck:workspaces)",
-      "Bash(gh issue view:*)"
+      "Bash(gh issue view:*)",
+      "Bash(boom verify:*)",
+      "Bash(boom plan:*)",
+      "Bash(biome check:*)",
+      "Bash(shellcheck:*)",
+      "Bash(dot-claude/hooks/tests/run.sh)"
     ]
   },
   "askUserQuestionTimeout": "10m"

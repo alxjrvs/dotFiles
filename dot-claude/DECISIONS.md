@@ -110,6 +110,63 @@ worktree — `SessionStart` firing in the agent's own session is what does that,
 measured (`--worktree` session, `source: "startup"`, cwd = the worktree). Whether every FleetView
 dispatch shape fires `SessionStart` was not measured for each variant; the prefetch layer is what
 covers the gap if one does not.
+## 2026-08-20 — `skipAutoPermissionPrompt` removed: auto mode that asks
+
+Audited this machine against [1Password's *Secure AI Access*
+guidance](https://www.1password.dev/get-started/secure-ai-access). It names four principles —
+secrets staying secret, deterministic authorization, auditability, least privilege. Measured
+against them:
+
+- **Secrets staying secret — exceeds.** Verified zero secret-bearing exports in `.zshrc`/`zsh/`
+  (only `RIPGREP_CONFIG_PATH` and a `PATH` append), `${NPM_TOKEN}` rather than a literal in
+  `npm/npmrc`, no `.env`/`.mcp.json` tracked in git, and **no plaintext token in any of the nine
+  MCP server configs** — user scope, all seven project-scoped servers, and Claude Desktop. The
+  page has no equivalent control for the *agent's own shell*; `op-guard.sh` + `permissions.deny`
+  are stricter than anything it prescribes.
+- **Auditability — fail, and unfixable from here.** The audit log, usage reports and the Events
+  API are 1Password **Business** features. On Individual/Family an SA read leaves no retrievable
+  per-item record; the only signal is the aggregate counter from `op service-account ratelimit`.
+  Nothing in config closes this. It is either accepted or it costs a Business seat. (Taken from
+  this repo's existing notes, not re-measured.)
+- **Least privilege — partial.** The SA scoped read-only to one `claude-agent` vault is exactly
+  their "dedicated vault" recommendation, but the PAT *inside* it is a classic `repo`+`workflow`
+  token spanning every repo and org the agent can reach. Least privilege stops at the vault
+  boundary. Still open — a fine-grained PAT carries per-repo Workflows permission, but migrating
+  is a credential rotation across every repo the agent touches and wants its own window.
+- **Deterministic authorization — the gap that was cheap to close, and this entry is that fix.**
+
+### The fix
+
+`skipAutoPermissionPrompt: true` was removed from `settings.json`. `defaultMode: auto` stays.
+
+The flag suppressed only the interactive prompt — never classification, which this file had
+already measured and recorded. So auto mode still classifies every call and still auto-approves
+everything it is confident about; the only behavioral change is that a call it would have decided
+*silently* now surfaces a prompt. **Removing it costs no automation.** That asymmetry is why this
+was the cheapest of the four gaps: it buys back the per-call human gate for approximately nothing.
+
+The reason it matters is not abstract. Every human-in-the-loop mechanism 1Password prescribes —
+per-Environment approval on their MCP server, biometric Shell Plugins, Agentic Autofill — assumes
+a person *can be asked*. Suppressing the prompt opted this machine out of all of them while
+keeping the credentials they exist to protect. The 1Password Environments MCP server registered
+here on 2026-08-18 is the worked example: its approval gate is at tool-call time, so under the old
+flag its entire authorization model was a prompt nobody would ever see.
+
+### What it costs, and what it does not
+
+**Costs:** an unattended run — a background job, `/loop`, cron — that hits a prompt now waits for a
+human instead of proceeding. That is the accepted trade, requested explicitly. `inputNeededNotifEnabled`
+already surfaces it. The mitigation for a *specific* stalling command is to widen `autoMode.allow`
+for that command; five routine read/verify entries for this repo (`boom verify`, `boom plan`,
+`biome check`, `shellcheck`, the guard suite) went in alongside this change for that reason, so the
+restored prompts fire on decisions rather than on lint. **Do not re-add the flag** — that silences
+every prompt to fix one.
+
+**Does not cost:** the `pr-review.sh` reviewer. It runs detached with no human attached, so the
+obvious worry is that it now stalls forever on a prompt. It cannot: its own `--settings`
+(`pr-review-settings.json`) denies `Bash`, `Write`, `Edit`, `WebFetch`, `Agent` and `mcp__*`
+outright, leaving only read-only tools that auto mode approves without asking. Checked before
+making the change, not assumed.
 
 ---
 
