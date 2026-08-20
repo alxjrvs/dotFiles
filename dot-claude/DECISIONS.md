@@ -237,9 +237,15 @@ Two claims in `CLAUDE.md` were measured false and fixed in the same change:
   clock should be read against that, and those per-repo names are the migration candidates for
   moving the server out of user scope.
 
-And one that flipped in this repo's favour: the canonical `op run --env-file` pattern was recorded
-as having **zero instances**, "the pattern for the next server we install, not a description of
-what runs today". Desktop's GitHub MCP is now the first live instance.
+And one that flipped in this repo's favour, with a correction of its own: the canonical
+`op run --env-file` pattern was long recorded as having **zero instances**, "the pattern for the
+next server we install, not a description of what runs today". That is no longer true — but
+Desktop's GitHub MCP is the **second** live instance, not the first. `npm/publish.env`
+(`NPM_TOKEN` → `op run --env-file=npm/publish.env -- npm publish`) landed on 2026-08-19, one day
+earlier, and this entry claimed the first-instance slot until a rebase surfaced it. The two files
+are independently written and structurally identical, which is the useful signal: the pattern is
+reproducible from the docs alone, and `gh/mcp.env` should be read as confirming a house shape
+rather than inventing one.
 
 ### Verified
 

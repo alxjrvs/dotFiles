@@ -42,7 +42,7 @@
 # Every line below is a credential this machine actually resolves. Adding one
 # means naming what resolves it, in the comment, in the same commit.
 
-claude-git-pat            # git credential.helper; GitHub MCP headersHelper; Desktop gh-mcp-stdio
+claude-git-pat            # git credential.helper; GitHub MCP headersHelper; Desktop gh/mcp.env
 render-api-key            # Claude Code `render` MCP headersHelper
 gninety                   # NINETY_API_TOKEN_COMMAND in dot-claude/settings.json
 npm-publish-token         # npm/publish.env -> `op run --env-file=npm/publish.env -- npm publish`

@@ -708,8 +708,9 @@ automation tier.
   `op run --env-file=.env -- <server>` (`boom mcp add`) with `op://` references in a committable
   `.env`, resolved in-process and off disk. **This is 1Password's own published recommendation for
   MCP servers** (their Nov 2025 guidance prescribes exactly it), so it is vendor-endorsed rather
-  than invented here. **It had zero instances in this repo until 2026-08-20**; Claude Desktop's
-  GitHub MCP is now the first, via `~/.config/gh/mcp.env`. So this is no longer only "the pattern
+  than invented here. **It had zero instances in this repo until 2026-08-19**, and now has two:
+  `npm/publish.env` (`NPM_TOKEN` → `op run --env-file=npm/publish.env -- npm publish`) and
+  Claude Desktop's GitHub MCP via `~/.config/gh/mcp.env`. So this is no longer only "the pattern
   for the next server we install" — it describes something that runs today.
   Surfaces we don't control use the tool's own native hook fed by `op` — plugin-bundled stdio
   servers via a `*_COMMAND` resolver var; the GitHub MCP
