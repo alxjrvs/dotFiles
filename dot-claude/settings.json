@@ -131,6 +131,7 @@
   },
   "skipWorkflowUsageWarning": true,
   "theme": "auto",
+  "outputStyle": "Proactive",
   "editorMode": "vim",
   "vimInsertModeRemaps": {
     "jj": "<Esc>"

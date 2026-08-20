@@ -624,6 +624,37 @@ That is exactly why they are enumerated in `CLAUDE.md` now: the contract is "eve
 appears in this list", and for a self-rewriting file that means **reconciling after the client
 edits, not preventing it**.
 
+### `outputStyle: "Proactive"` was pinned because `/config` does not persist it (2026-08-19)
+
+`/config` reported *"Set output style to Proactive"*, and the natural assumption — the same one the
+`tui`/`theme` note above records as the normal path — was that the client had rewritten
+`settings.json` and left the config-repo clone dirty for enumeration. **It had not.** Measured
+straight after: `outputStyle` was in neither `dot-claude/settings.json` nor `~/.claude.json`, no
+`~/.claude/output-styles/` directory existed, and *both* clones (`~/Code/DevEnv/dotFiles` and
+boom's `~/.local/state/boom/config-repo`) reported a clean tree. The style was live in the running
+session and nowhere else — it would have died with the session.
+
+That is the whole reason this is a hand-written entry rather than a reconciliation. The UI section
+above says the discipline for a self-rewriting file is "reconcile after the client edits, not
+prevent it"; this is the **complementary** failure, where the client edits nothing and there is
+nothing to reconcile, so a setting silently never persists. **Don't infer persistence from a
+`/config` confirmation** — check the file, and check *which* clone the `~/.claude/settings.json`
+symlink resolves into (it points at boom's state-dir clone, not the `~/Code` checkout, so a
+`git status` in the obvious place answers the wrong question).
+
+The value is a built-in style name, confirmed against the settings schema rather than guessed:
+`outputStyle` is a plain string whose documented built-ins are `default`, `Proactive`,
+`Explanatory`, `Learning`. Capitalisation is load-bearing and there is no validation at the file
+level, so a typo degrades to "no style" silently.
+
+On the substance: it is the behavioral counterpart to `defaultMode: auto` +
+`skipAutoPermissionPrompt`. Those remove the per-tool-call human gate; this removes the
+per-decision one. The accepted-risk-and-re-evaluate note on the permissions entry now covers a
+strictly wider surface, and the two should be reconsidered together rather than separately. It
+buys nothing enforcement-wise — the style's own prose about confirming destructive actions is a
+prompt, not a control, and the real floor is unchanged: `permissions.deny`, the three `PreToolUse`
+guards, and the no-direct-push-to-`main` rule.
+
 ### Voice was adopted rather than left dirty
 
 `voiceEnabled` + `voice: { enabled: true, mode: "hold" }` had been sitting as an uncommitted local

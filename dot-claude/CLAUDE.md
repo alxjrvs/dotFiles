@@ -222,6 +222,22 @@ Rules that apply whatever you are touching:
   `terminalProgressBarEnabled` off); `tui: "fullscreen"` +
   `theme: "auto"`; `skipWorkflowUsageWarning`; `inputNeededNotifEnabled` + the
   `attribution.commit` trailer.
+- **Output style** — `outputStyle: "Proactive"` (added 2026-08-19), a **built-in** style, so
+  nothing is added to `~/.claude/output-styles/` and nothing new is symlinked. It tells every
+  session to execute immediately, make reasonable assumptions instead of asking, and avoid plan
+  mode unless asked. Pinned here rather than left to `/config` because **`/config` sets it for the
+  running session only** — measured: after `/config` reported "Set output style to Proactive",
+  `outputStyle` appeared in neither `settings.json` nor `~/.claude.json`, and both git clones
+  stayed clean. So the setting had no persistence at all until it was written here.
+  - It is the **behavioral** half of a pair this file already carries the *permission* half of.
+    `defaultMode: auto` + `skipAutoPermissionPrompt` remove the per-call human gate; this removes
+    the per-decision one. Read the two together before loosening either — the combination is what
+    makes an unattended session act without checking in, and `askUserQuestionTimeout: "10m"` is
+    the backstop for the dialogs that do still fire.
+  - **It is advisory, not enforcement**, per this file's own opening rule. The style's own text
+    says destructive actions and data exfiltration still need confirmation, but that is prose in a
+    prompt — the things that actually hold are `permissions.deny`, the three `PreToolUse` guards,
+    and the rebase/no-push-to-`main` rules. Don't cite the style as a safety control.
 - **Voice** — `voice: { enabled: true, mode: "hold" }` (push-to-talk). `voiceEnabled` was set
   alongside it and is gone: the settings schema calls it a *"Legacy alias for voice.enabled;
   prefer the voice object"*, so the pair was one setting written twice.
