@@ -26,8 +26,9 @@ attempt, or lands in an unattended session with no one to ask.
 
 ## Where things go
 
-This file has a 2,500-byte ceiling, enforced by `always-loaded context budget` in
-`.github/workflows/lint.yml`. Nothing goes here that fits elsewhere.
+This file has a byte ceiling, enforced by the context-budget checks in `lefthook.yml` and
+`.github/workflows/lint.yml`. Those state the number; don't restate it here. Nothing goes in this
+file that fits elsewhere.
 
 | | |
 |---|---|

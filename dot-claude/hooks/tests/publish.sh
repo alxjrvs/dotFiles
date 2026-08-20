@@ -11,7 +11,7 @@
 # worktree) because the hook's whole job is to write to a remote — cases cannot
 # share state. No network: `origin` is a bare repo on disk. ~3s.
 #
-# READ THIS BEFORE TRUSTING A GREEN RUN. 9 of the 12 cases are "must NOT push"
+# READ THIS BEFORE TRUSTING A GREEN RUN. Most cases here are "must NOT push"
 # assertions, which a hook that does nothing at all passes trivially. The
 # load-bearing case is `publishes_unpushed` — it requires a ref to actually
 # appear on origin. If you change this hook, invert `publishes_unpushed`

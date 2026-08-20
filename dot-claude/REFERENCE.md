@@ -4,7 +4,9 @@ Personal notes that aren't instructions. Not auto-loaded — only `CLAUDE.md` an
 
 ## Built-in slash commands worth remembering
 
-The CC built-in surface is wider than I tend to use. Verified on v2.1.153+:
+The CC built-in surface is wider than I tend to use. These were verified once, against a client
+that has since moved — treat the list as a prompt to check `/help`, not as a spec, and expect the
+newest entries to be the ones that changed:
 
 - `/rewind` (aliases `/checkpoint`, `/undo`) — restore code, conversation, or both to an earlier checkpoint. Cheaper than re-prompting when something goes sideways.
 - `/btw <question>` — side question that does NOT enter conversation history. Use mid-feature when a one-off lookup would otherwise pollute context.
