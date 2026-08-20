@@ -58,8 +58,15 @@ SAFE_SHAPES='Non-printing shapes an agent may use:
   op run [--env-file=F] -- CMD    inject secrets as env into CMD (values masked in its output)
   op inject -i TPL -o OUT         render a template TO A FILE
   op whoami / op --version        identity and version, no values
+  op item list [--vault V]        titles and metadata, no values
+  op item move ITEM --destination-vault V   OUT of the agent vault only
 Everything else is denied because it can put a secret VALUE on stdout, and stdout
 is model context. To USE a secret, never read it — pass it with "op run --".'
+
+# The vault this agent's service account can read. `op item move` may take items OUT
+# of it but never INTO it: inbound is self-escalation, since SA vault access is
+# immutable after creation and membership is the only lever over blast radius.
+AGENT_VAULT=${BOOM_vault:-claude-agent}
 
 # 1Password global flags that consume the following argument. Without this,
 # `op --account foo read op://x` would resolve its subcommand to `foo`.
@@ -249,18 +256,57 @@ $SAFE_SHAPES"
     '' | --version | -v | --help | -h | help | whoami | signin | signout | update)
       continue
       ;;
-    # DELIBERATELY ABSENT: `op vault list`, `op item list`, `op account/user/group
-    # list`. They print no secret VALUE, so an allow-list built only on "does this
-    # print a secret" would include them — but CLAUDE.md records a separate,
-    # measured exposure they would re-open: `op vault list` "enumerates every vault
-    # in the account (verified 2026-08-05, no prompt)", because the desktop
-    # integration answers for vaults far outside `claude-agent`. Item titles carry
-    # the same problem one level down.
+    # `op item list` and `op item move` — allowed, and the note that used to sit
+    # here said they were excluded because inventory browsing "is not what was
+    # asked for". It has since been asked for, with a named use: `op-agent audit`
+    # reports an item in the agent vault that nothing declares, and moving it out
+    # is the fix. Both print titles and metadata, never a secret VALUE, which is
+    # this guard's actual criterion.
     #
-    # They were denied before this change and they stay denied. This change is
-    # scoped to "an agent may USE a secret without reading it" — inventory
-    # browsing is a different capability and is not what was asked for. Widening
-    # to it would be a silent second change riding along with the first.
+    # `op item move` IS DIRECTIONAL, and that is the load-bearing part. Moving an
+    # item OUT of the agent vault can only narrow this agent's own reach. Moving
+    # one IN widens it, which is a self-escalation path — an agent could grant
+    # itself a production credential by relocating it into the vault its service
+    # account reads. SA vault access is immutable after creation, so membership is
+    # the only lever there is; inbound moves are the one way to pull that lever the
+    # wrong way. Outbound allowed, inbound denied.
+    #
+    # `op item get`, `edit`, `create` and `delete` are NOT here and fall through to
+    # the default deny: reading prints values, and the rest mutate or destroy.
+    item)
+      shift
+      case "${1:-}" in
+        list)
+          continue
+          ;;
+        move)
+          shift
+          while [ $# -gt 0 ]; do
+            case "$1" in
+              --destination-vault)
+                [ "${2:-}" = "$AGENT_VAULT" ] && deny "\`op item move --destination-vault $AGENT_VAULT\` is denied. Moving an item INTO the agent vault widens what this service account can read — it is how an agent would grant itself a credential it was never given. Moving items OUT is allowed, because that can only narrow its own reach.
+
+$SAFE_SHAPES"
+                shift
+                ;;
+              --destination-vault=*)
+                [ "${1#--destination-vault=}" = "$AGENT_VAULT" ] && deny "\`op item move --destination-vault=$AGENT_VAULT\` is denied. Moving an item INTO the agent vault widens what this service account can read — it is how an agent would grant itself a credential it was never given. Moving items OUT is allowed, because that can only narrow its own reach.
+
+$SAFE_SHAPES"
+                ;;
+            esac
+            shift
+          done
+          continue
+          ;;
+      esac
+      ;;
+    # STILL DENIED: `op vault list`, `op account/user/group list`. These print no
+    # secret VALUE either, but the measured exposure recorded for them is a
+    # different capability from the one just granted: `op vault list` "enumerates
+    # every vault in the account (verified 2026-08-05, no prompt)", because the
+    # desktop integration answers for vaults far outside `claude-agent`. Scoped
+    # item access was asked for; account-wide enumeration was not.
     # `op service-account create` prints a NEW TOKEN to stdout. `ratelimit` is
     # the read-only counter that CLAUDE.md points at for usage on a plan tier
     # with no audit log.
