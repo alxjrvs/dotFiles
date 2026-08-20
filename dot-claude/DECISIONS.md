@@ -167,6 +167,112 @@ obvious worry is that it now stalls forever on a prompt. It cannot: its own `--s
 (`pr-review-settings.json`) denies `Bash`, `Write`, `Edit`, `WebFetch`, `Agent` and `mcp__*`
 outright, leaving only read-only tools that auto mode approves without asking. Checked before
 making the change, not assumed.
+## 2026-08-20 — `gh-mcp-stdio` deleted; Desktop launches the GitHub MCP via `op run --env-file`
+
+The second finding from the *Secure AI Access* audit. 1Password's page has a recipe for securing
+an MCP config: make `op` the command and let it wrap the server, rather than putting a token in an
+`env` block. We already satisfied the *outcome* — no plaintext token in any of the nine MCP
+configs — but Claude Desktop got there through a bespoke launcher, `gh-mcp-stdio`, whose entire
+job was to read the PAT and `export` it. That is what `op run` does natively, so the script was a
+wrapper standing in for a vendor feature. Deleted.
+
+    command: /opt/homebrew/bin/op
+    args:    [run, --env-file=~/.config/gh/mcp.env, --, <mise-shim>/github-mcp-server, stdio]
+
+### Two things this changes that are easy to miss
+
+**Absolute paths are required, not tidiness.** Claude Desktop launches as a GUI app and inherits
+no shell `PATH`. 1Password documents this exact failure ("If `op` can't be found, use its full
+path as the command value instead"), and it applies to the *server* binary too. The old wrapper
+solved it by re-exporting `PATH` in shell; `hooks/claude-desktop-mcp.sh` now resolves both
+binaries at sync time and writes them fully qualified. It prefers the mise **shim** over the
+versioned install path, so a `mise upgrade` cannot silently strand the config.
+
+**The auth tier changed, deliberately.** The wrapper resolved via the agent **service account**
+(keychain-backed, no biometric), so it worked with Desktop launched at login and 1Password locked.
+`op run` uses the desktop integration and will prompt. Per 1Password's own two-tier model that is
+the *correct* tier — Claude Desktop is an interactive surface (you, at the keyboard); the service
+account is the hands-off agent tier — so using the SA there was tier confusion. **But the cost is
+real and was not hypothetical to wave off: with 1Password locked, the server does not start until
+you unlock.** Accepted knowingly, and it pairs with the same day's `skipAutoPermissionPrompt`
+removal: both trade unattended convenience for a human in the loop.
+
+### Why the PAT is NOT in a 1Password Environment
+
+The page's recipe is `op run --environment <envID>`, with the API key stored *in the Environment*.
+Not adopted, for one principled reason and one measured one.
+
+**Principled:** `claude-git-pat` is one vault item backing three consumers — agent git auth
+(`op-agent git-credential`), Claude Code's GitHub MCP (`op-agent header`), and Desktop's. An
+Environment holding a literal copy makes two sources of truth, so rotating the vault item would
+silently stop rotating Desktop. Following the recipe exactly would have *degraded* an invariant
+this setup holds. When a vendor recipe and a local invariant collide, say which one won and why —
+here the invariant did.
+
+**Measured:** `--environment` **does not exist in the installed `op` 2.39.0**. It errors
+`unknown flag: --environment`. The docs' "requires CLI v2.33.0-beta.02+" means the **beta**
+channel, not stable — a version number that reads like a floor but is actually a different
+release train. So the recipe was not merely unattractive here, it was unavailable.
+
+An Environment named `claude-desktop-mcp` was created during this investigation and holds the
+**reference** (`op://claude-agent/claude-git-pat/credential`), not the value — ready for the day
+stable ships the flag. **It has no consumer today, and whether it would even work is untested:**
+1Password's docs say Environments "return values exactly as they are entered", which suggests an
+`op://` value is *not* dereferenced. Verify before relying on it; if refs turn out not to
+dereference, `--env-file` remains the correct choice here regardless of CLI version, because it is
+the only shape that keeps one credential in one place.
+
+### Corrections this turned up
+
+Two claims in `CLAUDE.md` were measured false and fixed in the same change:
+
+- **"A probe calling `authenticate` hung until killed."** It does not. From a *background*
+  session, `authenticate` returned an account ID promptly and `list_environments` /
+  `create_environment` both succeeded. The gate is an approval prompt, not a hang. The useful half
+  survives — an approval nobody is present to grant will not self-resolve — so "build nothing
+  unattended on it" stands, for a different reason than recorded.
+- **"Zero consumers today (no Environments exist yet)."** The account already held **twelve**,
+  most of them per-repo (`binfinite-app`, `randsum`, `salvage-union`, `butter`, `opt-fall`,
+  `alxjrvs-github-io`, …). Environments are an established habit here. The "earn its place by use"
+  clock should be read against that, and those per-repo names are the migration candidates for
+  moving the server out of user scope.
+
+And one that flipped in this repo's favour, with a correction of its own: the canonical
+`op run --env-file` pattern was long recorded as having **zero instances**, "the pattern for the
+next server we install, not a description of what runs today". That is no longer true — but
+Desktop's GitHub MCP is the **second** live instance, not the first. `npm/publish.env`
+(`NPM_TOKEN` → `op run --env-file=npm/publish.env -- npm publish`) landed on 2026-08-19, one day
+earlier, and this entry claimed the first-instance slot until a rebase surfaced it. The two files
+are independently written and structurally identical, which is the useful signal: the pattern is
+reproducible from the docs alone, and `gh/mcp.env` should be read as confirming a house shape
+rather than inventing one.
+
+### Verified
+
+- `op run --env-file=<f> -- github-mcp-server --version` resolves and launches (exit 0, v1.7.0).
+- **`op run` does not corrupt the MCP stdio stream** — the obvious worry, since masking means
+  `op run` sits between the child's stdout and the client, and MCP speaks newline-delimited
+  JSON-RPC over exactly that channel. A/B'd with one probe: `initialize` was answered correctly
+  both under `op run` and by a direct invocation, same server identity. Framing survives.
+  - Two false alarms on the way there, both worth remembering because each *looked* like a
+    blocking defect. Feeding the request with `subprocess.run(input=…)` closes stdin, and the
+    server exits `server is closing: EOF` before replying — but the direct control did the same,
+    which is what ruled `op run` out. Then a `Popen` version timed out: `github-mcp-server` dumps
+    its full usage text to **stderr**, and an undrained `stderr=PIPE` filled and deadlocked the
+    child. `stderr=DEVNULL` and it replies immediately. **Neither had anything to do with
+    1Password** — always run the no-`op` control before blaming the wrapper.
+- Auth confirmed through the reference, not just resolution: the server reported
+  `token scopes fetched for filtering scopes="[project read:user repo user:email workflow
+  write:discussion]"`, i.e. the `op://` ref reached a live PAT. Scopes are metadata, not a secret.
+- `op-guard.sh` already permits this: its `op run` parser denies only `--no-masking` and passes
+  other flags through, so no guard change and no new regression cases were needed. Confirmed by
+  reading the parser, not assumed.
+- Two denials fired mid-work and were both correct: `permissions.deny`'s `Bash(*/op *)` caught the
+  absolute-path spelling `/opt/homebrew/bin/op`, and `op-guard.sh` caught a `jq` command that
+  merely contained `op read` as a **string literal**. The second is a false positive by design —
+  the guard cannot distinguish a literal from an invocation, and errs closed.
+- Worth a smile: `op run`'s own help text advertises
+  `op run --no-masking -- printenv DB_PASSWORD`, which `op-guard.sh` denies on **both** counts.
 
 ---
 

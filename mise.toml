@@ -35,7 +35,8 @@ gh = "latest"           # GH CLI
 # Desktop can't: GitHub's remote server authenticates through a registered GitHub
 # App, which Desktop's "Add custom connector" OAuth flow does not support, so
 # GitHub's own install-claude.md says to run the server locally. Launched by
-# `gh-mcp-stdio`, which injects the PAT from 1Password rather than storing it in
+# `op run --env-file` (1Password's published shape for an MCP config), which
+# injects the PAT from 1Password rather than storing it in
 # claude_desktop_config.json. Not in the registry; aqua per the fallback order above.
 "aqua:github/github-mcp-server" = "latest"
 delta = "latest"        # syntax-aware git pager
