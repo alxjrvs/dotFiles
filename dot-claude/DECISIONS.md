@@ -12,6 +12,99 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 
 ---
 
+## 2026-08-20 — `CLAUDE.md` was cut 97%, and the disease was append-only correction
+
+`dot-claude/CLAUDE.md` reached 848 lines / 73,070 bytes / ~18,300 tokens, loaded before every
+task in every repo on this machine. It went 348 → 848 lines in sixteen days, ~83 lines/day for
+the last three, and of 124 commits that touched it **exactly one ever made it smaller** — those
+lines returned within two days. It was cut to a ~40-line stub, and `lint.yml` now holds a byte
+ceiling so the cut survives the next incident.
+
+**The justification is redundancy, not philosophy.** 58% of the file (`### Current divergences`,
+42,574 B) narrated a `settings.json` of 10 KB — four times more prose than the config it
+described — whose load-bearing parts are already asserted by value in three gates. Another 21%
+duplicated skills that said so themselves: `agent-friendly-repo`'s own description called it
+*"the executable version of"* the two procedure sections. The migration had already happened; the
+old copy was never deleted.
+
+**The disease is not length.** It is that a correction got written as a new paragraph *beside*
+the wrong claim instead of replacing it. The file carried 22 self-corrections and four
+correction-of-correction chains, one of which existed only because a correction two bullets above
+it was never propagated. The sharpest specimen: a paragraph asking for *"a `boom verify` step
+asserting every agent-vault title matches `^[a-z0-9]+(-[a-z0-9]+)*$`"* sat seventeen lines below
+the description of `op-agent audit`, which asserts exactly that and is wired at
+`boomfile.toml`. **The prose outlived its own fix and went on requesting completed work.**
+
+That predicts the failure mode of a partial trim: cutting narration while leaving the
+correction-pairs in place preserves every wrong claim. Hence the stub's closing rule — *correct a
+wrong line by replacing it, never by appending beside it.*
+
+### The rule that survives
+
+Keep a sentence in an always-loaded file only if a session must believe it **before its first
+tool call**, and no hook, permission rule, verify step, test suite, or on-demand skill will tell
+it in time. Then write it as a bare imperative — no date, no version, no "measured", no past
+incident. **If the rewrite comes out empty, it was a postmortem.** Two corollaries need no
+judgment: if the reader is necessarily already looking at one file, it belongs in that file's
+header comment; and a sentence naming a version of fast-moving software is expiring by
+construction, so it becomes an assertion something re-runs, or it comes here.
+
+Applied strictly, six rules survived — the ones that are irreversible on first attempt or land in
+an unattended session with nobody to ask. Two of them (foreign-repo writes, force-removing a
+worktree whose lock PID is alive) should become guards, after which their bullets delete.
+
+### Why "just talk to it" is not the answer here
+
+The prompt for this audit was a post arguing that a CLAUDE.md becomes a grievance archive and
+should be replaced by verbal correction in-session. The diagnosis is right and the remedy does not
+fit this machine: `pr-review.sh` spawns a detached reviewer with `> /dev/null 2>&1 &`, and cron
+`boom verify`, `code reap --push`, `/loop` and every subagent inherit `CLAUDE.md` but never see
+the chat — there is no turn to speak into. A correction is also a *response*, so for a public
+issue, a printed credential, another agent's deleted work, or a PR closed unmerged, the state
+change completes first. And `outputStyle: "Proactive"` with `defaultMode: auto` is a deliberate
+decision that sessions do not stop to ask.
+
+### Memory is not the overflow valve
+
+File-based memory looked like the destination for durable facts. It is not, for anything global:
+there is no `~/.claude/memory` tier, and memory is keyed to the working-directory slug — this
+machine has **seven** dotFiles slugs, one per agent worktree, so a fact written in one applies
+there and silently vanishes elsewhere, and a worktree's memories are orphaned when it is removed.
+`MEMORY.md` is itself loaded every session. Memory is right for per-repo facts discovered in
+conversation, and wrong for a rule that must hold everywhere.
+
+### Live breakage the audit turned up
+
+Verifying the file's claims found four things broken, each concealed by prose written to prevent
+that failure. Filed as #161–#165 before the prose was deleted, so "deleted" and "unreported" did
+not become the same action:
+
+- **The GitHub MCP was dead** (#161). Its `headersHelper` pointed at a path that existed nowhere
+  and was tracked by no repo, so the client reported *"does not support dynamic client
+  registration"* — the same misleading error that once got this server deleted instead of fixed.
+  Three stale claims each independently prevented a session from finding it, including *"exactly
+  one entry in `.mcpServers`"* (there were three) and *"`claude mcp list` … cannot see it"* (it
+  can). The verify step meant to catch this only name-matched a string; it now checks the helper
+  is executable.
+- **`render-api-key` had no consumer** (#162), and passed `op-agent audit` because the manifest
+  asserts membership and casing, not that the named consumer resolves.
+- **`autoMode.environment` described one repo** (#164): 4,955 B, 48 references to
+  `binfinite-app`'s stack, zero to the other four orgs, telling the classifier *"no additional
+  orgs configured"* — in every session, with the block's stated purpose inverted.
+- **A documented deletion never happened** (#163). A real file sat over the
+  `~/.claude/settings.json` symlink holding a superseded 10-entry `enabledPlugins`, so the
+  four-plugin removal never took effect for ~13 days while every session paid ~13,840 extra bytes
+  of skill descriptions. The clean-clone check cannot catch this by design — it asks whether the
+  *source* changed, never whether the destination still points at it. A symlink-integrity verify
+  step now covers it.
+
+The last one is the whole finding in miniature: **a file that describes the machine will always be
+able to describe a machine that does not exist.** The enforcement layer was healthy throughout —
+every deny entry matched, every suite passed. It was the narration that rotted, which is the
+argument for deleting the narration rather than maintaining it.
+
+---
+
 ## 2026-08-20 — agents were starting from a base up to 24h stale
 
 `worktree.baseRef: "fresh"` is documented as "branches from `origin/<default-branch>` for a clean
