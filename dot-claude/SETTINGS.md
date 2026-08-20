@@ -37,6 +37,31 @@ Two rules for editing it:
 | `env.NINETY_API_TOKEN_COMMAND` | Resolves the Ninety PAT from the agent vault on demand. |
 | `env.NINETY_API_TOKEN` / `NINETY_BASE_URL` | **Empty strings are load-bearing.** The plugin checks the literal var before the `_COMMAND`, and an unset `${VAR}` is passed through as a literal and read as a real token — producing a misleading 401. |
 
+## MCP servers
+
+Not a `settings.json` key — these live in `~/.claude.json`, which is app-owned and tracked by
+nothing. A `boom verify` step asserts every configured `headersHelper` is executable, and another
+fails when `claude mcp list` reports `✘` or `! Needs authentication`.
+
+| server | what it is for |
+|---|---|
+| `1password` | Manages 1Password **Environments**, not vaults. Ships inside the desktop app, so there is no token and no `op://` ref — it structurally cannot return a secret value. Reproduced by a `sync` step and asserted on `verify`, so this row is orientation and the boomfile is the control. |
+| `sentry` | Remote HTTP (`mcp.sentry.dev`). Genuinely used — the invocation ledger shows real `search_events` / `search_issues` traffic, so it earns its place. **Reproduced by no boomfile step**, so a fresh machine does not get it; this row is the only record it is expected at all. |
+
+**Open tension, not a settled design.** `sentry` authenticates interactively, so it will
+periodically read `! Needs authentication` — and that string fails the `claude mcp list` verify
+step, turning the nightly run red on a routine, user-actionable state. That is the "a check that
+cries wolf gets ignored" failure mode, created by the same check that catches real breakage. The
+fix is to separate the two conditions: `✘ Failed to connect` is drift and should fail, while
+`! Needs authentication` is a prompt to re-auth and should warn. Whether a boomfile `run` step can
+return warn rather than fail is **unverified** — measure it before changing the check.
+
+**Deliberately absent: any third-party GitHub MCP.** Anthropic's own GitHub integration replaces
+it. Do not re-add `api.githubcopilot.com/mcp/` behind a bespoke `headersHelper`, or a local
+`github-mcp-server` launched through `op run` — both existed here, both authenticated someone
+else's server with our PAT, and one broke silently for weeks behind a misleading OAuth error. See
+`DECISIONS.md`.
+
 ## Agents and plugins
 
 | key | what it is for |

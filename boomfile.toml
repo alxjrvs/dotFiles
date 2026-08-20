@@ -830,25 +830,18 @@ echo "and no boomfile glob or CI check can see them:$orphans"
 exit 1
 '''
 
-# A managed destination can stop being a symlink without the config repo ever going dirty, and
-# every other check reads the COMMITTED copy, so nothing notices. That happened: a real file sat
-# over ~/.claude/settings.json holding a superseded 10-entry `enabledPlugins`, so a documented
-# plugin removal never took effect for ~13 days while every session paid ~13,840 extra bytes of
-# skill descriptions. The clean-clone check cannot catch it by design — it asks whether the
-# SOURCE changed, never whether the destination still points at the source.
-[[section.run]]
-on = "verify"
-cmd = '''
-bad=""
-for dst in ~/.claude/CLAUDE.md ~/.claude/settings.json; do
-  [ -e "$dst" ] || continue
-  [ -L "$dst" ] || bad="$bad $dst"
-done
-[ -z "$bad" ] && exit 0
-echo "managed path is a real file, not a symlink into the config repo:$bad"
-echo "the committed copy is no longer what this machine loads — re-run a sync to restore it"
-exit 1
-'''
+# NO hand-rolled symlink-integrity check here. boom already does this, natively, for EVERY
+# managed link — measured, not assumed: replacing ~/.hushlogin with a real file makes
+# `boom verify` report "~/.hushlogin exists but is not our symlink" and exit 1. A bespoke
+# version was added here and deleted the same day, because it covered two hardcoded paths where
+# boom covers all of them, which is strictly worse and would rot on the next link added.
+#
+# So the settings.json clobber that made a documented plugin removal a no-op for ~13 days was
+# never undetectable. It was DETECTED and unseen: the boom-verify launchd job silently never ran
+# for 28 days (a `~` in a plist value, which launchd does not expand — EX_CONFIG 78), and even
+# once running, its findings died in a log until `[boom] notify = true` started surfacing them.
+# The gap was notification, not detection — so the fix was the plist and `notify`, both already
+# in place, and the right amount of new machinery here is none.
 
 # The third-party GitHub MCP is GONE from both clients, in favour of Anthropic's own
 # GitHub integration. What was here: a remote `api.githubcopilot.com/mcp/` server in
