@@ -63,18 +63,15 @@ sentry-dsn-itun
 sentry-dsn-itun-functions
 sentry-dsn-discord-bot
 
-# ---------------------------------------------------------------------------
-# INVARIANT VIOLATIONS — these two fail the kebab-case check on purpose, and
-# `boom verify` will stay red until they are renamed in 1Password. Added
-# 2026-08-18 in PascalCase; neither contains a space, so the word-split bug did
-# not fire and the invariant held by luck rather than design. Renaming is safe:
-# item IDs are stable across a rename, so no ref that uses an ID is invalidated.
+#   -> UNVERIFIED. Renamed into compliance on 2026-08-19 (they were added the day
+#      before as `CloudflarePersonalAgentKey` / `PersonalCloudflareGithubCIKey`,
+#      the first real catch by the kebab-case rule now that it is enforced rather
+#      than merely written down). Item IDs survived the rename, so any ref using
+#      an ID is unaffected.
 #
-#   CloudflarePersonalAgentKey    -> cloudflare-personal-agent-key
-#   PersonalCloudflareGithubCIKey -> personal-cloudflare-github-ci-key
-#
-# Confirm each has a real consumer while renaming — if neither does, they belong
-# in a project vault, not here.
-# ---------------------------------------------------------------------------
-CloudflarePersonalAgentKey
-PersonalCloudflareGithubCIKey
+#      They now satisfy the naming invariant but still have NO consumer found on
+#      this machine, which is the other half of the membership test. Confirm what
+#      resolves them; if nothing does, they belong in a project vault rather than
+#      one a service account can read.
+cloudflare-personal-agent-key
+personal-cloudflare-github-ci-key
