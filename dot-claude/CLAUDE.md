@@ -263,6 +263,33 @@ Rules that apply whatever you are touching:
     `op run -- git push` / `-- gh pr create`, which would otherwise hide the push from
     rebase-guard, since that guard tokenizes for a `git` *program* and sees `op` here. That last
     one is a hole this change would have opened had it not been closed in the same commit.
+  - **`op run -- op …` was the same hole, and it stayed open for a day** (found and closed
+    2026-08-19). The child list blocked interpreters, env-dumpers and `git`/`gh` — but not `op`
+    or `op-agent` themselves, so `op run` was a **trampoline back into the very binary this guard
+    exists to gate**. Measured, all three allowed before the fix:
+    `op run -- op read op://…`, `op run -- op-agent secret op://…`, `op run -- op item edit`.
+    - It defeated **both** layers at once. The guard saw an unremarkable child program and
+      allowed it; `permissions.deny` never matched because every rule there anchors on `op read`
+      / `op item get` / `op-agent` as the **first token**, and here the first token is `op run`.
+      And `permissions.allow` carries `Bash(op run:*)`, so the shape was not merely permitted, it
+      was *pre-approved*.
+    - **Masking does not rescue it**, which is the part worth remembering: `op run` conceals
+      values it *injected* into the child's environment, and a child that reads a secret itself
+      injected nothing — there is no value to match, so the credential lands on stdout. That is
+      the 2026-07-25 leak reached by a different road.
+    - The lesson generalises past `op`: the `git`/`gh` entry existed because `op run --` can
+      launder a command past *another* guard. Nobody applied it to *this* guard. **When adding a
+      child to the allow path, ask what guard the child would bypass — including this one.**
+      Ten regression cases cover it, with `op run -- npm publish` and `-- node build.js` as
+      controls so the fix cannot become an outage.
+  - **Known residue, deliberately not closed:** `op inject -i TPL -o FILE` is on the allow-list
+    and writes *resolved secrets to a file*, which an ordinary `cat` then reads into context. The
+    guard denies **bare** `op inject` precisely because it renders to stdout — but `-o FILE`
+    plus a read reaches the same place in two steps, so that distinction is thinner than it
+    looks. It is left allowed because `op inject` is a legitimate rendering shape and closing it
+    means gating arbitrary file reads, which the permission model does not do today (only
+    `Read(~/.ssh/id_*)` and `Read(~/.aws/credentials)` are denied). **Do not cite `op inject` as
+    proof secrets cannot reach context** — it is an accepted gap, not a covered one.
   - **It never emits `permissionDecision: "allow"`.** A hook `allow` bypasses the permission
     system entirely, which would put the guard *above* `permissions.deny`. It only denies or stays
     silent, so it can subtract permission and never add it, and the deny floor still applies
