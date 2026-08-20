@@ -48,12 +48,27 @@ Rules that apply whatever you are touching:
   the `←` entry, `/background`, `claude --bg`, and `boom code claude` work with no idle fleet.
   **Re-evaluate with auto mode** — a standing fleet widens the confused-deputy surface;
   dispatch-on-demand keeps it minimal.
-- **Permissions** — `defaultMode: auto` + `skipAutoPermissionPrompt` auto-approve tool calls: a
-  productivity tradeoff that removes the per-call human gate. Accepted risk, **re-evaluate
-  periodically.** `autoMode.classifyAllShell` routes *every* Bash/PowerShell command through the
-  auto-mode classifier, not just arbitrary-code-exec patterns — the classifier still runs and can
-  deny under `skipAutoPermissionPrompt`, which suppresses only the interactive prompt, not
-  classification.
+- **Permissions** — `defaultMode: auto` **with the interactive prompt left ON** (changed
+  2026-08-20). `skipAutoPermissionPrompt` used to sit beside it and was removed: auto mode still
+  classifies and still auto-approves everything it is confident about, but where it would
+  previously have decided silently it now **asks**. That is the whole point — the flag suppressed
+  only the prompt, never classification, so removing it costs no automation and buys back the
+  per-call human gate.
+  - **Why it changed:** 1Password's *Secure AI Access* guidance names **deterministic
+    authorization** as one of its four principles, and every human-in-the-loop mechanism it
+    prescribes — per-Environment approval on their MCP server, biometric Shell Plugins, Agentic
+    Autofill — assumes a person can be asked. Suppressing the prompt opted this machine out of all
+    of them while keeping the credentials they protect. The audit that found this also found the
+    other three principles in better shape (see *Agent secret access*), so this was the cheapest
+    real gap to close.
+  - **The cost is unattended runs**, and it is deliberate. A background job, `/loop`, or a cron
+    session that hits a prompt now waits for a human instead of proceeding. `inputNeededNotifEnabled`
+    already surfaces that, and `askUserQuestionTimeout: "10m"` bounds the dialogs it applies to.
+    If an unattended shape turns out to stall repeatedly, widen `autoMode.allow` for that specific
+    command — **do not re-add `skipAutoPermissionPrompt`**, which would silence every prompt to fix
+    one.
+  - `autoMode.classifyAllShell` routes *every* Bash/PowerShell command through the auto-mode
+    classifier, not just arbitrary-code-exec patterns.
   - `autoMode.environment` / `allow` / `soft_deny` are the classifier's own prose-rule surface,
     and they exist here for the reason `DECISIONS.md` recorded and then left unfixed: *"two
     commands identical in binary, verb and shape, differing only in a vault name, were decided
@@ -229,11 +244,13 @@ Rules that apply whatever you are touching:
   running session only** — measured: after `/config` reported "Set output style to Proactive",
   `outputStyle` appeared in neither `settings.json` nor `~/.claude.json`, and both git clones
   stayed clean. So the setting had no persistence at all until it was written here.
-  - It is the **behavioral** half of a pair this file already carries the *permission* half of.
-    `defaultMode: auto` + `skipAutoPermissionPrompt` remove the per-call human gate; this removes
-    the per-decision one. Read the two together before loosening either — the combination is what
-    makes an unattended session act without checking in, and `askUserQuestionTimeout: "10m"` is
-    the backstop for the dialogs that do still fire.
+  - It is the **behavioral** half of a pair this file carries the *permission* half of, and the
+    two are now deliberately asymmetric. This style still removes the per-*decision* gate (execute,
+    assume, don't ask); `defaultMode: auto` no longer removes the per-*call* one, since
+    `skipAutoPermissionPrompt` was dropped on 2026-08-20. So a session proceeds without checking in
+    on judgment calls, but still stops for a tool call the classifier will not approve on its own.
+    Read the two together before loosening either, and `askUserQuestionTimeout: "10m"` is the
+    backstop for the dialogs that do fire.
   - **It is advisory, not enforcement**, per this file's own opening rule. The style's own text
     says destructive actions and data exfiltration still need confirmation, but that is prose in a
     prompt — the things that actually hold are `permissions.deny`, the three `PreToolUse` guards,
@@ -378,8 +395,10 @@ Rules that apply whatever you are touching:
   - **The reviewer is confined by `permissions.deny`, not by `--allowedTools`** (corrected
     2026-08-08). It reads attacker-controlled text — a diff, a README, a fixture, from any
     contributor to a `PR_REVIEW_REPOS` repo — while running detached under the *user-scope*
-    `settings.json`, so it inherits `defaultMode: auto` + `skipAutoPermissionPrompt`, and it
-    publishes its output to GitHub. With a shell that is a complete exfil path, and because the
+    `settings.json`, so it inherits `defaultMode: auto`, and it
+    publishes its output to GitHub. (Dropping `skipAutoPermissionPrompt` does not re-open this and
+    does not strand the reviewer either: its own `--settings` file denies `Bash` outright, so it has
+    no tool left that could prompt an absent human.) With a shell that is a complete exfil path, and because the
     block is `> /dev/null 2>&1 &` none of it appears in the parent transcript.
     - This file claimed for two days that `--allowedTools` closed that. **It does not.** It is an
       additive pre-approval list, not a ceiling: anything unlisted falls through to the auto-mode
