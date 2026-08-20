@@ -459,20 +459,30 @@ on = "verify"
 # cannot answer at all passed this check silently — observed live on Google
 # Calendar. Different symbol, same outcome: the server does not work.
 #
-# KNOWN LIMIT, do not read this check as broader than it is: `claude mcp list`
-# reports the servers visible from the CWD. `github` and `render` are
-# project-scoped to ~/Code/SU-SRD in ~/.claude.json, and the launchd job sets no
-# WorkingDirectory, so this cannot see either of them — the two 1Password-wired
-# servers whose silent breakage on 2026-07-25 is the reason this check exists.
-# Fixing that means declaring them somewhere reproducible (they are in no
-# boomfile today), not hardcoding a path here.
+# SCOPED to the servers THIS machine configures — the ones in ~/.claude.json.
+# `claude mcp list` also reports account-level claude.ai connectors, which it
+# prefixes with "claude.ai ", and those are configured at claude.ai rather than
+# here. Fourteen of them were unauthenticated when this filter was added (Asana,
+# Atlassian, Box, Canva, Figma, HubSpot, Intercom, Linear, monday.com, Notion and
+# more), several of which are unlikely ever to be authenticated deliberately. So
+# the unfiltered check failed on essentially every run, which is exactly the
+# "a check that cries wolf gets bypassed" failure this repo has already paid for
+# twice — and it would have trained the nightly notify to be ignored.
+#
+# The filter is on the client's display prefix rather than a jq read of
+# ~/.claude.json, because the failure direction is right: if that prefix ever
+# changes, the check goes NOISY, which is visible, rather than silently green.
+#
+# The stale note that used to sit here described `github` and `render` as
+# project-scoped servers this check could not see. Both are gone — `github` was
+# deleted with the third-party GitHub MCP, and `render` never existed in any scope.
 cmd = '''
 for i in 1 2 3; do
-  claude mcp list 2>&1 | grep -qE '✘|! Needs authentication' || exit 0
+  claude mcp list 2>&1 | grep -v '^claude\.ai ' | grep -qE '✘|! Needs authentication' || exit 0
   sleep 3
 done
-claude mcp list 2>&1 | grep -E '✘|! Needs authentication'
-echo 'an MCP server is failing to connect or needs authentication (3 consecutive checks)'
+claude mcp list 2>&1 | grep -v '^claude\.ai ' | grep -E '✘|! Needs authentication'
+echo 'a locally-configured MCP server is failing to connect or needs authentication (3 consecutive checks)'
 exit 1
 '''
 

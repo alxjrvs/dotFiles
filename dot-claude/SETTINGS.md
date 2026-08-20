@@ -48,13 +48,15 @@ fails when `claude mcp list` reports `✘` or `! Needs authentication`.
 | `1password` | Manages 1Password **Environments**, not vaults. Ships inside the desktop app, so there is no token and no `op://` ref — it structurally cannot return a secret value. Reproduced by a `sync` step and asserted on `verify`, so this row is orientation and the boomfile is the control. |
 | `sentry` | Remote HTTP (`mcp.sentry.dev`). Genuinely used — the invocation ledger shows real `search_events` / `search_issues` traffic, so it earns its place. **Reproduced by no boomfile step**, so a fresh machine does not get it; this row is the only record it is expected at all. |
 
-**Open tension, not a settled design.** `sentry` authenticates interactively, so it will
-periodically read `! Needs authentication` — and that string fails the `claude mcp list` verify
-step, turning the nightly run red on a routine, user-actionable state. That is the "a check that
-cries wolf gets ignored" failure mode, created by the same check that catches real breakage. The
-fix is to separate the two conditions: `✘ Failed to connect` is drift and should fail, while
-`! Needs authentication` is a prompt to re-auth and should warn. Whether a boomfile `run` step can
-return warn rather than fail is **unverified** — measure it before changing the check.
+**The health check is scoped to these two, deliberately.** `claude mcp list` also reports
+account-level **claude.ai connectors** — Asana, Atlassian, Box, Canva, Figma, HubSpot, Intercom,
+Linear, monday.com, Notion and more — which are configured at claude.ai, not here. Most sit
+unauthenticated, so an unfiltered check failed on essentially every run and would have trained the
+nightly notify to be ignored. The verify step now skips lines the client prefixes with
+`claude.ai `, so it only judges what this machine actually configures.
+
+If one of these two genuinely needs re-authentication, the check fires and that is correct — run
+the server's `authenticate` tool. It is a prompt to act, not noise, because it is a server we own.
 
 **Deliberately absent: any third-party GitHub MCP.** Anthropic's own GitHub integration replaces
 it. Do not re-add `api.githubcopilot.com/mcp/` behind a bespoke `headersHelper`, or a local
