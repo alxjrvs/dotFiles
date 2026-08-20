@@ -267,6 +267,26 @@ op	nonrepo	op-agent provision	deny
 # This case locks that in: adding a verb must not widen the Bash surface.
 op	nonrepo	op-agent audit agent-vault.txt	deny
 
+# --- op-guard: `op run --` must not trampoline back into op --------------------
+# Found 2026-08-19. `_bad_op_run_child` blocked interpreters, env-dumpers and
+# git/gh, but not `op` itself — so `op run -- op read op://…` was ALLOWED by the
+# guard and unmatched by `permissions.deny` (whose rules anchor on `op read` as
+# the first token, not `op run -- op read`). `Bash(op run:*)` is in
+# permissions.allow, so the shape was pre-approved. Masking does not help: it
+# conceals values `op run` injected, and a self-reading child injected nothing.
+op	nonrepo	op run -- op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	op run -- op item get claude-git-pat	deny
+op	nonrepo	op run -- op item edit x --title y	deny
+op	nonrepo	op run -- op-agent secret op://claude-agent/gninety/credential	deny
+op	nonrepo	op run -- op-agent header op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	op run --env-file=.env -- op read op://claude-agent/claude-git-pat/credential	deny
+# Path spellings resolve because the child is basenamed before the check.
+op	nonrepo	op run -- /opt/homebrew/bin/op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	op run -- ~/.local/bin/op-agent secret op://claude-agent/gninety/credential	deny
+# CONTROLS — the legitimate shape must keep working, or this fix is an outage.
+op	nonrepo	op run --env-file=npm/publish.env -- npm publish	allow
+op	nonrepo	op run -- node build.js	allow
+
 # --- op-guard: the spellings `permissions.deny` structurally cannot cover ----
 # CLAUDE.md: deny matches command SPELLING, so an absolute path is not covered,
 # and "deny cannot cover an arbitrary interpreter — sh -c 'op read …' still walks

@@ -100,6 +100,25 @@ _bad_op_run_child() { # $1 = basename of the command after `--`
     # credentials from the credential helper, never from `op run`, so denying
     # this costs nothing and keeps the push guards unbypassable.
     git | gh) return 0 ;;
+    # THE SAME ARGUMENT, APPLIED TO `op` ITSELF — and this one was missed until
+    # 2026-08-19. `op run -- op read op://…` walked straight past everything:
+    # this guard saw the child as an unremarkable program and allowed it, and
+    # `permissions.deny` never matched because its rules are anchored on `op
+    # read` / `op-agent` as the FIRST token, while here the first token is `op
+    # run`. `permissions.allow` carries `Bash(op run:*)`, so the shape was not
+    # merely permitted, it was pre-approved. Measured: `op run -- op read`,
+    # `op run -- op-agent secret` and `op run -- op item edit` were all allowed.
+    #
+    # Masking does not rescue it. `op run` conceals values it INJECTED into the
+    # child's environment; a child that reads a secret itself injected nothing,
+    # so there is no value to match and the credential lands on stdout — which
+    # is model context, and is the exact 2026-07-25 leak.
+    #
+    # So `op run` may not be used as a trampoline back into `op`. Nothing
+    # legitimate needs it: `op run` exists to hand a secret to a program that
+    # consumes it, and `op` consuming its own output is not that. Path spellings
+    # are covered because the caller basenames $child before this runs.
+    op | op-agent) return 0 ;;
     *) return 1 ;;
   esac
 }
