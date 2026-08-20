@@ -197,6 +197,28 @@ real and was not hypothetical to wave off: with 1Password locked, the server doe
 you unlock.** Accepted knowingly, and it pairs with the same day's `skipAutoPermissionPrompt`
 removal: both trade unattended convenience for a human in the loop.
 
+**The failure mode is a HANG, not an auth error — and that is the trap.** Observed the same day,
+during post-merge verification: an end-to-end probe of the shipped config timed out with no
+output, twice. Nothing was broken. `op run` was blocking on the 1Password approval prompt and
+nobody was at the keyboard; the moment the prompt was answered the identical command succeeded
+immediately and served 42 tools. So the symptom of "1Password is locked / the prompt went
+unanswered" is indistinguishable, from the client's side, from a broken binary, a bad path, or a
+malformed config — the server simply never completes its handshake.
+
+That matters because it points debugging in exactly the wrong direction. **Before touching the
+config, run the child by hand:** `op run --env-file=~/.config/gh/mcp.env -- <server> --version`.
+If it returns instantly, auth is fine and the problem is elsewhere; if it sits there, the answer
+is on the desktop, not in the JSON. Claude Desktop gives no signal that an approval is pending,
+so nothing on screen will tell you this.
+
+This is the same family as the silent failures this file already records — the OAuth error that
+named neither 1Password nor the helper (2026-07-25), and the advisory reviewer that could not be
+distinguished from a clean one. **A control whose "waiting" state is shaped exactly like its
+"broken" state costs debugging time every single time it fires.** Here that cost was accepted
+rather than engineered away, because the alternative is putting the service account back on an
+interactive surface — but it is a cost, and it should be recognised on sight rather than
+rediscovered.
+
 ### Why the PAT is NOT in a 1Password Environment
 
 The page's recipe is `op run --environment <envID>`, with the API key stored *in the Environment*.
