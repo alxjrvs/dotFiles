@@ -230,6 +230,18 @@ mode = "755"
 src = "dot-claude/hooks/pr-review-settings.json"
 dst = "~/.claude/hooks/pr-review-settings.json"
 
+# SessionStart/SubagentStart hook: start an agent on CURRENT code. The client's
+# `worktree.baseRef: "fresh"` cuts from the local `origin/<default>` ref and only
+# refreshes it when .git/FETCH_HEAD is more than 24h old, so an agent can silently
+# branch from a day-old base (measured against 2.1.237, both directions). This
+# refreshes the ref in the primary checkout and fast-forwards a virgin worktree
+# onto it. Unlike the PreToolUse guards it decides nothing — it only ever runs
+# `git merge --ff-only`, so it cannot discard a commit.
+[[section.link]]
+src = "dot-claude/hooks/worktree-freshness.sh"
+dst = "~/.claude/hooks/worktree-freshness.sh"
+mode = "755"
+
 # Regression suite for the three PreToolUse guards. Linked so it can be run on the
 # machine, not just in CI; `mode` keeps the runner executable.
 [[section.link]]
@@ -240,6 +252,14 @@ mode = "755"
 [[section.link]]
 src = "dot-claude/hooks/tests/cases.tsv"
 dst = "~/.claude/hooks/tests/cases.tsv"
+
+# worktree-freshness.sh's own suite. Separate from run.sh because that harness
+# asserts on a PreToolUse `permissionDecision`; this hook mutates a worktree, so
+# the assertion is which commit HEAD lands on.
+[[section.link]]
+src = "dot-claude/hooks/tests/freshness.sh"
+dst = "~/.claude/hooks/tests/freshness.sh"
+mode = "755"
 
 # Standing prompt for a bare `/loop`. `.claude/loop.md` is a real Claude Code
 # config surface (the binary carries `<<loop.md>>` sentinels), so versioning it

@@ -12,6 +12,107 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 
 ---
 
+## 2026-08-20 — agents were starting from a base up to 24h stale
+
+`worktree.baseRef: "fresh"` is documented as "branches from `origin/<default-branch>` for a clean
+tree", and `CLAUDE.md` repeated that sentence for months. It is true only in the sense that
+matters least: the client branches from the **local remote-tracking ref**, and refreshes that ref
+only when `.git/FETCH_HEAD` is more than 24 hours old.
+
+From the 2.1.237 bundle, in the worktree-create path:
+
+```js
+let v = gitdir ? await readRef(gitdir, `refs/remotes/origin/${def}`) : null
+if (v && gitdir) {
+  base = `origin/${def}`; sha = v
+  let stamp = await stat(join(gitdir, "FETCH_HEAD")).then(s => s.mtimeMs, () => 0)
+  if (Date.now() - stamp > 86400000) {            // hPT = 24h
+    if ((await git(["fetch","origin",def])).code === 0) sha = await readRef(...)
+  }
+}
+```
+
+**It is a cache with no invalidation.** `git fetch` writes `FETCH_HEAD` on *any* successful
+fetch, so `git fetch origin some-other-branch` — something an agent or a tool does constantly —
+re-arms the 24h skip while leaving `origin/<default>` exactly as stale as it was. The staleness
+is unbounded in practice, not capped at a day.
+
+### Measured, both directions, before writing anything
+
+Hermetic: a bare `origin.git`, a clone whose `origin/main` was deliberately one commit behind,
+then `claude --worktree <name> -p …` and inspect where the worktree landed.
+
+| `.git/FETCH_HEAD` mtime | worktree based on |
+|---|---|
+| freshly touched | the **stale** commit — no fetch attempted |
+| aged past 24h | the real remote tip — fetched first |
+
+The second row is the control. Without it the first row proves nothing: a worktree sitting on the
+stale commit is equally consistent with "the remote never moved".
+
+### The fix, and why it is two layers rather than one
+
+`worktree-freshness.sh`, on `SessionStart` (`startup|resume`) and `SubagentStart`.
+
+- **Prefetch, in the primary checkout, backgrounded.** Every worktree of a clone shares one
+  object store and one set of remote-tracking refs, so "origin/main is current" is a *repo-level*
+  property. Keep it honest and the client's 24h skip stops mattering — the ref it decides to
+  trust is genuinely current, and the base is right **at creation**, which is the only place it
+  can be fixed for free. Backgrounded so it never shows up in session-start latency, which means
+  it races an immediate dispatch — hence the second layer.
+- **Fast-forward, in a linked worktree, synchronous.** The backstop. Does not care how the agent
+  was spawned or whether the prefetch won its race.
+
+A failing fetch is safe by construction: git only writes `FETCH_HEAD` on success, so a fetch that
+fails leaves the client's own 24h timer armed rather than silently disarming it. The degraded
+mode is today's behaviour, not something worse.
+
+### Why it cannot eat work
+
+`git merge --ff-only`, and only after `git merge-base --is-ancestor HEAD <target>`. A fresh agent
+worktree is cut `--no-track -B` at the base commit, so it is a virgin branch and the
+fast-forward *is* the "start from current code" that was wanted. Anything else — own commits, a
+dirty tree, a detached HEAD — fails the ancestor test and gets one line of `additionalContext`
+instead. It pairs with `rebase-guard.sh` rather than duplicating it: that guard blocks a stale
+**push**, this prevents the stale **start** that made the push stale.
+
+It also prefers `branch.<name>.merge` over `origin/<default>` when the branch has an upstream. A
+branch that has declared what "latest" means for it should not be silently retargeted at main.
+
+### Two bugs the suite caught that review would not have
+
+1. **The hook fast-forwarded the user's own checkout.** Linked-worktree detection compared
+   `--absolute-git-dir` (symlink-resolved) against a `cd`-ed `--git-common-dir` (logical). On
+   macOS `$TMPDIR` is `/var/folders` → `/private/var/folders`, so the two never matched and the
+   primary clone was classified as a worktree. Both sides now resolve through `pwd -P`. The
+   `skip_primary` case exists because of this, which is why that case asserts on the primary
+   checkout and not only on worktrees.
+2. **The suite itself was mostly not running.** `box=$(new_box x)` put the fixture builder in a
+   subshell, so the globals it set (`STALE`, `TIP`) came back empty, `git worktree add … ""`
+   failed, and `&&` skipped most case bodies. It reported "4 passed" and looked green.
+
+### Negative controls — re-run these if you change the hook
+
+9 of the 14 cases assert the hook did **not** touch something, and a hook that does nothing at
+all passes every one of them. So a green run is not evidence on its own:
+
+- Invert two expectations (`ff_virgin_behind` must move → assert it did not; `skip_diverged` must
+  not move → assert it did): expect **exactly 2 failures**. Got exactly 2.
+- Point the suite at a stub hook that is just `exit 0`: expect the enforcement cases to fail.
+  Got **5 failures**, including both load-bearing ones. The suite takes a hook path as `$1` for
+  precisely this.
+
+### What is *not* covered
+
+`SubagentStart` carries the **parent process** cwd, not the worktree's, so that arm only ever
+reaches the prefetch half. Do not read its presence as covering an in-process teammate's
+worktree — `SessionStart` firing in the agent's own session is what does that, and that was
+measured (`--worktree` session, `source: "startup"`, cwd = the worktree). Whether every FleetView
+dispatch shape fires `SessionStart` was not measured for each variant; the prefetch layer is what
+covers the gap if one does not.
+
+---
+
 ## The 2026-08-18 audit
 
 A five-agent sweep across dotfiles, boom and the Claude Code config. 22 candidate findings were

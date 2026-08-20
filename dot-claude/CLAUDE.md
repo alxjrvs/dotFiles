@@ -413,6 +413,33 @@ Rules that apply whatever you are touching:
   `op-agent git-credential`, fronted by git's `cache --timeout=900` helper. Agent-only — your
   terminal git keeps `alxjrvs` + 1Password signing. The trailer credits you as co-author; add
   `alxjrvs+claude@gmail.com` on GitHub to link these commits.
+- **Worktree freshness (`SessionStart` matcher `startup|resume`, and `SubagentStart`)** —
+  `~/.claude/hooks/worktree-freshness.sh`, added 2026-08-20. Starts an agent on *current* code
+  rather than on whatever `origin/<default>` happened to be up to 24h ago (the client's
+  FETCH_HEAD cache — see *Agent worktree & merge workflow*). Two layers, because neither covers
+  every spawn path:
+  - **Primary checkout** → refresh `origin/<default>` in the **background**. All worktrees of a
+    clone share one object store and one set of remote-tracking refs, so this is a repo-level
+    property: keep the ref honest and the client's 24h skip becomes harmless, because the ref it
+    trusts is genuinely current. This fixes the base **at creation**, the only place it is free.
+  - **Linked worktree** → fetch synchronously and `git merge --ff-only` onto the intended base.
+    The backstop that does not care how the agent was spawned, and the layer that actually holds.
+  - It is **incapable of losing a commit**: `--ff-only`, and only when HEAD is already an
+    ancestor of the target. A branch with its own commits, a dirty tree, or a detached HEAD gets
+    a one-line advisory in `additionalContext` and is left alone. It pairs with rebase-guard —
+    that guard blocks a stale *push*, this prevents the stale *start* that made it stale.
+  - It prefers `branch.<name>.merge` over `origin/<default>` when the branch has an upstream, so
+    a tracked or resumed branch is never silently retargeted at the default branch.
+  - `matcher: "startup|resume"` — alternation, measured to fire rather than assumed. **The
+    `SubagentStart` arm only ever reaches the prefetch half**: that event carries the *parent
+    process* cwd, not the worktree's, so do not read its presence as covering in-process
+    teammates' worktrees — `SessionStart` in the agent's own session is what does that.
+  - Fails **open** everywhere (offline, no `origin`, no `jq`, fetch timeout), like its siblings.
+    Its suite is `dot-claude/hooks/tests/freshness.sh`, **not** `run.sh`/`cases.tsv` — that
+    harness asserts a `permissionDecision` and this hook returns none. 14 hermetic cases, both
+    directions, wired into `lint.yml` and pre-commit. Two negative controls are recorded in
+    `DECISIONS.md`; re-run them if you change it, because 9 of the 14 cases are "must not touch"
+    assertions that a hook doing *nothing at all* passes trivially.
 - **Keep-awake (`SessionStart`)** — `caffeinate -i -w $PPID &`, guarded by `command -v` and
   `|| true`. On battery this machine sleeps after 1 minute idle, so every unplugged session ran
   on a 60-second fuse. `-i` prevents idle sleep only (the display still sleeps); `-w $PPID` ties
@@ -425,6 +452,17 @@ Claude Code isolates background/subagent work into git worktrees by default
 (`worktree.bgIsolation: "worktree"`, `worktree.baseRef: "fresh"` — stock defaults, not
 overridden). Each agent gets `.claude/worktrees/<name>` on a **freshly created branch** off
 `origin/<default-branch>`.
+
+**"fresh" means the local `origin/<default>` ref, and that ref can be a day old**
+(measured 2026-08-20 against 2.1.237; this paragraph used to stop at the sentence above, which
+is what made the staleness invisible). The client branches from the remote-tracking ref and only
+re-fetches it when `.git/FETCH_HEAD` is **more than 24h old** — a cache with no invalidation, and
+*any* fetch touches FETCH_HEAD, so an unrelated `git fetch origin some-branch` re-arms the skip
+while leaving `origin/<default>` exactly as stale as it was. Reproduced both directions: with
+FETCH_HEAD freshly touched, `claude --worktree` based the tree on a commit the remote had already
+moved past; with FETCH_HEAD aged past 24h the same command fetched and based it on the real tip.
+`worktree-freshness.sh` (below) is the fix; **don't "simplify" it away on the strength of the
+docs' own description of `baseRef`, which is what this bullet corrects.**
 
 - **Never post an issue to a foreign repository without express permission.** Foreign means
   anything outside `alxjrvs/*` and the orgs this machine works in (`TheGnarCo`, `BinfiniteLLC`,

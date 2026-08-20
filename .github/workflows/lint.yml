@@ -141,3 +141,11 @@ jobs:
       # separate job would not be a required check.
       - name: guard regression tests
         run: dot-claude/hooks/tests/run.sh
+
+      # worktree-freshness.sh is the only hook here that WRITES to a git worktree,
+      # so it gets asserted like one: `ff_virgin_behind` proves it actually
+      # fast-forwards, the `skip_*` cases prove it is not a blunt `reset --hard`.
+      # A step in THIS job for the same reason as the one above — the required
+      # context is ["lint"], so a separate job would not be a required check.
+      - name: worktree-freshness regression tests
+        run: dot-claude/hooks/tests/freshness.sh
