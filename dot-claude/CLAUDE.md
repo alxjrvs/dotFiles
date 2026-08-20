@@ -466,6 +466,50 @@ Rules that apply whatever you are touching:
     directions, wired into `lint.yml` and pre-commit. Two negative controls are recorded in
     `DECISIONS.md`; re-run them if you change it, because 9 of the 14 cases are "must not touch"
     assertions that a hook doing *nothing at all* passes trivially.
+- **Worktree publish (`Stop`, `SessionEnd`)** — `~/.claude/hooks/worktree-publish.sh`, added
+  2026-08-20. Makes **deleting** a finished agent session stop being refused with *"has commits
+  that are not pushed anywhere"*. When an agent sitting in a linked worktree goes idle holding
+  commits on no remote, it runs `git push -u origin HEAD:refs/heads/<branch>`.
+  - **Why the check cannot simply be waived** (measured against 2.1.237, decompiled then
+    reproduced). `deleteJob` clears a worktree only if
+    `git rev-list --max-count=1 HEAD --not --remotes` is empty, **or** the branch's upstream reads
+    exactly `gone` *and* every commit patch-id-matches `origin/<default>`. An agent worktree is cut
+    `--no-track`, so it has **no upstream at all** — `%(upstream:track)` is empty, never the literal
+    `gone` — and that second path can never fire, which is why a squash-merged branch stays blocked
+    though its content landed. `force` appears on the `dirty` arm and **nowhere** on the unpushed
+    arm, and there is no setting, keystroke or discard path for it. So the condition can only be
+    **falsified**, never waived.
+  - **Why at idle and not at delete.** There is no hook on the delete path. `WorktreeRemove` exists
+    but is dispatched from *inside* `removeAgentWorktree`, which `deleteJob` reaches only **after**
+    the unpushed check has already refused — so no removal hook can intercept it. The push must
+    therefore already be in place, and idle is the last moment that is true.
+  - `-u` is **not cosmetic**: setting the upstream is what lets the client's *own* patch-id path
+    start working later — once the PR squash-merges and the remote branch is deleted,
+    `%(upstream:track)` finally reads `gone` and the client clears the worktree by content unaided.
+  - **Synchronous**, deliberately: backgrounding would race the very gesture this exists to
+    unblock. The cost is only paid on a turn that actually produced commits — a turn with nothing
+    to publish exits before touching the network.
+  - **Never forced, never the default branch, never a stack.** It pushes where rebase-guard cannot
+    see it (that guard tokenizes Bash *tool calls*; a hook's own git is not one), so the
+    no-push-to-`<default>` half of that rule is re-enforced *here* rather than inherited. Stacked
+    worktrees are left for `gh stack submit`, matching what `boom code reap` already refuses.
+  - Acts only on a **linked worktree** *and* one physically under `.claude/worktrees/` — both
+    conditions, since either alone is too loose. The user's real checkout fails both.
+  - **Not wired on `SubagentStop`**: that event carries the *parent* process cwd, the same measured
+    caveat already recorded above for `SubagentStart`, so it could not locate the worktree to
+    publish.
+  - **Emits nothing.** A `Stop` hook's stdout is how it would *block* stopping, which this has no
+    business doing, so it is a pure side effect. Fails **open** everywhere — offline, no `origin`,
+    detached HEAD, rejected push — degrading to exactly today's behaviour, with the daily
+    `boom code reap --push` as the backstop. That sweep was briefly moved to hourly and put back:
+    a sweep answers "eventually", and the requirement is "the delete I press *now*".
+  - Its suite is `dot-claude/hooks/tests/publish.sh` — a third harness, because `run.sh` asserts a
+    `permissionDecision` and `freshness.sh` asserts which commit HEAD lands on, while this one
+    asserts **which refs exist on a bare origin**. 12 hermetic cases, no network. Read a green run
+    with the same suspicion as freshness's: **9 of the 12 are "must NOT push"**, which a hook doing
+    nothing passes trivially, so `publishes_unpushed` is the load-bearing case. The negative
+    control is inverting `publishes_unpushed` and `skip_default_branch` — that must produce exactly
+    two failures, and did. `never_force` is the case that must never regress.
 - **Keep-awake (`SessionStart`)** — `caffeinate -i -w $PPID &`, guarded by `command -v` and
   `|| true`. On battery this machine sleeps after 1 minute idle, so every unplugged session ran
   on a 60-second fuse. `-i` prevents idle sleep only (the display still sleeps); `-w $PPID` ties
@@ -583,9 +627,17 @@ docs' own description of `baseRef`, which is what this bullet corrects.**
   (`.git/worktrees/<name>/locked` names the holding PID). If that PID is dead,
   `git worktree unlock <path> && git worktree remove <path>`. **Never force-remove a worktree
   whose lock PID is alive** — that is another session's in-flight work.
-- **"Worktree kept … has commits that are not pushed anywhere" is usually a false positive.**
-  Claude Code's remove guard tests **SHA identity**, and a squash-merge rewrites history, so a
-  fully-merged branch's commits exist nowhere by SHA. Reap with `boom code reap`, which re-decides
+- **"Worktree kept … has commits that are not pushed anywhere" should now be rare, because
+  `worktree-publish.sh` prevents it** (`Stop`/`SessionEnd`, see *Current divergences*): an agent
+  worktree publishes its own branch when its agent goes idle, so the commits are on a remote before
+  you ever press delete. Everything below is the fallback for the cases that hook deliberately
+  skips — stacks, rejected or offline pushes, and worktrees older than the hook.
+  **Note the mechanism is narrower than "SHA identity" as this file long claimed** (measured
+  2026-08-20): the client *does* have a content-based escape — patch-id against
+  `origin/<default>` — but it is gated on the branch's upstream reading exactly `gone`, and a
+  `--no-track` agent worktree has no upstream to ever satisfy it. So the reason a squash-merged
+  branch stays blocked is the missing upstream, not the absence of patch-id logic. `force` does
+  not help: it is on the `dirty` arm only. Reap with `boom code reap`, which re-decides
   by **content** (git patch-id) and removes only worktrees that are clean, unlocked (or locked by
   a dead PID), and either fully pushed or already merged. It deletes the directory, never the
   branch ref, so it cannot lose a commit; `--dry-run` classifies without touching anything; its
