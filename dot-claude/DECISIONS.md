@@ -244,6 +244,20 @@ what runs today". Desktop's GitHub MCP is now the first live instance.
 ### Verified
 
 - `op run --env-file=<f> -- github-mcp-server --version` resolves and launches (exit 0, v1.7.0).
+- **`op run` does not corrupt the MCP stdio stream** — the obvious worry, since masking means
+  `op run` sits between the child's stdout and the client, and MCP speaks newline-delimited
+  JSON-RPC over exactly that channel. A/B'd with one probe: `initialize` was answered correctly
+  both under `op run` and by a direct invocation, same server identity. Framing survives.
+  - Two false alarms on the way there, both worth remembering because each *looked* like a
+    blocking defect. Feeding the request with `subprocess.run(input=…)` closes stdin, and the
+    server exits `server is closing: EOF` before replying — but the direct control did the same,
+    which is what ruled `op run` out. Then a `Popen` version timed out: `github-mcp-server` dumps
+    its full usage text to **stderr**, and an undrained `stderr=PIPE` filled and deadlocked the
+    child. `stderr=DEVNULL` and it replies immediately. **Neither had anything to do with
+    1Password** — always run the no-`op` control before blaming the wrapper.
+- Auth confirmed through the reference, not just resolution: the server reported
+  `token scopes fetched for filtering scopes="[project read:user repo user:email workflow
+  write:discussion]"`, i.e. the `op://` ref reached a live PAT. Scopes are metadata, not a secret.
 - `op-guard.sh` already permits this: its `op run` parser denies only `--no-masking` and passes
   other flags through, so no guard change and no new regression cases were needed. Confirmed by
   reading the parser, not assumed.
