@@ -43,6 +43,38 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-08-20 — `op item list` and `op item move` are allowed, in one direction
+
+op-guard's allow-list now permits `op item list` and `op item move`. `op item get`, `edit`,
+`create` and `delete` still fall through to the default deny — reading prints values, and the
+others mutate or destroy.
+
+**Why the old reasoning stopped applying.** The guard's own comment excluded inventory browsing
+because it "is not what was asked for". That was true when written and is no longer: the vault
+audit added alongside it reports an item in `claude-agent` that nothing declares, and moving it
+out is the fix. Both verbs print titles and metadata, never a secret VALUE, which is this guard's
+actual criterion — so with a named use, they qualify.
+
+**`op item move` is directional, and that is the load-bearing half.** Moving an item OUT of the
+agent vault can only narrow this agent's own reach. Moving one IN widens it, which is a
+self-escalation path: an agent could grant itself a production credential by relocating it into
+the vault its service account reads. SA vault access is immutable after creation, so membership is
+the only lever over blast radius — and an inbound move is the one way to pull that lever the wrong
+way. So `--destination-vault <agent vault>` is denied, in both the space and `=` spellings, and
+through the `sh -c` and `op run --` trampolines that already have to be blocked for `op read`.
+
+`op vault list` and `op account list` stay denied. The exposure recorded for them is different in
+kind: `op vault list` enumerates every vault in the ACCOUNT through the desktop integration, far
+outside `claude-agent`. Scoped item access was asked for; account-wide enumeration was not, and
+widening to it would be a second change riding along with the first — the exact thing the previous
+version of this note refused to do.
+
+Cases were written before the guard changed, and failed first: five "expected allow, got deny",
+which is what proved they were testing the new rule rather than the existing behaviour. Every new
+DENY case passed immediately, because default-deny already covered them — that is the allow-list
+design working. Negative control run afterwards: inverting `op item list` and the inbound move
+produced exactly two failures.
+
 ## 2026-08-20 — the third-party GitHub MCP is gone, on both clients
 
 Deleted rather than repaired, in favour of Anthropic's own GitHub integration. What was here was

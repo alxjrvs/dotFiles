@@ -198,18 +198,40 @@ op	nonrepo	op --version	allow
 op	nonrepo	op	allow
 op	nonrepo	op whoami	allow
 op	nonrepo	op service-account ratelimit	allow
-# Inventory browsing is NOT part of this change and stays denied. These print no
-# secret VALUE, so a naive "does it print a secret" allow-list would include them
-# — but CLAUDE.md records that `op vault list` "enumerates every vault in the
-# account (verified 2026-08-05, no prompt)" via the desktop integration, well
-# outside claude-agent. They were denied before 2026-08-18 and are denied after;
-# widening to them would be a second, unasked-for change riding along with this one.
-op	nonrepo	op item list	deny
+# `op item list` and `op item move` are now ALLOWED, and the reason the guard used
+# to give for excluding them no longer holds: it said inventory browsing "is not
+# what was asked for". It has since been asked for, with a named use — the vault
+# audit reports an undeclared item and moving it out is how you fix it.
+#
+# Both print titles and metadata, never a secret VALUE, which is this guard's
+# actual criterion. `op vault list` and `op account list` stay DENIED: the measured
+# exposure recorded for them is enumerating every vault in the ACCOUNT via the
+# desktop integration, far outside claude-agent, which is a different capability.
+op	nonrepo	op item list	allow
+op	nonrepo	op item list --vault claude-agent	allow
 op	nonrepo	op vault list	deny
 op	nonrepo	op account list	deny
+# `op item move` is allowed in ONE DIRECTION. Moving an item OUT of the agent vault
+# can only narrow the agent's own reach. Moving one IN widens it — that is a
+# self-escalation path: an agent could grant itself a production credential by
+# relocating it into the vault its service account reads. Outbound allowed, inbound
+# denied, both argument spellings covered.
+op	nonrepo	op item move render-api-key --current-vault claude-agent --destination-vault Archive	allow
+op	nonrepo	op item move stray --destination-vault Archive	allow
+op	nonrepo	op item move prod-db --destination-vault claude-agent	deny
+op	nonrepo	op item move prod-db --destination-vault=claude-agent	deny
+op	nonrepo	op item move prod-db --current-vault Prod --destination-vault claude-agent	deny
+# The interpreter and `op run --` trampolines must not launder an inbound move past
+# the direction check, the same way they must not launder `op read`.
+op	nonrepo	sh -c "op item move prod-db --destination-vault claude-agent"	deny
+op	nonrepo	op run -- op item move prod-db --destination-vault claude-agent	deny
+# Reading and destroying stay denied regardless of the widening above.
+op	nonrepo	op item edit claude-git-pat	deny
+op	nonrepo	op item create --category login	deny
 # Global flags must be skipped to reach the subcommand, or `--format` would eat
 # the verb and `op --format json read op://x` would resolve its subcommand to `json`.
-op	nonrepo	op --format json item list	deny
+op	nonrepo	op --format json item list	allow
+op	nonrepo	op --format json item get claude-git-pat	deny
 # `op inject` is safe ONLY when it writes to a file instead of stdout.
 op	nonrepo	op inject -i .env.tpl -o .env	allow
 op	nonrepo	op inject -i .env.tpl --out-file=.env	allow
