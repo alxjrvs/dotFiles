@@ -245,9 +245,27 @@ cmd_status() {
       return 1
     fi
     sa_days=$(((sa_exp - sa_now) / 86400))
+    # Always state the expiry, not only when it is close. Silence used to be
+    # ambiguous in exactly the wrong direction: no line meant EITHER ">14 days
+    # left" OR "this token never expires", and those are opposite security
+    # postures. On 2026-08-19 an audit could not tell them apart from the output,
+    # and there is no other source of truth — 1Password exposes no expiry API and
+    # shows no expiry field in the token UI, so the local `exp` claim is it.
     if [[ $sa_days -le $SA_WARN_DAYS ]]; then
-      echo "op-agent: SA token expires in ${sa_days}d — rotation is 1Password web UI only (no CLI/API)"
+      echo "op-agent: SA token expires in ${sa_days}d ($(date -r "$sa_exp" +%Y-%m-%d)) — rotation is 1Password web UI only (no CLI/API)"
+    else
+      echo "op-agent: SA token expires $(date -r "$sa_exp" +%Y-%m-%d) (${sa_days}d)"
     fi
+  else
+    # Not a failure — an open-ended token is the pre-2026-08-05 normal and
+    # breaks nothing. But it is no longer silent, because it means one of the two
+    # legs least privilege rests on is simply absent. Scope is immutable and
+    # (with auditing declined on this plan) unauditable, so expiry is the only
+    # remaining time bound, and `provision` short-circuits once a keychain token
+    # exists — an SA minted before --expires-in existed can never acquire one.
+    # Only a REPLACEMENT service account gains an expiry: 1Password's "Rotate
+    # Token" keeps the permissions and offers no expiry option.
+    echo "op-agent: SA token is OPEN-ENDED (no exp claim) — scope + expiry are the only least-privilege legs here and this one is missing; only a replacement service account can gain one"
   fi
 
   # PAT liveness. The agent's git PAT is a classic token with an expiry: when it
