@@ -260,6 +260,12 @@ op	nonrepo	op-agent secret op://claude-agent/gninety/credential	deny
 op	nonrepo	op-agent header op://claude-agent/claude-github-pat/credential	deny
 op	nonrepo	op-agent git-credential get	deny
 op	nonrepo	op-agent provision	deny
+# `audit` prints titles and a verdict, never a field value — but it is still
+# denied from a Bash tool call, like every op-agent verb except the (also
+# unreachable) `status`. Its only consumer is a `boom verify` run step, which
+# spawns op-agent as a boom child and so never reaches the permission system.
+# This case locks that in: adding a verb must not widen the Bash surface.
+op	nonrepo	op-agent audit agent-vault.txt	deny
 
 # --- op-guard: the spellings `permissions.deny` structurally cannot cover ----
 # CLAUDE.md: deny matches command SPELLING, so an absolute path is not covered,

@@ -288,6 +288,89 @@ cmd_status() {
   return 0
 }
 
+# audit <manifest> — assert the agent vault contains exactly what the repo says
+# it contains, and that every title is kebab-case.
+#
+# WHY THIS EXISTS. 1Password's own agent guidance leans on two guardrails we do
+# not have: the Activity Log and service-account usage reports are Business/Teams
+# only, and this is an Individual/Family account. There is therefore NO
+# per-item, per-timestamp record of what the SA read — a deliberate, accepted
+# gap (2026-08-19). What is left is scope and membership, and SA vault access is
+# IMMUTABLE after creation, so scope can never be tightened later. That makes
+# vault MEMBERSHIP the only control that stays live, and an unenforced control is
+# prose — which this repo distrusts on principle.
+#
+# So membership becomes declarative: `agent-vault.txt` is the checked-in list of
+# what the vault may contain, and drift in EITHER direction fails `boom verify`.
+# An item appearing without a commit is exactly the signal the missing audit log
+# would have given.
+#
+# Titles are not secrets, so they may be printed; no field VALUE is ever read.
+# Fails closed on drift, advisory on tooling gaps — a broken `op` must never
+# wedge verify, the same contract `status` follows.
+cmd_audit() {
+  local manifest="${1:-}"
+  if [[ -z "$manifest" ]]; then
+    echo "op-agent: audit needs a manifest path (e.g. agent-vault.txt)" >&2
+    return 2
+  fi
+  if [[ ! -f "$manifest" ]]; then
+    echo "op-agent: audit manifest not found: $manifest" >&2
+    return 2
+  fi
+  if ! command -v op > /dev/null 2>&1 || ! command -v jq > /dev/null 2>&1; then
+    echo "op-agent: op/jq unavailable — vault audit skipped (advisory)"
+    return 0
+  fi
+
+  _load_sa
+  local actual
+  actual="$(op item list --vault "$VAULT" --format=json 2> /dev/null | jq -r '.[].title' 2> /dev/null | LC_ALL=C sort)"
+  if [[ -z "$actual" ]]; then
+    echo "op-agent: could not list vault ($VAULT), or it is empty — vault audit skipped (advisory)"
+    return 0
+  fi
+
+  # Comments and blank lines are stripped so the manifest can explain itself.
+  local expected
+  expected="$(sed -e 's/[[:space:]]*#.*$//' -e '/^[[:space:]]*$/d' "$manifest" | LC_ALL=C sort)"
+
+  local rc=0
+
+  # 1. kebab-case. The invariant exists because every op:// ref is re-parsed by
+  #    `sh -c`, so a space word-splits and the resolve fails silently. Asserting
+  #    the whole shape (not merely "no spaces") keeps refs predictable.
+  local bad_titles
+  bad_titles="$(printf '%s\n' "$actual" | grep -vE '^[a-z0-9]+(-[a-z0-9]+)*$' || true)"
+  if [[ -n "$bad_titles" ]]; then
+    echo "op-agent: vault ($VAULT) has non-kebab-case titles — every op:// ref is re-parsed by sh -c:" >&2
+    printf '  %s\n' "$bad_titles" >&2
+    rc=1
+  fi
+
+  # 2. Membership, both directions. An UNDECLARED item is blast radius nobody
+  #    reviewed; a MISSING one means a consumer is about to fail.
+  local undeclared missing
+  undeclared="$(comm -23 <(printf '%s\n' "$actual") <(printf '%s\n' "$expected"))"
+  missing="$(comm -13 <(printf '%s\n' "$actual") <(printf '%s\n' "$expected"))"
+  if [[ -n "$undeclared" ]]; then
+    echo "op-agent: vault ($VAULT) holds items not declared in $manifest:" >&2
+    printf '  + %s\n' "$undeclared" >&2
+    echo "  Everything here is readable by the service account. Move it out, or declare it." >&2
+    rc=1
+  fi
+  if [[ -n "$missing" ]]; then
+    echo "op-agent: $manifest declares items absent from vault ($VAULT):" >&2
+    printf '  - %s\n' "$missing" >&2
+    rc=1
+  fi
+
+  if [[ $rc -eq 0 ]]; then
+    echo "op-agent: vault ($VAULT) matches $manifest ($(printf '%s\n' "$actual" | wc -l | tr -d ' ') items)"
+  fi
+  return $rc
+}
+
 case "${1:-}" in
   secret)
     shift
@@ -303,8 +386,12 @@ case "${1:-}" in
     ;;
   provision) cmd_provision ;;
   status) cmd_status ;;
+  audit)
+    shift
+    cmd_audit "$@"
+    ;;
   *)
-    printf 'usage: op-agent <secret op://ref | header op://ref | git-credential get | provision | status>\n' >&2
+    printf 'usage: op-agent <secret op://ref | header op://ref | git-credential get | provision | status | audit MANIFEST>\n' >&2
     exit 2
     ;;
 esac

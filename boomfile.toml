@@ -679,6 +679,43 @@ on = "verify"
 timeout = 60
 cmd = "op-agent status"
 
+# Vault MEMBERSHIP is the only control that stays live on this setup, so it is
+# asserted rather than described. Two 1Password facts force that:
+#   - SA vault access is IMMUTABLE after creation, so scope can never be
+#     tightened in place; only the vault's contents can change.
+#   - Activity Log and service-account usage reports are Business/Teams only.
+#     This is an Individual/Family account, so no per-item record of what the SA
+#     read exists at all — a gap accepted deliberately on 2026-08-19.
+# An item added to the vault without a commit is exactly the event the missing
+# audit log would have reported; `agent-vault.txt` is how it gets reported.
+# Relative path: boom runs verify steps from the config-repo root (same
+# convention as the `git diff -- dot-claude/` check above).
+# Advisory on tooling gaps, fails closed on real drift.
+[[section.run]]
+on = "verify"
+timeout = 60
+cmd = "op-agent audit agent-vault.txt"
+
+# The two `headersHelper` MCP servers are declared in NO boomfile step, so a fresh
+# machine reproduces neither, and `boom verify`'s `claude mcp list | grep ✘` check
+# cannot see an ABSENT server — only a configured-and-failing one. They are also
+# project-scoped (to ~/Code/SU-SRD), so they are invisible from any other CWD.
+# Reading ~/.claude.json directly sidesteps both problems. This asserts rather
+# than reproduces: that file is app-owned and rewritten continuously, so a sync
+# step that wrote into it would fight the client (the same reason
+# claude_desktop_config.json is merged, never linked).
+[[section.run]]
+on = "verify"
+cmd = '''
+f=~/.claude.json
+[ -f "$f" ] || exit 0
+command -v jq >/dev/null 2>&1 || exit 0
+for ref in claude-git-pat render-api-key; do
+  jq -e --arg r "$ref" '[.. | objects | .headersHelper? // empty] | map(select(test($r))) | length > 0' "$f" >/dev/null 2>&1 \
+    || { echo "MCP headersHelper resolving op://<agent-vault>/$ref is missing from ~/.claude.json — the GitHub/render MCP servers are declared by no boomfile step, so this is the only signal a fresh machine never got them"; exit 1; }
+done
+'''
+
 [[section]]
 name = "Claude Desktop MCP"
 
