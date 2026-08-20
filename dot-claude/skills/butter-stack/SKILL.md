@@ -1,6 +1,6 @@
 ---
 name: butter-stack
-description: The Butter Stack — the house Bun/TypeScript monorepo shape (Bun · Unified workspace · TypeScript · TanStack · Edge-deployed · React) and how to scaffold a new repo onto it or audit an existing one against it. Use when the user says "butter", "the butter stack", "scaffold a new repo", "set this repo up like the others", "what's our stack", "audit this against the house stack", or when starting a greenfield TypeScript project. Reports drift as a diff and asks before changing anything.
+description: The house Bun/TypeScript monorepo shape (Bun, workspaces, TanStack, edge-deployed React) — scaffold a new repo onto it, or audit an existing one and report drift as a diff. Use for "butter", "the butter stack", "scaffold a new repo", "set this repo up like the others", "what's our stack", or a greenfield TypeScript project.
 ---
 
 # butter-stack

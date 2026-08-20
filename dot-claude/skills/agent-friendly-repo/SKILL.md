@@ -1,6 +1,6 @@
 ---
 name: agent-friendly-repo
-description: Make a GitHub repo agent-friendly for automated PR → auto-merge — squash-only merge settings, a single ruleset (linear history, non-fast-forward, one aggregate status check, no required human review, no bypass), stacked-PR support via the official `github/gh-stack` extension, optional Dependabot auto-merge, and optionally a merge queue. Use when the user says "make this repo agent-friendly", "set up auto-merge", "align merge settings + branch protection", "add a merge queue", "set up stacked PRs", "auto-merge dependabot", or bootstraps a repo and wants the agent completion path (`gh pr merge --auto`) to work. The executable version of the "Repository merge & branch-protection defaults" + "Agent worktree & merge workflow" sections in ~/.claude/CLAUDE.md.
+description: Configure a GitHub repo for automated PR → auto-merge: squash-only merges, a branch-protection ruleset, stacked PRs via the official github/gh-stack, and optional Dependabot auto-merge or merge queue. Use for "make this repo agent-friendly", "set up auto-merge", "align merge settings + branch protection", "add a merge queue", "set up stacked PRs", "auto-merge dependabot".
 ---
 
 # agent-friendly-repo
