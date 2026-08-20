@@ -64,55 +64,78 @@ the findings:
 The symptom was a chore: after each update, a burst of *"Claude Code 2.1.X wants to access data
 from other apps"* dialogs. The cause is that **macOS TCC keys a grant to the executable's
 absolute path**, and the native installer stages every release at its own
-`~/.local/share/claude/versions/<ver>`. A new path is a new client. There is no drift here and
-nothing was misconfigured — the design simply guarantees the prompt returns forever.
+`~/.local/share/claude/versions/<ver>`. A new path is a new client. Nothing was misconfigured —
+the *recommended* install layout guarantees the prompt returns forever.
 
 Measured rather than assumed, because the obvious theory was wrong. The plausible story is that
 macOS re-prompts because the *code hash* changed on each build. It does not: the `csreq` column
 on all 76 accumulated rows is **NULL**, so no code requirement is pinned at all. Path is the only
-discriminator, which is what makes the fix a one-liner in principle — stop moving the path — and
-also what rules out signing- or notarization-based explanations.
-
-The scale is the argument for fixing it rather than clicking through it:
+discriminator — which is what makes a stable path a complete fix, and what rules out
+signing- or notarization-based explanations.
 
 | | |
 |---|---|
 | Rows in `TCC.db` for dead Claude versions | 76 |
 | …of which `kTCCServiceSystemPolicyAppData` | 46 (≈ one per update since May 2026) |
-| Services touched | AppData, Documents, Desktop, Downloads, NetworkVolumes, MediaLibrary, AppBundles |
 | `csreq` (code requirement) on those rows | NULL — path-keyed only |
 
 **The fix already existed inside the product, applied to the wrong half of it.** Claude Code
 writes a `ClaudeCode.app` bundle beside `versions/` (`CFBundleIdentifier
 com.anthropic.claude-code`), hardlinks the current release into it, and re-execs through it with
-`macDisclaimResponsibility` — which hands TCC a bundle identity that never moves. But that path
-runs *only* from the background/PTY-host entry point. Foreground TUI sessions exec the versioned
-binary directly. So background Claude has had a permanent identity all along and interactive
-Claude has never had one, which is also why the bundle's rows were already granted every service
-that matters before the switch: **routing the foreground through it cost zero prompts, not even
-one.**
+`macDisclaimResponsibility` — handing TCC an identity that never moves. But that path runs *only*
+from the background/PTY-host entry point; foreground TUI sessions exec the versioned binary
+directly. So background Claude has had a permanent identity all along and interactive Claude
+never has. That asymmetry is also why the fix was free: those bg sessions had already earned the
+bundle its grants for Documents, Desktop, Downloads, AppData, MediaLibrary and NetworkVolumes, so
+routing the foreground through it cost **zero prompts, not even one setup click**.
 
-`hooks/claude-launcher.sh` closes the gap by doing what the bg path does — refresh the bundle's
-hardlink, exec the bundle. Three things about it are non-obvious and each is a trap someone will
-otherwise walk into:
+`zsh/65-claude.zsh` defines a `claude` shell function that points the bundle at whatever
+`~/.local/bin/claude` currently resolves to, then runs it.
 
-- **It cannot be a symlink to the bundle.** Claude Code refreshes that hardlink only when
-  `process.execPath` is under `versions/`, which stops being true the instant any launcher sits
-  in front of it. A bare symlink would work perfectly on the day it was made and silently pin the
-  machine to that version forever after. Refresh-then-exec is the entire reason it is a script.
-- **A launcher here is supported, not a hack.** `claude doctor` names this exact arrangement — a
-  `~/.local/bin/claude` that is not a symlink into `versions/` is reported as *expected* when
-  intentional, and auto-update leaves it alone: *"new versions still install under
-  `$XDG_DATA_HOME/claude/versions`, your launcher decides what runs"*.
-- **The stated cost is version cleanup**, which the same doctor text spells out: the installer
-  keeps every version because it cannot know which one a launcher needs, at ~317MB each. So the
-  launcher prunes (newest three, only on the update transition). That prune is safe *because* the
-  launcher exists — every session it starts has an `execPath` of the bundle, so no live process
-  is holding the file being removed.
+**A launcher script at `~/.local/bin/claude` was built first, and rejected.** It worked, and
+`claude doctor` explicitly supports the shape — a launcher there that is not a symlink into
+`versions/` is reported as expected when intentional, and auto-update leaves it alone. It was
+still the wrong call, and the reasons generalise:
 
-What this does not do: the 76 stale rows stay. Removing them means writing to a SIP-protected
-`TCC.db`, which needs Full Disk Access for the writer — a far larger grant than the annoyance
-justifies. They are inert (they name binaries that no longer exist) and cosmetic.
+- **It owned the boot path of the primary tool.** Replacing the installer's symlink means there
+  is nothing to fall back *to*. Its failure mode was `exit 127` — no working `claude` — on any
+  future change to the install layout. A dialog is an annoyance; no shell is an outage, and the
+  fix must not be more dangerous than the thing it fixes.
+- **It was built on reverse-engineered internals.** The bundle-refresh logic was read out of a
+  minified binary; none of it is documented or contractual.
+- **It cost capability elsewhere.** A custom launcher disables the installer's automatic version
+  cleanup (~317MB per release), so the script had to re-implement pruning — taking on a
+  responsibility that already had an owner.
+- **It required amending the rule it violated.** Principle 3 in the repo's `CLAUDE.md` said the
+  lone surviving bash script was `op-agent`; the launcher needed that rewritten to "two". A
+  change that only fits once you edit the principle it breaks deserves more scrutiny than one
+  that doesn't. The shell function needed no such amendment, which is itself evidence it was the
+  better shape.
+
+The function keeps the installer authoritative over `~/.local/bin/claude`, so auto-update and
+version cleanup both keep working and `claude doctor` stays quiet; it falls through to
+`command claude` on any doubt; and it scopes to interactive shells, which are precisely the
+sessions that can display a dialog. Two traps are recorded in the file itself: it must **not**
+`exec` (inside a function that replaces the shell, closing the terminal when Claude exits), and
+an alias cannot do the job at all, because the bundle hardlink has to be refreshed before launch
+or it silently pins the machine to whatever version it last held.
+
+**What is deliberately not done.** The 76 stale rows stay: clearing them means writing to a
+SIP-protected `TCC.db`, which needs Full Disk Access for the writer — a far larger grant than the
+annoyance justifies. They are inert, naming binaries that no longer exist. The textbook fix, a
+**PPPC configuration profile** matching the designated requirement, is unavailable: Apple honours
+PPPC payloads only when delivered by MDM, and enrolling a personal Mac to skip a dialog is
+absurd.
+
+**Install method is not the lever, and switching would be worse.** Homebrew uses versioned Cellar
+paths (same problem). npm/bun global runs `cli.js` under node, moving the TCC identity onto the
+node binary — which is mise-managed and versioned anyway, and would extend those grants to every
+node script on the machine.
+
+The audit did turn up one real piece of drift, unrelated to TCC: a leftover
+`@anthropic-ai/claude-code@2.1.75` in the bun global prefix, with a shim at `~/.bun/bin/claude`.
+Not on `PATH`, so nothing was running it — but it is exactly the duplicate install `claude doctor`
+hunts for, and a landmine the day `~/.bun/bin` enters `PATH`. Removed with `bun rm -g`.
 
 **The generalisable finding is the first paragraph, not the fix.** A recurring permission prompt
 is nearly always an identity that moves, and the question to ask is *what does the OS think the
