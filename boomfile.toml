@@ -15,22 +15,38 @@ upgrade_on_sync = "check"
 # Desktop-notify (macOS osascript) when a scheduled `boom verify` finds drift, so the
 # boom-verify launchd timer's signal surfaces instead of dying in its log. (needs boom >= 0.17.0)
 notify = true
-# `code reap --push` daily: Claude Code keeps an agent worktree whenever a HEAD commit exists on
-# no remote *by SHA*, which every squash-merge violates even though the content landed — so spent
-# worktrees pile up and agent sessions can't be closed ("Worktree kept at … — has commits that
-# are not pushed anywhere"). `code reap` re-decides that by content (git patch-id) and removes
-# only clean, unlocked, already-merged-or-pushed ones, always leaving the branch ref — so it can
-# never lose a commit. `--push` covers the remaining blocker: a clean worktree whose commits
-# exist nowhere but this machine is published first (never forced), so nothing is ever stuck
-# un-closeable. It's outward-facing — these branches land on origin, including org repos — which
-# is the deliberate trade for "closing a session is never blocked". Dirty trees, live sessions
-# and detached HEADs are never pushed. Daily, not 15m: it's cleanup, and each run walks every
-# repo's worktrees.
+# `code reap --push` hourly: Claude Code keeps an agent worktree whenever a commit reachable from
+# HEAD is on no remote-tracking ref, and refuses to remove it ("Worktree kept at … — has commits
+# that are not pushed anywhere") — which is what stops a finished subagent from being closed.
+# Measured against 2.1.237 rather than inferred from the message: the client's check (`deleteJob`,
+# gated on `rev-list --max-count=1 HEAD --not --remotes`) does carry a second, content-based escape
+# — every commit patch-id-matching `origin/<default>` — but that escape is gated on the branch's
+# upstream reading exactly `gone`, and an agent worktree is cut `--no-track`, so it has no upstream
+# at all and the escape can never fire. Hence a squash-merged branch stays blocked even though its
+# content landed. `force` does NOT help: it bypasses the `dirty` arm only, and there is no setting,
+# keystroke or discard path for the unpushed arm — so the condition can only be falsified, never
+# waived. That is the whole reason this timer exists.
+#   `code reap` falsifies it correctly, and is smarter than the client: it re-decides by content
+# (git patch-id), reads `gh stack` topology, and removes only clean, unlocked,
+# already-merged-or-pushed worktrees, always leaving the branch ref — so it cannot lose a commit.
+# Neither can the client, whose removal is `git worktree remove` semantics; the commits stay
+# reachable in the clone either way, so this guard is refusing a delete to prevent a loss that
+# would not actually happen here. `--push` covers the rest: a clean worktree whose commits exist
+# nowhere but this machine is published first (never forced), so nothing is ever stuck
+# un-closeable. It is outward-facing — those branches land on origin, including org repos — which
+# is the deliberate trade for "closing a session is never blocked". Dirty trees, live sessions and
+# detached HEADs are never pushed, and a stacked worktree is left for `gh stack submit`.
+#   HOURLY, not daily (changed 2026-08-20). The mechanism was never the problem — a by-hand run
+# reaped 10 worktrees and published 4 branches on the spot, and the one historical "push failed"
+# in its log was transient, not systemic. The CADENCE was: at 24h, "I want to close this subagent
+# now" always loses to a sweep that already ran, so the wall gets hit by hand anyway. An hour
+# bounds the staleness to something not worth noticing. Each run walks every repo's worktrees in
+# ~30s, nearly all of it network — cheap enough to repeat hourly, not cheap enough for 15m.
 schedule = [
   { cmd = "code fetch", every = "15m" },
-  # Daily. NOT "1d" — boom's schema accepts only s/m/h or a bare seconds count, so
-  # "1d" failed validation and this timer never ran at all from the day it was added.
-  { cmd = "code reap --push", every = "24h" },
+  # NOT "1d" — boom's schema accepts only s/m/h or a bare seconds count, so "1d" failed
+  # validation and this timer never ran at all from the day it was added. "1h" is in-schema.
+  { cmd = "code reap --push", every = "1h" },
 ]
 
 [[section]]
