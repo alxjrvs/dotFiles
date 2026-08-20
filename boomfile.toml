@@ -785,8 +785,11 @@ cmd = '''
 f=~/.claude.json
 [ -f "$f" ] || exit 0
 command -v jq >/dev/null 2>&1 || exit 0
-jq -e '[.. | objects | .headersHelper? // empty] | map(select(test("claude-git-pat"))) | length > 0' "$f" >/dev/null 2>&1 \
-  || { echo "no MCP headersHelper resolves op://<agent-vault>/claude-git-pat in ~/.claude.json — the GitHub MCP is declared by no boomfile step, so this is the only signal a fresh machine never got it"; exit 1; }
+# NO positive assertion that any particular helper EXISTS. There used to be one, requiring a
+# `claude-git-pat` helper for the third-party GitHub MCP — and it is gone with that server:
+# asserting the presence of plumbing we deliberately deleted is how a check starts failing for
+# the opposite of its purpose. What remains is the negative assertion below, which is the part
+# that caught a real outage: any helper that IS configured must actually be runnable.
 # A `for` over command substitution, NOT `jq | while read`: the right side of a pipe runs in a
 # subshell, so an `exit 1` in there only fails the step while the pipeline happens to be the last
 # command in this cmd. Appending any line below would have silently turned this assertion into a
@@ -847,55 +850,21 @@ echo "the committed copy is no longer what this machine loads — re-run a sync 
 exit 1
 '''
 
-[[section]]
-name = "Claude Desktop MCP"
-
-# The GitHub MCP is configured twice, deliberately, because the two clients cannot
-# share a mechanism:
-#   Claude Code    → remote HTTP server (api.githubcopilot.com/mcp/) in the
-#                    user-scoped ~/.claude.json, authenticated by a `headersHelper`
-#                    running `op-agent header`. No local binary involved.
-#   Claude Desktop → local stdio server (mise: aqua:github/github-mcp-server),
-#                    launched by `op run --env-file` (below). Desktop has no
-#                    headersHelper, and it cannot use the remote server either:
-#                    GitHub's remote MCP authenticates through a registered
-#                    GitHub App and Desktop's "Add custom connector" OAuth flow
-#                    does not support it. GitHub's own install-claude.md says to
-#                    run it locally.
-# Both resolve the SAME vault item, so there is still exactly one credential and
-# one source of truth — which is why the PAT is NOT duplicated into a 1Password
-# Environment (see dot-claude/DECISIONS.md, 2026-08-20).
+# The third-party GitHub MCP is GONE from both clients, in favour of Anthropic's own
+# GitHub integration. What was here: a remote `api.githubcopilot.com/mcp/` server in
+# ~/.claude.json behind a bespoke `headersHelper`, plus a LOCAL stdio
+# `github-mcp-server` for Desktop launched through `op run --env-file`. Two surfaces,
+# two mechanisms, one hand-rolled env file, a mise-managed binary, and a guard whose
+# only job was to stop someone pasting a plaintext PAT into the config that drove it.
 #
-# The `gh-mcp-stdio` launcher this section used to link is GONE. Its whole job
-# was to read the PAT and export it into the server's environment, which is what
-# `op run` does natively and is 1Password's own published shape for securing an
-# MCP config. What remains is a committable env-file holding a REFERENCE.
-[[section.link]]
-src = "gh/mcp.env"
-dst = "~/.config/gh/mcp.env"
-
-# Merges one key into Claude Desktop's config rather than linking it — the app
-# owns that file and rewrites it continuously. See the script header.
-[[section.run]]
-on = "sync"
-cmd = "./hooks/claude-desktop-mcp.sh"
-
-[[section.check]]
-# The Desktop entry must never carry an inline token. GitHub's documented config
-# hardcodes GITHUB_PERSONAL_ACCESS_TOKEN in an `env` block; if anyone ever pastes
-# that in, a live classic PAT is sitting in plaintext in the app's config file.
-# The registered entry names only an env-file of `op://` references, so the
-# variable NAME must never appear in this file at all.
-path = "~/Library/Application Support/Claude/claude_desktop_config.json"
-absent = ["GITHUB_PERSONAL_ACCESS_TOKEN"]
-missing_file = "skip"
-message = "a plaintext GitHub PAT is configured in claude_desktop_config.json (it should launch via `op run --env-file`, which resolves the reference from 1Password — see hooks/claude-desktop-mcp.sh)"
-
-# The agent-fetch launchd job (every 15m, `git fetch` every ~/Code repo to keep origin/HEAD
-# warm for agent worktree cuts) is now the top-level `[boom] schedule` entry
-# `{ cmd = "code fetch", every = "15m" }` — boom owns the timer and runs `boom code fetch`
-# (which walks the recorded code dir), so the hand-authored com.alxjrvs.agent-fetch.plist +
-# its link/launchctl section are gone.
+# All of it existed to authenticate someone else's MCP server with our own credential.
+# The native integration is authenticated by Anthropic, needs no PAT here, no local
+# binary, and no plumbing for this repo to reproduce — so the whole surface deletes
+# rather than getting fixed. That is "native over special" applied to the largest
+# bespoke mechanism left in the file.
+#
+# Consequence worth knowing: `claude-git-pat` now has exactly ONE consumer, git's
+# `credential.helper` for agent pushes. It is no longer an MCP credential.
 
 [[section]]
 name = "boom-verify launchd"
