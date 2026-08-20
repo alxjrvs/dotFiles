@@ -23,8 +23,8 @@ Two rules for editing it:
 | `permissions.deny` | The deterministic floor; survives auto/bypass mode. Keychain reads, the `op`/`op-agent` verbs that print a secret value, raw key and cloud-credential files, `git credential`. Asserted by value in three gates. |
 | `permissions.allow` | Pre-approvals for the completion path: `gh pr merge`, `gh stack merge`, and `op run` — the last only because `op-guard.sh` strips its unsafe variants first. |
 | `autoMode.classifyAllShell` | Route every shell command through the classifier, not just arbitrary-exec shapes. |
-| `autoMode.environment` | Prose context for the classifier: which orgs and cloud surfaces this machine legitimately touches. User scope only; it is ignored in project settings. |
 | `autoMode.allow` / `soft_deny` | Classifier prose rules. Each array must lead with the literal `"$defaults"` or the built-in rules for that section are silently discarded. |
+| ~~`autoMode.environment`~~ | **Deliberately absent.** It described one repo's stack while telling the classifier no other orgs existed, in every session on this machine — so it misinformed the control it fed. `autoMode` is ignored in project settings, so a per-project payload cannot be pushed down to the repo it belongs to. If it returns, it names orgs and nothing repo-specific. |
 | `hooks` | `PreToolUse` guards (`op-guard`, `worktree-checkout-guard`, `rebase-guard` — in that order), the `PostToolUse` PR reviewer, and the session-start/stop worktree hooks. The hooks are the enforcement; their scripts carry their own reasoning. |
 
 ## Identity and git
