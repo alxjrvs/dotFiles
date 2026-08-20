@@ -203,10 +203,17 @@ Rules that apply whatever you are touching:
   requests them"*). It manages **Environments**, not vaults, so it replaces nothing `op-agent`
   does. Measured before adopting: it reports `✔ Connected` unattended (the approval gate is at
   tool-call time, per Environment), so it does **not** trip the `claude mcp list | grep ✘` check
-  on the nightly `boom verify`; but a tool call really does block on a desktop prompt, so build
-  nothing unattended on it. Beta, zero consumers today — on the same "earn its place by use"
-  clock as the plugins below, and it should move to a specific repo's checked-in
-  `.claude/settings.json` once one project owns an Environment. Rationale in the repo-root
+  on the nightly `boom verify`. **Two claims here were corrected on 2026-08-20, both measured from
+  a background session.** "A tool call hung until killed" — it does not: `authenticate` returned an
+  account ID promptly, and `list_environments` / `create_environment` both succeeded. The gate is a
+  real approval prompt, not a hang, answerable whenever someone is at the keyboard; the useful half
+  survives, in that an approval nobody is present to grant will not self-resolve, so still build
+  nothing **unattended** on it. And "zero consumers, no Environments exist" — the account already
+  holds **twelve**, most per-repo (`binfinite-app`, `randsum`, `salvage-union`, `butter`,
+  `opt-fall`, …). Environments are an established habit here, not a speculative one. Still beta,
+  still on the "earn its place by use" clock as the plugins below, and it should move to a specific
+  repo's checked-in `.claude/settings.json` once one project owns an Environment — those per-repo
+  names are the candidates. Rationale in the repo-root
   `CLAUDE.md`; registration is reproduced by a boomfile `sync` step and asserted by a `verify`
   step, since `~/.claude.json` is tracked by nothing.
 - **Plugins** — `enabledPlugins` runs **one** marketplace, at `autoUpdate: false` (changed
@@ -684,11 +691,14 @@ automation tier.
     and `git-credential get` each emit a live credential, and Bash stdout *is* model context.
     Nothing structural prevents that; `Bash(op-agent:*)` does. `op-agent` is one verb-dispatched
     script: `secret` / `header` / `git-credential` / `provision` / `status`.
-  - "No wrapper, no exported env var" holds for Claude Code, not everywhere: `gh-mcp-stdio` does
-    `export GITHUB_PERSONAL_ACCESS_TOKEN` into a long-lived server process, because Claude Desktop
-    supports neither `headersHelper` nor a `*_COMMAND` resolver. It is the best available there and
-    still beats a literal PAT in `claude_desktop_config.json` — just don't read the general claim
-    as covering it.
+  - "No wrapper, no exported env var" now holds **everywhere** (changed 2026-08-20). It used to
+    carry an exception: `gh-mcp-stdio` did `export GITHUB_PERSONAL_ACCESS_TOKEN` into a long-lived
+    server process, because Claude Desktop supports neither `headersHelper` nor a `*_COMMAND`
+    resolver. That wrapper is deleted — Desktop launches the server via
+    `op run --env-file=~/.config/gh/mcp.env` instead, which is 1Password's own published shape and
+    needs no script of ours. The token still reaches that one server's environment (`op run`
+    injects it there by design), so the *residency* is unchanged; what is gone is the bespoke
+    reader and the second code path.
 - **Zero measured calls on an MCP server means "broken or unused", and the two are
   indistinguishable from usage data alone.** Check `claude mcp list` before concluding either;
   `boom verify` fails when a server reports `✘` or `! Needs authentication` — but it only
@@ -698,9 +708,9 @@ automation tier.
   `op run --env-file=.env -- <server>` (`boom mcp add`) with `op://` references in a committable
   `.env`, resolved in-process and off disk. **This is 1Password's own published recommendation for
   MCP servers** (their Nov 2025 guidance prescribes exactly it), so it is vendor-endorsed rather
-  than invented here — but note **it currently has zero instances in this repo**: every live
-  consumer is one of the native-hook paths below, which the framing calls the exception. Treat it
-  as the pattern for the next server we install, not as a description of what runs today.
+  than invented here. **It had zero instances in this repo until 2026-08-20**; Claude Desktop's
+  GitHub MCP is now the first, via `~/.config/gh/mcp.env`. So this is no longer only "the pattern
+  for the next server we install" — it describes something that runs today.
   Surfaces we don't control use the tool's own native hook fed by `op` — plugin-bundled stdio
   servers via a `*_COMMAND` resolver var; the GitHub MCP
   (an `http` server at `api.githubcopilot.com/mcp/`) via
@@ -710,8 +720,9 @@ automation tier.
   server on `op://claude-agent/render-api-key/credential`. **Neither is declared in the boomfile**,
   so a fresh machine reproduces neither, and `boom verify`'s `claude mcp list | grep ✘` check
   cannot see an *absent* server — only a configured-and-failing one. Claude Desktop supports neither, so
-  it runs a *local* stdio `github-mcp-server` via `~/.local/bin/gh-mcp-stdio`, which resolves the
-  same vault item in-process — never an `env` block with a literal PAT. A resolved secret never
+  it runs a *local* stdio `github-mcp-server` via `op run --env-file=~/.config/gh/mcp.env`, which
+  resolves the same vault item in-process — never an `env` block with a literal PAT, and since
+  2026-08-20 never a wrapper script of ours either. A resolved secret never
   enters git, and never write a `${VAR}` into a git-tracked `.mcp.json` (`claude mcp add` can
   expand it back into the tracked file).
 - **Agent git auth resolves the PAT through `op`, like every other secret.** A **classic**

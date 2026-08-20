@@ -745,17 +745,23 @@ name = "Claude Desktop MCP"
 #                    user-scoped ~/.claude.json, authenticated by a `headersHelper`
 #                    running `op-agent header`. No local binary involved.
 #   Claude Desktop → local stdio server (mise: aqua:github/github-mcp-server),
-#                    launched by gh-mcp-stdio. Desktop has no headersHelper, and
-#                    it cannot use the remote server either: GitHub's remote MCP
-#                    authenticates through a registered GitHub App and Desktop's
-#                    "Add custom connector" OAuth flow does not support it.
-#                    GitHub's own install-claude.md says to run it locally.
-# Both resolve the SAME vault item through the SAME `op` primitive, so there is
-# still exactly one credential and one source of truth.
+#                    launched by `op run --env-file` (below). Desktop has no
+#                    headersHelper, and it cannot use the remote server either:
+#                    GitHub's remote MCP authenticates through a registered
+#                    GitHub App and Desktop's "Add custom connector" OAuth flow
+#                    does not support it. GitHub's own install-claude.md says to
+#                    run it locally.
+# Both resolve the SAME vault item, so there is still exactly one credential and
+# one source of truth — which is why the PAT is NOT duplicated into a 1Password
+# Environment (see dot-claude/DECISIONS.md, 2026-08-20).
+#
+# The `gh-mcp-stdio` launcher this section used to link is GONE. Its whole job
+# was to read the PAT and export it into the server's environment, which is what
+# `op run` does natively and is 1Password's own published shape for securing an
+# MCP config. What remains is a committable env-file holding a REFERENCE.
 [[section.link]]
-src = "hooks/gh-mcp-stdio.sh"
-dst = "~/.local/bin/gh-mcp-stdio"
-mode = "755"
+src = "gh/mcp.env"
+dst = "~/.config/gh/mcp.env"
 
 # Merges one key into Claude Desktop's config rather than linking it — the app
 # owns that file and rewrites it continuously. See the script header.
@@ -767,11 +773,12 @@ cmd = "./hooks/claude-desktop-mcp.sh"
 # The Desktop entry must never carry an inline token. GitHub's documented config
 # hardcodes GITHUB_PERSONAL_ACCESS_TOKEN in an `env` block; if anyone ever pastes
 # that in, a live classic PAT is sitting in plaintext in the app's config file.
-# The launcher takes no args and no env, so this string must simply never appear.
+# The registered entry names only an env-file of `op://` references, so the
+# variable NAME must never appear in this file at all.
 path = "~/Library/Application Support/Claude/claude_desktop_config.json"
 absent = ["GITHUB_PERSONAL_ACCESS_TOKEN"]
 missing_file = "skip"
-message = "a plaintext GitHub PAT is configured in claude_desktop_config.json (use gh-mcp-stdio, which resolves it from 1Password)"
+message = "a plaintext GitHub PAT is configured in claude_desktop_config.json (it should launch via `op run --env-file`, which resolves the reference from 1Password — see hooks/claude-desktop-mcp.sh)"
 
 # The agent-fetch launchd job (every 15m, `git fetch` every ~/Code repo to keep origin/HEAD
 # warm for agent worktree cuts) is now the top-level `[boom] schedule` entry
