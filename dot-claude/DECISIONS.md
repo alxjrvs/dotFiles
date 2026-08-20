@@ -59,6 +59,65 @@ the findings:
 
 ## Permissions & security
 
+### Every Claude Code update re-prompted for macOS file access (2026-08-19)
+
+The symptom was a chore: after each update, a burst of *"Claude Code 2.1.X wants to access data
+from other apps"* dialogs. The cause is that **macOS TCC keys a grant to the executable's
+absolute path**, and the native installer stages every release at its own
+`~/.local/share/claude/versions/<ver>`. A new path is a new client. There is no drift here and
+nothing was misconfigured — the design simply guarantees the prompt returns forever.
+
+Measured rather than assumed, because the obvious theory was wrong. The plausible story is that
+macOS re-prompts because the *code hash* changed on each build. It does not: the `csreq` column
+on all 76 accumulated rows is **NULL**, so no code requirement is pinned at all. Path is the only
+discriminator, which is what makes the fix a one-liner in principle — stop moving the path — and
+also what rules out signing- or notarization-based explanations.
+
+The scale is the argument for fixing it rather than clicking through it:
+
+| | |
+|---|---|
+| Rows in `TCC.db` for dead Claude versions | 76 |
+| …of which `kTCCServiceSystemPolicyAppData` | 46 (≈ one per update since May 2026) |
+| Services touched | AppData, Documents, Desktop, Downloads, NetworkVolumes, MediaLibrary, AppBundles |
+| `csreq` (code requirement) on those rows | NULL — path-keyed only |
+
+**The fix already existed inside the product, applied to the wrong half of it.** Claude Code
+writes a `ClaudeCode.app` bundle beside `versions/` (`CFBundleIdentifier
+com.anthropic.claude-code`), hardlinks the current release into it, and re-execs through it with
+`macDisclaimResponsibility` — which hands TCC a bundle identity that never moves. But that path
+runs *only* from the background/PTY-host entry point. Foreground TUI sessions exec the versioned
+binary directly. So background Claude has had a permanent identity all along and interactive
+Claude has never had one, which is also why the bundle's rows were already granted every service
+that matters before the switch: **routing the foreground through it cost zero prompts, not even
+one.**
+
+`hooks/claude-launcher.sh` closes the gap by doing what the bg path does — refresh the bundle's
+hardlink, exec the bundle. Three things about it are non-obvious and each is a trap someone will
+otherwise walk into:
+
+- **It cannot be a symlink to the bundle.** Claude Code refreshes that hardlink only when
+  `process.execPath` is under `versions/`, which stops being true the instant any launcher sits
+  in front of it. A bare symlink would work perfectly on the day it was made and silently pin the
+  machine to that version forever after. Refresh-then-exec is the entire reason it is a script.
+- **A launcher here is supported, not a hack.** `claude doctor` names this exact arrangement — a
+  `~/.local/bin/claude` that is not a symlink into `versions/` is reported as *expected* when
+  intentional, and auto-update leaves it alone: *"new versions still install under
+  `$XDG_DATA_HOME/claude/versions`, your launcher decides what runs"*.
+- **The stated cost is version cleanup**, which the same doctor text spells out: the installer
+  keeps every version because it cannot know which one a launcher needs, at ~317MB each. So the
+  launcher prunes (newest three, only on the update transition). That prune is safe *because* the
+  launcher exists — every session it starts has an `execPath` of the bundle, so no live process
+  is holding the file being removed.
+
+What this does not do: the 76 stale rows stay. Removing them means writing to a SIP-protected
+`TCC.db`, which needs Full Disk Access for the writer — a far larger grant than the annoyance
+justifies. They are inert (they name binaries that no longer exist) and cosmetic.
+
+**The generalisable finding is the first paragraph, not the fix.** A recurring permission prompt
+is nearly always an identity that moves, and the question to ask is *what does the OS think the
+client is* — not *what changed in the app*. Here the answer was in a column that was NULL.
+
 ### No issues on foreign repos without express permission (2026-08-19)
 
 Asked for directly by alxjrvs. The gap it closes is real: `permissions.allow` carries

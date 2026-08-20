@@ -132,6 +132,16 @@ pre-commit:
       glob: "{dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
       run: dot-claude/hooks/tests/run.sh
 
+    launcher-tests:
+      # claude-launcher.sh IS `claude` on this machine — every session, hook and
+      # background job execs it — so a regression there is not a stale TCC prompt,
+      # it is a machine with no working `claude`. Hermetic (fake XDG_DATA_HOME in
+      # $TMPDIR, stub releases), no network, <1s. The test file is in the glob for
+      # the same reason cases.tsv is above: editing only the expectations is how a
+      # suite gets weakened, and that must not run nothing.
+      glob: "{hooks/claude-launcher.sh,hooks/tests/*}"
+      run: hooks/tests/claude-launcher.sh
+
 # commit-msg: forward-only hygiene guard. Rejects throwaway subjects (bare
 # "WIP"/"wip" or a single character) so they don't land in permanent history.
 # Existing history is untouched. Convention: `scope: summary` or

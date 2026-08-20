@@ -141,3 +141,16 @@ jobs:
       # separate job would not be a required check.
       - name: guard regression tests
         run: dot-claude/hooks/tests/run.sh
+
+      # hooks/tests/claude-launcher.sh is DELIBERATELY NOT RUN HERE, and the
+      # absence is documented so nobody "fixes" the asymmetry with a step that
+      # cannot pass. Both the launcher and its suite are macOS-only in
+      # implementation — the launcher exists to satisfy macOS TCC, and it uses
+      # BSD `stat -f %i` for the hardlink identity check, which GNU coreutils on
+      # this runner does not accept. Making it portable would add code for a
+      # platform where the problem does not exist.
+      #
+      # The gate is lefthook's `launcher-tests`, which runs on the Mac this repo
+      # configures, and where every commit is made. Adding a macos-latest job
+      # instead would create a second required-check context; see the
+      # step-not-job note above.

@@ -717,6 +717,43 @@ done
 '''
 
 [[section]]
+name = "Claude Code launcher"
+
+# Replaces the symlink the native installer puts at ~/.local/bin/claude, to give
+# Claude Code a STABLE macOS TCC identity. macOS keys a file-access grant to the
+# executable's absolute PATH (csreq is NULL on those rows — the code hash is not
+# pinned), and the installer stages every release at its own
+# ~/.local/share/claude/versions/<ver>, so each update is a brand-new client and
+# every "wants to access data from other apps" prompt comes back. Measured on
+# 2026-08-19: 76 accumulated rows in TCC.db, 46 of them
+# kTCCServiceSystemPolicyAppData, one per update since May.
+#
+# This is NATIVE, not bespoke, which is the only reason a second bash script is
+# allowed to exist beside op-agent. Claude Code already ships the stable identity
+# — ClaudeCode.app, CFBundleIdentifier com.anthropic.claude-code — and already
+# re-execs through it with responsibility disclaimed, but only on the
+# background/PTY-host path, never for the foreground TUI. The launcher applies
+# Anthropic's own mechanism to the case Anthropic left out. The bundle identity
+# was ALREADY granted every service that matters (Documents, Desktop, Downloads,
+# AppData, MediaLibrary, NetworkVolumes) by those bg sessions, so the switch
+# costs zero prompts, not even one.
+#
+# `claude doctor` names this arrangement explicitly and calls it expected when
+# intentional: a launcher here that is not a symlink into versions/ is left alone
+# by auto-update — "new versions still install under $XDG_DATA_HOME/claude/
+# versions, your launcher decides what runs". It also disables automatic version
+# cleanup, which is why the script prunes (newest three kept). Full rationale,
+# including why a bare symlink to the bundle would silently freeze the machine on
+# one version, is in the script header.
+#
+# To hand the launcher back: drop this section, `rm ~/.local/bin/claude`, then
+# `claude update`.
+[[section.link]]
+src = "hooks/claude-launcher.sh"
+dst = "~/.local/bin/claude"
+mode = "755"
+
+[[section]]
 name = "Claude Desktop MCP"
 
 # The GitHub MCP is configured twice, deliberately, because the two clients cannot
