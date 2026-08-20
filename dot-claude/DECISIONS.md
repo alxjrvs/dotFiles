@@ -163,8 +163,11 @@ not become the same action:
   `~/.claude/settings.json` symlink holding a superseded 10-entry `enabledPlugins`, so the
   four-plugin removal never took effect for ~13 days while every session paid ~13,840 extra bytes
   of skill descriptions. The clean-clone check cannot catch this by design — it asks whether the
-  *source* changed, never whether the destination still points at it. A symlink-integrity verify
-  step now covers it.
+  *source* changed, never whether the destination still points at it. **But boom already caught
+  it**: `boom verify` natively reports `exists but is not our symlink` for every managed link
+  (measured on `~/.hushlogin`, exit 1). It was detected and unseen — the verify timer silently
+  never ran for 28 days, and its findings died in a log until `notify` surfaced them. The gap was
+  notification, not detection, so a bespoke check added here was deleted the same day.
 
 The last one is the whole finding in miniature: **a file that describes the machine will always be
 able to describe a machine that does not exist.** The enforcement layer was healthy throughout —
