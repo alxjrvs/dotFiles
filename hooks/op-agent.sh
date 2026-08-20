@@ -349,24 +349,59 @@ cmd_audit() {
     echo "op-agent: audit manifest not found: $manifest" >&2
     return 2
   fi
+  # Comments and blank lines are stripped so the manifest can explain itself.
+  local expected
+  expected="$(sed -e 's/[[:space:]]*#.*$//' -e '/^[[:space:]]*$/d' "$manifest" | LC_ALL=C sort)"
+
+  local rc=0
+
+  # 0. Every declared item must be RESOLVED by something in this repo. Deliberately
+  #    FIRST and above the op/jq guard: this is a repo-integrity check, so it must
+  #    still run on a machine with no `op`, where the vault half is skipped.
+  #
+  #    The manifest's own rule is that an entry earns its place by having a named
+  #    consumer — and that rule was prose until now. `render-api-key` sat in the
+  #    vault naming a `render` MCP server that existed in no scope, and passed this
+  #    audit every time, because membership and casing were all that was checked.
+  #    An agent-readable vault IS the blast radius, and SA vault access is immutable
+  #    after creation, so membership is the only lever there is; an orphan widens it
+  #    for nothing.
+  #
+  #    A MENTION is not a consumer, so this looks for an `op://` RESOLUTION ref and
+  #    excludes three things that mention items without resolving them: the manifest
+  #    itself, DECISIONS.md (history, which discusses items precisely because they
+  #    were removed), and the guard fixtures under tests/ (which name arbitrary
+  #    items to assert a DENY, so a fixture would vouch for anything).
+  local root refs orphans=""
+  root="$(cd -- "$(dirname -- "$manifest")" && pwd)"
+  refs="$(grep -rho 'op://[a-z0-9-]*/[a-z0-9-]*' "$root" \
+    --exclude="$(basename -- "$manifest")" \
+    --exclude=DECISIONS.md \
+    --exclude-dir=.git \
+    --exclude-dir=tests \
+    2> /dev/null | sed 's|.*/||' | LC_ALL=C sort -u)"
+  while IFS= read -r item; do
+    [[ -n "$item" ]] || continue
+    printf '%s\n' "$refs" | grep -qxF "$item" || orphans="$orphans $item"
+  done <<< "$expected"
+  if [[ -n "$orphans" ]]; then
+    echo "op-agent: $manifest declares items nothing in this repo resolves:$orphans" >&2
+    echo "  An entry earns its place by having a named consumer. Remove it, or add the consumer." >&2
+    rc=1
+  fi
+
   if ! command -v op > /dev/null 2>&1 || ! command -v jq > /dev/null 2>&1; then
-    echo "op-agent: op/jq unavailable — vault audit skipped (advisory)"
-    return 0
+    echo "op-agent: op/jq unavailable — vault half of the audit skipped (advisory)"
+    return $rc
   fi
 
   _load_sa
   local actual
   actual="$(op item list --vault "$VAULT" --format=json 2> /dev/null | jq -r '.[].title' 2> /dev/null | LC_ALL=C sort)"
   if [[ -z "$actual" ]]; then
-    echo "op-agent: could not list vault ($VAULT), or it is empty — vault audit skipped (advisory)"
-    return 0
+    echo "op-agent: could not list vault ($VAULT), or it is empty — vault half skipped (advisory)"
+    return $rc
   fi
-
-  # Comments and blank lines are stripped so the manifest can explain itself.
-  local expected
-  expected="$(sed -e 's/[[:space:]]*#.*$//' -e '/^[[:space:]]*$/d' "$manifest" | LC_ALL=C sort)"
-
-  local rc=0
 
   # 1. kebab-case. The invariant exists because every op:// ref is re-parsed by
   #    `sh -c`, so a space word-splits and the resolve fails silently. Asserting
