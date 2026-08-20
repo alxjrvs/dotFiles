@@ -184,7 +184,6 @@
       "$defaults",
       "Bash(bun run check:*)",
       "Bash(bun run test:*)",
-      "Bash(bun run typecheck:workspaces)",
       "Bash(gh issue view:*)",
       "Bash(boom verify:*)",
       "Bash(boom plan:*)",

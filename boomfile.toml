@@ -1,4 +1,4 @@
-# boom's own self-wiring, folded into the reconcile it already runs (baseline: boom 0.26.0) —
+# boom's own self-wiring, folded into the reconcile it already runs —
 # so these stop being hand-rolled `run`/plist steps below:
 #   - skill_on_sync: regenerate ~/.claude/skills/boom/SKILL.md from the running binary each
 #     sync, so the self-describing skill never lags a `boom upgrade` (replaces the
@@ -300,7 +300,7 @@ mode = "755"
 
 # worktree-publish.sh's own suite, separate for the same reason: it asserts on which
 # refs exist on a bare origin afterwards, which is neither a `permissionDecision`
-# nor a HEAD commit. 9 of its 12 cases are "must NOT push", which a do-nothing hook
+# nor a HEAD commit. Most of its cases are "must NOT push", which a do-nothing hook
 # passes trivially — `publishes_unpushed` is the load-bearing one, and the header
 # records the negative control that proves the harness discriminates.
 [[section.link]]
@@ -318,7 +318,7 @@ src = "dot-claude/loop.md"
 dst = "~/.claude/loop.md"
 
 # A glob `src` places every match under `dst` (a directory) — the old `glob` resource, now
-# just a `link` whose src carries a wildcard (boom >= 0.14.0).
+# just a `link` whose src carries a wildcard.
 [[section.link]]
 src = "dot-claude/skills/*"
 dst = "~/.claude/skills/"
@@ -331,7 +331,7 @@ dst = "~/.claude/skills/"
 # brew/npm, whose builds do not auto-update. Only installs when `claude` is
 # missing; the CLI updates itself thereafter.
 #
-# The predicate is `unless` rather than hand-rolled into `cmd` (boom >= 0.22): a skipped step
+# The predicate is `unless` rather than hand-rolled into `cmd`: a skipped step
 # now says so in the report instead of a `||` short-circuit pretending to converge. `timeout`
 # because this is a network fetch piped to a shell — reachable from an unattended sync, where a
 # hang would block the whole reconcile with nobody watching.
@@ -375,7 +375,7 @@ jq -e '.mcpServers["1password"]' ~/.claude.json >/dev/null 2>&1 || { echo "1Pass
 '''
 
 # The three settings.json guardrails below were escaping-heavy `grep`-in-a-`run` steps; they
-# are now declarative `check` resources (boom >= 0.13.0), evaluated on `boom verify` and folded
+# are now declarative `check` resources, evaluated on `boom verify` and folded
 # into its exit code + `--json` report. `missing_file = "skip"` preserves the old `|| exit 0`
 # (an absent settings.json is not a failure). Note the Fable pattern is a JS regex (`\s`), not
 # the POSIX `[[:space:]]` the grep used.
@@ -526,7 +526,7 @@ dst = "~/.config/zsh/"
 
 [[section]]
 name = "packages"
-# One `pkg` array per manager (boom >= 0.14.0), replacing the old scalar `brewfile` +
+# One `pkg` array per manager, replacing the old scalar `brewfile` +
 # boolean `mise`. `brew` runs `brew bundle` over `file`; `mise` reads the repo's mise config.
 pkg = [
   { manager = "brew", file = "Brewfile" },
@@ -667,7 +667,7 @@ type = "string"
 value = "$HOME/Screenshots"
 
 # The screencapture `location` default above writes to ~/Screenshots; ensure it exists.
-# Declarative `dir` (boom >= 0.13.0) replaces the mkdir run step.
+# Declarative `dir` replaces the mkdir run step.
 [[section.dir]]
 path = "~/Screenshots"
 

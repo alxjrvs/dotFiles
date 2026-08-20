@@ -81,9 +81,11 @@ jobs:
           # membership of the deny ARRAY, and passing the value via --arg means it
           # is data rather than a pattern — which is what `-F` was working around.
           #
-          # All SEVEN entries, not three: the keychain read, both `Read()` rules,
-          # and `Bash(~/.local/bin/op-agent:*)` were previously deletable with
-          # every gate green.
+          # EVERY entry in the list below, not a chosen few. An earlier version
+          # asserted only the `op`/`op-agent`/`git credential` shapes, so the
+          # keychain read, both `Read()` rules and `Bash(~/.local/bin/op-agent:*)`
+          # were deletable with every gate green. The loop is the inventory; keep
+          # it in sync with `permissions.deny` rather than counting it here.
           for d in \
             'Bash(security find-generic-password:*)' \
             'Bash(op read:*)' \
@@ -152,16 +154,26 @@ jobs:
       # session. Capping the overflow destination would push content back into the
       # loaded file, inverting the whole mechanism. Hence an explicit list, never a
       # *.md glob.
+      # Per-file ceilings, because the two files have different jobs and a ceiling
+      # set too close to current size stops forcing DISPLACEMENT and starts forcing
+      # THRASH — you delete whatever is cheapest to delete, not whatever is least
+      # worth loading. Each is set to leave roughly a fifth free: enough for a
+      # legitimate addition, not enough for a section.
       - name: always-loaded context budget
         run: |
           fail=0
           for f in dot-claude/CLAUDE.md CLAUDE.md; do
+            case "$f" in
+              dot-claude/CLAUDE.md) limit=2500 ;;
+              CLAUDE.md)            limit=3000 ;;
+              *)                    continue ;;
+            esac
             n=$(wc -c < "$f" | tr -d ' ')
-            if [ "$n" -gt 2500 ]; then
-              echo "$f: $n bytes, ceiling 2500 (~$(( (n - 2500) / 4 )) tokens over)"
+            if [ "$n" -gt "$limit" ]; then
+              echo "$f: $n bytes, ceiling $limit (~$(( (n - limit) / 4 )) tokens over)"
               fail=1
             else
-              echo "ok $f ($n bytes)"
+              echo "ok $f ($n bytes, ceiling $limit)"
             fi
             if grep -nE '[0-9]{4}-[0-9]{2}-[0-9]{2}' "$f"; then
               echo "$f: dated claim(s) above — a date makes it a record, not a rule"
@@ -226,7 +238,7 @@ jobs:
 
       # worktree-publish.sh is the only hook here that writes to a REMOTE, so it
       # is asserted that way: `publishes_unpushed` proves it actually publishes,
-      # and the 9 `skip_*`/`never_force` cases prove it is not an indiscriminate
+      # and the `skip_*`/`never_force` cases prove it is not an indiscriminate
       # `push --force`. A step in THIS job for the same reason as the two above —
       # the required context is ["lint"], so a separate job would not be required.
       - name: worktree-publish regression tests

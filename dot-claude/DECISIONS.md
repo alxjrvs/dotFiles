@@ -10,6 +10,37 @@ and it is paid for on every request of every session.
 
 When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* here.
 
+## How to write a number so it cannot rot
+
+A count is a **measurement**, and a measurement is only ever true at a moment. So:
+
+> **A number may state what was observed once, or it may be enforced by a check. It may never
+> describe how the system currently is.** In a dated entry below, write any count you like — the
+> date is what makes it honest. Anywhere that describes the present tense, name the authority
+> instead of the value: *"the cases in `cases.tsv`"*, not *"138 cases"*; *"every entry in the deny
+> array"*, not *"all 11 entries"*; *"most cases here assert the hook did nothing"*, not *"9 of 12"*.
+
+That is not pedantry — it is the failure this file exists to record. `CLAUDE.md` said the guard
+suite had "127 hermetic cases" when it had 138, and a section here said "33 cases" when it had
+138. Both read as precise and authoritative, and both were wrong. **The more exactly a count is
+stated, the more confidently it lies later.**
+
+Three corollaries, each mechanical:
+
+- **Never state a threshold that a check already enforces.** Say *"a byte ceiling, enforced by
+  `always-loaded context budget`"* and let that check own the number. Two copies of a constant
+  desync silently, and both look authoritative.
+- **Never annotate a feature with the version it arrived in.** `boom >= 0.14.0` on a feature this
+  boomfile actively uses conveys nothing — the feature working is the proof it exists — and it
+  only ages. A version belongs in a dated entry, or beside code that must be re-measured, never as
+  a decoration on working config.
+- **Never cross-reference by position.** *"Seventeen lines above"*, *"the section below"*, *"two
+  bullets up"* — all rot on the next edit. Name the thing.
+
+Counts that survive are the ones with an owner: a `jq` assertion, a `wc -c` gate, a test that
+fails. If a number matters enough to write down, make something check it; if it does not, describe
+the invariant and drop the digit.
+
 ---
 
 ## 2026-08-20 — `CLAUDE.md` was cut 97%, and the disease was append-only correction
@@ -29,11 +60,11 @@ old copy was never deleted.
 
 **The disease is not length.** It is that a correction got written as a new paragraph *beside*
 the wrong claim instead of replacing it. The file carried 22 self-corrections and four
-correction-of-correction chains, one of which existed only because a correction two bullets above
-it was never propagated. The sharpest specimen: a paragraph asking for *"a `boom verify` step
-asserting every agent-vault title matches `^[a-z0-9]+(-[a-z0-9]+)*$`"* sat seventeen lines below
-the description of `op-agent audit`, which asserts exactly that and is wired at
-`boomfile.toml`. **The prose outlived its own fix and went on requesting completed work.**
+correction-of-correction chains, one of which existed only because a nearby correction was never
+propagated. The sharpest specimen: a paragraph asking for *"a `boom verify` step asserting every
+agent-vault title matches `^[a-z0-9]+(-[a-z0-9]+)*$`"* sat in the same section as the description
+of `op-agent audit` — which asserts exactly that, and is wired as a `boomfile.toml` verify step.
+**The prose outlived its own fix and went on requesting completed work.**
 
 That predicts the failure mode of a partial trim: cutting narration while leaving the
 correction-pairs in place preserves every wrong claim. Hence the stub's closing rule — *correct a
@@ -186,8 +217,8 @@ branch that has declared what "latest" means for it should not be silently retar
 
 ### Negative controls — re-run these if you change the hook
 
-9 of the 14 cases assert the hook did **not** touch something, and a hook that does nothing at
-all passes every one of them. So a green run is not evidence on its own:
+Most cases assert the hook did **not** touch something, and a hook that does nothing at all
+passes every one of them. So a green run is not evidence on its own:
 
 - Invert two expectations (`ff_virgin_behind` must move → assert it did not; `skip_diverged` must
   not move → assert it did): expect **exactly 2 failures**. Got exactly 2.
@@ -673,8 +704,8 @@ Consequences worth keeping:
 - **The pairing is asserted, not trusted.** `permissions.allow` carries `Bash(op run:*)` so the
   recommended shape is deterministic rather than left to the probabilistic classifier — which this
   file already records deciding identically-shaped commands differently. That pre-approval is only
-  safe with the guard in front of it, so all three enforcement points (`boomfile.toml`,
-  `lefthook.yml`, `lint.yml`) now also assert `op-guard.sh` is wired. Un-wiring the hook while
+  safe with the guard in front of it, so every enforcement point (`boomfile.toml`,
+  `lefthook.yml`, `lint.yml`) now also asserts `op-guard.sh` is wired. Un-wiring the hook while
   leaving the allow entry is the single edit that would turn this change from narrower into wider.
 - **53 regression cases written before the deny list was relaxed**, and a negative control run
   afterwards (inverting two expectations produced exactly two failures), because a new block that
@@ -777,7 +808,7 @@ Stated plainly here so the deny list is never mistaken for a security boundary.
 **It is nonetheless now tested.** Until 2026-08-05 the entire `deny` array could be deleted and
 lefthook, CI and `boom verify` all stayed green — the "deterministic floor" had no regression test
 at all, while the four cosmetic-by-comparison settings guardrails did. A floor with no test is not
-a floor, so the three secret-path entries are asserted in all three enforcement points.
+a floor, so every secret-path entry is asserted in every enforcement point.
 
 ### The PR-review hook was the best-instrumented exfil path in the setup (2026-08-05)
 
@@ -902,9 +933,10 @@ Additionally, a leading `cd <path>` in a compound command is now honored via `gi
 
 ### Why the guards have a regression suite
 
-`dot-claude/hooks/tests/` — 33 cases against throwaway git fixtures in `$TMPDIR`; hermetic, no
-network, under 2s. Every case came from a real transcript or a reproduction, and **10 of them fail
-against the pre-fix guards.**
+`dot-claude/hooks/tests/` — cases against throwaway git fixtures in `$TMPDIR`; hermetic, no
+network, seconds. Every case came from a real transcript or a reproduction, and the suite is
+written so that a meaningful subset fails against the pre-fix guards — which is what makes a green
+run evidence rather than decoration. `cases.tsv` is the count; this file is not.
 
 200+ lines of load-bearing, security-relevant shell had no tests, which is exactly how the
 `--dry-run` hole shipped and survived. Add a case before changing a guard.

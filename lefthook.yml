@@ -67,11 +67,12 @@ pre-commit:
           # sidesteps the metacharacter problem that made `-F` necessary: the
           # value is passed as data via --arg, never as a pattern.
           #
-          # All SEVEN entries, not three. The old list asserted `op`/`op-agent`/
-          # `git credential` only, so the keychain read and both `Read()` rules
-          # could be deleted with every gate green — including
+          # EVERY entry in the list below, not a chosen few. The old list asserted
+          # `op`/`op-agent`/`git credential` only, so the keychain read and both
+          # `Read()` rules could be deleted with every gate green — including
           # `Bash(~/.local/bin/op-agent:*)`, the path spelling this repo's own
-          # docs call the one most likely to be copied.
+          # docs call the one most likely to be copied. The loop is the inventory;
+          # keep it in sync with `permissions.deny` rather than counting it here.
           for d in \
             'Bash(security find-generic-password:*)' \
             'Bash(op read:*)' \
@@ -96,8 +97,13 @@ pre-commit:
       glob: "{CLAUDE.md,dot-claude/CLAUDE.md}"
       run: |
         for f in {staged_files}; do
+          case "$f" in
+            dot-claude/CLAUDE.md) limit=2500 ;;
+            CLAUDE.md)            limit=3000 ;;
+            *)                    continue ;;
+          esac
           n=$(wc -c < "$f" | tr -d ' ')
-          [ "$n" -le 2500 ] || { echo "$f is $n bytes, ceiling 2500 — every session pays this. Procedure -> a skill; must hold -> a hook/deny/verify check; a reason -> DECISIONS.md; a settings key -> SETTINGS.md."; exit 1; }
+          [ "$n" -le "$limit" ] || { echo "$f is $n bytes, ceiling $limit — every session pays this. Procedure -> a skill; must hold -> a hook/deny/verify check; a reason -> DECISIONS.md; a settings key -> SETTINGS.md."; exit 1; }
           ! grep -nE '[0-9]{4}-[0-9]{2}-[0-9]{2}' "$f" || { echo "$f: dated claim — records belong in dot-claude/DECISIONS.md, not an always-loaded file."; exit 1; }
         done
 
