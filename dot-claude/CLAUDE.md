@@ -103,12 +103,22 @@ Rules that apply whatever you are touching:
       binary-scoped, `permissions.deny` is evaluated *first*, and `op-guard.sh` by design never
       emits `allow` — so the guard's allow-list entry for `status` can never be reached. The
       other statement in this file, *"it can subtract permission and never add it"*, is the
-      correct one; these two were in direct contradiction. The cost is real: nothing on this
-      machine can check SA-token expiry or PAT health, which is the pre-flight `boom verify` is
-      supposed to run. **To restore it, the deny must be narrowed to the leaking verbs**
-      (`Bash(op-agent secret:*)`, `Bash(op-agent header:*)`,
-      `Bash(op-agent git-credential:*)`) so the guard's allow-list governs the rest — the guard
-      cannot do it alone. Until that lands, treat `op-agent status` as terminal-only.
+      correct one; these two were in direct contradiction.
+    - **But the capability was never lost, and the first draft of this correction got the
+      remedy wrong** (re-measured 2026-08-19). `op-agent status` is reachable through its
+      *designed* consumer: `boom verify --only op-agent` runs it and prints
+      `SA token in keychain` / `git PAT live`. Boom spawns `op-agent` as a child of the boom
+      process, so it is not a Bash **tool** call — neither `permissions.deny` nor any
+      `PreToolUse` hook is consulted. The same is true of `op-agent provision` on sync.
+      **So do not narrow the deny.** An earlier revision of this file proposed narrowing it to
+      the three printing verbs; that would weaken a security control to enable a shape nothing
+      needs, and it would re-open the 2026-08-05 fail-open hole for every verb 1Password adds
+      later. Binary scope stays.
+    - What is actually true: **direct `op-agent` invocation from a Bash tool call is denied by
+      design, and every real consumer reaches it another way** — boom `run` steps, git's
+      `credential.helper`, and MCP `*_COMMAND`/`headersHelper` resolvers all exec the binary
+      themselves. `boom verify` is the agent's supported path to a health check, and it works
+      today.
   - **Why a verb list is safe NOW when it failed before** (this is the whole argument — do not
     re-broaden the rule without it). Enumerating verbs failed in 2026-08-05 because a **deny-list
     fails open**: the list blocked `op-agent secret`, `op read` and `op item get` but not
@@ -234,10 +244,12 @@ Rules that apply whatever you are touching:
   of shapes that provably do not put a secret value on stdout — `op run [--env-file=F] -- CMD`,
   `op inject -i TPL -o OUT`, `op whoami`, `op --version`, `op service-account ratelimit`, and
   `op-agent status`. Everything else `op`-shaped is denied by default. **The `op-agent status`
-  entry is currently dead letter** — `permissions.deny` carries binary-scoped `Bash(op-agent:*)`
-  and is evaluated before any hook, so that shape is denied before this guard is consulted. It is
-  kept here so the allow-list stays correct the moment the deny is narrowed; do not read its
-  presence as evidence the command works.
+  entry is unreachable in practice** — `permissions.deny` carries binary-scoped
+  `Bash(op-agent:*)` and is evaluated before any hook, so that shape is denied before this guard
+  is consulted. That is deliberate and is not being changed: run `boom verify --only op-agent`
+  instead, which reaches `op-agent status` as a boom child process rather than a Bash tool call.
+  The entry stays so the allow-list remains internally correct; do not read its presence as
+  evidence the bare command works.
   - **`op vault list` / `op item list` are deliberately NOT on it**, though they print no secret
     value. This file records separately that `op vault list` "enumerates every vault in the
     account (verified 2026-08-05, no prompt)" through the desktop integration, far outside

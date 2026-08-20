@@ -1,0 +1,80 @@
+# agent-vault.txt — the declared contents of the 1Password vault the Claude
+# service account can read (`claude-agent`, or whatever `BOOM_vault` names).
+#
+# Checked by `op-agent audit agent-vault.txt`, wired as a `boom verify` step.
+# Drift in EITHER direction fails: an item in the vault but not listed here is
+# blast radius nobody reviewed, and an item listed here but absent from the
+# vault means a consumer is about to break.
+#
+# WHY A FILE AND NOT A COMMENT. Two 1Password facts make membership the whole
+# control surface, so it has to be enforceable rather than described:
+#
+#   1. Service-account vault access is IMMUTABLE after creation. 1Password:
+#      "If you want to grant a service account access to additional vaults or
+#      Environments … you'll need to create a new service account." Scope can
+#      never be tightened in place — only the vault's CONTENTS can change.
+#   2. This is an Individual/Family account, so there is no Activity Log and no
+#      service-account usage report (both Business/Teams only). No per-item,
+#      per-timestamp record of what the SA read exists, and that gap is
+#      deliberately accepted (2026-08-19).
+#
+# So: an item added to this vault without a commit is exactly the event the
+# missing audit log would have reported. This file is how it gets reported.
+#
+# RULES
+#   - kebab-case only, `^[a-z0-9]+(-[a-z0-9]+)*$`. Every op:// ref is re-parsed
+#     by `sh -c`, so a space word-splits and the resolve fails silently — the
+#     bug that took down two MCP servers on 2026-07-25.
+#   - One title per line. Trailing `#` comments are stripped.
+#   - An entry earns its place by having a NAMED CONSUMER. If nothing resolves
+#     it, it does not belong in a vault an agent can read.
+
+# ---------------------------------------------------------------------------
+# LIVE — a consumer on this machine resolves these. Verified 2026-08-19.
+# ---------------------------------------------------------------------------
+claude-git-pat            # git credential.helper; GitHub MCP headersHelper; Desktop gh-mcp-stdio
+render-api-key            # Claude Code `render` MCP headersHelper
+gninety                   # NINETY_API_TOKEN_COMMAND in dot-claude/settings.json
+npm-publish-token         # npm/publish.env -> `op run --env-file=npm/publish.env -- npm publish`
+
+# ---------------------------------------------------------------------------
+# PENDING MIGRATION — declared so `boom verify` is green while the move is
+# staged, NOT because they belong here. Each has no consumer on this machine.
+# Remove the line as the item leaves the vault; the check then holds the new,
+# smaller state. Nothing is deleted in 1Password — these are moves.
+#
+#   -> Archive vault (superseded / dead, kept for recovery)
+# ---------------------------------------------------------------------------
+spacebase-api-key         # dead: plugin removed 2026-08-08
+claude-github-pat         # superseded by claude-git-pat; also the lone SECURE_NOTE
+render                    # duplicate of an item already in Private
+
+#   -> CI (GitHub Actions secrets, or 1Password Credential Broker)
+#      These are consumed by workflows, never by this machine. Holding them here
+#      widens the local agent's reach for zero local benefit.
+boom-release-pat
+susrd-release-pat
+google-slides-api-imp
+
+#   -> Project vaults / Environments. Sentry DSNs ship inside client bundles,
+#      so they are not secrets in the sense this vault exists to protect.
+sentry-dsn-srd
+sentry-dsn-itun
+sentry-dsn-itun-functions
+sentry-dsn-discord-bot
+
+# ---------------------------------------------------------------------------
+# INVARIANT VIOLATIONS — these two fail the kebab-case check on purpose, and
+# `boom verify` will stay red until they are renamed in 1Password. Added
+# 2026-08-18 in PascalCase; neither contains a space, so the word-split bug did
+# not fire and the invariant held by luck rather than design. Renaming is safe:
+# item IDs are stable across a rename, so no ref that uses an ID is invalidated.
+#
+#   CloudflarePersonalAgentKey    -> cloudflare-personal-agent-key
+#   PersonalCloudflareGithubCIKey -> personal-cloudflare-github-ci-key
+#
+# Confirm each has a real consumer while renaming — if neither does, they belong
+# in a project vault, not here.
+# ---------------------------------------------------------------------------
+CloudflarePersonalAgentKey
+PersonalCloudflareGithubCIKey
