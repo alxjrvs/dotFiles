@@ -55,6 +55,25 @@
             "command": "command -v caffeinate >/dev/null 2>&1 && (caffeinate -i -w $PPID >/dev/null 2>&1 &) || true"
           }
         ]
+      },
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/worktree-freshness.sh"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/worktree-freshness.sh"
+          }
+        ]
       }
     ],
     "PreToolUse": [

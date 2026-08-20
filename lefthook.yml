@@ -131,6 +131,14 @@ pre-commit:
       # sourced by both guards, so a change there can regress either one.
       glob: "{dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
       run: dot-claude/hooks/tests/run.sh
+    freshness-tests:
+      # worktree-freshness.sh mutates a git worktree (`merge --ff-only`) rather
+      # than returning a permission verdict, so it needs its own harness — see the
+      # header of freshness.sh. Same glob as guard-tests on purpose: both suites
+      # should run whenever anything under hooks/ moves, because the failure mode
+      # being guarded against is editing the expectations instead of the code.
+      glob: "{dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
+      run: dot-claude/hooks/tests/freshness.sh
 
 # commit-msg: forward-only hygiene guard. Rejects throwaway subjects (bare
 # "WIP"/"wip" or a single character) so they don't land in permanent history.
