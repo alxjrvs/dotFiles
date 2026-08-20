@@ -43,6 +43,43 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-08-20 — the third-party GitHub MCP is gone, on both clients
+
+Deleted rather than repaired, in favour of Anthropic's own GitHub integration. What was here was
+two surfaces authenticating **someone else's** MCP server with **our** credential:
+
+- **Claude Code** — a remote `api.githubcopilot.com/mcp/` server in `~/.claude.json`, behind a
+  bespoke `headersHelper`.
+- **Claude Desktop** — a LOCAL stdio `github-mcp-server` (mise `aqua:github/github-mcp-server`)
+  launched through `op run --env-file=~/.config/gh/mcp.env`, because Desktop supports no
+  `headersHelper`.
+
+Two mechanisms, a committed env file, a mise-managed binary, a `sync` step to merge the entry into
+an app-owned config, and a `check` whose only job was to stop someone pasting a plaintext PAT into
+that config. Every piece of it existed to hold a PAT for a third party's server.
+
+**It was also broken, silently.** The Claude Code helper had been repointed at
+`~/.local/bin/gh-mcp-auth-header`, a path that existed nowhere and was tracked by no repo, so no
+`Authorization` header was sent and the client reported *"does not support dynamic client
+registration"* — an error naming neither 1Password nor the helper, which is why the same failure
+was once misread as an OAuth incompatibility and the server deleted instead of fixed. It happened
+twice for the same reason. A verify step now asserts every configured helper is executable, which
+is what surfaced it.
+
+The native integration is authenticated by Anthropic: no PAT here, no local binary, nothing for
+this repo to reproduce on a fresh machine. So the whole surface deletes — `gh/mcp.env`,
+`hooks/claude-desktop-mcp.sh`, the mise tool, the link, the run step, the check, and the positive
+assertion that a `claude-git-pat` helper must exist. That last one mattered: a check requiring the
+presence of plumbing we deliberately removed would have started failing for the opposite of its
+purpose.
+
+**Consequence: `claude-git-pat` now has exactly one consumer**, git's `credential.helper` for
+agent pushes. It is no longer an MCP credential, so the "one credential, three consumers" argument
+for not duplicating it into a 1Password Environment no longer applies — there is nothing left to
+duplicate it for.
+
+This is "native over special" applied to the largest bespoke mechanism left in the boomfile.
+
 ## 2026-08-20 — `CLAUDE.md` was cut 97%, and the disease was append-only correction
 
 `dot-claude/CLAUDE.md` reached 848 lines / 73,070 bytes / ~18,300 tokens, loaded before every

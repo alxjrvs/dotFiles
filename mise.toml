@@ -38,7 +38,6 @@ gh = "latest"           # GH CLI
 # `op run --env-file` (1Password's published shape for an MCP config), which
 # injects the PAT from 1Password rather than storing it in
 # claude_desktop_config.json. Not in the registry; aqua per the fallback order above.
-"aqua:github/github-mcp-server" = "latest"
 delta = "latest"        # syntax-aware git pager
 gitleaks = "latest"     # gitleaks protect — global pre-commit hook
 lefthook = "latest"     # repo-local pre-commit/pre-push runner
