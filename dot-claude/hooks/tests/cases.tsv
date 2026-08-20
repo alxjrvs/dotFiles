@@ -337,3 +337,29 @@ op	nonrepo	op vault delete claude-agent	deny
 op	nonrepo	op item edit claude-git-pat credential=hunter2	deny
 op	nonrepo	op service-account create --expires-in 90d	deny
 op	nonrepo	op somefutureverb --print-everything	deny
+
+# --- REGRESSION: a newline INSIDE quotes is data, not a separator -------------
+# Found by this suite's own author being unable to commit. `_split` correctly keeps
+# a quoted newline in one segment, but the segment list is NEWLINE-DELIMITED, so
+# every consumer's `while read` re-split it — and a commit message with a line
+# beginning `op read ...` arrived at the guard looking like an `op` invocation.
+#
+# This is the same class the heredoc cases above cover, reached by a different
+# road: `-m` prose rather than a heredoc body. A quoted `;` was already handled,
+# which is what made the gap invisible — the quote tracking was never broken, the
+# protocol carrying its output was.
+op	nonrepo	git commit -m "a change\n\nop read op://x/y is denied because it prints values"	allow
+op	nonrepo	git commit -m "notes\nop item get stays denied"	allow
+op	nonrepo	git commit -m "notes\nop-agent header op://x/y"	allow
+# The same defect, same fix, for rebase-guard: prose that happens to start a line
+# with a real push spelling must not be read as a push.
+rebase	primary	git commit -m "notes\ngit push origin main"	allow
+rebase	primary	git commit -m "why we avoid\ngit push origin HEAD:main"	allow
+# MUST STILL SPLIT: an UNQUOTED newline is a separator. This is what proves the fix
+# narrowed the split to quoted newlines rather than disabling newline splitting.
+# (rebase-guard's `git status\ngit push origin main` already asserts the same thing
+# further up — not repeated here, since a duplicate case adds no coverage and only
+# inflates the count.)
+op	nonrepo	echo hi\nop read op://x/y	deny
+# MUST STILL DENY: a real interpreter payload spanning a quoted newline.
+op	nonrepo	sh -c "echo hi\nop read op://x/y"	deny

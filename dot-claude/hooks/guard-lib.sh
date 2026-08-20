@@ -62,7 +62,22 @@ _split() { # $1 = command -> one simple command per line
   while [ "$i" -lt "$n" ]; do
     c=${s:i:1}
     if [ -n "$q" ]; then
-      cur=$cur$c
+      # A newline inside quotes is DATA, and the quote tracking here always knew
+      # that. The bug was downstream: this function emits one segment per LINE, so
+      # a segment legitimately containing a newline was re-split by every caller's
+      # `while read`. A commit message with a line starting `op read …` or
+      # `git push origin main` then arrived at a guard looking like a real command,
+      # which is how writing about these guards became impossible to commit.
+      #
+      # Collapsing it to a space keeps the segment on one line without changing
+      # tokenization — the program name and its flags are unaffected, and prose is
+      # only ever inspected as prose. An UNQUOTED newline still separates commands,
+      # which the `echo hi\nop read` and `git status\ngit push` cases assert.
+      if [ "$c" = "$_NL" ]; then
+        cur=$cur' '
+      else
+        cur=$cur$c
+      fi
       [ "$c" = "$q" ] && q=''
       i=$((i + 1))
       continue
