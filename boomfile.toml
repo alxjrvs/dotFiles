@@ -787,8 +787,15 @@ cmd = "op-agent audit agent-vault.txt"
 # exists nowhere and is tracked by no repo, so no Authorization header was sent and the client
 # reported "does not support dynamic client registration": the same misleading error that once
 # got this server deleted instead of fixed. A name match cannot catch that; an executability
-# check can. `render-api-key` is dropped because no `render` server exists in any scope, so
-# requiring its helper was asserting a consumer that had already been removed.
+# check can.
+#   `render-api-key` is dropped — but NOT, as this comment once claimed, because "no `render`
+# server exists in any scope". One did, and that false claim is what made the gap below read as
+# already-handled. Corrected in place rather than deleted; the incident is in DECISIONS.md.
+#   THE GAP, named because nothing here closes it: this proves the helper BINARY is executable,
+# never that its `op://` ref RESOLVES. A helper aimed at a deleted vault item is executable, exits
+# 0 and emits `{}` — green here while the server is dead. Closing it means resolving a secret on an
+# unattended launchd timer, which is a worse trade than the blind spot. `claude mcp list` is the
+# control that catches this class.
 [[section.run]]
 on = "verify"
 cmd = '''

@@ -43,6 +43,47 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-08-22 — a `headersHelper` can point at a deleted vault item and still pass `boom verify`
+
+Asked whether frequently-used keys could be moved into the agent vault. The answer was **nothing
+to move**: this machine resolves exactly the items `agent-vault.txt` declares, each with a live
+consumer, and `op item list --vault claude-agent` agreed with the file. The vault was already
+reduced to its consumers on 2026-08-19 and had not drifted. Recording it because "we checked and
+there was no work" is the finding, and without a note the same audit gets redone.
+
+**What the audit did turn up, running the other way.** The `render` MCP server (project-scoped to
+`~/Code/SU-SRD`) carried a local-scope `headersHelper` resolving
+`op://claude-agent/render-api-key/credential` — an item that is not in the vault. `claude mcp list`
+reported `render ✘ Failed to connect — Incompatible auth server: does not support dynamic client
+registration`, while `github`, on the identical `op-agent header` mechanism, connected. So the
+service-account path was healthy and only the missing item was broken.
+
+**The blind spot, and why it stays open.** The `~/.claude.json` assertion in `boomfile.toml` proves
+each helper's BINARY is executable. `op-agent` is executable, so the check was green the whole
+time; a helper whose `op://` ref no longer resolves exits 0 and emits `{}`, which is
+indistinguishable from success at that layer. Closing it means resolving a secret at verify time,
+and `boom verify` runs unattended from launchd — a timer that resolves credentials is a standing
+exfiltration surface pointed at the one vault the SA can read. Worse than the blind spot, so it is
+left open and named in the boomfile comment instead. `claude mcp list` is the control that catches
+this class, which `SU-SRD/docs/architecture/agent-tooling.md` already prescribes.
+
+**A comment that was wrong in the direction that hides the bug.** The same boomfile block claimed
+`render-api-key` was dropped "because no `render` server exists in any scope". A server did exist,
+in two scopes. That framing is what made the gap above read as already-handled, so it was replaced
+rather than deleted — per this file's rule that a wrong line is corrected in place.
+
+**Three guardrails refused this work in a row, and each refusal was right.** op-guard denied
+`op item move --destination-vault claude-agent` (inbound moves are self-escalation — an agent
+granting itself a credential); the auto-mode classifier denied `claude mcp remove`, which is the
+restored human gate from removing `skipAutoPermissionPrompt` doing its job on a mutating config
+change; and SU-SRD's own cutover plan denied deleting `render` from `.mcp.json`, because that is a
+**P8** step and P8 is gated behind a P7 that is still red. The pull each time was to route around
+a control that was correctly saying no — including one temptation to reach the blocked edit with
+`jq` instead, which would have been the same mutation evading the same gate. The near-miss worth
+recording: deleting a documented server over a misleading auth error is precisely how the GitHub
+MCP was once removed instead of repaired, and the error string here was character-for-character
+the one in that incident.
+
 ## 2026-08-20 — `op item list` and `op item move` are allowed, in one direction
 
 op-guard's allow-list now permits `op item list` and `op item move`. `op item get`, `edit`,
