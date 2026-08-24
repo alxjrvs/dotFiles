@@ -43,6 +43,86 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-08-24 — a port block per worktree, and a canary on the workarounds
+
+Both of these were declined earlier the same day, in the entry below, and then asked for
+explicitly. What follows is what they cost and what they actually assert.
+
+### Per-worktree port blocks
+
+Two agents told to "run the app" race for one socket. The loser reports EADDRINUSE and calls the
+feature broken; worse, a framework that auto-increments binds the next port and the agent drives a
+browser against **another worktree's server**, passing a check of code it never loaded. That second
+mode is why this is not merely an annoyance: it produces a false green.
+
+`worktree-port.sh` derives a 10-port block from the worktree's own name — `20000 + (cksum(name) %
+1000) * 10` — announces it as `additionalContext`, and appends `PORT=<base>` to the worktree's
+`.env` when one is present.
+
+**Derived, not allocated**, and that is the whole design. A registry of live reservations needs a
+lock, a stale-entry reaper and somewhere to live; a derivation needs none of that, and being stable
+across sessions is what makes it safe to write into a file and safe to print twice. The cost is
+birthday collisions — two worktrees of one repo share a block about 1 in 1000, and nothing here can
+prevent that. It degrades to exactly the status quo, one EADDRINUSE, which is the argument for
+accepting it: the failure mode of the fix is the bug it replaces, not a new one.
+
+**Blocks rather than single ports** because a real app is rarely one listener. Web plus API plus
+websocket wants three, and `base`..`base+9` keeps a worktree's services inside its own range.
+
+The `.env` write is what makes it enforcement rather than advice — this repo's own rule is that
+describing a control is not the control. Four conditions gate it, and each is a way it could
+otherwise do damage: the file must already exist (a repo with no dotenv convention does not acquire
+one), must not be a symlink (a linked `.env` points at the primary checkout, and appending through
+it would edit the user's real file), must be gitignored (so the line can never become a tracked
+diff an agent commits), and must not already set `PORT` (an explicit value was a decision).
+
+`tests/port.sh`, 11 cases. Negative controls, both run: a stub `exit 0` fails 5
+(`emits_block`, `deterministic`, `distinct_names`, `writes_env`, `no_env_still_emits`); inverting
+`writes_env` and `skip_env_existing_port` fails exactly those 2. `skip_env_symlink` is the case
+worth keeping forever — it is the one that proves the hook cannot write into the primary checkout.
+
+### `hooks/claude-canary.sh` — inverted polarity, on purpose
+
+Two of the three worktree hooks are workarounds for client defects measured against 2.1.237. The
+client self-updates, so that version is replaced silently and repeatedly, and a workaround whose
+cause is gone is not inert: `worktree-publish.sh` still pushes branches to origin at idle,
+`worktree-freshness.sh` still mutates worktrees. This is the failure mode `CLAUDE.md` already names
+— a measurement against a tool version expires unnoticed and nothing owns it.
+
+A `boom verify` step now owns it. It greps the installed client for the literals those defects are
+built from and **fails when the workaround looks unnecessary** — the opposite polarity of every
+other check here. Three outcomes: client not found → exit 0 and one line, because a machine that
+installs elsewhere must not fail a nightly verify; fingerprints intact → silent; a fingerprint
+missing → exit 1 naming the hook that just became suspect.
+
+**What it does not assert.** Minified identifiers change per build, so literals are the only stable
+surface. `FETCH_HEAD` and `86400000` both present does not prove the 24h cache still gates the
+fetch. It is monotone, not a proof: a failure means *go re-measure*, never *the bug is fixed*.
+
+**The anchor is what makes the rest trustworthy.** If the client is ever packaged so its strings
+cannot be read, every fingerprint vanishes at once and a naive check reports all-clear forever. So
+`refs/remotes/origin/` — present in any version that does worktrees at all — is checked first, and
+its absence is reported as a BROKEN CHECK rather than as good news. A silently-green canary is worse
+than none: it converts an unknown into a false assurance.
+
+**The two halves are not equally likely to fire, and that asymmetry is deliberate.** The publish
+defect is a genuine bug that could be fixed. The 24h fetch is now *documented* behavior, so its
+literals disappearing would mean the behavior changed rather than a bug closed — still worth
+knowing, since `worktree-freshness.sh`'s ENFORCE layer becomes redundant either way.
+
+No baseline version is pinned in the script. Doing so would recreate exactly the rot this exists to
+catch: the constant goes stale, someone bumps it to silence the check, the assertion is gone. The
+version is printed so a re-measure has a target; the version it was measured against lives here.
+
+`tests/canary.sh`, 7 cases, and its polarity is inverted too — the load-bearing cases are the ones
+where the canary must FAIL. It feeds **synthetic bundles**, which is what makes it runnable in CI
+with no client installed, and is why the earlier "needs the `claude` binary" objection was wrong: it
+proves the decision logic, not that the literals match a real client. Only a re-measure does that.
+Negative controls, both run: a stub that always exits 0 fails 6 of 7, a stub that always exits 1
+fails 7 of 7. Those numbers are that high because no case asserts on the exit code alone — each
+requires the message to name the suspect hook, or to say the check itself is broken, since an
+operator woken by the nightly notify has only that line to act on.
+
 ## 2026-08-24 — three worktree gaps: two were already native, one was dead config
 
 A review of this setup against general git-worktree practice turned up four gaps. Three were real.
@@ -122,17 +202,13 @@ for a directory that is already gone — never a live worktree, never a commit.
 
 ### What was deliberately left alone
 
-- **Dev-server port collisions** across parallel worktrees. Real in general, but per-project, and
-  no project here has hit it.
-- **A guard asserting the client bugs still exist** — the `FETCH_HEAD` 24h cache and the
-  `deleteJob` unpushed check — so that a fixed client fails loudly instead of leaving workaround
-  code standing. Worth wanting, not buildable in CI: it needs the `claude` binary. The public docs
-  now describe the fetch behavior openly ("when the repository hasn't been fetched in the last 24
-  hours, it fetches the default branch, capped at five seconds, and uses the locally cached ref if
-  the fetch fails"), so `worktree-freshness.sh` is working around documented behavior rather than a
-  bug awaiting a fix.
 - **Worktree aliases for hand-cut worktrees.** `git worktree add` is two words; a wrapper would be
   a gratuitous one.
+
+Two bullets that stood here — dev-server port collisions, and a guard asserting the client defects
+still exist — were reversed the same day and are now built. The next entry supersedes them,
+including the claim that such a guard "needs the `claude` binary" and so could not run in CI: it
+does not, because the assertion under test is the decision logic, which takes a synthetic bundle.
 
 ## 2026-08-22 — a `headersHelper` can point at a deleted vault item and still pass `boom verify`
 

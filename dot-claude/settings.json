@@ -62,6 +62,10 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/worktree-freshness.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/worktree-port.sh"
           }
         ]
       }

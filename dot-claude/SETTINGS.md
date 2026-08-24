@@ -25,7 +25,7 @@ Two rules for editing it:
 | `autoMode.classifyAllShell` | Route every shell command through the classifier, not just arbitrary-exec shapes. |
 | `autoMode.allow` | Classifier prose rules — routine verify commands. It must lead with the literal `"$defaults"` or the built-in rules are silently discarded. A sibling `soft_deny` is supported and deliberately unset: the built-in defaults already cover force push, `curl \| bash`, production deploys and exfiltration. |
 | ~~`autoMode.environment`~~ | **Deliberately absent.** It described one repo's stack while telling the classifier no other orgs existed, in every session on this machine — so it misinformed the control it fed. `autoMode` is ignored in project settings, so a per-project payload cannot be pushed down to the repo it belongs to. If it returns, it names orgs and nothing repo-specific. |
-| `hooks` | `PreToolUse` guards (`op-guard`, `worktree-checkout-guard`, `rebase-guard` — in that order), the `PostToolUse` PR reviewer, and the session-start/stop worktree hooks. The hooks are the enforcement; their scripts carry their own reasoning. |
+| `hooks` | `PreToolUse` guards (`op-guard`, `worktree-checkout-guard`, `rebase-guard` — in that order), the `PostToolUse` PR reviewer, and the worktree hooks: `worktree-freshness` + `worktree-port` at session start, `worktree-publish` at Stop/SessionEnd. The hooks are the enforcement; their scripts carry their own reasoning. |
 
 ## Identity and git
 
