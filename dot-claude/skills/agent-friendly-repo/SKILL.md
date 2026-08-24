@@ -1,6 +1,6 @@
 ---
 name: agent-friendly-repo
-description: Configure a GitHub repo for automated PR → auto-merge: squash-only merges, a branch-protection ruleset, stacked PRs via the official github/gh-stack, and optional Dependabot auto-merge or merge queue. Use for "make this repo agent-friendly", "set up auto-merge", "align merge settings + branch protection", "add a merge queue", "set up stacked PRs", "auto-merge dependabot".
+description: Configure a GitHub repo for automated PR → auto-merge: squash-only merges, a branch-protection ruleset, stacked PRs via the official github/gh-stack, and optional Dependabot auto-merge or merge queue. Use for "make this repo agent-friendly", "set up auto-merge", "align merge settings + branch protection", "add a merge queue", "set up stacked PRs", "auto-merge dependabot", "carry .env into worktrees".
 ---
 
 # agent-friendly-repo
@@ -26,6 +26,33 @@ Ruleset rules for the default branch:
 - `required_status_checks` → a **single aggregate gate job** (e.g. `quality-checks`), not every individual job. An aggregate `if: always()` job that `needs:` every other job and fails if any *actually failed* (path-filtered "skipped" jobs are fine) avoids "required check stuck pending" when per-area jobs are path-filtered out of a given PR.
 - **No required human PR reviews.** A required review blocks agent auto-merge forever — agents can't approve their own PRs. `--auto` waiting on green CI is the gate, not a human.
 - `bypass_actors: []` — nobody bypasses, incl. admins → "CI green for everyone" (the standing preference). Agents don't need bypass; `--auto` just waits for green.
+
+**`.worktreeinclude` — the gitignored files an agent worktree needs.**
+The one repo-local file on this checklist rather than a GitHub setting. A worktree is a fresh
+checkout, so `.env`, `.env.local` and any other gitignored config are simply absent, and the
+agent's first command fails against a repo that cannot boot. Claude Code copies gitignored files
+matching a `.worktreeinclude` at the repo root into every worktree it creates — `--worktree`,
+subagent (`isolation: worktree`) worktrees, and desktop parallel sessions. `.gitignore` syntax,
+and a pattern only copies a file that is **also** gitignored, so tracked files are never
+duplicated.
+
+```text
+.env
+.env.local
+config/secrets.json
+```
+
+- **Never hand-roll this as a SessionStart hook.** The built-in covers every worktree Claude Code
+  creates; a hook cannot. `SubagentStart` carries the parent process's cwd rather than the
+  subagent's worktree (see DECISIONS.md), so `isolation: worktree` subagents — the ones that churn
+  most — would keep starting without their env files.
+- **It copies, it does not link** — a plaintext secret in `.env` becomes one more copy on disk per
+  worktree. A repo whose `.env` holds `op://` references costs nothing here; one holding live
+  tokens is the argument for converting it, not for skipping the file.
+- **A `WorktreeCreate` hook replaces the built-in git path entirely**, and `.worktreeinclude` is
+  not processed then — a repo on a non-git VCS copies the files inside that hook instead.
+- Only worth adding where the repo actually has gitignored files a build needs. This repo
+  (dotFiles) has none, so it deliberately carries no `.worktreeinclude`.
 
 **Stacked PRs — the preferred shape for anything bigger than one reviewable change.**
 Standing preference: split a large change into a stack of small PRs, each based on the one below
@@ -224,7 +251,7 @@ grouped PRs too.
    assuming it — `github-actions` bumps in particular change code that runs against a
    write-scoped token.
 
-10. **Report** the final state: merge settings, ruleset id + rules, whether classic was removed, aggregate-gate action taken, queue enabled or deferred (and why), and **stack readiness** — `gh extension list | grep github/gh-stack` for the tool, whether `required_linear_history` and empty `bypass_actors` hold (the two rules stacks actually require), and that the landing path is watch-then-`gh stack merge` (no queue, by standing decision). If a queue *is* already configured on the repo, say so — it changes the merge semantics (enqueue instead of merge-now, method flags ignored, large stacks split across groups).
+10. **Report** the final state: merge settings, ruleset id + rules, whether classic was removed, aggregate-gate action taken, queue enabled or deferred (and why), whether a `.worktreeinclude` covers the repo's gitignored env files, and **stack readiness** — `gh extension list | grep github/gh-stack` for the tool, whether `required_linear_history` and empty `bypass_actors` hold (the two rules stacks actually require), and that the landing path is watch-then-`gh stack merge` (no queue, by standing decision). If a queue *is* already configured on the repo, say so — it changes the merge semantics (enqueue instead of merge-now, method flags ignored, large stacks split across groups).
 
 ## Critical sequencing hazard — merge queue
 
@@ -247,6 +274,9 @@ Then agents complete with `gh pr merge --auto --squash`, which adds the PR to th
   Actions secrets (they're unavailable to Dependabot runs, so it silently never fires), and never
   configure it alongside a merge queue without swapping `GITHUB_TOKEN` for a PAT/App token —
   `GITHUB_TOKEN` cannot add a PR to a queue.
+- **Never hand-roll worktree env-copying.** `.worktreeinclude` is the built-in; a SessionStart
+  hook that copies or symlinks `.env` into worktrees is custom code for a feature that ships, and
+  it runs too late for the agent's first turn anyway.
 - **Only `github/gh-stack`.** Never install a same-named community fork to satisfy "stacked PRs"; if the official extension is missing, install it or say so — don't substitute.
 - **Stacks cost the repo nothing to enable.** `required_linear_history` and empty `bypass_actors` are their only prerequisites, and both are already on the checklist. There is no repo mutation to make stacks work — landing them is a *workflow* (watch green, then `gh stack merge`), which is why the queue is skippable.
 - **Never claim auto-merge works on a stack.** It does not — GitHub says so explicitly, and the legacy merge endpoint `gh pr merge` calls cannot merge a stack at all. The correct answer to "how does a stack land unattended, then" is: the agent watches every layer to green and runs `gh stack merge`, per the `ship` skill. It is not "add a merge queue."

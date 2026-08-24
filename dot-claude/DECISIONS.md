@@ -43,6 +43,97 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-08-24 — three worktree gaps: two were already native, one was dead config
+
+A review of this setup against general git-worktree practice turned up four gaps. Three were real.
+The fixes are smaller than the findings, because two of the three already had built-ins.
+
+### `trusted_config_paths` never trusted anything
+
+`mise-settings.toml` carried `trusted_config_paths = ["~/**/.worktrees"]`. Two things are wrong
+with it, and either alone is enough to delete the line rather than repair it.
+
+**mise matches trusted paths by PREFIX, not glob.** Measured against the pinned 2026.8.2 (and
+2026.8.11) with a config that actually requires trust — `[env]`, because a config carrying only
+`min_version`, plain `[tools]` versions and untemplated `[tasks]` is "safe" and is never gated at
+all, which is what made a first attempt at this measurement read "trusted" everywhere:
+
+| `trusted_config_paths` | config at | `mise trust --show` |
+|---|---|---|
+| *(unset — control)* | `~/Code/plain` | untrusted |
+| `["~/**/.worktrees"]` | `~/Code/proj/.worktrees/wt` | **untrusted** |
+| `["~/**/.claude/worktrees"]` | `~/Code/proj/.claude/worktrees/wt` | **untrusted** |
+| `["~/Code"]` | `~/Code/plain` | trusted |
+
+The last row is the positive control: the mechanism works; the glob is what does not. The entry had
+therefore never trusted a single file on any machine.
+
+**The path it aimed at was also the wrong one.** Claude Code puts agent worktrees under
+`.claude/worktrees/`, not `.worktrees/` — `worktree-publish.sh` asserts exactly that shape. Fixing
+the glob to `~/**/.claude/worktrees` would have produced a second dead entry, per row three.
+
+**And the need is now a built-in.** mise shares trust across a repo's linked worktrees — trusting
+the main checkout trusts the worktree. Measured both directions on 2026.8.2 with no
+`trusted_config_paths` set at all:
+
+| | main checkout | `.claude/worktrees/wt` |
+|---|---|---|
+| before `mise trust` | untrusted | untrusted |
+| after `mise trust` in the main checkout only | trusted | **trusted** |
+
+`paranoid` mode disables that sharing; nothing here sets it.
+
+The file keeps `lockfile`, but its *reason* changed and the header now says so. The split existed
+because mise refuses `trusted_config_paths` in a project-local load ("trusted_config_paths in
+non-global config … is ignored for security reasons" — reproduced), which this repo's double-duty
+`mise.toml` tripped on every invocation from inside the repo. `lockfile` triggers no such warning,
+so collapsing `mise-settings.toml` into `mise.toml` is now possible. Not done here: it orphans a
+symlink (`~/.config/mise/conf.d/settings.toml`) that has to be reaped on a real machine, and a
+dangling file in `conf.d` is worse than the file it removes.
+
+### The per-worktree `.env` gap is `.worktreeinclude`
+
+A worktree is a fresh checkout, so gitignored files an app needs in order to boot are absent, and
+nothing here carried them across. A `SessionStart` hook was designed for it and **discarded before
+a line was written**: Claude Code copies gitignored files matching a repo-root `.worktreeinclude`
+into every worktree it creates (`--worktree`, `isolation: worktree` subagents, desktop parallel
+sessions). Native over special — and the hook would have been strictly worse anyway: `SubagentStart`
+carries the parent process's cwd rather than the subagent's worktree (2026-08-20, above), so the
+subagent worktrees that churn most would never have been covered by it.
+
+The convention went into the `agent-friendly-repo` skill, which is where per-repo setup belongs.
+Nothing was added to this repo: dotFiles has no gitignored file a checkout needs, and a
+`.worktreeinclude` here would be cargo cult.
+
+### Stale worktree metadata: `gc.worktreePruneExpire`
+
+`boom code reap` removes worktrees properly, but a directory deleted by hand leaves
+`.git/worktrees/<name>` behind and `git worktree list` keeps printing it as `prunable`. Nothing
+here ran `git worktree prune`, and git's own default grace period is 3 months. `.gitconfig` now
+sets `gc.worktreePruneExpire = 1.week.ago`. Measured with a control, directory already deleted:
+
+| `gc.worktreePruneExpire` | after `git gc` |
+|---|---|
+| default (3 months) | metadata kept, still listed `prunable` |
+| elapsed | metadata removed |
+
+`refs/heads/<branch>` survived in both. That is the safety argument: this can only drop bookkeeping
+for a directory that is already gone — never a live worktree, never a commit.
+
+### What was deliberately left alone
+
+- **Dev-server port collisions** across parallel worktrees. Real in general, but per-project, and
+  no project here has hit it.
+- **A guard asserting the client bugs still exist** — the `FETCH_HEAD` 24h cache and the
+  `deleteJob` unpushed check — so that a fixed client fails loudly instead of leaving workaround
+  code standing. Worth wanting, not buildable in CI: it needs the `claude` binary. The public docs
+  now describe the fetch behavior openly ("when the repository hasn't been fetched in the last 24
+  hours, it fetches the default branch, capped at five seconds, and uses the locally cached ref if
+  the fetch fails"), so `worktree-freshness.sh` is working around documented behavior rather than a
+  bug awaiting a fix.
+- **Worktree aliases for hand-cut worktrees.** `git worktree add` is two words; a wrapper would be
+  a gratuitous one.
+
 ## 2026-08-22 — a `headersHelper` can point at a deleted vault item and still pass `boom verify`
 
 Asked whether frequently-used keys could be moved into the agent vault. The answer was **nothing
