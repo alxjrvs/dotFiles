@@ -71,6 +71,16 @@
 	prune = true
 	pruneTags = true
 	writeCommitGraph = true
+[gc]
+	# `git worktree list` keeps listing a worktree whose directory was deleted by
+	# hand (git marks it `prunable`), because that metadata is only cleared during
+	# gc and the default grace period is 3 months. Agent worktrees churn daily here,
+	# so a week is the honest expiry. Measured with a control: at the default the
+	# metadata survives `git gc`; with an elapsed expiry gc removes it — and
+	# refs/heads/<branch> survives either way, so this can only drop bookkeeping for
+	# a directory that is already gone, never a live worktree and never a commit.
+	worktreePruneExpire = 1.week.ago
+
 [merge]
 	conflictstyle = zdiff3
 [branch]

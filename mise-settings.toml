@@ -4,17 +4,20 @@
 # global config (conf.d files never live in a project's cwd tree, so they're
 # never re-read as a project-local config).
 #
-# Why this isn't in mise.toml: that file pulls double duty — it's the global
-# config (via the ~/.config/mise/config.toml symlink) AND this repo's own
-# project-local config (it sits in the repo). `trusted_config_paths` is a
-# global-only, security-sensitive setting; mise ignores it in any project-local
-# load and warns. Standing inside this repo triggered that warning on every
-# mise invocation. Keeping global-only settings here, tools-only in mise.toml,
-# means each file is legal in every role it's loaded for.
+# `trusted_config_paths = ["~/**/.worktrees"]` used to live here, and it was the
+# reason for the split: mise refuses that key in a project-local load
+# ("trusted_config_paths in non-global config … is ignored for security
+# reasons"), and this repo's double-duty mise.toml tripped that on every mise
+# invocation from inside the repo. Deleted 2026-08-24 as DEAD CONFIG — mise
+# matches trusted paths by prefix, not glob, so `~/**/…` never trusted a single
+# file, and mise now shares trust across a repo's linked worktrees natively.
+# Both measured against the pinned 2026.8.2 with positive controls; see
+# DECISIONS.md.
+#
+# What is left is `lockfile`, which mise accepts in any config. It stays here
+# rather than moving into mise.toml so that file remains tools-only.
 
 [settings]
-trusted_config_paths = ["~/**/.worktrees"]
-
 # Keep mise.lock current automatically. Until now `node = "25"` was the only pin in mise.toml
 # and ~25 other tools sat at "latest", so "two machines converge" was true of the tool LIST but
 # not of the versions — the largest remaining reproducibility hole here. The lockfile also
