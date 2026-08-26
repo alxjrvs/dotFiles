@@ -2,7 +2,7 @@ name: lint
 
 # Mirrors the local lefthook pre-commit gate (shellcheck + shfmt + biome +
 # gitleaks + settings.json validity) on every push to main and every PR. Lint
-# only — never runs `boom apply` or mutates anything. (The engine and its tests
+# only — never runs `boom source` or mutates anything. (The engine and its tests
 # live in the boom repo; this repo is just boom's config.)
 
 on:
@@ -103,7 +103,7 @@ jobs:
           done
 
       # The boomfile.toml IS the repo — gate that every tracked TOML parses, so a
-      # syntax error is caught here, not at `boom apply` time on a real machine.
+      # syntax error is caught here, not at `boom source` time on a real machine.
       # --no-schema = pure syntax (hermetic, offline). Mirrors lefthook's toml-validity.
       - name: TOML validity
         run: taplo check --no-schema $(git ls-files '*.toml')
