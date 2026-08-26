@@ -12,7 +12,8 @@ These are here because nothing else can deliver them in time: each is irreversib
 attempt, or lands in an unattended session with no one to ask.
 
 - **Writes to a repo outside `alxjrvs/*`, `TheGnarCo`, `BinfiniteLLC`, `SalvageUnion-io`,
-  `RANDSUM` need express permission** — issues, PRs, comments, reviews. Draft it, show it, wait.
+  `RANDSUM`, `Criterium-Engineers` need express permission** — issues, PRs, comments, reviews.
+  Draft it, show it, wait.
 - **Never `gh pr merge -d`/`--delete-branch`, and never a local merge or push into a default
   branch.** Land work through GitHub's own gate.
 - **Never put a secret on stdout** — stdout is the transcript. A secret written to a file is a
