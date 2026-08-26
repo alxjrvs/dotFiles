@@ -3,8 +3,8 @@
 # pre-commit: lint staged shell + JS/TS/JSON, guard secrets and settings.json.
 #
 # no_auto_install: boom owns hook installation (the `lefthook` hook runs
-# `lefthook install` on apply). After a lefthook.yml change, re-run
-# `boom apply --only=lefthook` (or `lefthook install`) to refresh the checksum.
+# `lefthook install` when it converges). After a lefthook.yml change, re-run
+# `boom source --only=lefthook` (or `lefthook install`) to refresh the checksum.
 no_auto_install: true
 
 pre-commit:
@@ -16,7 +16,7 @@ pre-commit:
       run: shellcheck -x {staged_files}
     shfmt-check:
       # boomfile is DSL config (an aligned link table by design) — validated by
-      # `boom apply --dry-run`, not shfmt, so it's deliberately not formatted here.
+      # `boom source --dry-run`, not shfmt, so it's deliberately not formatted here.
       glob: "{*.sh,git-template/hooks/*}"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}
