@@ -73,8 +73,17 @@ Two things found while checking, both arguing the same way:
   both (11.10.0). The repo already runs `npm:` backends for two language servers, so this adds
   a package, not a mechanism.
 
-The brew copy has to go, or it recreates the `gh` failure documented in the Brewfile: two
-installs, brew's winning on PATH, and mise's pin silently inert.
+The brew copy is now shadowed, not competing. This was worth checking rather than assuming,
+because the Brewfile's `gh` note describes the opposite outcome — two installs, brew's winning on
+PATH, mise's pin inert — and the obvious inference was that heroku would repeat it. It does not:
+`.zshenv` prepends the mise shims and `.zprofile` re-prepends them *last*, specifically because
+everything above that line demotes them, so `command -v heroku` resolves to the shim and mise's
+pin is live. The `gh` collision is what that PATH work exists to prevent; quoting it as a present
+danger would have been describing a failure the config already fixed.
+
+So removing the brew copy is hygiene, not a correctness fix: it reclaims the Cellar, and it drops
+an Untrusted tap from the machine, which is worth doing on its own. Nothing breaks while it sits
+there.
 
 ---
 
