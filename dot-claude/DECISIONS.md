@@ -43,6 +43,41 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-08-26 — heroku: the Brewfile was the obvious home and the wrong one
+
+The `.gitconfig` landed a credential helper for `git.heroku.com` (`helper = !heroku
+git:credentials`) — appended by the heroku CLI itself, and committed so it would stop
+re-dirtying boom's config cache on every use. That left a stanza naming a binary the Brewfile
+did not install, so the obvious fix was to declare `brew "heroku"`.
+
+It does not work. There is no homebrew-core formula for heroku. The only source is the
+third-party tap `heroku/brew`, and brew now classifies that tap as **Untrusted** and refuses to
+load the formula at all:
+
+> Refusing to load formula heroku/brew/heroku from untrusted tap heroku/brew.
+> Run `brew trust --formula heroku/brew/heroku` or `brew trust heroku/brew` to trust it.
+
+`brew trust` is interactive, and `boom source` runs unattended. A Brewfile line that requires a
+human is a fresh machine that stops halfway through its first converge — which is the one thing
+the Brewfile exists to prevent. **A declaration that cannot run unattended is not a
+declaration.** That, not the Lean A policy, is the reason it went to `mise.toml`; the policy
+merely agreed.
+
+Two things found while checking, both arguing the same way:
+
+- The installed brew copy had **self-updated past its own Cellar version**: the symlink pointed
+  at `Cellar/heroku/11.3.0`, and the binary it resolved to reported `11.9.0`. The heroku CLI
+  updates itself in place, so brew's record of its version was already false, and any
+  `boom.lock` pin for it would have been recording a number nothing controlled.
+- `mise registry heroku` resolves to `npm:heroku`, which installs clean and lands *ahead* of
+  both (11.10.0). The repo already runs `npm:` backends for two language servers, so this adds
+  a package, not a mechanism.
+
+The brew copy has to go, or it recreates the `gh` failure documented in the Brewfile: two
+installs, brew's winning on PATH, and mise's pin silently inert.
+
+---
+
 ## 2026-08-26 — the context ceilings were stated twice, and this file's own rule says why that rots
 
 `lefthook.yml` and `.github/workflows/lint.yml` each carried the byte ceilings, the capped set,

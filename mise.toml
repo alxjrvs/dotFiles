@@ -33,6 +33,13 @@ gh = "latest"           # GH CLI
 delta = "latest"        # syntax-aware git pager
 gitleaks = "latest"     # gitleaks protect — global pre-commit hook
 lefthook = "latest"     # repo-local pre-commit/pre-push runner
+"npm:heroku" = "latest" # Heroku CLI. `.gitconfig` names it in a credential helper for
+                        # git.heroku.com, so the helper is broken on any machine without it.
+                        # Here and not the Brewfile: there is no homebrew-core formula, only
+                        # the third-party `heroku/brew` tap, which brew now reports Untrusted
+                        # and refuses to load without an interactive `brew trust` — a step
+                        # boom cannot perform, so a fresh machine would stall on it. The
+                        # registry resolves `heroku` to npm, per the fallback order above.
 
 # ── File / text / data tools ──────────────────────────────────────────
 bat = "latest"
