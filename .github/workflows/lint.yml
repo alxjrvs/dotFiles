@@ -194,3 +194,16 @@ jobs:
       # the required context is ["lint"], so a separate job would not be required.
       - name: worktree-publish regression tests
         run: dot-claude/hooks/tests/publish.sh
+
+      # worktree-port.sh is asserted the same way: `emits_block` and `writes_env`
+      # prove it actually assigns and persists a block, and `skip_env_symlink`
+      # proves it cannot write through a linked .env into the primary checkout.
+      - name: worktree-port regression tests
+        run: dot-claude/hooks/tests/port.sh
+
+      # The canary's suite, whose polarity is inverted from every other one here:
+      # its load-bearing cases are the ones where the canary must FAIL, because an
+      # always-green canary reports all-clear forever. A step in THIS job for the
+      # same reason as the others — the required context is ["lint"].
+      - name: claude-canary regression tests
+        run: dot-claude/hooks/tests/canary.sh

@@ -155,6 +155,20 @@ pre-commit:
       # guarded against is editing the expectations instead of the code.
       glob: "{dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
       run: dot-claude/hooks/tests/publish.sh
+    port-tests:
+      # worktree-port.sh's effects are a port block in additionalContext and a
+      # PORT= line in a worktree's .env, so it needs its own harness as well.
+      # Same glob as the other three: the failure mode being guarded against is
+      # editing the expectations instead of the code.
+      glob: "{dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
+      run: dot-claude/hooks/tests/port.sh
+    canary-tests:
+      # hooks/claude-canary.sh is a `boom verify` step, not an agent hook, so its
+      # glob covers the repo's own hooks/ too. Its load-bearing cases are the ones
+      # where the canary must FAIL — an always-green canary is exactly the failure
+      # it exists to prevent, so this suite is what keeps it honest.
+      glob: "{hooks/*.sh,dot-claude/hooks/tests/*}"
+      run: dot-claude/hooks/tests/canary.sh
 
 # commit-msg: forward-only hygiene guard. Rejects throwaway subjects (bare
 # "WIP"/"wip" or a single character) so they don't land in permanent history.
