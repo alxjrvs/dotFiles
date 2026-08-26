@@ -27,9 +27,8 @@ attempt, or lands in an unattended session with no one to ask.
 
 ## Where things go
 
-This file has a byte ceiling, enforced by the context-budget checks in `lefthook.yml` and
-`.github/workflows/lint.yml`. Those state the number; don't restate it here. Nothing goes in this
-file that fits elsewhere.
+This file has a byte ceiling, enforced by `scripts/context-budget.sh` (run by lefthook and CI).
+It states the number; don't restate it here. Nothing goes in this file that fits elsewhere.
 
 | | |
 |---|---|
