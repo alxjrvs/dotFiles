@@ -983,6 +983,10 @@ url = "https://nodejs.org/dist/v25.9.0/node-v25.9.0-win-x64.zip"
 version = "5.6.0"
 backend = "npm:bash-language-server"
 
+[[tools."npm:heroku"]]
+version = "11.10.0"
+backend = "npm:heroku"
+
 [[tools."npm:typescript-language-server"]]
 version = "5.3.0"
 backend = "npm:typescript-language-server"
