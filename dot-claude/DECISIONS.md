@@ -43,6 +43,32 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-08-26 — the context ceilings were stated twice, and this file's own rule says why that rots
+
+`lefthook.yml` and `.github/workflows/lint.yml` each carried the byte ceilings, the capped set,
+and the date ban. The lefthook copy opened with the comment "Mirrors lint.yml", which is an
+accurate description of a drift seam: nothing fails when two copies of a constant disagree, and
+the commit-time copy is the one that goes stale unnoticed, because CI is the copy anyone reads
+when a check fires.
+
+This is the corollary at the top of this file — *never state a threshold that a check already
+enforces* — applied to the check itself. The rule was written about prose restating a gate's
+number. A second gate restating it is the same failure with better camouflage: both copies are
+executable, so both look authoritative, and neither is wrong until the day they differ.
+
+`scripts/context-budget.sh` now owns the numbers, the capped set, and the reasoning for all
+three (why a ceiling, why per-file, why an explicit list rather than a `*.md` glob, why the date
+ban). lefthook passes staged files and the script ignores the uncapped ones; CI passes no
+arguments, which checks the whole capped set. Two call sites remain on purpose — commit time and
+CI — because the point was never to run it once, it was to *state* it once.
+
+The same edit fixed a stale pointer this created: `dot-claude/CLAUDE.md` named `lefthook.yml` and
+`lint.yml` as the authority for its own ceiling. Naming the authority is only cheap while the
+authority is real, so a file that moves its rule has to fix everything that pointed at it — which
+is the argument for having exactly one thing to point at.
+
+---
+
 ## 2026-08-24 — three worktree gaps: two were already native, one was dead config
 
 A review of this setup against general git-worktree practice turned up four gaps. Three were real.

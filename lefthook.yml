@@ -90,22 +90,12 @@ pre-commit:
           done
         done
     context-budget:
-      # Mirrors lint.yml's "always-loaded context budget" so the ceiling is hit at commit
-      # time, not after the push. Same numbers, so a green commit is a green build. These
-      # two files are symlinked into ~/.claude/ and loaded before every task; DECISIONS.md
-      # and SETTINGS.md are not, which is exactly why they carry the history and no cap.
+      # Runs the same script CI runs, so the ceiling is hit at commit time rather
+      # than after the push, and a green commit is a green build by construction —
+      # the numbers cannot drift apart because there is only one copy of them.
+      # Reasoning, ceilings, and the capped set: scripts/context-budget.sh.
       glob: "{CLAUDE.md,dot-claude/CLAUDE.md}"
-      run: |
-        for f in {staged_files}; do
-          case "$f" in
-            dot-claude/CLAUDE.md) limit=2500 ;;
-            CLAUDE.md)            limit=3000 ;;
-            *)                    continue ;;
-          esac
-          n=$(wc -c < "$f" | tr -d ' ')
-          [ "$n" -le "$limit" ] || { echo "$f is $n bytes, ceiling $limit — every session pays this. Procedure -> a skill; must hold -> a hook/deny/verify check; a reason -> DECISIONS.md; a settings key -> SETTINGS.md."; exit 1; }
-          ! grep -nE '[0-9]{4}-[0-9]{2}-[0-9]{2}' "$f" || { echo "$f: dated claim — records belong in dot-claude/DECISIONS.md, not an always-loaded file."; exit 1; }
-        done
+      run: scripts/context-budget.sh {staged_files}
 
     plist-validity:
       # launchd does NOT expand `~` or `$HOME` in plist values — it fails the job
