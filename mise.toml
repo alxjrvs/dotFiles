@@ -30,17 +30,16 @@ starship = "latest"     # prompt — `starship init zsh` loaded in zsh/50-prompt
 
 # ── Git surface (used by prompt, lefthook, pre-commit) ────────────────
 gh = "latest"           # GH CLI
-# GitHub MCP server, stdio mode — for Claude DESKTOP only. Claude Code talks to
-# the remote server at api.githubcopilot.com/mcp/ over HTTP and needs no binary.
-# Desktop can't: GitHub's remote server authenticates through a registered GitHub
-# App, which Desktop's "Add custom connector" OAuth flow does not support, so
-# GitHub's own install-claude.md says to run the server locally. Launched by
-# `op run --env-file` (1Password's published shape for an MCP config), which
-# injects the PAT from 1Password rather than storing it in
-# claude_desktop_config.json. Not in the registry; aqua per the fallback order above.
 delta = "latest"        # syntax-aware git pager
 gitleaks = "latest"     # gitleaks protect — global pre-commit hook
 lefthook = "latest"     # repo-local pre-commit/pre-push runner
+"npm:heroku" = "latest" # Heroku CLI. `.gitconfig` names it in a credential helper for
+                        # git.heroku.com, so the helper is broken on any machine without it.
+                        # Here and not the Brewfile: there is no homebrew-core formula, only
+                        # the third-party `heroku/brew` tap, which brew now reports Untrusted
+                        # and refuses to load without an interactive `brew trust` — a step
+                        # boom cannot perform, so a fresh machine would stall on it. The
+                        # registry resolves `heroku` to npm, per the fallback order above.
 
 # ── File / text / data tools ──────────────────────────────────────────
 bat = "latest"

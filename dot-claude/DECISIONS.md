@@ -43,6 +43,72 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-08-26 — heroku: the Brewfile was the obvious home and the wrong one
+
+The `.gitconfig` landed a credential helper for `git.heroku.com` (`helper = !heroku
+git:credentials`) — appended by the heroku CLI itself, and committed so it would stop
+re-dirtying boom's config cache on every use. That left a stanza naming a binary the Brewfile
+did not install, so the obvious fix was to declare `brew "heroku"`.
+
+It does not work. There is no homebrew-core formula for heroku. The only source is the
+third-party tap `heroku/brew`, and brew now classifies that tap as **Untrusted** and refuses to
+load the formula at all:
+
+> Refusing to load formula heroku/brew/heroku from untrusted tap heroku/brew.
+> Run `brew trust --formula heroku/brew/heroku` or `brew trust heroku/brew` to trust it.
+
+`brew trust` is interactive, and `boom source` runs unattended. A Brewfile line that requires a
+human is a fresh machine that stops halfway through its first converge — which is the one thing
+the Brewfile exists to prevent. **A declaration that cannot run unattended is not a
+declaration.** That, not the Lean A policy, is the reason it went to `mise.toml`; the policy
+merely agreed.
+
+Two things found while checking, both arguing the same way:
+
+- The installed brew copy had **self-updated past its own Cellar version**: the symlink pointed
+  at `Cellar/heroku/11.3.0`, and the binary it resolved to reported `11.9.0`. The heroku CLI
+  updates itself in place, so brew's record of its version was already false, and any
+  `boom.lock` pin for it would have been recording a number nothing controlled.
+- `mise registry heroku` resolves to `npm:heroku`, which installs clean and lands *ahead* of
+  both (11.10.0). The repo already runs `npm:` backends for two language servers, so this adds
+  a package, not a mechanism.
+
+The brew copy is now shadowed, not competing. This was worth checking rather than assuming,
+because the Brewfile's `gh` note describes the opposite outcome — two installs, brew's winning on
+PATH, mise's pin inert — and the obvious inference was that heroku would repeat it. It does not:
+`.zshenv` prepends the mise shims and `.zprofile` re-prepends them *last*, specifically because
+everything above that line demotes them, so `command -v heroku` resolves to the shim and mise's
+pin is live. The `gh` collision is what that PATH work exists to prevent; quoting it as a present
+danger would have been describing a failure the config already fixed.
+
+So removing the brew copy is hygiene, not a correctness fix: it reclaims the Cellar, and it drops
+an Untrusted tap from the machine, which is worth doing on its own. Nothing breaks while it sits
+there.
+
+## 2026-08-26 — the context ceilings were stated twice, and this file's own rule says why that rots
+
+`lefthook.yml` and `.github/workflows/lint.yml` each carried the byte ceilings, the capped set,
+and the date ban. The lefthook copy opened with the comment "Mirrors lint.yml", which is an
+accurate description of a drift seam: nothing fails when two copies of a constant disagree, and
+the commit-time copy is the one that goes stale unnoticed, because CI is the copy anyone reads
+when a check fires.
+
+This is the corollary at the top of this file — *never state a threshold that a check already
+enforces* — applied to the check itself. The rule was written about prose restating a gate's
+number. A second gate restating it is the same failure with better camouflage: both copies are
+executable, so both look authoritative, and neither is wrong until the day they differ.
+
+`scripts/context-budget.sh` now owns the numbers, the capped set, and the reasoning for all
+three (why a ceiling, why per-file, why an explicit list rather than a `*.md` glob, why the date
+ban). lefthook passes staged files and the script ignores the uncapped ones; CI passes no
+arguments, which checks the whole capped set. Two call sites remain on purpose — commit time and
+CI — because the point was never to run it once, it was to *state* it once.
+
+The same edit fixed a stale pointer this created: `dot-claude/CLAUDE.md` named `lefthook.yml` and
+`lint.yml` as the authority for its own ceiling. Naming the authority is only cheap while the
+authority is real, so a file that moves its rule has to fix everything that pointed at it — which
+is the argument for having exactly one thing to point at.
+
 ## 2026-08-24 — a port block per worktree, and a canary on the workarounds
 
 Both of these were declined earlier the same day, in the entry below, and then asked for
@@ -206,9 +272,10 @@ for a directory that is already gone — never a live worktree, never a commit.
   a gratuitous one.
 
 Two bullets that stood here — dev-server port collisions, and a guard asserting the client defects
-still exist — were reversed the same day and are now built. The next entry supersedes them,
-including the claim that such a guard "needs the `claude` binary" and so could not run in CI: it
-does not, because the assertion under test is the decision logic, which takes a synthetic bundle.
+still exist — were reversed the same day and are now built. The entry "2026-08-24 — a port block
+per worktree, and a canary on the workarounds" supersedes them, including the claim that such a
+guard "needs the `claude` binary" and so could not run in CI: it does not, because the assertion
+under test is the decision logic, which takes a synthetic bundle.
 
 ## 2026-08-22 — a `headersHelper` can point at a deleted vault item and still pass `boom verify`
 
@@ -1282,7 +1349,6 @@ Relocated verbatim: it is rationale about things that are already gone, so it wa
       day and then deleted on 2026-08-08: nothing read them, and the "the resolver is the fiddly
       part" argument for keeping them does not hold, because `NINETY_API_TOKEN_COMMAND` is the
       identical shape two lines away. The vaulted `spacebase-api-key` item is untouched.
-
 
 - **`expo` (added 2026-07-25)** ships an MCP server (EAS builds/submits/workflows, store reviews)
   plus ~20 skills, making it the largest single addition to the plugin set. Drop it if the Expo

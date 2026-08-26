@@ -39,6 +39,12 @@ brew "cocoapods"   # iOS dependency manager, tied to the system Ruby/Xcode toolc
 #   shellcheck  — same shape, arrived as a dependency of actionlint; mise declares it.
 #   netlify-cli — redundant: deploys invoke a version-pinned `bunx netlify-cli@<ver>`, so
 #                 nothing needs it globally, and installing it globally is what pulled node in.
+#   heroku      — declared in mise.toml as `npm:heroku`, and it CANNOT come from here: there
+#                 is no homebrew-core formula, only the third-party `heroku/brew` tap, which
+#                 brew reports Untrusted and refuses to load until someone runs `brew trust`
+#                 by hand. A Brewfile line that needs an interactive step is a fresh machine
+#                 that stops halfway. The brew copy also self-updated past its own Cellar
+#                 version (11.3.0 on disk, 11.9.0 running), so its pin was already fiction.
 
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"

@@ -2,7 +2,7 @@
 
 macOS dotfiles for [alxjrvs](https://github.com/alxjrvs), managed by
 [**boom**](https://github.com/alxjrvs/boom) — the small TypeScript dotfiles+workspace
-engine extracted from this repo. This repo is pure *config*: a `boomfile`, a
+engine extracted from this repo. This repo is pure *config*: a `boomfile.toml`, a
 couple of `hooks/`, and the payload boom symlinks into place. The prompt is
 [starship](https://starship.rs); the Claude Code statusline lives in its own
 repo ([TheGnarCo/claude-statusline](https://github.com/TheGnarCo/claude-statusline)).
@@ -14,7 +14,7 @@ from a tool's defaults — never a line that restates one. Every dependency is
 guilty until proven load-bearing; bespoke machinery gets cut the moment a
 built-in can do the job (extracting the engine into `boom` was the largest such
 cut). One config runs on every machine with no host overlays. The full set of
-principles lives in [`CLAUDE.md`](CLAUDE.md#northern-principles).
+principles lives in [`CLAUDE.md`](CLAUDE.md#principles).
 
 ## Setup (fresh machine)
 
@@ -45,17 +45,16 @@ Everything here is policy except a handful of identity values:
 | What | Where |
 |------|-------|
 | Git name + email | `.gitconfig` `[user]` |
-| 1Password signing-key item name | `boomfile` / the `git-signing` setup (default `GitHubSSH`) |
+| 1Password signing-key item name | `boomfile.toml` / the `git-signing` setup (default `GitHubSSH`) |
 | MCP token references | `dot-claude/settings.json` `*_COMMAND` resolvers → `op-agent secret op://…` |
 | 1Password vault filter for SSH keys | `ssh/1password-agent.toml` |
 | Statusline source repo | `hooks/claude_statusline.ts` (`repo=…` in the boomfile) |
-| Editor / identity prefs | `dot-claude/CLAUDE.md` |
 
 ## What's here
 
 | Path | Purpose |
 |------|---------|
-| `boomfile` | The config boom reads — symlink table, packages, macOS defaults, inline steps, hooks |
+| `boomfile.toml` | The config boom reads — symlink table, packages, macOS defaults, inline steps, hooks |
 | `hooks/` | Imperative escape hatches: `op-agent.sh` (1Password-agent CLI), `claude_statusline.ts` |
 | `.zshrc` / `zsh/` | Thin loader + numbered zsh fragments |
 | `.gitconfig`, `.gitmessage` | Git identity, commit template, 1Password SSH signing |
@@ -63,18 +62,18 @@ Everything here is policy except a handful of identity values:
 | `starship.toml` | Prompt |
 | `ghostty/config` | Terminal (Ghostty, sole terminal) |
 | `nvim/init.lua` | Plugin-free neovim (native LSP, ≥0.11) |
-| `dot-claude/` | Claude Code `CLAUDE.md` + `settings.json` (symlinked into `~/.claude/`) |
+| `dot-claude/` | User-global Claude config. `CLAUDE.md` + `settings.json` are symlinked into `~/.claude/` and billed to every session; `DECISIONS.md`, `SETTINGS.md`, `REFERENCE.md`, `skills/`, `hooks/` are not |
 | `Brewfile` / `mise.toml` | Packages (Lean A: brew = casks, mise = dev CLIs) |
 | `sheldon/`, `atuin/`, `bat/`, `ssh/`, `gh/config.yml` | Payload configs |
-| `lefthook.yml`, `.github/workflows/lint.yml` | Lint gate (shellcheck + shfmt + gitleaks) for this repo's shell |
+| `lefthook.yml`, `.github/workflows/lint.yml` | Commit + CI gate: shellcheck, shfmt, biome, gitleaks, hook test suites, and the always-loaded context budget (`scripts/context-budget.sh`) |
 | `LICENSE` | MIT |
 
 ## Secrets, signing, terminal, packaging
 
-The load-bearing doctrine lives in [`CLAUDE.md`](CLAUDE.md): the `op-agent` CLI
-(one verb-dispatched script for the agent service account, git PAT, and on-demand
-secret reads), the Lean-A packaging policy, the Ghostty terminal,
-and 1Password commit signing. In brief:
+`CLAUDE.md` holds only what every session must load; the reasoning behind these
+choices lives in [`dot-claude/DECISIONS.md`](dot-claude/DECISIONS.md) and the
+`settings.json` key index in [`dot-claude/SETTINGS.md`](dot-claude/SETTINGS.md) —
+neither is symlinked, so neither costs a session anything. In brief:
 
 - **Git signing** is 1Password via `op-ssh-sign` (`gpg.format = ssh`); the
   machine-local `~/.gitconfig.local` carries `gpgSign`/`signingkey` so a box
@@ -89,4 +88,4 @@ and 1Password commit signing. In brief:
 Anything about reconcile/verify semantics, symlink internals, the manifest, or
 orphan reaping lives in [**boom**](https://github.com/alxjrvs/boom) and its
 [docs][boom-docs], not here. This repo is boom's first consumer — and the
-reference example of a `boomfile`.
+reference example of a `boomfile.toml`.

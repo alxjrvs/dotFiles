@@ -1,5 +1,8 @@
 {
   "env": {
     "OTEL_RESOURCE_ATTRIBUTES": "project.name=alxjrvs/dotFiles"
+  },
+  "permissions": {
+    "allow": ["Bash(git fetch *)", "Bash(shellcheck *)", "Bash(shfmt -d *)"]
   }
 }
