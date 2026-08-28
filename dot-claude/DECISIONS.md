@@ -167,6 +167,44 @@ all became controls, and an enforced rule belongs nowhere per the routing table.
 the always-loaded file smaller, not larger — which is the argument for doing it in this direction
 rather than writing more rules.
 
+### `settings.local.json` — a rule that could only ever be half-enforced
+
+`.gitignore` has carried "machine-local override is NOT a pattern this setup uses" for a long
+time, and it was true as far as it went. What it enforced was that such a file could not be
+COMMITTED. What nobody had a way to enforce was that one could not EXIST.
+
+Claude Code writes the file itself. An "always allow" click or a project-trust flow creates
+`settings.local.json` without asking, and from then on it is invisible to every gate here by
+construction: lefthook and CI inspect tracked files, and `boom verify` had no assertion for a
+file whose whole definition is "should not be there".
+
+The one found on 2026-08-28 carried `Bash(gh api *)` in `permissions.allow` — POST and DELETE
+against any repo on GitHub, no prompt, under defaultMode auto. It had been sitting there
+unreviewed. It also carried `outputStyle: "Proactive"`, which the committed settings.json already
+sets, so the file's entire contents were one over-grant and one no-op.
+
+`scripts/reap-settings-local.sh` closes the half `.gitignore` could not reach. Three choices in
+it are worth keeping:
+
+**Two steps, not one.** A `run` bound to `on = "sync"` is invisible to `verify` BY CONSTRUCTION —
+the lesson this file already records for gh extensions. Sync removes; verify asserts absent. The
+verify half is the one that matters, because the file is written mid-session and a sync may be
+days away.
+
+**Archived, not just deleted.** These files record permissions someone clicked "always allow" on.
+Deleting that silently throws away both the evidence of what was approved and the pattern of what
+keeps reappearing — and the pattern is the interesting part: a permission that comes back every
+week is a prompt that should be answered in the committed contract instead.
+
+**Explicit paths, never a `find` sweep.** This deletes files on every sync. A sweep over `~/Code`
+would also delete one a colleague added deliberately in a shared repo, with no record and no
+consent. Widening it means naming a path, which is a decision someone has to make on purpose.
+
+The remaining gap is honest: boom has no native "assert this file is absent" resource, so this is
+a `run` step rather than a declarative one. `[[section.check]]` inspects the CONTENT of a file
+that exists and has `missing_file = "skip"` — exactly backwards for this case. A boom feature
+would express it better than a shell script does.
+
 ### The sandbox, and the `~/.ssh` rule that is mostly theatre
 
 The guards above all fail open by design, and every one of them gates a COMMAND.

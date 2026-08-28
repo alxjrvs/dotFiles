@@ -590,6 +590,37 @@ cmd = "hooks/claude-canary.sh"
 on = "verify"
 cmd = "scripts/brew-drift.sh"
 
+# `settings.local.json` is removed on every sync, and asserted absent on verify.
+#
+# Machine-local override is not a pattern this setup uses — every divergence
+# lives in the committed `settings.json` contract, and .gitignore says so. The
+# problem is that .gitignore can only stop it being COMMITTED. Claude Code writes
+# the file itself on an "always allow" click or a project-trust flow, so the rule
+# was enforceable against the repo and not against the machine.
+#
+# That gap had teeth. The file found on 2026-08-28 carried `Bash(gh api *)` in
+# `permissions.allow`: POST and DELETE against any repo on GitHub, no prompt,
+# under defaultMode auto. Nothing could see it — lefthook and CI look at tracked
+# files, and `boom verify` had no assertion for a file that should not exist.
+#
+# TWO STEPS, not one, and deliberately so: a `run` bound to `on = "sync"` is
+# invisible to `verify` BY CONSTRUCTION (the lesson recorded above for gh
+# extensions). Sync removes; verify catches one that appeared in between, which
+# is the common case since Claude Code writes it mid-session.
+#
+# Each file is archived to ~/.local/state/boom/settings-local-archive/ before it
+# goes. These record permissions someone clicked "always allow" on; deleting that
+# silently loses both the evidence and the pattern of what keeps coming back.
+#
+# Explicit paths only, never a `find` sweep — see the script header for why.
+[[section.run]]
+on = "sync"
+cmd = "scripts/reap-settings-local.sh"
+
+[[section.run]]
+on = "verify"
+cmd = "scripts/reap-settings-local.sh --check"
+
 # `git maintenance` registers repos in ~/.gitconfig.local and installs three launchd agents
 # (org.git-scm.git.{hourly,daily,weekly}) that run whether or not those paths still exist. Found
 # pointing at /Users/jarvis/dotFiles and /Users/jarvis/Code/dotFiles — neither of which exists,
