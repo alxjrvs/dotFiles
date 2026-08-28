@@ -5,12 +5,14 @@
 # nvim, after zsh/00-exports.zsh's EDITOR and .gitconfig's core.editor — gh
 # falls back to both.
 #
-# `version` is the exception and has to stay. gh REWRITES it into this file the
-# first time it touches its config, so removing it left the config repo
-# permanently dirty and `boom verify` warning about uncommitted changes forever.
-# A key the tool writes back is not a restatement you can delete — it is part of
-# the file's contract with the tool.
-version: "1"
+# `version` is the exception and has to stay — and it has to stay LAST. gh
+# APPENDS the key rather than replacing it in place, so a `version` anywhere but
+# the final line gets a second copy added on gh's first write, leaving the config
+# repo permanently dirty and `boom verify` warning about uncommitted changes.
+# Verified against a pristine GH_CONFIG_DIR: with `version` last, gh reads and
+# writes this file without touching it. A key the tool writes back is not a
+# restatement you can delete — it is part of the file's contract with the tool,
+# key order included.
 pager: delta
 aliases:
     co: pr checkout
@@ -20,3 +22,4 @@ aliases:
     il: issue list
     pl: pr list
     rc: repo clone
+version: "1"
