@@ -21,8 +21,20 @@ set -eu
 
 fail=0
 
+# See settings-guardrails.sh for why an empty input list is a failure and not a
+# pass: with no arguments this printed `ok plists ()` and exited 0, so an empty
+# `$(git ls-files …)` expansion in CI reported success for zero files checked.
+[ "$#" -gt 0 ] || {
+  echo "no inputs — the caller's glob matched nothing, so no plist was checked" >&2
+  exit 1
+}
+
 for f in "$@"; do
-  [ -f "$f" ] || continue
+  [ -f "$f" ] || {
+    echo "$f: expected plist is missing"
+    fail=1
+    continue
+  }
 
   if command -v plutil > /dev/null 2>&1; then
     plutil -lint "$f" > /dev/null || {

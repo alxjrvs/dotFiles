@@ -103,6 +103,13 @@ jobs:
       - name: DECISIONS table of contents
         run: scripts/decisions-toc.sh --check
 
+      # Asserts the shared assertions themselves: a gate handed a missing path
+      # or an empty file list must fail, not print `ok`. In CI specifically,
+      # because CI is where these scripts are handed a literal path or a
+      # `$(git ls-files …)` expansion that can be empty.
+      - name: gate regression tests
+        run: scripts/tests/gates.sh
+
       - name: guard regression tests
         run: dot-claude/hooks/tests/run.sh
 
