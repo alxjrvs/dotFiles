@@ -45,6 +45,44 @@
     ],
     "defaultMode": "auto"
   },
+  "sandbox": {
+    "credentials": {
+      "envVars": [
+        {
+          "name": "GITHUB_TOKEN",
+          "mode": "mask"
+        },
+        {
+          "name": "GH_TOKEN",
+          "mode": "mask"
+        },
+        {
+          "name": "NPM_TOKEN",
+          "mode": "mask"
+        },
+        {
+          "name": "NINETY_API_TOKEN",
+          "mode": "mask"
+        },
+        {
+          "name": "OP_SERVICE_ACCOUNT_TOKEN",
+          "mode": "mask"
+        },
+        {
+          "name": "ANTHROPIC_API_KEY",
+          "mode": "mask"
+        }
+      ]
+    },
+    "filesystem": {
+      "denyRead": [
+        "~/.aws/credentials",
+        "~/.ssh/id_*",
+        "~/.config/gh/hosts.yml",
+        "~/.netrc"
+      ]
+    }
+  },
   "hooks": {
     "SessionStart": [
       {
