@@ -15,10 +15,12 @@
 # agent: a missing jq, a non-repo cwd, an unresolvable target, or a parse error
 # all let the command through.
 #
-# Portability: written for bash 3.2 (`/bin/bash`), NOT the homebrew bash 5 that
-# happens to be first on PATH here — `bash` is not in the Brewfile, so a fresh
-# machine runs 3.2. No arrays; state is carried in scalars and positional params,
-# which is also why the segment list is walked twice rather than accumulated.
+# Portability: written for bash 3.2 (`/bin/bash`). The Brewfile does declare
+# bash 5, so the old reason given here ("not in the Brewfile") was wrong; the
+# real one is that a hook cannot assume its PATH — launchd and a mid-provision
+# machine can both hand it the system bash. No arrays; state is carried in
+# scalars and positional params, which is also why the segment list is walked
+# twice rather than accumulated.
 set -u
 
 allow() { exit 0; }

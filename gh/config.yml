@@ -1,8 +1,9 @@
-version: 1
-git_protocol: https
-editor: nvim
-prompt: enabled
-prefer_editor_prompt: disabled
+# Only divergences. gh writes `version` itself, and `git_protocol: https`,
+# `prompt: enabled`, `prefer_editor_prompt: disabled` and the empty
+# `http_unix_socket`/`browser` keys were all restatements of gh's own defaults
+# (verified with a pristine GH_CONFIG_DIR). `editor` was a third copy of
+# nvim, after zsh/00-exports.zsh's EDITOR and .gitconfig's core.editor — gh
+# falls back to both.
 pager: delta
 aliases:
     co: pr checkout
@@ -12,5 +13,3 @@ aliases:
     il: issue list
     pl: pr list
     rc: repo clone
-http_unix_socket:
-browser:

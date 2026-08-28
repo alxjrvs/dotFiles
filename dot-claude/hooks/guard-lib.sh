@@ -6,8 +6,11 @@
 # break-on-match), so a fix landed in one and not the other. Every function here
 # is pure: it reads its arguments and prints, touching no global state.
 #
-# Portability: bash 3.2 (`/bin/bash`). `bash` is not in the Brewfile, so the
-# homebrew bash 5 that happens to be first on PATH is not guaranteed anywhere.
+# Portability: bash 3.2 (`/bin/bash`). NOT because bash is undeclared — the
+# Brewfile does declare it — but because a hook cannot assume the PATH it will
+# be handed. Claude Code, launchd and a mid-provision machine can each run this
+# with only the system bash reachable, and a guard that fails to parse fails
+# CLOSED in the worst way: it never runs and nothing says so.
 # No arrays, no `${arr[@]}` on a possibly-empty array, no `declare -g`.
 
 # Split a command into simple commands on shell separators, RESPECTING quotes.

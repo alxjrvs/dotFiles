@@ -19,8 +19,11 @@ export TERMINAL=ghostty
 export PATH="$PATH:$HOME/.maestro/bin"
 
 # sharp (transitive dep of many JS projects via image tooling / miniflare)
-# detects a global libvips via pkg-config and Homebrew's `vips` cask is
-# installed on this machine — sharp then tries to build its native addon
+# detects a global libvips via pkg-config, and the `vips` FORMULA is present on
+# this machine (8.18.3) — it arrives as another formula's dependency rather than
+# being declared, which is why it is not in the Brewfile and not a `brew leaves`
+# entry. (It was described here as a cask; it is not one.) sharp then tries to
+# build its native addon
 # against that global libvips instead of using its own bundled prebuilt
 # binary, and that from-source build fails on a missing node-addon-api.
 # This forces sharp to always use its bundled prebuilt binary. Sharp reads
