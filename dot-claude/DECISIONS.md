@@ -183,8 +183,8 @@ against any repo on GitHub, no prompt, under defaultMode auto. It had been sitti
 unreviewed. It also carried `outputStyle: "Proactive"`, which the committed settings.json already
 sets, so the file's entire contents were one over-grant and one no-op.
 
-`scripts/reap-settings-local.sh` closes the half `.gitignore` could not reach. Three choices in
-it are worth keeping:
+boom's `absent` resource closes the half `.gitignore` could not reach. Three choices in it are
+worth keeping:
 
 **Two steps, not one.** A `run` bound to `on = "sync"` is invisible to `verify` BY CONSTRUCTION —
 the lesson this file already records for gh extensions. Sync removes; verify asserts absent. The
@@ -200,10 +200,18 @@ week is a prompt that should be answered in the committed contract instead.
 would also delete one a colleague added deliberately in a shared repo, with no record and no
 consent. Widening it means naming a path, which is a decision someone has to make on purpose.
 
-The remaining gap is honest: boom has no native "assert this file is absent" resource, so this is
-a `run` step rather than a declarative one. `[[section.check]]` inspects the CONTENT of a file
-that exists and has `missing_file = "skip"` — exactly backwards for this case. A boom feature
-would express it better than a shell script does.
+**It started as a shell script and moved into boom.** The first version was two `run` steps
+calling a script, because boom had no way to say "this file must not exist" —
+`[[section.check]]` inspects the CONTENT of a file that exists, and its `missing_file = "pass"`
+says absent is *acceptable*, never *required*. That gap is now the `absent` resource
+(alxjrvs/boom#174), and moving it there paid for itself three times: one declaration instead of
+a step per verb, removal that `boom rollback` can undo instead of an archive directory only a
+human reading the path would ever find, and the directory/symlink guards living in the engine
+with tests rather than being re-derived in shell.
+
+The sequencing matters and is easy to get wrong: boom 0.27.0 REJECTS the key outright
+(`Invalid key: Expected never but received "absent"`), so the boomfile change cannot land until
+a boom carrying the resource is released AND installed.
 
 ### The sandbox, and the `~/.ssh` rule that is mostly theatre
 

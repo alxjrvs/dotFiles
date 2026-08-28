@@ -76,7 +76,7 @@ else's server with our PAT, and one broke silently for weeks behind a misleading
 
 | file | why |
 |---|---|
-| `settings.local.json` | Machine-local override is not a pattern here. `.gitignore` stops it being committed but never stopped it existing — Claude Code writes one itself on "always allow", and one carrying `Bash(gh api *)` in `permissions.allow` sat unreviewed because git was told to ignore it. `scripts/reap-settings-local.sh` removes it on every sync and `boom verify` fails if one reappears; each is archived to `~/.local/state/boom/settings-local-archive/` first, since it records a permission someone actually approved. |
+| `settings.local.json` | Machine-local override is not a pattern here. `.gitignore` stops it being committed but never stopped it existing — Claude Code writes one itself on "always allow", and one carrying `Bash(gh api *)` in `permissions.allow` sat unreviewed because git was told to ignore it. boom's `absent` resource removes it on every sync and fails `boom verify` if one reappears; removal is a displacement into the run's backup tree, so `boom rollback` restores it — it records a permission someone actually approved. |
 
 If you want a setting, it goes in the committed `settings.json` where it can be
 reviewed. If you want it on one machine only, that is the case this setup has
