@@ -30,65 +30,13 @@ pre-commit:
     gitleaks:
       run: gitleaks protect --staged --redact -v --no-banner
     settings-json-validity:
-      # Backstop against committing a broken settings.json (breaks every Claude
-      # session), PLUS the same content guardrails boomfile.toml's `boom verify`
-      # runs against the live ~/.claude/settings.json (MCP auto-approve keys,
-      # osxkeychain git-helper regression, Fable pinned as default model,
-      # secret-path deny floor) — applied here to the staged file so a bad commit
-      # is caught immediately instead of waiting for the nightly launchd verify run.
+      # Runs the same script CI and `boom verify` run, against the STAGED file,
+      # so a bad commit is caught immediately rather than at the nightly verify.
+      # The assertions and their reasoning live in the script, once — this was
+      # sixty lines here and sixty more in lint.yml, hand-synced, each carrying a
+      # comment telling a human to keep the inventory aligned by hand.
       glob: "dot-claude/settings*.json"
-      run: |
-        for f in {staged_files}; do
-          jq -e . "$f" > /dev/null
-          ! grep -qE '(enableAllProjectMcpServers|enabledMcpjsonServers)' "$f" || { echo "forbidden auto-approve MCP key in $f"; exit 1; }
-          grep -q 'op-agent git-credential' "$f" || { echo "agent git helper not wired to op-agent git-credential in $f"; exit 1; }
-          # op-guard.sh is the allow-list that makes `op` usable without
-          # reopening the stdout leak. `permissions.allow` pre-approves
-          # `Bash(op run:*)`, and this guard is what strips the unsafe variants
-          # of that shape (`--no-masking`, an env-dumping child, `op run -- git
-          # push` slipping past rebase-guard) BEFORE the permission system sees
-          # it. Un-wiring the hook while leaving the allow entry is the one edit
-          # that silently converts this change from "narrower" into "wider".
-          grep -q 'op-guard.sh' "$f" || { echo "op-guard PreToolUse hook not wired in $f, but permissions.allow pre-approves Bash(op run:*)"; exit 1; }
-          ! grep -q 'osxkeychain' "$f" || { echo "forbidden osxkeychain git helper (cached-PAT regression) in $f"; exit 1; }
-          ! grep -qE '"model"[[:space:]]*:[[:space:]]*"[^"]*fable' "$f" || { echo "Fable pinned as default model in $f"; exit 1; }
-          # The deny floor — the Bash path to a resolved secret. `op-agent header`
-          # and `op-agent git-credential get` each print a live credential to
-          # stdout, and stdout is model context; `op-agent header` is the command
-          # that leaked a PAT into a transcript on 2026-07-25. Until 2026-08-05 the
-          # deny array had no assertion, so it could be deleted and every gate
-          # stayed green.
-          #
-          # ARRAY-AWARE, not a substring grep (changed 2026-08-08). The previous
-          # form was `grep -qF '"Bash(op:*)"'`, which only asks whether the string
-          # appears ANYWHERE in the file — so moving an entry out of `deny` and
-          # into `allow` inverted the control while all three gates stayed green.
-          # `jq index` asserts membership of the deny ARRAY specifically. It also
-          # sidesteps the metacharacter problem that made `-F` necessary: the
-          # value is passed as data via --arg, never as a pattern.
-          #
-          # EVERY entry in the list below, not a chosen few. The old list asserted
-          # `op`/`op-agent`/`git credential` only, so the keychain read and both
-          # `Read()` rules could be deleted with every gate green — including
-          # `Bash(~/.local/bin/op-agent:*)`, the path spelling this repo's own
-          # docs call the one most likely to be copied. The loop is the inventory;
-          # keep it in sync with `permissions.deny` rather than counting it here.
-          for d in \
-            'Bash(security find-generic-password:*)' \
-            'Bash(op read:*)' \
-            'Bash(op item get:*)' \
-            'Bash(op document get:*)' \
-            'Bash(op-agent:*)' \
-            'Bash(~/.local/bin/op-agent:*)' \
-            'Bash(git credential:*)' \
-            'Read(~/.ssh/id_*)' \
-            'Read(~/.aws/credentials)' \
-            'Bash(*/op *)' \
-            'Bash(*/op-agent *)'; do
-            jq -e --arg d "$d" '.permissions.deny | index($d)' "$f" > /dev/null \
-              || { echo "missing deny entry $d in .permissions.deny of $f (secret-path floor)"; exit 1; }
-          done
-        done
+      run: scripts/settings-guardrails.sh {staged_files}
     context-budget:
       # Runs the same script CI runs, so the ceiling is hit at commit time rather
       # than after the push, and a green commit is a green build by construction —

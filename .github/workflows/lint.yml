@@ -44,63 +44,12 @@ jobs:
       - name: gitleaks
         run: gitleaks detect --no-git --redact --no-banner
 
-      - name: settings.json validity
-        run: jq -e . dot-claude/settings.json > /dev/null
-
-      # Mirrors lefthook's settings-json-validity: the same content guardrails
-      # boomfile.toml's `boom verify` runs against the live
-      # ~/.claude/settings.json (MCP auto-approve keys, osxkeychain git-helper
-      # regression, Fable pinned as default model, secret-path deny floor),
-      # applied here to the committed file so CI catches drift immediately, not
-      # just the nightly launchd verify run on the live machine.
-      - name: settings.json content guardrails
-        run: |
-          f=dot-claude/settings.json
-          ! grep -qE '(enableAllProjectMcpServers|enabledMcpjsonServers)' "$f" || { echo "forbidden auto-approve MCP key in $f"; exit 1; }
-          grep -q 'op-agent git-credential' "$f" || { echo "agent git helper not wired to op-agent git-credential in $f"; exit 1; }
-          # op-guard.sh is the allow-list that makes `op` usable without
-          # reopening the stdout leak, and `permissions.allow` pre-approves
-          # `Bash(op run:*)` on the strength of it. Un-wiring the hook while
-          # leaving the allow entry is the single edit that turns this change
-          # from narrower into wider, so it is asserted rather than trusted.
-          grep -q 'op-guard.sh' "$f" || { echo "op-guard PreToolUse hook not wired in $f, but permissions.allow pre-approves Bash(op run:*)"; exit 1; }
-          ! grep -q 'osxkeychain' "$f" || { echo "forbidden osxkeychain git helper (cached-PAT regression) in $f"; exit 1; }
-          ! grep -qE '"model"[[:space:]]*:[[:space:]]*"[^"]*fable' "$f" || { echo "Fable pinned as default model in $f"; exit 1; }
-          # The deny floor. Until 2026-08-05 this array had no assertion at all:
-          # it could be deleted wholesale and every gate here stayed green. These
-          # entries are the Bash path to a resolved secret — `op-agent header` and
-          # `op-agent git-credential get` each print a live credential to stdout,
-          # and stdout is model context. `op-agent header` is the exact command
-          # that leaked a PAT into a transcript on 2026-07-25; that postmortem
-          # produced a prose rule and no deny entry, which is the gap this closes.
-          #
-          # ARRAY-AWARE, not a substring grep (changed 2026-08-08). `grep -qF
-          # '"Bash(op:*)"'` only asks whether the string appears anywhere in the
-          # file, so moving an entry out of `deny` and into `allow` inverted the
-          # control while all three gates stayed green. `jq index` asserts
-          # membership of the deny ARRAY, and passing the value via --arg means it
-          # is data rather than a pattern — which is what `-F` was working around.
-          #
-          # EVERY entry in the list below, not a chosen few. An earlier version
-          # asserted only the `op`/`op-agent`/`git credential` shapes, so the
-          # keychain read, both `Read()` rules and `Bash(~/.local/bin/op-agent:*)`
-          # were deletable with every gate green. The loop is the inventory; keep
-          # it in sync with `permissions.deny` rather than counting it here.
-          for d in \
-            'Bash(security find-generic-password:*)' \
-            'Bash(op read:*)' \
-            'Bash(op item get:*)' \
-            'Bash(op document get:*)' \
-            'Bash(op-agent:*)' \
-            'Bash(~/.local/bin/op-agent:*)' \
-            'Bash(git credential:*)' \
-            'Read(~/.ssh/id_*)' \
-            'Read(~/.aws/credentials)' \
-            'Bash(*/op *)' \
-            'Bash(*/op-agent *)'; do
-            jq -e --arg d "$d" '.permissions.deny | index($d)' "$f" > /dev/null \
-              || { echo "missing deny entry $d in .permissions.deny of $f (secret-path floor)"; exit 1; }
-          done
+      # Same script lefthook and `boom verify` run. Previously this block
+      # transcribed lefthook's checks line for line, including the deny-floor
+      # loop and its comments; the word "Mirrors" appearing in a CI file is a
+      # standing invitation for the two to diverge.
+      - name: settings.json guardrails
+        run: scripts/settings-guardrails.sh dot-claude/settings.json
 
       # The boomfile.toml IS the repo — gate that every tracked TOML parses, so a
       # syntax error is caught here, not at `boom source` time on a real machine.
