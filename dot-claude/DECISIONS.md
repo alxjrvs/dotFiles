@@ -110,6 +110,35 @@ must-not-fire assertions. The stub-hook control was written as 6 failures and me
 prune case was forgotten in the count. That correction is the argument for the convention: the
 block records a measurement, not an expectation.
 
+### `repo-scope-guard.sh` — and the org list that had already drifted
+
+The widest hole, because it was not merely unguarded: `.claude/settings.local.json` carried
+`Bash(gh api *)` in `permissions.allow`. That is `-X POST` and `-X DELETE` against any repo on
+GitHub, no prompt, under `defaultMode: auto` — and `gh api` is the exact path this file already
+named as the one a deny rule cannot cover, because deny matches a command SPELLING while the
+owner is an argument.
+
+The guard resolves the owner from the LOCAL remote, never `gh repo view`. It runs on every Bash
+tool call; a network round-trip there is a tax on every command to catch a rare one. No remote
+means no owner to judge, and that fails open.
+
+`gh pr merge -d` folds into the same guard for the same reason: `permissions.deny` cannot match a
+flag anywhere in argv, and `Bash(gh pr merge:*)` matches every spelling of the command including
+the ones that delete a branch.
+
+**The finding worth keeping.** The owned-org list existed twice — six owners in `CLAUDE.md`, five
+in `pr-review.sh`, which was missing `Criterium-Engineers`. The copy that EXECUTED was the wrong
+one, and nothing could have caught it: one was prose and the other a shell default. It is now
+`_owned_orgs()` in guard-lib.sh, read by both. A list that governs a security boundary cannot be
+maintained beside a copy of itself, which is the same lesson as the deny floor one section down,
+arrived at from the opposite direction.
+
+**Two prose bullets deleted, and that is the point.** `dot-claude/CLAUDE.md` went 2098 -> 1682
+bytes across this work: the worktree rule, the foreign-repo rule and the `gh pr merge -d` clause
+all became controls, and an enforced rule belongs nowhere per the routing table. Enforcement made
+the always-loaded file smaller, not larger — which is the argument for doing it in this direction
+rather than writing more rules.
+
 ### The other half: written three times
 
 The same review found the inverse failure. The eleven-entry deny floor was written out verbatim in

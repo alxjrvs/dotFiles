@@ -37,6 +37,7 @@ op-guard.sh
 rebase-guard.sh
 worktree-checkout-guard.sh
 worktree-remove-guard.sh
+repo-scope-guard.sh
 worktree-freshness.sh
 worktree-port.sh
 worktree-publish.sh

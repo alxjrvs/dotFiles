@@ -157,6 +157,13 @@ jobs:
       - name: worktree-remove guard regression tests
         run: dot-claude/hooks/tests/wtremove.sh
 
+      # repo-scope-guard.sh: the widest hole the audit found, since
+      # `.claude/settings.local.json` had `Bash(gh api *)` pre-approved. Its
+      # load-bearing cases are the twelve DENY ones; the owned-org ALLOW cases
+      # prove it reads the owner rather than refusing every write.
+      - name: repo-scope guard regression tests
+        run: dot-claude/hooks/tests/reposcope.sh
+
       # The canary's suite, whose polarity is inverted from every other one here:
       # its load-bearing cases are the ones where the canary must FAIL, because an
       # always-green canary reports all-clear forever. A step in THIS job for the

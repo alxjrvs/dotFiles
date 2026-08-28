@@ -119,6 +119,10 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/worktree-remove-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/repo-scope-guard.sh"
           }
         ]
       }
