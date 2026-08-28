@@ -100,8 +100,10 @@ cask "ngrok"         # public tunnel to a local port
 cask "obs"           # screen recording
 cask "orbstack"      # Docker/Linux VMs, the lighter Docker Desktop
 cask "wave"          # terminal
-cask "zulu17"        # JDK 17. NOT `zulu@17` — the same JDK under a second cask
-                     # name, whose Caskroom holds only metadata. See brew-drift.sh.
+cask "zulu@17"       # JDK 17. NOT `zulu17` — that name was RETIRED upstream and no
+                     # longer resolves ("Cask 'zulu17' is unavailable"), so declaring it
+                     # failed `brew bundle` outright. The local zulu17 Caskroom entry is
+                     # the leftover install under the old name. See brew-drift.sh.
 
 # Window mgmt + launcher + clipboard (replaces Rectangle + Spotlight).
 cask "raycast"

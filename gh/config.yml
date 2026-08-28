@@ -1,9 +1,16 @@
-# Only divergences. gh writes `version` itself, and `git_protocol: https`,
+# Only divergences — with one exception below. gh writes `git_protocol: https`,
 # `prompt: enabled`, `prefer_editor_prompt: disabled` and the empty
 # `http_unix_socket`/`browser` keys were all restatements of gh's own defaults
 # (verified with a pristine GH_CONFIG_DIR). `editor` was a third copy of
 # nvim, after zsh/00-exports.zsh's EDITOR and .gitconfig's core.editor — gh
 # falls back to both.
+#
+# `version` is the exception and has to stay. gh REWRITES it into this file the
+# first time it touches its config, so removing it left the config repo
+# permanently dirty and `boom verify` warning about uncommitted changes forever.
+# A key the tool writes back is not a restatement you can delete — it is part of
+# the file's contract with the tool.
+version: "1"
 pager: delta
 aliases:
     co: pr checkout
