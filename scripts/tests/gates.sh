@@ -64,6 +64,16 @@ case_exit plist_real 0 ./scripts/plist-validity.sh launchd/*.plist
 case_exit skillcap_default_glob 0 ./scripts/skill-description-cap.sh
 case_exit context_budget_real 0 ./scripts/context-budget.sh
 
+# --- the cap must be able to SEE a multi-line description --------------------
+# A YAML folded block put the indicator (`>-`) on the `description:` line, and
+# the single-line parser scored that as one word — so any skill could carry an
+# unbounded description past a gate reporting `ok (1 words)`. The cap is this
+# script's entire purpose, and that spelling removed it.
+case_exit skillcap_folded_over 1 ./scripts/skill-description-cap.sh scripts/tests/fixtures/folded-over-cap-SKILL.md
+# Positive control: a SHORT folded block must still pass, or the fix would have
+# replaced one broken gate with another.
+case_exit skillcap_folded_under 0 ./scripts/skill-description-cap.sh scripts/tests/fixtures/folded-under-cap-SKILL.md
+
 if [ "$fail" -gt 0 ]; then
   echo "gate-tests: $pass passed, $fail FAILED"
   exit 1
