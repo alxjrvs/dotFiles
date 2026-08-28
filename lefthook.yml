@@ -137,6 +137,14 @@ pre-commit:
       # committed clean locally and failed after the push.
       glob: "dot-claude/skills/*/SKILL.md"
       run: scripts/skill-description-cap.sh {staged_files}
+
+    brew-drift:
+      # Machine state, not file state: `brew bundle` installs what the Brewfile
+      # names but never uninstalls what it omits, so a hand-installed package
+      # stays forever and a fresh machine silently does not get it. Runs only
+      # when the Brewfile is touched; no-ops where brew is absent.
+      glob: "Brewfile"
+      run: scripts/brew-drift.sh
     canary-tests:
       # hooks/claude-canary.sh is a `boom verify` step, not an agent hook, so its
       # glob covers the repo's own hooks/ too. Its load-bearing cases are the ones
