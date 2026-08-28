@@ -15,6 +15,7 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 <!-- toc:start -->
 - [Contents](#contents)
 - [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-28 — the permission-matching rule in `CLAUDE.md` was backwards](#2026-08-28--the-permission-matching-rule-in-claudemd-was-backwards)
 - [2026-08-28 — the three rules that were prose, and the guard that had six ways past it](#2026-08-28--the-three-rules-that-were-prose-and-the-guard-that-had-six-ways-past-it)
 - [2026-08-26 — heroku: the Brewfile was the obvious home and the wrong one](#2026-08-26--heroku-the-brewfile-was-the-obvious-home-and-the-wrong-one)
 - [2026-08-26 — the context ceilings were stated twice, and this file's own rule says why that rots](#2026-08-26--the-context-ceilings-were-stated-twice-and-this-files-own-rule-says-why-that-rots)
@@ -70,6 +71,36 @@ fails. If a number matters enough to write down, make something check it; if it 
 the invariant and drop the digit.
 
 ---
+
+## 2026-08-28 — the permission-matching rule in `CLAUDE.md` was backwards
+
+A nine-agent audit checked every load-bearing claim in this config against live
+documentation. One of the four standing rules in the always-loaded `CLAUDE.md` was wrong:
+
+> ~~**Permission rules match whole tokens, not string prefixes.**~~
+
+The docs say the opposite, verbatim: **"Bash rules match the whole command text, with `*`
+standing in for any text."** And: *"The space before a trailing `*` is part of the rule.
+`Bash(ls *)` requires a space after `ls`, so `lsof` doesn't match. `Bash(ls*)` has no space, so
+it matches `lsof` too."*
+
+It is string matching. The token-like behaviour everyone relies on is an **emergent effect of
+the space character**, not the matching model. The rule immediately following it — *"verify any
+new deny rule with a positive and a negative control"* — is sound advice that the wrong model
+one line above quietly undermined: you cannot design a negative control for a mechanism you
+have mis-modelled.
+
+**The deny array itself was correct**, checked entry by entry. `Bash(*/op *)` is valid — a
+wildcard may lead a rule. `Bash(op read:*)` covers `op read` and everything after it, and does
+not need to cover path spellings, because `Bash(*/op *)` is the sibling that does. So this was a
+wrong *description* of a working control, which is the inverse of the failure this file usually
+records, and worth noting as its own species: **a control can be right while the rule explaining
+it is wrong, and the rule is what the next change will be designed against.**
+
+`Bash(~/.local/bin/op-agent:*)` is strictly redundant with `Bash(*/op-agent *)`. It stays.
+`settings-guardrails.sh` asserts the floor entry by entry, so removing it means editing the
+assertion to match — and redundancy on a credential path is defence in depth, not a defect. The
+audit's suggestion to drop it was declined for that reason.
 
 ## 2026-08-28 — the three rules that were prose, and the guard that had six ways past it
 
