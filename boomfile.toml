@@ -376,6 +376,19 @@ dst = "~/.claude/loop.md"
 src = "dot-claude/skills/*"
 dst = "~/.claude/skills/"
 
+# Subagent definitions. Same glob-destination shape as skills above, and the same
+# caveat: boom places the managed symlinks and has no opinion about anything else
+# sharing the directory.
+#
+# Unlike a skill, an agent definition costs nothing per session — only its
+# `description` is read, and only when the Agent tool is offered. That is what
+# makes these worth having for work a main session would otherwise do inline:
+# `guard-tester` runs seven suites whose ~20s of output never enters the parent
+# context, and `drift-triage` is read-only by construction.
+[[section.link]]
+src = "dot-claude/agents/*"
+dst = "~/.claude/agents/"
+
 # Skill refresh moved to the top-level `[boom] skill_on_sync = true` — boom regenerates its
 # own SKILL.md from the running binary each sync, no `run` step needed.
 
