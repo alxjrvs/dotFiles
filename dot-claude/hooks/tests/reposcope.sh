@@ -104,6 +104,21 @@ case_is api_post_foreign DENY "gh api -X POST repos/someone-else/thing/issues -f
 case_is api_delete_foreign DENY "gh api -X DELETE repos/someone-else/thing/git/refs/heads/main" "$OWNED"
 case_is api_field_foreign DENY "gh api repos/someone-else/thing/issues -f title=x" "$OWNED"
 
+# REGRESSION: a full URL is the same endpoint with a host glued on, but no
+# pattern matched a string starting with `https:`, so the guard fell back to the
+# cwd's owner and ALLOWED the write.
+case_is api_full_url_foreign DENY "gh api -X DELETE https://api.github.com/repos/someone-else/thing/issues/1" "$OWNED"
+case_is api_full_url_post DENY "gh api -X POST https://api.github.com/repos/someone-else/thing/issues -f title=x" "$OWNED"
+case_is api_full_url_owned ALLOW "gh api -X POST https://api.github.com/repos/alxjrvs/dotFiles/issues -f title=x" "$OWNED"
+
+# REGRESSION: GraphQL names its target as a node ID inside the query body, so
+# the owner is invisible by construction and the cwd fallback ALLOWED every
+# mutation on GitHub. Refused rather than assumed safe.
+case_is api_graphql_mutation DENY "gh api graphql -f query='mutation{addComment(input:{subjectId:\"XYZ\",body:\"hi\"}){clientMutationId}}'" "$OWNED"
+case_is api_graphql_mutation_owned_cwd DENY "gh api graphql -f query='mutation { deleteRef(input:{refId:\"R\"}) { clientMutationId } }'" "$OWNED"
+# A read-only GraphQL query is untouched — it is the mutation keyword that gates.
+case_is api_graphql_query ALLOW "gh api graphql -f query='query{viewer{login}}'" "$OWNED"
+
 # --- the same writes, inside the owned orgs, must pass -----------------------
 case_is owned_issue ALLOW "gh issue create --title x --body y" "$OWNED"
 case_is owned_pr ALLOW "gh pr create --fill" "$OWNED"
