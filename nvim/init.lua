@@ -32,9 +32,9 @@ local map = vim.keymap.set
 map("n", "<leader>w", "<cmd>write<cr>", { desc = "Save" })
 map("n", "<leader>q", "<cmd>quit<cr>", { desc = "Quit" })
 map("n", "<esc>", "<cmd>nohlsearch<cr>", { desc = "Clear search highlight" })
-map("n", "grn", vim.lsp.buf.rename, { desc = "LSP rename" })
-map("n", "gra", vim.lsp.buf.code_action, { desc = "LSP code action" })
-map("n", "grr", vim.lsp.buf.references, { desc = "LSP references" })
+-- grn / gra / grr are Neovim's OWN defaults since 0.11 (verified mapped in
+-- `nvim --clean` on 0.12.3), so restating them here bought nothing. `gd` is
+-- not a default and stays.
 map("n", "gd", vim.lsp.buf.definition, { desc = "LSP definition" })
 map("n", "K", vim.lsp.buf.hover, { desc = "LSP hover" })
 

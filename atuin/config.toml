@@ -3,7 +3,6 @@
 
 # Enter executes the selected line immediately (tab keeps the old "place in
 # prompt for editing" behavior).
-enter_accept = true
 
 # Match the shell's vi-mode (zsh `bindkey -v`).
 keymap_mode = "vim-normal"
@@ -40,7 +39,6 @@ autostart = true
 
 [sync]
 # Atuin sync v2 (encrypted record sync). Required for cross-machine history.
-records = true
 
 [history]
 # Drop accidentally-typed secrets BEFORE they're stored / synced. zsh's

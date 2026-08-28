@@ -17,17 +17,18 @@ format = "$directory$git_branch$git_state$git_status $character"
 # back to the real repo stays visible, without competing with the truncated,
 # bold-white part for emphasis.
 [directory]
-truncate_to_repo = true
 truncation_length = 4
 style = "bold white"
 repo_root_style = "bright-black"
 read_only = " "
-read_only_style = "red"
 
-# Branch chip: muted [ ] around a blue   + name. The statusline uses an ASCII
-# '@' sigil for glyph-safety; starship keeps the nerd-font branch glyph, same
-# blue. No leading space — the `directory` module already trails one space after
-# the title; no trailing space either, so the status chip butts up flush.
+# Branch chip: muted [ ] around a blue name. ASCII throughout, for the same
+# glyph-safety reason the statusline uses an '@' sigil — a nerd-font glyph is
+# tofu over SSH and in any terminal without FiraCode. `symbol` is deliberately a
+# bare space, NOT starship's default branch glyph. (This comment used to claim
+# the opposite while the value below said otherwise; the value was right.)
+# No leading space — the `directory` module already trails one after the title;
+# no trailing space either, so the status chip butts up flush.
 [git_branch]
 symbol = " "
 style = "blue"
@@ -53,6 +54,9 @@ deleted    = '[-$count](red)'
 renamed    = '[»$count](purple)'
 untracked  = '[?$count](cyan)'
 stashed    = '[*$count](purple)'
-ahead      = '[⇡$count](green)'
-behind     = '[⇣$count](red)'
-diverged   = '[⇡$ahead_count](green)[⇣$behind_count](red)'
+# ASCII, so ahead/behind survive a terminal without arrow glyphs. Every other
+# counter here already carries a distinct sigil (+ ! - ? *); these two were the
+# only ones whose marker was their only channel.
+ahead      = '[^$count](green)'
+behind     = '[v$count](red)'
+diverged   = '[^$ahead_count](green)[v$behind_count](red)'

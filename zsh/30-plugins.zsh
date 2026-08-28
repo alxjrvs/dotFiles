@@ -11,7 +11,6 @@
 # is accepted as-is. Re-measure with: zsh -i -c exit under `time`.
 
 # Homebrew completions
-fpath+=(/opt/homebrew/share/zsh/site-functions)
 
 # Sheldon plugins (adds zsh-completions to fpath, loads FSH last)
 eval "$(sheldon source)"
