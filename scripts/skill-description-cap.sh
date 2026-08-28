@@ -41,7 +41,42 @@ for f in "$@"; do
     *) continue ;;
   esac
 
-  d=$(awk '/^description:/{sub(/^description:[[:space:]]*/,""); print; exit}' "$f")
+  # YAML lets a scalar span lines, and the previous one-line `awk` scored only
+  # the FIRST line. For a folded block the first line is the indicator itself:
+  #
+  #     description: >-
+  #       …four hundred words…
+  #
+  # scored as the single word `>-`, so ANY skill could carry an unbounded
+  # description past a gate that reported `ok (1 words)`. The cap is the whole
+  # point of this script, and that spelling removed it entirely.
+  #
+  # Only the frontmatter block is read, so a `description:` line in the body
+  # cannot be mistaken for the real one.
+  d=$(awk '
+    NR == 1 && /^---[[:space:]]*$/ { fm = 1; next }
+    fm && /^---[[:space:]]*$/ { exit }
+    !fm { next }
+    !seen && /^description:[[:space:]]*/ {
+      seen = 1
+      val = $0
+      sub(/^description:[[:space:]]*/, "", val)
+      # `>`, `>-`, `|`, `|+` … or nothing: the text is on the indented lines
+      # that follow, and continues until a line that is not indented.
+      if (val ~ /^[|>][-+0-9]*[[:space:]]*$/ || val == "") { block = 1; val = "" }
+      next
+    }
+    seen && block {
+      if ($0 ~ /^[[:space:]]/) {
+        line = $0
+        sub(/^[[:space:]]+/, "", line)
+        val = val (val == "" ? "" : " ") line
+        next
+      }
+      block = 0
+    }
+    END { print val }
+  ' "$f")
   if [ -z "$d" ]; then
     echo "$f: frontmatter has no description:"
     fail=1
