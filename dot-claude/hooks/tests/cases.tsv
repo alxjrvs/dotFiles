@@ -455,3 +455,21 @@ op	nonrepo	op run --env-file=$HOME/.env -- npm publish	allow
 # program name. Denying these would recreate the commit-message false positive.
 op	nonrepo	git commit -m "fix `op read` guard"	allow
 op	nonrepo	tar -C "$(pwd)" -cf - .	allow
+
+# --- REGRESSION: `git push --all` / `--mirror` from a feature branch --------
+# Both name their refs from the local ref namespace, not from argv, so the
+# refspec analysis could not see them and they fell through to "pushes the
+# CURRENT branch" — which from wt-a reads as safe. `--all` pushes every local
+# branch including the default one; `--mirror` also DELETES remote refs absent
+# locally. Both were ALLOWED before this fix.
+rebase	wt-a	git push --all origin	deny
+rebase	wt-a	git push --mirror origin	deny
+rebase	wt-a	git push --all	deny
+rebase	wt-a	git push --tags origin	deny
+rebase	wt-a	git push --follow-tags origin	deny
+rebase	primary	git push --all origin	deny
+# MUST STILL ALLOW: a dry run never mutates the remote, even with --all.
+rebase	wt-a	git push --all --dry-run origin	allow
+# MUST STILL ALLOW: an ordinary feature-branch push is untouched.
+rebase	wt-a	git push origin HEAD	allow
+rebase	wt-a	git push -u origin feature-a	allow
