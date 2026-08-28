@@ -98,6 +98,11 @@ jobs:
       - name: identity drift
         run: scripts/identity-drift.sh
 
+      # The index is generated; a stale one means someone edited headings without
+      # regenerating, and a stale index is worse than none.
+      - name: DECISIONS table of contents
+        run: scripts/decisions-toc.sh --check
+
       - name: guard regression tests
         run: dot-claude/hooks/tests/run.sh
 

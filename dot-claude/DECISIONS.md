@@ -10,6 +10,34 @@ and it is paid for on every request of every session.
 
 When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* here.
 
+## Contents
+
+<!-- toc:start -->
+- [Contents](#contents)
+- [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-28 — the three rules that were prose, and the guard that had six ways past it](#2026-08-28--the-three-rules-that-were-prose-and-the-guard-that-had-six-ways-past-it)
+- [2026-08-26 — heroku: the Brewfile was the obvious home and the wrong one](#2026-08-26--heroku-the-brewfile-was-the-obvious-home-and-the-wrong-one)
+- [2026-08-26 — the context ceilings were stated twice, and this file's own rule says why that rots](#2026-08-26--the-context-ceilings-were-stated-twice-and-this-files-own-rule-says-why-that-rots)
+- [2026-08-24 — a port block per worktree, and a canary on the workarounds](#2026-08-24--a-port-block-per-worktree-and-a-canary-on-the-workarounds)
+- [2026-08-24 — three worktree gaps: two were already native, one was dead config](#2026-08-24--three-worktree-gaps-two-were-already-native-one-was-dead-config)
+- [2026-08-22 — a `headersHelper` can point at a deleted vault item and still pass `boom verify`](#2026-08-22--a-headershelper-can-point-at-a-deleted-vault-item-and-still-pass-boom-verify)
+- [2026-08-20 — `op item list` and `op item move` are allowed, in one direction](#2026-08-20--op-item-list-and-op-item-move-are-allowed-in-one-direction)
+- [2026-08-20 — the third-party GitHub MCP is gone, on both clients](#2026-08-20--the-third-party-github-mcp-is-gone-on-both-clients)
+- [2026-08-20 — `CLAUDE.md` was cut 97%, and the disease was append-only correction](#2026-08-20--claudemd-was-cut-97-and-the-disease-was-append-only-correction)
+- [2026-08-20 — agents were starting from a base up to 24h stale](#2026-08-20--agents-were-starting-from-a-base-up-to-24h-stale)
+- [2026-08-20 — `skipAutoPermissionPrompt` removed: auto mode that asks](#2026-08-20--skipautopermissionprompt-removed-auto-mode-that-asks)
+- [2026-08-20 — `gh-mcp-stdio` deleted; Desktop launches the GitHub MCP via `op run --env-file`](#2026-08-20--gh-mcp-stdio-deleted-desktop-launches-the-github-mcp-via-op-run---env-file)
+- [The 2026-08-18 audit](#the-2026-08-18-audit)
+- [Permissions & security](#permissions--security)
+- [Settings removed deliberately](#settings-removed-deliberately)
+- [Hooks](#hooks)
+- [Plugins & marketplaces](#plugins--marketplaces)
+- [UI](#ui)
+- [Worktrees & merges](#worktrees--merges)
+- [Branch protection](#branch-protection)
+- [Secrets](#secrets)
+<!-- toc:end -->
+
 ## How to write a number so it cannot rot
 
 A count is a **measurement**, and a measurement is only ever true at a moment. So:
