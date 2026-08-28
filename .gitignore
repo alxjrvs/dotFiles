@@ -43,7 +43,10 @@ Brewfile.lock.json
 audit/
 
 # Machine-local override — NOT a pattern this setup uses (every divergence lives
-# in the committed settings.json contract). Guard stays because Claude Code can
-# auto-write settings.local.json on "always allow"/project-trust flows; never commit one.
+# in the committed settings.json contract). Claude Code auto-writes one on
+# "always allow"/project-trust flows, so this line stops it being COMMITTED; it
+# never stopped it EXISTING, and one carrying `Bash(gh api *)` sat unreviewed
+# because git was told to ignore it. `scripts/reap-settings-local.sh` closes that
+# half — removed on every `boom source`, asserted absent by `boom verify`.
 dot-claude/settings.local.json
 **/.claude/settings.local.json
