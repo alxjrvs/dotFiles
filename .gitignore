@@ -46,7 +46,7 @@ audit/
 # in the committed settings.json contract). Claude Code auto-writes one on
 # "always allow"/project-trust flows, so this line stops it being COMMITTED; it
 # never stopped it EXISTING, and one carrying `Bash(gh api *)` sat unreviewed
-# because git was told to ignore it. `scripts/reap-settings-local.sh` closes that
+# because git was told to ignore it. boom's `absent` resource closes that
 # half — removed on every `boom source`, asserted absent by `boom verify`.
 dot-claude/settings.local.json
 **/.claude/settings.local.json
