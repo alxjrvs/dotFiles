@@ -57,27 +57,12 @@ jobs:
       - name: TOML validity
         run: taplo check --no-schema $(git ls-files '*.toml')
 
-      # launchd does NOT expand `~` or `$HOME` in plist values: it fails the job
-      # with EX_CONFIG (78) BEFORE running it, so the only symptom is a job that
-      # silently never runs. com.alxjrvs.boom-verify.plist reported runs=0 from
-      # 2026-07-10 to 2026-08-08 for exactly this reason, while the identical bug
-      # had already been found and fixed in the capslock plist on 2026-07-13 and
-      # not carried across. 28 days of `boom verify` guardrails never executing.
-      #
-      # Structural validity does NOT catch it — both plists parsed cleanly
-      # throughout — so this is deliberately two assertions. `plutil` is macOS
-      # only; plistlib is the portable equivalent for this runner.
+      # Same script lefthook runs. Two assertions, not one: structural validity
+      # does not catch a `~` in a path value, and that is the bug that cost 28
+      # days of un-run `boom verify`.
       - name: plist validity
-        run: |
-          for f in $(git ls-files 'launchd/*.plist'); do
-            python3 -c "import plistlib,sys; plistlib.load(open(sys.argv[1],'rb'))" "$f"
-            ! grep -nE '<string>[~$]' "$f" || { echo "launchd does not expand ~ or \$HOME in $f — use an absolute path (EX_CONFIG 78, job silently never runs)"; exit 1; }
-          done
+        run: scripts/plist-validity.sh $(git ls-files 'launchd/*.plist')
 
-      # The interactive shell payload runs on EVERY shell startup and was linted
-      # by nothing. shellcheck's file set is `*.sh`, and shellcheck cannot parse
-      # zsh at all ("Unknown shell: zsh"), so excluding these files was correct —
-      # but nothing replaced it. `zsh -n` is the native no-exec syntax check.
       - name: zsh syntax
         run: |
           command -v zsh > /dev/null 2>&1 || sudo apt-get install -y -qq zsh
@@ -103,28 +88,11 @@ jobs:
       # This cannot cover ~/.claude/skills — a runner has no home dir to inspect, so
       # unmanaged skill dirs are invisible here BY CONSTRUCTION. That check lives in
       # boomfile.toml as a `verify` step; see the Claude section.
+      # Same script lefthook now runs. This check used to live here alone,
+      # which made it the one gate that failed only after a push.
       - name: skill description cap
-        run: |
-          fail=0
-          for f in dot-claude/skills/*/SKILL.md; do
-            [ -f "$f" ] || continue
-            d=$(awk '/^description:/{sub(/^description:[[:space:]]*/,""); print; exit}' "$f")
-            [ -n "$d" ] || { echo "$f: frontmatter has no description:"; fail=1; continue; }
-            w=$(printf '%s' "$d" | wc -w | tr -d ' ')
-            if [ "$w" -gt 60 ]; then
-              echo "$f: description is $w words (cap 60) — it loads into EVERY session"
-              fail=1
-            else
-              echo "ok $f ($w words)"
-            fi
-          done
-          [ "$fail" -eq 0 ] || exit 1
+        run: scripts/skill-description-cap.sh $(git ls-files 'dot-claude/skills/*/SKILL.md')
 
-      # The two PreToolUse guards are the only deterministic enforcement in the
-      # setup — and they shipped untested, which is how a `--dry-run` substring in
-      # an unrelated commit message came to disable the direct-push-to-main rule.
-      # A step in THIS job, not a new one: the required context is ["lint"], so a
-      # separate job would not be a required check.
       - name: guard regression tests
         run: dot-claude/hooks/tests/run.sh
 

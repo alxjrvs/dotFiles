@@ -62,21 +62,11 @@ pre-commit:
       run: scripts/context-budget.sh {staged_files}
 
     plist-validity:
-      # launchd does NOT expand `~` or `$HOME` in plist values — it fails the job
-      # with EX_CONFIG (78) BEFORE running it, so the symptom is a job that
-      # silently never runs. That bug was found and fixed in the capslock plist on
-      # 2026-07-13 and not carried across to boom-verify, which then reported
-      # runs=0 for 28 days while every `boom verify` guardrail sat un-run.
-      #
-      # `plutil -lint` does NOT catch this: both plists were structurally valid
-      # the whole time. Only the path-value assertion does, which is why this is
-      # two checks and not one.
+      # Runs the same script CI runs. Two assertions, not one: structural
+      # validity does not catch a `~` in a path value, and that is the bug that
+      # cost 28 days of un-run `boom verify`. See the script header.
       glob: "launchd/*.plist"
-      run: |
-        plutil -lint {staged_files}
-        for f in {staged_files}; do
-          ! grep -nE '<string>[~$]' "$f" || { echo "launchd does not expand ~ or \$HOME in $f — use an absolute path (EX_CONFIG 78, job silently never runs)"; exit 1; }
-        done
+      run: scripts/plist-validity.sh {staged_files}
     zsh-syntax:
       # The interactive shell payload runs on EVERY shell startup and was linted
       # by nothing: shellcheck's glob is `*.sh`, and shellcheck cannot parse zsh
@@ -140,6 +130,13 @@ pre-commit:
       # that. No network: the guard resolves the owner locally by design.
       glob: "dot-claude/hooks/{repo-scope-guard.sh,guard-lib.sh,tests/reposcope.sh}"
       run: dot-claude/hooks/tests/reposcope.sh
+
+    skill-description-cap:
+      # This existed ONLY in CI — the one asymmetry in the whole setup, and the
+      # inverse of every other gate here: editing a SKILL.md description
+      # committed clean locally and failed after the push.
+      glob: "dot-claude/skills/*/SKILL.md"
+      run: scripts/skill-description-cap.sh {staged_files}
     canary-tests:
       # hooks/claude-canary.sh is a `boom verify` step, not an agent hook, so its
       # glob covers the repo's own hooks/ too. Its load-bearing cases are the ones
