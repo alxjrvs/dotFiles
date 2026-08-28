@@ -327,6 +327,32 @@ op	nonrepo	echo hi && op read op://claude-agent/claude-git-pat/credential	deny
 op	nonrepo	op whoami; op read op://claude-agent/claude-git-pat/credential	deny
 op	nonrepo	echo op://x | xargs op read	deny
 
+# --- rebase-guard: interpreters and `-c alias.` ------------------------------
+# REGRESSION (2026-08-28 audit): op-guard treats an interpreter as the residue
+# `permissions.deny` cannot cover and scans its payload. rebase-guard never got
+# the same treatment, so the identical shape reached a push to main. `sudo git
+# push` is absent from this block deliberately — the shared `_norm` fix in the
+# previous commit already closed it for every guard at once, which is the whole
+# argument for the shared library.
+rebase	primary	bash -c "git push origin main"	deny
+rebase	primary	sh -c 'git push origin main'	deny
+rebase	primary	bash -c "git push --force origin HEAD:main"	deny
+rebase	primary	echo "git push origin main" | bash	deny
+# `git -c alias.X=push X` — the flag loop consumed `-c alias.yolo=push` as a
+# value-taking global and then read the subcommand as `yolo`, so the push was
+# never recognised as a push at all. The alias is not resolved, it is refused:
+# resolving it would mean running `git config` from inside a guard.
+rebase	primary	git -c alias.yolo=push yolo origin main	deny
+rebase	primary	git -c alias.p=push p origin main	deny
+# An interpreter payload that pushes somewhere SAFE is still allowed — the fix
+# expands the payload so the ordinary refspec logic judges it, rather than
+# refusing every interpreter outright.
+rebase	wt-a	bash -c "git push origin feature-a"	allow
+rebase	primary	bash -c "echo hello"	allow
+# The false positive this suite exists for: a commit message naming a push is
+# prose, not a command, and no expansion may reach inside one.
+rebase	primary	git commit -m "explain git push origin main in the docs"	allow
+
 # --- op-guard: substitution, `sudo`, and scripting interpreters -------------
 # REGRESSION (2026-08-28 audit): every row below was ALLOWED by the guard that
 # passed 156/156. Four holes in one family, none of them reachable by

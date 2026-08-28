@@ -85,29 +85,6 @@ _skip_op_global() { # $@ = argv after `op` -> prints argv at the subcommand
   printf '%s ' "$@"
 }
 
-# An interpreter takes an opaque payload this guard cannot tokenize, so
-# `sh -c 'op read op://…'` walks straight past a program-name check. CLAUDE.md
-# names this exact case as the residue `permissions.deny` structurally cannot
-# cover ("deny cannot cover an arbitrary interpreter"). It is covered here.
-_is_interpreter() { # $1 = basename
-  case "$1" in
-    sh | bash | zsh | dash | ksh | fish | eval | xargs | watch | script) return 0 ;;
-    # The scripting runtimes belong here for exactly the reason the shells do:
-    # `-c`/`-e` takes an opaque payload this guard cannot tokenize, and every
-    # one of these ships a `system()`. Omitting them left `python3 -c
-    # "os.system('op read …')"` as an open door through a guard that otherwise
-    # fails closed on an unknown VERB — the door was the unknown LANGUAGE.
-    python | python2 | python3 | ruby | perl | node | bun | deno | php | lua | awk) return 0 ;;
-    # Not interpreters in the language sense, but they take a command as
-    # arguments and run it: `find -exec op read …` and `ssh host "op read …"`
-    # both reach a real `op` this guard would otherwise never see. The payload
-    # scan is anchored on a real op SUBCOMMAND, so `find . -name '*.op'` and
-    # `ssh host uptime` do not trip it.
-    find | ssh) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
 # A command whose whole job is to print the environment defeats `op run`'s
 # masking argument, and an interpreter after `--` can do anything at all.
 _bad_op_run_child() { # $1 = basename of the command after `--`, $2.. = its argv
@@ -173,16 +150,6 @@ _bad_op_run_child() { # $1 = basename of the command after `--`, $2.. = its argv
 # never drift apart. Anchored on a real SUBCOMMAND, so the bare word `op` in a
 # commit message is not a match.
 _OP_VERB_RE='(^|[^A-Za-z0-9_-])op(-agent)?[[:space:]]+(read|inject|run|item|document|vault|account|user|group|service-account|whoami|signin|secret|header|git-credential)([^A-Za-z0-9_-]|$)'
-
-# Flatten everything that is not a word character or part of an `op://` path to
-# a space. `_unquote` DELETES its punctuation, which silently glued tokens
-# together: `os.system('op read …')` collapsed to `os.systemop read …`, putting
-# a word character in front of `op` so the pattern above could not match. Every
-# `python3 -c` payload was invisible for that one reason, and the suite could
-# not see it because no case exercised a payload with punctuation before `op`.
-_scan_text() { # $1 = text -> punctuation flattened to spaces
-  printf '%s' "$1" | sed 's/[^A-Za-z0-9_.:/-]/ /g'
-}
 
 # A payload piped INTO an interpreter is never an argv token of the interpreter's
 # own segment: in `echo "op read op://…" | bash`, the `echo` segment carries the

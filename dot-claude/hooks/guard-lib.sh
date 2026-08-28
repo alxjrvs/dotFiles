@@ -54,6 +54,101 @@ EOF
   printf '%s' "$out"
 }
 
+# An interpreter takes an opaque payload this guard cannot tokenize, so
+# `sh -c 'op read op://…'` walks straight past a program-name check. CLAUDE.md
+# names this exact case as the residue `permissions.deny` structurally cannot
+# cover ("deny cannot cover an arbitrary interpreter"). It is covered here.
+_is_interpreter() { # $1 = basename
+  case "$1" in
+    sh | bash | zsh | dash | ksh | fish | eval | xargs | watch | script) return 0 ;;
+    # The scripting runtimes belong here for exactly the reason the shells do:
+    # `-c`/`-e` takes an opaque payload this guard cannot tokenize, and every
+    # one of these ships a `system()`. Omitting them left `python3 -c
+    # "os.system('op read …')"` as an open door through a guard that otherwise
+    # fails closed on an unknown VERB — the door was the unknown LANGUAGE.
+    python | python2 | python3 | ruby | perl | node | bun | deno | php | lua | awk) return 0 ;;
+    # Not interpreters in the language sense, but they take a command as
+    # arguments and run it: `find -exec op read …` and `ssh host "op read …"`
+    # both reach a real `op` this guard would otherwise never see. The payload
+    # scan is anchored on a real op SUBCOMMAND, so `find . -name '*.op'` and
+    # `ssh host uptime` do not trip it.
+    find | ssh) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Flatten everything that is not a word character or part of an `op://` path to
+# a space. `_unquote` DELETES its punctuation, which silently glued tokens
+# together: `os.system('op read …')` collapsed to `os.systemop read …`, putting
+# a word character in front of `op` so the pattern above could not match. Every
+# `python3 -c` payload was invisible for that one reason, and the suite could
+# not see it because no case exercised a payload with punctuation before `op`.
+_scan_text() { # $1 = text -> punctuation flattened to spaces
+  printf '%s' "$1" | sed 's/[^A-Za-z0-9_.:/-]/ /g'
+}
+
+# Expand an interpreter's payload into extra segments, so `bash -c "git push
+# origin main"` is judged by the SAME refspec logic as a bare push. The
+# alternative -- refusing every interpreter outright, as op-guard must, because
+# it cannot know what an `op` payload will print -- would block the legitimate
+# `bash -c "git push origin feature"` for no gain. Here the payload IS a git
+# command, so it can simply be read as one.
+#
+# One level deep on purpose. `bash -c "bash -c ..."` is not a spelling anyone
+# reaches for, and each level of recursion is a way for this to loop forever on
+# a crafted input; a guard that hangs is worse than one that misses.
+_expand_interpreters() { # $1 = raw command, $2 = segments -> segments + payloads
+  local seg out payload q raw
+  # $1 must be saved before the loop below: `set -- $(_norm ...)` inside it
+  # REPLACES the positional parameters, so by the time the pipe check runs `$1`
+  # is the last segment's program name rather than the raw command. That silently
+  # disabled the whole pipe branch -- grep found nothing in an empty string.
+  raw=$1
+  out=$2
+  while IFS= read -r seg; do
+    [ -n "$seg" ] || continue
+    set -f
+    # shellcheck disable=SC2046 # intentional word-split: _norm emits tokens
+    set -- $(_norm "$seg")
+    set +f
+    [ $# -gt 0 ] || continue
+    _is_interpreter "${1##*/}" || continue
+    shift
+    # Drop the interpreter's own flags (`-c`, `-e`) so the payload starts at the
+    # command. Without this the payload's program name reads as `-c`.
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        -*) shift ;;
+        *) break ;;
+      esac
+    done
+    [ $# -gt 0 ] || continue
+    payload=$(_unquote "$*")
+    [ -n "$payload" ] || continue
+    out=$out$_NL$(_split "$payload")
+  done << EOF
+$2
+EOF
+
+  # A payload piped INTO an interpreter sits in the PRODUCING segment, whose
+  # program name is `echo` -- neither segment names the real command. Pull the
+  # quoted runs out of the whole command and read each as a candidate.
+  #
+  # Gated on an actual pipe-into-interpreter, which is what keeps this away from
+  # `git commit -m "explain git push origin main"`: that has no pipe, so no
+  # quoted run is ever expanded and the prose stays prose.
+  if printf '%s' "$raw" |
+    grep -qE '\|[[:space:]]*(sudo[[:space:]]+)?(env[[:space:]]+)?([A-Za-z0-9_./-]*/)?(sh|bash|zsh|dash|ksh|fish|eval|python[23]?|ruby|perl|node|bun|deno)([[:space:]]|$)'; then
+    while IFS= read -r q; do
+      [ -n "$q" ] || continue
+      out=$out$_NL$(_split "$(_unquote "$q")")
+    done << EOF
+$(printf '%s' "$raw" | grep -oE "\"[^\"]*\"|'[^']*'" || true)
+EOF
+  fi
+  printf '%s' "$out"
+}
+
 _split() { # $1 = command -> one simple command per line
   local s c q='' cur='' n i
   s=$(_strip_heredocs "$1")
