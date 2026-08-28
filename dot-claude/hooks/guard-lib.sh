@@ -250,6 +250,29 @@ _unquote() { # $1 = token -> printed without quotes/parens
   printf '%s' "$v"
 }
 
+# Blank out everything inside a quoted run, preserving length and every
+# character OUTSIDE the quotes. The result is a structure-only view of a
+# command: shell operators survive, prose does not.
+#
+# This is what separates `echo "op read op://x" | bash` — a real payload piped
+# into an interpreter, where the pipe is a shell operator — from
+# `git commit -m "note: x |eval can run op read op://a/b/c"`, where the same
+# characters are text inside an argument. A raw substring scan cannot tell them
+# apart, and denied the second one.
+_blank_quoted() { # $1 = command -> same string with quoted runs blanked
+  printf '%s' "$1" | awk '
+    {
+      out = ""; sq = 0; dq = 0; n = length($0)
+      for (i = 1; i <= n; i++) {
+        c = substr($0, i, 1)
+        if (!dq && c == "\047") { sq = !sq; out = out " "; continue }
+        if (!sq && c == "\"")   { dq = !dq; out = out " "; continue }
+        out = out ((sq || dq) ? " " : c)
+      }
+      print out
+    }'
+}
+
 # Strip QUOTES ONLY, keeping parens. `_unquote` deletes parens too, which would
 # destroy the `'('*` arm in `_norm` (a segment can legitimately open with one).
 # The program token is the one place a stray quote is fatal rather than

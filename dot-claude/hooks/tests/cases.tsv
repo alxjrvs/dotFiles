@@ -473,3 +473,18 @@ rebase	wt-a	git push --all --dry-run origin	allow
 # MUST STILL ALLOW: an ordinary feature-branch push is untouched.
 rebase	wt-a	git push origin HEAD	allow
 rebase	wt-a	git push -u origin feature-a	allow
+
+# --- REGRESSION: a pipe character inside a QUOTED argument is prose ---------
+# Both scans read the raw command, so a `|` inside a quoted string counted as a
+# shell operator and these were DENIED — the exact commit-message false
+# positive this suite exists to prevent, reopened by the gate meant to keep it
+# closed. It blocked read-only work three times during the 2026-08-28 audit,
+# including the writing of the finding that describes it.
+op	nonrepo	git commit -m "note: x |eval can run op read op://a/b/c"	allow
+op	nonrepo	git commit -m 'doc: the |bash pipe walks past op read op://x'	allow
+op	nonrepo	echo "a |python3 payload calling op read op://x is denied"	allow
+# MUST STILL DENY: an UNQUOTED pipe into an interpreter is a real shell
+# operator, and the payload it carries is exactly what this gate is for.
+op	nonrepo	echo "op read op://x/y" | bash	deny
+op	nonrepo	echo "op read op://x/y" | sh -s	deny
+op	nonrepo	printf 'op read op://x/y' | python3	deny
