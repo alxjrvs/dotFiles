@@ -327,6 +327,44 @@ op	nonrepo	echo hi && op read op://claude-agent/claude-git-pat/credential	deny
 op	nonrepo	op whoami; op read op://claude-agent/claude-git-pat/credential	deny
 op	nonrepo	echo op://x | xargs op read	deny
 
+# --- op-guard: substitution, `sudo`, and scripting interpreters -------------
+# REGRESSION (2026-08-28 audit): every row below was ALLOWED by the guard that
+# passed 156/156. Four holes in one family, none of them reachable by
+# `permissions.deny`, whose rules anchor `op read` as the FIRST token:
+#   1. `_split` had no `$( )` / backtick / `<( )` handling, so a substitution
+#      body was never tokenized as a command at all.
+#   2. `_norm`'s assignment arm shifted past `X=$(op`, resolving the program
+#      name to `read` — an allowed-looking token.
+#   3. `_norm` stripped `command`/`env`/`exec` but not `sudo`.
+#   4. `_is_interpreter` listed shells but no scripting runtime, so any
+#      language with a `system()` was an open door.
+# The substitution rows are the important ones: a value on stdout IS the leak,
+# and command substitution is the shortest path to putting one there.
+op	nonrepo	echo $(op read op://claude-agent/claude-git-pat/credential)	deny
+op	nonrepo	X=$(op read op://claude-agent/claude-git-pat/credential); echo $X	deny
+op	nonrepo	echo `op read op://claude-agent/claude-git-pat/credential`	deny
+op	nonrepo	cat <(op read op://claude-agent/claude-git-pat/credential)	deny
+op	nonrepo	sudo op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	sudo -u jarvis op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	python3 -c "import os;os.system('op read op://claude-agent/x/y')"	deny
+op	nonrepo	node -e "require('child_process').execSync('op read op://a/b/c')"	deny
+op	nonrepo	perl -e 'system("op read op://a/b/c")'	deny
+op	nonrepo	ruby -e 'system("op item get claude-git-pat")'	deny
+op	nonrepo	find . -exec op read op://a/b/c ;	deny
+op	nonrepo	echo "op read op://claude-agent/claude-git-pat/credential" | bash	deny
+# `op run --` may not trampoline through a scripting interpreter either. The
+# child prints the injected environment, which is the masking argument defeated
+# exactly as `env`/`printenv` would — those were listed, these were not.
+op	nonrepo	op run -- python3 -c "import os;print(os.environ)"	deny
+op	nonrepo	op run -- node -e "console.log(process.env)"	deny
+
+# A substitution that is NOT an op command stays allowed — the fix widens the
+# tokenizer, it does not widen the verdict.
+op	nonrepo	echo $(date +%s)	allow
+op	nonrepo	X=$(git rev-parse HEAD); echo $X	allow
+op	nonrepo	python3 -c "print(1+1)"	allow
+op	nonrepo	python3 script.py --flag	allow
+
 # --- op-guard: allow-list means UNKNOWN fails closed ------------------------
 # This is the inversion the change is built on. Under the old deny-list a verb
 # nobody enumerated sailed through — that is exactly how `op-agent header`, the
