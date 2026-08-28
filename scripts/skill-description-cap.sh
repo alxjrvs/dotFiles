@@ -22,8 +22,20 @@ if [ "$#" -eq 0 ]; then
   set -- dot-claude/skills/*/SKILL.md
 fi
 
+# See settings-guardrails.sh. This one already defaults to a glob when called
+# with no arguments, but the glob itself can match nothing — and an explicit
+# path that does not exist was silently skipped rather than reported.
+[ "$#" -gt 0 ] || {
+  echo "no inputs — the skills glob matched nothing, so no description was checked" >&2
+  exit 1
+}
+
 for f in "$@"; do
-  [ -f "$f" ] || continue
+  [ -f "$f" ] || {
+    echo "$f: expected skill file is missing"
+    fail=1
+    continue
+  }
   case "$f" in
     *SKILL.md) ;;
     *) continue ;;
