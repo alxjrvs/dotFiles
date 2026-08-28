@@ -165,6 +165,15 @@ pre-commit:
       # it exists to prevent, so this suite is what keeps it honest.
       glob: "{hooks/*.sh,dot-claude/hooks/tests/*}"
       run: dot-claude/hooks/tests/canary.sh
+    actionlint:
+      # The workflows are the remote gate, and were the only config here with no
+      # linter. Declared in mise.toml and checksummed in mise.lock all along —
+      # `brew-drift.sh` even excludes it BECAUSE mise owns it — but wired into
+      # neither gate. It also reaches the embedded shell in every `run:`, which
+      # the shellcheck glob above cannot.
+      glob: ".github/workflows/*.yml"
+      run: actionlint
+
     gate-tests:
       # The same property the canary suite above asserts, for the three shared
       # assertions in scripts/: a gate that checked nothing must not print `ok`.
