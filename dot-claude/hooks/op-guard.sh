@@ -155,9 +155,22 @@ _OP_VERB_RE='(^|[^A-Za-z0-9_-])op(-agent)?[[:space:]]+(read|inject|run|item|docu
 # own segment: in `echo "op read op://…" | bash`, the `echo` segment carries the
 # secret command and the `bash` segment carries nothing. Neither is deniable
 # alone, so this scans the WHOLE command — but only when it genuinely pipes into
-# an interpreter, which is what keeps the commit-message false positive that
-# this suite exists to prevent out of reach.
-if printf '%s' "$cmd" |
+# an interpreter.
+#
+# The pipe is matched against a STRUCTURE-ONLY view: heredoc bodies removed and
+# quoted runs blanked. Previously both scans read the raw command, so a pipe
+# character inside a quoted argument counted as a shell operator, and
+# `git commit -m "note: x |eval can run op read op://a/b/c"` was DENIED while
+# the identical message without the pipe was allowed. That is the commit-message
+# false positive this suite exists to prevent, reopened by the gate meant to
+# keep it closed — it blocked read-only work three times during the 2026-08-28
+# audit, including the writing of this very finding.
+#
+# The op-verb scan below still reads the RAW command on purpose: the payload of
+# a genuine attack lives INSIDE the quotes, so blanking them for the content
+# scan would hide the thing being looked for. Structure from the blanked view,
+# content from the raw one.
+if printf '%s' "$(_blank_quoted "$(_strip_heredocs "$cmd")")" |
   grep -qE '\|[[:space:]]*(sudo[[:space:]]+)?(env[[:space:]]+)?([A-Za-z0-9_./-]*/)?(sh|bash|zsh|dash|ksh|fish|eval|python[23]?|ruby|perl|node|bun|deno|php|lua|awk)([[:space:]]|$)'; then
   if _scan_text "$cmd" | grep -qE "$_OP_VERB_RE"; then
     deny "This command pipes a payload containing an \`op\` command into an interpreter. Neither the producing segment nor the interpreter segment names \`op\` as its program, so the shape walks past both this guard's tokenizer and \`permissions.deny\`. Run the op command directly.
