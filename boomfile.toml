@@ -567,6 +567,16 @@ cmd = "git diff --quiet -- dot-claude/ || { echo 'live Claude config diverges fr
 on = "verify"
 cmd = "hooks/claude-canary.sh"
 
+# Is this machine still reproducible from the Brewfile? `brew bundle` installs
+# what the Brewfile names and never removes what it omits, so drift is
+# one-directional and silent: 21 casks were installed against 11 declared, and
+# the Brewfile's own "NOT here, deliberately" block described removals that had
+# never happened. Verify-time because it is a property of the MACHINE, not of
+# the file — lefthook only sees it when the Brewfile itself is edited.
+[[section.run]]
+on = "verify"
+cmd = "scripts/brew-drift.sh"
+
 # `git maintenance` registers repos in ~/.gitconfig.local and installs three launchd agents
 # (org.git-scm.git.{hourly,daily,weekly}) that run whether or not those paths still exist. Found
 # pointing at /Users/jarvis/dotFiles and /Users/jarvis/Code/dotFiles — neither of which exists,

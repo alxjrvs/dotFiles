@@ -31,14 +31,21 @@ brew "moreutils"   # sponge/ts/vipe — same
 brew "mysql"       # a database + brew service, not a CLI toolchain
 brew "cocoapods"   # iOS dependency manager, tied to the system Ruby/Xcode toolchain
 
-# NOT here, deliberately, though brew had installed them:
-#   gh          — declared in mise.toml. The brew copy was a genuine policy violation: both
-#                 were installed, and brew's won on PATH, so mise's pin was inert.
+# NOT here, deliberately. Enforced by scripts/brew-drift.sh, which fails if any of these
+# is installed AND undeclared AND unlisted — the three-way state that let this block
+# describe removals that had never happened. Every name below is still installed today and
+# wants `brew uninstall` by hand; `brew bundle` never removes what a Brewfile omits.
+#   gh          — declared in mise.toml. The brew copy is a genuine policy violation: both
+#                 are installed, and brew's wins on PATH in some shells, so mise's pin is
+#                 inert there. (mise's does win in an interactive login shell — measured.)
+#   actionlint  — declared in mise.toml, same shape as gh.
+#   osv-scanner — declared in mise.toml, same shape as gh.
 #   node        — arrived only as a dependency of netlify-cli. A second node is exactly the
 #                 hazard the mise pin exists to prevent (see .zprofile's PATH comment).
 #   shellcheck  — same shape, arrived as a dependency of actionlint; mise declares it.
 #   netlify-cli — redundant: deploys invoke a version-pinned `bunx netlify-cli@<ver>`, so
 #                 nothing needs it globally, and installing it globally is what pulled node in.
+#   usage       — a mise internal dependency, not a tool this repo chose.
 #   heroku      — declared in mise.toml as `npm:heroku`, and it CANNOT come from here: there
 #                 is no homebrew-core formula, only the third-party `heroku/brew` tap, which
 #                 brew reports Untrusted and refuses to load until someone runs `brew trust`
@@ -74,13 +81,27 @@ cask "google-chrome"
 # launchd/com.alxjrvs.capslock-control.plist) — no Karabiner kernel extension
 # for a single modifier remap.
 #
-# This comment described a removal that never actually happened: `karabiner-elements` is still
-# installed as a cask on this machine, undeclared. It is deliberately NOT declared here — the
-# hidutil agent is the supported path — but the cask needs removing by hand
-# (`brew uninstall --cask karabiner-elements`), since `brew bundle` does not uninstall what a
-# Brewfile omits.
+# `karabiner-elements` is still installed on this machine and deliberately NOT declared — the
+# hidutil agent is the supported path. It is named in scripts/brew-drift.sh's exclusion list,
+# which is what stops "deliberately excluded" from decaying into "nobody noticed". It still
+# wants removing by hand (`brew uninstall --cask karabiner-elements`); `brew bundle` does not
+# uninstall what a Brewfile omits.
 
 cask "notunes"
+
+# ── Declared after scripts/brew-drift.sh found them installed-but-undeclared ──
+# A fresh machine reproduced none of these. Each was installed by hand at some
+# point and never written down, which is precisely the drift the check now
+# fails on.
+cask "cmux"          # terminal multiplexer for parallel agent sessions
+cask "devutils"      # offline developer toolbox (JSON/JWT/regex/diff)
+cask "gcloud-cli"    # Google Cloud SDK
+cask "ngrok"         # public tunnel to a local port
+cask "obs"           # screen recording
+cask "orbstack"      # Docker/Linux VMs, the lighter Docker Desktop
+cask "wave"          # terminal
+cask "zulu17"        # JDK 17. NOT `zulu@17` — the same JDK under a second cask
+                     # name, whose Caskroom holds only metadata. See brew-drift.sh.
 
 # Window mgmt + launcher + clipboard (replaces Rectangle + Spotlight).
 cask "raycast"
