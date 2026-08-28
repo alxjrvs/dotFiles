@@ -37,6 +37,22 @@ pre-commit:
       # comment telling a human to keep the inventory aligned by hand.
       glob: "dot-claude/settings*.json"
       run: scripts/settings-guardrails.sh {staged_files}
+    dead-verbs:
+      # `boom apply` is not a boom command and never has been — the verbs are
+      # verify | status | plan | source | where | edit | rollback | ... A stale
+      # reference to it sat in five files, including the git template's
+      # pre-commit error text, which is copied into every new repo on the machine
+      # via init.templateDir: a newcomer's first failed commit handed them a
+      # command that does not exist, next to one that does (`or: mise install`),
+      # which is why it survived so long.
+      #
+      # Brewfile carries the one legitimate mention, documenting the absence.
+      # Anything else is drift, and drift in a command name is the kind that
+      # only ever surfaces in front of someone new.
+      run: |
+        hits=$(git grep -n 'boom apply' -- ':!Brewfile' ':!lefthook.yml' || true)
+        [ -z "$hits" ] || { echo "$hits"; echo "'boom apply' is not a boom verb — use 'boom source'"; exit 1; }
+
     context-budget:
       # Runs the same script CI runs, so the ceiling is hit at commit time rather
       # than after the push, and a green commit is a green build by construction —
