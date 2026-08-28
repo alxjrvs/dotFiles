@@ -38,34 +38,63 @@ verify`** is the read-only drift check (exit `0` clean / `2` warn / `1` fail).
 
 [boom-docs]: https://alxjrvs.github.io/boom/
 
-## Making it yours
+## Forking this repo
 
-Everything here is policy except a handful of identity values:
+Ordered by what breaks first, not by where it lives. Everything else is policy.
+
+**1 — Identity, or your commits are signed as someone else.**
 
 | What | Where |
 |------|-------|
 | Git name + email | `.gitconfig` `[user]` |
-| 1Password signing-key item name | `boomfile.toml` / the `git-signing` setup (default `GitHubSSH`) |
-| MCP token references | `dot-claude/settings.json` `*_COMMAND` resolvers → `op-agent secret op://…` |
-| 1Password vault filter for SSH keys | `ssh/1password-agent.toml` |
-| Statusline source repo | `hooks/claude_statusline.ts` (`repo=…` in the boomfile) |
+| Agent commit identity | `dot-claude/settings.json` — `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_EMAIL`, and the `Co-Authored-By` trailer |
+
+Miss these and every commit an agent makes on your machine is authored and
+co-signed as `alxjrvs`, silently, into public history.
+
+**2 — 1Password, or `boom verify` fails on day one.**
+
+| What | Where |
+|------|-------|
+| Service-account vault name | `agent-vault.txt` (audited by `boom verify` against a vault named `claude-agent`) |
+| Secret references | `dot-claude/settings.json` `*_COMMAND` resolvers, `npm/publish.env` — all `op://claude-agent/…` |
+| SSH signing-key item | `boomfile.toml` `key = "GitHubSSH"`, and `ssh/1password-agent.toml` |
+
+`ssh/1password-agent.toml` scopes per ITEM, not per vault — 1Password's
+least-privilege recommendation, and the file says so.
+
+**3 — Org scope, which is a security control and not a preference.**
+
+`_owned_orgs()` in `dot-claude/hooks/guard-lib.sh` is the single source: it gates
+which repos `repo-scope-guard.sh` will let an agent write to, and it seeds
+`pr-review.sh`'s review scope. On a fork it protects the wrong orgs until you
+change it.
+
+**4 — Cosmetic, in your own time.** The launchd labels
+(`launchd/com.alxjrvs.*.plist`, wired at `boomfile.toml`), the OTEL attribution
+in `.claude/settings.json`, the statusline source repo in
+`hooks/claude_statusline.ts`, and the four private repos named in
+`dot-claude/skills/butter-stack/SKILL.md`.
 
 ## What's here
 
 | Path | Purpose |
 |------|---------|
 | `boomfile.toml` | The config boom reads — symlink table, packages, macOS defaults, inline steps, hooks |
-| `hooks/` | Imperative escape hatches: `op-agent.sh` (1Password-agent CLI), `claude_statusline.ts` |
+| `hooks/` | **boom lifecycle hooks.** `op-agent.sh` (1Password-agent CLI), `git-signing.ts`, `claude_statusline.ts`, `claude-canary.sh`. The directory name is boom's contract, not a choice — `[[section.hook]]` resolves scripts from a hardcoded `hooks/`, so this cannot be renamed to something less collision-prone |
+| `dot-claude/hooks/` | **Claude Code guards**, unrelated to the above: PreToolUse/SessionStart/Stop hooks plus their suites. Symlinked into `~/.claude/hooks/` |
+| `git-template/hooks/` | **git hooks**, copied into every new repo via `init.templateDir` |
+| `agent-vault.txt` | Declared contents of the `claude-agent` 1Password vault; drift in either direction fails `boom verify` |
 | `.zshrc` / `zsh/` | Thin loader + numbered zsh fragments |
 | `.gitconfig`, `.gitmessage` | Git identity, commit template, 1Password SSH signing |
-| `git-template/hooks/pre-commit` | Per-repo gitleaks + MCP-secret guard, copied into new repos via `init.templateDir` |
 | `starship.toml` | Prompt |
 | `ghostty/config` | Terminal (Ghostty, sole terminal) |
 | `nvim/init.lua` | Plugin-free neovim (native LSP, ≥0.11) |
 | `dot-claude/` | User-global Claude config. `CLAUDE.md` + `settings.json` are symlinked into `~/.claude/` and billed to every session; `DECISIONS.md`, `SETTINGS.md`, `REFERENCE.md`, `skills/`, `hooks/` are not |
 | `Brewfile` / `mise.toml` | Packages (Lean A: brew = casks, mise = dev CLIs) |
 | `sheldon/`, `atuin/`, `bat/`, `ssh/`, `gh/config.yml` | Payload configs |
-| `lefthook.yml`, `.github/workflows/lint.yml` | Commit + CI gate: shellcheck, shfmt, biome, gitleaks, hook test suites, and the always-loaded context budget (`scripts/context-budget.sh`) |
+| `lefthook.yml`, `.github/workflows/lint.yml` | Commit + CI gate: shellcheck, shfmt, biome, gitleaks, the hook suites, and the assertions in `scripts/` |
+| `scripts/` | The shared assertions both gates call, so neither can drift from the other: `context-budget.sh`, `settings-guardrails.sh`, `plist-validity.sh`, `skill-description-cap.sh`, `brew-drift.sh` |
 | `LICENSE` | MIT |
 
 ## Secrets, signing, terminal, packaging

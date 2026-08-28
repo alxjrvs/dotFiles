@@ -145,6 +145,13 @@ pre-commit:
       # when the Brewfile is touched; no-ops where brew is absent.
       glob: "Brewfile"
       run: scripts/brew-drift.sh
+
+    identity-drift:
+      # Keeps README's "Forking this repo" list honest. A new hardcoded owner
+      # somewhere the list does not mention breaks a fork silently — the forker's
+      # agent commits get authored as someone else, or `boom verify` fails
+      # against a 1Password vault that was never theirs.
+      run: scripts/identity-drift.sh
     canary-tests:
       # hooks/claude-canary.sh is a `boom verify` step, not an agent hook, so its
       # glob covers the repo's own hooks/ too. Its load-bearing cases are the ones

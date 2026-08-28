@@ -93,6 +93,11 @@ jobs:
       - name: skill description cap
         run: scripts/skill-description-cap.sh $(git ls-files 'dot-claude/skills/*/SKILL.md')
 
+      # README's forking list, enforced rather than maintained. CI runs it too
+      # because a fork's first commit is exactly where this matters.
+      - name: identity drift
+        run: scripts/identity-drift.sh
+
       - name: guard regression tests
         run: dot-claude/hooks/tests/run.sh
 
