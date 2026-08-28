@@ -25,13 +25,13 @@ jobs:
         with:
           install: false
       - name: Install lint tools
-        run: mise install shellcheck shfmt gitleaks jq taplo biome
+        run: mise install shellcheck shfmt gitleaks jq taplo biome actionlint
 
       # Same file set as lefthook.yml's shell globs, resolved via git.
       - name: shellcheck
-        run: shellcheck -x $(git ls-files '*.sh' 'git-template/hooks/*')
+        run: git ls-files -z '*.sh' 'git-template/hooks/*' | xargs -0 shellcheck -x
       - name: shfmt
-        run: shfmt -d -i 2 -ci -sr $(git ls-files '*.sh' 'git-template/hooks/*')
+        run: git ls-files -z '*.sh' 'git-template/hooks/*' | xargs -0 shfmt -d -i 2 -ci -sr
 
       # JS/TS/JSON lint + format gate (the boom hooks + settings.json). Mirrors
       # lefthook's biome-check; bare `biome check` uses biome.json and respects
@@ -44,6 +44,16 @@ jobs:
       - name: gitleaks
         run: gitleaks detect --no-git --redact --no-banner
 
+      # The workflow files are the entire remote gate, and until now they were
+      # the only config in this repo with no linter — a typo in an `if:`, a bad
+      # `needs:`, a malformed `permissions:` block all landed silently. This
+      # tool was already declared in mise.toml, checksummed in mise.lock, and
+      # excluded from brew-drift BECAUSE mise owns it; it was simply never run.
+      # It also covers the embedded shell in every `run:` by shelling out to
+      # shellcheck, which the `*.sh` glob above cannot reach.
+      - name: actionlint
+        run: actionlint
+
       # Same script lefthook and `boom verify` run. Previously this block
       # transcribed lefthook's checks line for line, including the deny-floor
       # loop and its comments; the word "Mirrors" appearing in a CI file is a
@@ -55,13 +65,13 @@ jobs:
       # syntax error is caught here, not at `boom source` time on a real machine.
       # --no-schema = pure syntax (hermetic, offline). Mirrors lefthook's toml-validity.
       - name: TOML validity
-        run: taplo check --no-schema $(git ls-files '*.toml')
+        run: git ls-files -z '*.toml' | xargs -0 taplo check --no-schema
 
       # Same script lefthook runs. Two assertions, not one: structural validity
       # does not catch a `~` in a path value, and that is the bug that cost 28
       # days of un-run `boom verify`.
       - name: plist validity
-        run: scripts/plist-validity.sh $(git ls-files 'launchd/*.plist')
+        run: git ls-files -z 'launchd/*.plist' | xargs -0 scripts/plist-validity.sh
 
       - name: zsh syntax
         run: |
@@ -91,7 +101,7 @@ jobs:
       # Same script lefthook now runs. This check used to live here alone,
       # which made it the one gate that failed only after a push.
       - name: skill description cap
-        run: scripts/skill-description-cap.sh $(git ls-files 'dot-claude/skills/*/SKILL.md')
+        run: git ls-files -z 'dot-claude/skills/*/SKILL.md' | xargs -0 scripts/skill-description-cap.sh
 
       # README's forking list, enforced rather than maintained. CI runs it too
       # because a fork's first commit is exactly where this matters.
