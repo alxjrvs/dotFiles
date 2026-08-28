@@ -166,6 +166,24 @@ $SAFE_SHAPES"
   fi
 fi
 
+# A command substitution in PROGRAM position — `` `echo op` read op://… `` or
+# `$(echo op) read op://…` — names a program only the shell can resolve, and
+# the shell resolves it AFTER this guard has run. It cannot be caught after
+# `_split`, because `_split` treats the substitution as a separator and
+# decomposes it: the pieces are `echo op` and `read op://…`, neither of which
+# has `op` in program position, so both fall through as ordinary commands.
+#
+# Anchored at the start of the command or immediately after a separator, so a
+# substitution inside an ARGUMENT is untouched — `git commit -m "fix \`op read\`
+# guard"` and `tar -C "$(pwd)" -cf -` are both prose or paths, not a program
+# name, and denying those would recreate the false positive this suite exists
+# to prevent.
+if printf '%s' "$cmd" | grep -qE '(^|[;&|]|&&|\|\|)[[:space:]]*(\$\(|`)'; then
+  deny "This command's program name comes from a command substitution, so what actually runs is decided by the shell after this guard has already allowed it — and an unreadable program name is the case this guard closes rather than waves through. Spell the program out literally.
+
+$SAFE_SHAPES"
+fi
+
 segs=$(_split "$cmd")
 while IFS= read -r seg; do
   [ -n "$seg" ] || continue
@@ -177,6 +195,16 @@ while IFS= read -r seg; do
   # basename, so `/opt/homebrew/bin/op` and `~/.local/bin/op-agent` are caught.
   # This is the path-spelling hole `permissions.deny` cannot close by pattern.
   prog=${1##*/}
+
+  # A program name that is itself a shell expansion (`$OP read …`,
+  # `$(echo op) read …`) cannot be read statically, and this guard's whole
+  # contract is that an unrecognized name is closed, not open. Same doctrine as
+  # the unknown-subcommand arm below.
+  if [ "$prog" = "$_UNRESOLVED" ]; then
+    deny "This command's program name is a shell expansion, so no guard can tell what it runs — and an unreadable name is exactly the case this guard closes rather than waves through. Spell the program out literally.
+
+$SAFE_SHAPES"
+  fi
 
   if _is_interpreter "$prog"; then
     # Only interpreter segments get a substring scan — a prose `-m "add op

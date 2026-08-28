@@ -427,3 +427,31 @@ rebase	primary	git commit -m "why we avoid\ngit push origin HEAD:main"	allow
 op	nonrepo	echo hi\nop read op://x/y	deny
 # MUST STILL DENY: a real interpreter payload spanning a quoted newline.
 op	nonrepo	sh -c "echo hi\nop read op://x/y"	deny
+
+# --- REGRESSION: a quoted or expanded PROGRAM name -------------------------
+# `_norm` compared and emitted the program token RAW, so one pair of quotation
+# marks resolved the program name to `"op"` — which is not `op` — and every
+# guard sourcing guard-lib.sh waved the command through. `"op" read` put a live
+# credential on stdout: the exact 2026-07-25 leak the allow-list exists to make
+# structurally impossible. All seven of these were ALLOWED before the fix.
+op	nonrepo	"op" read op://vault/item/field	deny
+op	nonrepo	'op' read op://vault/item/field	deny
+op	nonrepo	o""p read op://vault/item/field	deny
+op	nonrepo	"op" item get prod-db	deny
+# A program name that is itself a shell expansion cannot be read statically, so
+# it is refused rather than waved through — same doctrine as an unknown verb.
+op	nonrepo	$(echo op) read op://vault/item/field	deny
+op	nonrepo	`echo op` read op://vault/item/field	deny
+op	nonrepo	$OP read op://vault/item/field	deny
+# MUST STILL ALLOW: quoting a SANCTIONED spelling stays sanctioned. The fix
+# resolves the name; it does not deny quoting.
+op	nonrepo	"op" whoami	allow
+op	nonrepo	"op" run --env-file=.env -- npm publish	allow
+# MUST STILL ALLOW: a `$` inside an ARGUMENT is not a program name. Only the
+# program token is refused when unreadable, or every command with a variable in
+# it would be denied.
+op	nonrepo	op run --env-file=$HOME/.env -- npm publish	allow
+# MUST STILL ALLOW: a substitution inside an ARGUMENT is a path or prose, not a
+# program name. Denying these would recreate the commit-message false positive.
+op	nonrepo	git commit -m "fix `op read` guard"	allow
+op	nonrepo	tar -C "$(pwd)" -cf - .	allow
