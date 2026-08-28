@@ -92,16 +92,55 @@ _skip_op_global() { # $@ = argv after `op` -> prints argv at the subcommand
 _is_interpreter() { # $1 = basename
   case "$1" in
     sh | bash | zsh | dash | ksh | fish | eval | xargs | watch | script) return 0 ;;
+    # The scripting runtimes belong here for exactly the reason the shells do:
+    # `-c`/`-e` takes an opaque payload this guard cannot tokenize, and every
+    # one of these ships a `system()`. Omitting them left `python3 -c
+    # "os.system('op read …')"` as an open door through a guard that otherwise
+    # fails closed on an unknown VERB — the door was the unknown LANGUAGE.
+    python | python2 | python3 | ruby | perl | node | bun | deno | php | lua | awk) return 0 ;;
+    # Not interpreters in the language sense, but they take a command as
+    # arguments and run it: `find -exec op read …` and `ssh host "op read …"`
+    # both reach a real `op` this guard would otherwise never see. The payload
+    # scan is anchored on a real op SUBCOMMAND, so `find . -name '*.op'` and
+    # `ssh host uptime` do not trip it.
+    find | ssh) return 0 ;;
     *) return 1 ;;
   esac
 }
 
 # A command whose whole job is to print the environment defeats `op run`'s
 # masking argument, and an interpreter after `--` can do anything at all.
-_bad_op_run_child() { # $1 = basename of the command after `--`
-  case "$1" in
+_bad_op_run_child() { # $1 = basename of the command after `--`, $2.. = its argv
+  local _a _prog=$1
+  shift
+  case "$_prog" in
     env | printenv | set | export | declare | typeset | printf | echo) return 0 ;;
     sh | bash | zsh | dash | ksh | fish | eval | xargs) return 0 ;;
+    # Same argument as the shells directly above, and the same omission the
+    # 2026-08-28 audit found in `_is_interpreter`: `op run -- python3 -c
+    # "print(os.environ)"` prints every INJECTED value, which is precisely what
+    # listing `env` and `printenv` here exists to stop. A language runtime is a
+    # more capable `printenv`, not a less capable one.
+    # `awk`'s program is inline by construction, so it has no safe shape here.
+    awk) return 0 ;;
+    # The other runtimes DO have a safe shape, and it is the main reason `op run`
+    # exists: `op run -- node build.js` hands a secret to a program that consumes
+    # it. Denying the whole runtime broke exactly that — `op run -- bun run dev`
+    # and `op run -- node build.js` are allow-cases in this suite, and both went
+    # red. What is unsafe is the INLINE script: `-e`/`-c` is a `printenv` whose
+    # output you cannot predict. So the FLAG decides, not the language.
+    python | python2 | python3 | ruby | perl | node | bun | deno | php | lua)
+      for _a in "$@"; do
+        case "$_a" in
+          -c | -e | -E | -p | -P | --eval | --print | -) return 0 ;;
+          # `deno eval` is a subcommand rather than a flag.
+          eval) return 0 ;;
+          # Bundled short flags: perl's `-ne`, `-lane`; ruby's `-ne`.
+          -[A-Za-z]*) case "$_a" in *e* | *c*) return 0 ;; esac ;;
+        esac
+      done
+      return 1
+      ;;
     # `op run -- git push` would hide the push from rebase-guard.sh, which
     # tokenizes for a `git`/`gh` PROGRAM and sees `op` here. git and gh get their
     # credentials from the credential helper, never from `op run`, so denying
@@ -130,6 +169,36 @@ _bad_op_run_child() { # $1 = basename of the command after `--`
   esac
 }
 
+# The op-subcommand pattern, named once because two scans now share it and must
+# never drift apart. Anchored on a real SUBCOMMAND, so the bare word `op` in a
+# commit message is not a match.
+_OP_VERB_RE='(^|[^A-Za-z0-9_-])op(-agent)?[[:space:]]+(read|inject|run|item|document|vault|account|user|group|service-account|whoami|signin|secret|header|git-credential)([^A-Za-z0-9_-]|$)'
+
+# Flatten everything that is not a word character or part of an `op://` path to
+# a space. `_unquote` DELETES its punctuation, which silently glued tokens
+# together: `os.system('op read …')` collapsed to `os.systemop read …`, putting
+# a word character in front of `op` so the pattern above could not match. Every
+# `python3 -c` payload was invisible for that one reason, and the suite could
+# not see it because no case exercised a payload with punctuation before `op`.
+_scan_text() { # $1 = text -> punctuation flattened to spaces
+  printf '%s' "$1" | sed 's/[^A-Za-z0-9_.:/-]/ /g'
+}
+
+# A payload piped INTO an interpreter is never an argv token of the interpreter's
+# own segment: in `echo "op read op://…" | bash`, the `echo` segment carries the
+# secret command and the `bash` segment carries nothing. Neither is deniable
+# alone, so this scans the WHOLE command — but only when it genuinely pipes into
+# an interpreter, which is what keeps the commit-message false positive that
+# this suite exists to prevent out of reach.
+if printf '%s' "$cmd" |
+  grep -qE '\|[[:space:]]*(sudo[[:space:]]+)?(env[[:space:]]+)?([A-Za-z0-9_./-]*/)?(sh|bash|zsh|dash|ksh|fish|eval|python[23]?|ruby|perl|node|bun|deno|php|lua|awk)([[:space:]]|$)'; then
+  if _scan_text "$cmd" | grep -qE "$_OP_VERB_RE"; then
+    deny "This command pipes a payload containing an \`op\` command into an interpreter. Neither the producing segment nor the interpreter segment names \`op\` as its program, so the shape walks past both this guard's tokenizer and \`permissions.deny\`. Run the op command directly.
+
+$SAFE_SHAPES"
+  fi
+fi
+
 segs=$(_split "$cmd")
 while IFS= read -r seg; do
   [ -n "$seg" ] || continue
@@ -150,8 +219,7 @@ while IFS= read -r seg; do
     # and `bash -c 'echo loop'` must not trip this; `sh -c 'op read op://x'` and
     # `sh -c '/opt/homebrew/bin/op read …'` must. A leading `/` is outside the
     # word class, so every path spelling is caught by the same pattern.
-    if printf '%s' "$(_unquote "$seg")" |
-      grep -qE '(^|[^A-Za-z0-9_.-])op(-agent)?[[:space:]]+(read|inject|run|item|document|vault|account|user|group|service-account|whoami|signin|secret|header|git-credential)([^A-Za-z0-9_-]|$)'; then
+    if _scan_text "$seg" | grep -qE "$_OP_VERB_RE"; then
       deny "\`$prog\` is being handed a payload containing an \`op\` command, which this guard cannot tokenize — an interpreter is the one path that walks past both the guard and \`permissions.deny\`. Run the op command directly instead of through \`$prog -c\`.
 
 $SAFE_SHAPES"
@@ -218,7 +286,7 @@ $SAFE_SHAPES"
 
 $SAFE_SHAPES"
       fi
-      if _bad_op_run_child "$child"; then
+      if _bad_op_run_child "$child" "$@"; then
         deny "\`op run -- $child\` is denied. Either it exists to print the environment (which defeats masking and dumps every injected secret into model context), or it is an interpreter/VCS command whose payload this guard cannot see through — \`op run -- git push\` in particular would hide the push from rebase-guard.sh. Run \`op run --\` against the actual program that needs the secret.
 
 $SAFE_SHAPES"

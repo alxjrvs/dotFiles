@@ -98,7 +98,21 @@ _split() { # $1 = command -> one simple command per line
       # multi-line command collapsed into ONE segment, so `git status` on line 1
       # made the segment's subcommand `status` and a `git push origin main` on
       # line 2 was never seen.
-      ';' | '&' | '|' | "$_NL")
+      # `(`, `)` and a backtick separate simple commands for the same reason
+      # `;` does: what follows one is a COMMAND, not an argument. Before this,
+      # `echo $(op read op://…)` was a single segment whose program name was
+      # `echo`, so the guard inspected the wrapper and never the payload — and
+      # `permissions.deny` could not help, its rules being anchored on `op read`
+      # as the first token. Splitting here routes the substitution body back
+      # through the ordinary allow-list on the next iteration, which is where
+      # the verdict already lives; the alternative was teaching this tokenizer
+      # to parse nesting, which is strictly more code and more ways to be wrong.
+      #
+      # Only UNQUOTED delimiters split — the quote branch above returns first —
+      # so a paren inside a commit message is still prose. An unquoted `(` in
+      # shell is always a construct: subshell, `$(`, or `<(`. Splitting on the
+      # bare paren covers all three spellings without matching `$` or `<`.
+      ';' | '&' | '|' | '(' | ')' | '`' | "$_NL")
         printf '%s\n' "$cur"
         cur=''
         ;;
@@ -150,6 +164,28 @@ _norm() { # $1 = segment -> prints normalized argv, space-separated
         ;;
       command | builtin | env | exec | nohup | nice | stdbuf | noglob | time)
         shift
+        ;;
+      # `sudo` was the one privilege wrapper missing from the list above, so
+      # `sudo op read …` resolved its program name to `sudo` and every guard
+      # sourcing this library waved it through. It needs its own arm rather than
+      # a place in that list because it takes flags WITH arguments (`-u user`),
+      # which would otherwise become the program name.
+      sudo | doas)
+        shift
+        while [ $# -gt 0 ]; do
+          case "$1" in
+            -u | -g | -p | -C | -U | -T | -r | -t)
+              shift
+              [ $# -gt 0 ] && shift
+              ;;
+            --)
+              shift
+              break
+              ;;
+            -*) shift ;;
+            *) break ;;
+          esac
+        done
         ;;
       [A-Za-z_]*=*) shift ;;
       *) break ;;
