@@ -36,6 +36,7 @@ wired_hooks() {
 op-guard.sh
 rebase-guard.sh
 worktree-checkout-guard.sh
+worktree-remove-guard.sh
 worktree-freshness.sh
 worktree-port.sh
 worktree-publish.sh

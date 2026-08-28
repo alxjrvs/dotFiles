@@ -115,6 +115,10 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/rebase-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/worktree-remove-guard.sh"
           }
         ]
       }

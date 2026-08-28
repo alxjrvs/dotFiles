@@ -126,6 +126,13 @@ pre-commit:
       # editing the expectations instead of the code.
       glob: "{dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
       run: dot-claude/hooks/tests/port.sh
+
+    wtremove-tests:
+      # Same shape as the other four standalone suites: this guard's verdicts
+      # depend on whether a pid in a lock file is running, which no fixture
+      # table can express, so it carries its own harness.
+      glob: "dot-claude/hooks/{worktree-remove-guard.sh,guard-lib.sh,tests/wtremove.sh}"
+      run: dot-claude/hooks/tests/wtremove.sh
     canary-tests:
       # hooks/claude-canary.sh is a `boom verify` step, not an agent hook, so its
       # glob covers the repo's own hooks/ too. Its load-bearing cases are the ones

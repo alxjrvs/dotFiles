@@ -150,6 +150,13 @@ jobs:
       - name: worktree-port regression tests
         run: dot-claude/hooks/tests/port.sh
 
+      # worktree-remove-guard.sh: the only irreversible action here with no PR
+      # and no reflog behind it. Its load-bearing cases are the seven DENY ones;
+      # the two `_dead` cases are what prove it reads liveness rather than
+      # refusing every removal, which would make the guard unusable.
+      - name: worktree-remove guard regression tests
+        run: dot-claude/hooks/tests/wtremove.sh
+
       # The canary's suite, whose polarity is inverted from every other one here:
       # its load-bearing cases are the ones where the canary must FAIL, because an
       # always-green canary reports all-clear forever. A step in THIS job for the
