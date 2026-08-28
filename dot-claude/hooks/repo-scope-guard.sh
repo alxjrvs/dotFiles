@@ -194,17 +194,46 @@ while IFS= read -r seg; do
       i=$((i + 1))
     done
     # The endpoint carries the owner: repos/OWNER/NAME/...
+    #
+    # A full URL is the same endpoint with a host glued on, so it is normalized
+    # before matching. `gh api -X DELETE https://api.github.com/repos/o/n/...`
+    # was ALLOWED, because none of the patterns below matched a string starting
+    # with `https:` and the guard then fell back to the cwd's owner.
     if [ "$gated" = 1 ] && [ -z "$repo_arg" ]; then
       i=1
       while [ "$i" -le "$n" ]; do
         eval "a=\${$i}"
         a=$(_unquote "$a")
         case $a in
+          https://api.github.com/*) a=${a#https://api.github.com/} ;;
+          https://github.com/api/v3/*) a=${a#https://github.com/api/v3/} ;;
+          http://api.github.com/*) a=${a#http://api.github.com/} ;;
+        esac
+        case $a in
           repos/*/*) repo_arg=${a#repos/} ;;
           /repos/*/*) repo_arg=${a#/repos/} ;;
         esac
         i=$((i + 1))
       done
+    fi
+
+    # GraphQL names its target as a node ID INSIDE the query body, so the owner
+    # is invisible to a path-based guard by construction — and the fallback
+    # below then reads the cwd's owner and allows. `gh api graphql` with a
+    # mutation reaches every write on GitHub, and this guard's own header calls
+    # `gh api` "the path that walks past everything".
+    #
+    # An owner this guard cannot resolve on a MUTATING call is the fail-closed
+    # case, not the fail-open one. A read-only query is untouched: it is the
+    # `mutation` keyword that gates this, not GraphQL itself.
+    if [ "$gated" = 1 ] && [ -z "$repo_arg" ]; then
+      case " $* " in
+        *' graphql '*)
+          if printf '%s' "$*" | grep -qE 'mutation[[:space:]{(]'; then
+            deny "\`gh api graphql\` is carrying a mutation, and a GraphQL mutation names its target as a node ID inside the query — so no guard can tell which repo or org it writes to. That is the one shape this guard cannot scope, so it is refused rather than assumed safe. Use the REST endpoint (\`gh api repos/OWNER/NAME/...\`), which carries the owner in the path. $DRAFT_IT"
+          fi
+          ;;
+      esac
     fi
   elif _is_write_verb "$sub" "$verb"; then
     gated=1
