@@ -58,6 +58,24 @@ EOF
 # `sh -c 'op read op://…'` walks straight past a program-name check. CLAUDE.md
 # names this exact case as the residue `permissions.deny` structurally cannot
 # cover ("deny cannot cover an arbitrary interpreter"). It is covered here.
+# The GitHub owners this machine may WRITE to. Single source: repo-scope-guard.sh
+# gates writes on it, and pr-review.sh defaults its review scope from it.
+#
+# It was two lists until now, and they had already drifted: CLAUDE.md named six
+# owners, pr-review.sh named five — `Criterium-Engineers` was missing from the
+# one that executes. That is the whole argument for putting it here; a list that
+# governs a security boundary cannot be maintained in prose beside a copy.
+_owned_orgs() {
+  cat << 'ORGS'
+alxjrvs
+TheGnarCo
+BinfiniteLLC
+SalvageUnion-io
+RANDSUM
+Criterium-Engineers
+ORGS
+}
+
 _is_interpreter() { # $1 = basename
   case "$1" in
     sh | bash | zsh | dash | ksh | fish | eval | xargs | watch | script) return 0 ;;

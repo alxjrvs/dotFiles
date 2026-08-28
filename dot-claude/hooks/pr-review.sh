@@ -62,7 +62,17 @@ esac
 # owner/repo. Default covers every org the agent ships into — the whole point is
 # that 1,113 org PRs across 25+ repos went unreviewed, so a single-repo pilot
 # would leave the exposure exactly where it was. Set PR_REVIEW_REPOS to narrow.
-: "${PR_REVIEW_REPOS:=TheGnarCo BinfiniteLLC SalvageUnion-io RANDSUM alxjrvs}"
+# Defaults to the owned-org list in guard-lib.sh rather than a copy. These were
+# two lists and had already drifted — this one was missing `Criterium-Engineers`,
+# which CLAUDE.md named. A list that governs a security boundary cannot be
+# maintained in two places. Falls back to the literal set if guard-lib is
+# unavailable, since this hook must never wedge on a missing file.
+# shellcheck source=dot-claude/hooks/guard-lib.sh
+if . "$(dirname -- "$0")/guard-lib.sh" 2> /dev/null && command -v _owned_orgs > /dev/null 2>&1; then
+  : "${PR_REVIEW_REPOS:=$(_owned_orgs | tr '\n' ' ')}"
+else
+  : "${PR_REVIEW_REPOS:=TheGnarCo BinfiniteLLC SalvageUnion-io RANDSUM alxjrvs Criterium-Engineers}"
+fi
 
 command -v gh > /dev/null 2>&1 || exit_ok
 command -v claude > /dev/null 2>&1 || exit_ok

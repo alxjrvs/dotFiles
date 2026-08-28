@@ -223,6 +223,16 @@ src = "dot-claude/hooks/worktree-remove-guard.sh"
 dst = "~/.claude/hooks/worktree-remove-guard.sh"
 mode = "755"
 
+# PreToolUse guard: refuses a WRITE to a repo outside the owned orgs, and the
+# two `gh pr merge` flags that delete a branch. `permissions.deny` can express
+# neither — the owner is data, not a spelling, and a deny rule cannot match a
+# flag anywhere in argv. Resolves the owner from the local remote, never the
+# network: this runs on every Bash call.
+[[section.link]]
+src = "dot-claude/hooks/repo-scope-guard.sh"
+dst = "~/.claude/hooks/repo-scope-guard.sh"
+mode = "755"
+
 # PreToolUse guard (runs FIRST): the allow-list that makes `op` usable by agents.
 # LOAD-BEARING, and in a way the other two guards are not. `permissions.allow`
 # carries `Bash(op run:*)`, which pre-approves the shape this guard is what keeps
