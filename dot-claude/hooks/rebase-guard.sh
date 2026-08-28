@@ -39,6 +39,26 @@ cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2> /dev/null) 
 
 segs=$(_split "$cmd")
 
+# `git -c alias.X=push X origin main` reached main. The global-flag loop below
+# consumes `-c alias.yolo=push` as an ordinary value-taking flag and then reads
+# the subcommand as `yolo`, so the command was never recognised as a push at all
+# and every refspec check downstream was skipped.
+#
+# The alias is REFUSED, not resolved. Resolving it would mean shelling out to
+# `git config` from inside a PreToolUse hook on every git command -- a cost paid
+# by every call to catch a spelling nobody uses by accident. A one-line refusal
+# with a message saying to spell the push out is the cheaper correct answer.
+if printf '%s' "$cmd" | grep -qE '(^|[[:space:]])(-c|--config)[[:space:]]+alias\.'; then
+  deny "\`git -c alias.<name>=<cmd>\` defines a command this guard cannot see through: the flag parser reads the alias name as the subcommand, so a push behind one is never checked against the default branch. Spell the command out instead."
+fi
+
+# Interpreter payloads are commands. Expanding them here means `bash -c "git
+# push origin main"` is judged by the same refspec logic as a bare push, rather
+# than being refused wholesale -- so `bash -c "git push origin feature"` still
+# works. See _expand_interpreters in guard-lib.sh for why the pipe case needs
+# the whole command and why it cannot reach inside a commit message.
+segs=$(_expand_interpreters "$cmd" "$segs")
+
 # --- pass 1: what kind of command is this, and against which repo? -----------
 is_push=0
 is_prcreate=0
