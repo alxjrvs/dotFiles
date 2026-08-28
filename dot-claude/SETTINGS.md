@@ -86,10 +86,18 @@ decided not to support.
 
 | key | what it is for |
 |---|---|
-| `sandbox.credentials.envVars` | The reason this block exists. `permissions.deny` and `op-guard.sh` both gate the *command* that resolves a secret; neither can do anything once the value is in the environment of a process that then prints it. Seatbelt-enforced masking is the only layer that reaches there, and it is the countermeasure for the transcript leak in `DECISIONS.md`. |
+| `sandbox.credentials.envVars` | The reason this block exists. `permissions.deny` and `op-guard.sh` both gate the *command* that resolves a secret; neither can do anything once the value is in the environment of a process that then prints it. An OS-enforced boundary is the only layer that reaches there, and it is the countermeasure for the transcript leak in `DECISIONS.md`. `mode: "deny"` unsets the variable before each sandboxed command. |
 | `sandbox.filesystem.denyRead` | The Bash path to a credential FILE. `permissions.deny`'s `Read(~/.ssh/id_*)` gates the Read tool only — `cat` was never covered by it. |
+| `env.CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` | The half of the above that works **today**. It strips Anthropic and cloud-provider credentials from *all* subprocesses regardless of sandboxing, so it does not wait on `sandbox.enabled`. It does not cover the other variables above — that is what the block is for. |
 
-Two things worth knowing before editing this block.
+**None of the `sandbox.*` block does anything until `sandbox.enabled` is `true`,
+and it is not set here.** The sandbox is opt-in, and both sub-blocks affect
+sandboxed Bash commands only. Enabling it is deliberately a separate change from
+getting its contents right, because it is the one setting here that can break a
+working machine. See `DECISIONS.md` for why the modes read `deny` rather than
+`mask`.
+
+Two more things worth knowing before editing this block.
 
 **It is not the `~/.ssh` rule it looks like.** `~/.ssh/` on this machine holds
 `id_ed25519.pub`, `known_hosts` and `allowed_signers` — no private key. Signing
