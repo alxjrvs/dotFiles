@@ -43,6 +43,88 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-08-28 — the three rules that were prose, and the guard that had six ways past it
+
+A seven-agent review measured this repo against its own routing table, whose last row reads
+*"already enforced → nowhere. Describing a control is not the control."* Applied honestly it cut
+both ways.
+
+**Three of the six `CLAUDE.md` rules had nothing behind them.** The deny floor's eleven entries
+are all about secrets; foreign-repo writes, `gh pr merge -d`, and force-removing a live worktree
+were prose. Two were worse than unguarded — `.claude/settings.local.json` pre-approved
+`Bash(gh api *)`, which is `-X POST`/`-X DELETE` against any repo on GitHub with no prompt, and
+`settings.json` pre-approves all of `Bash(gh pr merge:*)`, flags included. This file had already
+conceded two of the three should become guards.
+
+**op-guard had six working bypasses**, each reproduced against the live guard before anything was
+changed, and none of them reachable by `permissions.deny`:
+
+    echo $(op read op://a/b/c)        `_split` had no `$( )` / backtick / `<( )`
+    X=$(op read op://a/b/c)           `_norm` resolved the program name to `read`
+    sudo op read op://a/b/c           `_norm` stripped env/command/exec, not sudo
+    python3 -c "os.system('op read')" `_is_interpreter` listed shells, no runtimes
+    echo "op read op://…" | bash      neither segment names op as its program
+
+The suite was green at 156/156 throughout. Green tests measure the cases someone thought of.
+
+Three things learned in the fixing, worth more than the fixes:
+
+**A latent bug hid behind the missing cases.** `_unquote` DELETES punctuation, so
+`os.system('op read …')` collapsed to `os.systemop read …` — a word character in front of `op`,
+where the anchored pattern requires none. Every `python3 -c` payload was invisible for that one
+reason, and no case exercised a payload with punctuation before `op`, so nothing could see it.
+Scanning now flattens punctuation to spaces instead of removing it.
+
+**Widening a guard is where the friction comes from, not narrowing it.** The first pass denied
+`node`/`bun` outright under `op run --`, which broke `op run -- node build.js` and `op run -- bun
+run dev` — two existing allow-cases, and the *primary legitimate use* of `op run`. The rule is the
+inline-script FLAG (`-e`/`-c`), never the language. A guard that blocks real work gets disabled,
+which is a worse outcome than the leak it prevented.
+
+**The interpreter answer is not the same for both guards.** op-guard must refuse an interpreter
+outright: it cannot know what an `op` payload will print. rebase-guard can EXPAND the payload and
+judge it with the ordinary refspec logic, because the payload is itself a git command — so
+`bash -c "git push origin feature"` still works. Same shape, opposite correct treatment.
+
+### `worktree-remove-guard.sh` — the rule with no reflog behind it
+
+Force-removing a worktree whose lock names a live process is the highest-blast-radius command
+available with N parallel sessions, and the only irreversible action guarded here that has no PR
+and no reflog to recover from: the commits may exist nowhere else, and the working tree certainly
+does not.
+
+Scope is narrow on purpose. Plain `git worktree remove` already refuses a locked worktree — git
+does that itself, and Claude Code locks every agent worktree while its session runs. The guard
+exists for the two spellings that walk past that refusal: `--force`, which overrides the check but
+not the risk, and `rm -rf`, which never consults git at all. `prune --expire=now` is included
+because it unregisters a live worktree whose directory is momentarily unreachable — the same loss,
+quieter.
+
+`kill -0` is the liveness test, which has one known false reading: a process owned by another user
+returns EPERM and is read as dead. Every Claude session on this machine runs as the same user, so
+it does not arise here; a recycled pid fails the other way, refusing a removal that would have been
+safe, which is the direction to fail in.
+
+Its suite carries the negative-control block this repo requires of a test whose majority are
+must-not-fire assertions. The stub-hook control was written as 6 failures and measured as 7 — the
+prune case was forgotten in the count. That correction is the argument for the convention: the
+block records a measurement, not an expectation.
+
+### The other half: written three times
+
+The same review found the inverse failure. The eleven-entry deny floor was written out verbatim in
+`boomfile.toml`, `lefthook.yml` and `lint.yml`, hand-synced, two of them carrying a comment telling
+a human to keep the inventory aligned — and already drifted in form. Worse, all three asserted only
+that `op-guard.sh` was wired, so deleting the `rebase-guard` or `worktree-checkout-guard` handler
+passed lefthook, CI *and* `boom verify` green: scripts on disk, linked, suites passing, enforcing
+nothing.
+
+`scripts/settings-guardrails.sh` is the consolidation, and it asserts every wired hook.
+`scripts/context-budget.sh` made this argument first; this is the second application of it, and
+the pattern is now the house one for anything asserted in more than one place.
+
+---
+
 ## 2026-08-26 — heroku: the Brewfile was the obvious home and the wrong one
 
 The `.gitconfig` landed a credential helper for `git.heroku.com` (`helper = !heroku

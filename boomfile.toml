@@ -215,6 +215,14 @@ src = "dot-claude/hooks/worktree-checkout-guard.sh"
 dst = "~/.claude/hooks/worktree-checkout-guard.sh"
 mode = "755"
 
+# PreToolUse guard: refuses to destroy a worktree whose lock names a LIVE pid.
+# The one irreversible action here with no PR and no reflog behind it — the
+# commits may exist nowhere else and the working tree certainly does not.
+[[section.link]]
+src = "dot-claude/hooks/worktree-remove-guard.sh"
+dst = "~/.claude/hooks/worktree-remove-guard.sh"
+mode = "755"
+
 # PreToolUse guard (runs FIRST): the allow-list that makes `op` usable by agents.
 # LOAD-BEARING, and in a way the other two guards are not. `permissions.allow`
 # carries `Bash(op run:*)`, which pre-approves the shape this guard is what keeps

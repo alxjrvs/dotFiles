@@ -18,8 +18,6 @@ attempt, or lands in an unattended session with no one to ask.
   branch.** Land work through GitHub's own gate.
 - **Never put a secret on stdout** — stdout is the transcript. A secret written to a file is a
   secret read. To *use* one, pass it: `op run --env-file=F -- CMD`.
-- **Never force-remove a worktree whose lock PID is alive** — that is another session's in-flight
-  work. Check `.git/worktrees/<name>/locked` first.
 - **Permission rules match whole tokens, not string prefixes.** Verify any new `deny` rule with a
   positive *and* a negative control before trusting it.
 - **The empty-string env vars in `settings.json` are load-bearing**, not leftovers: an unset
