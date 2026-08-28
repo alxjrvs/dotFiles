@@ -200,6 +200,15 @@ if [ "$is_push" = 1 ]; then
     skipnext=0
     remote_seen=0
     refspecs=''
+    # `--all` and `--mirror` name their refs from the local ref namespace rather
+    # than from argv, so the refspec analysis below cannot see them. Left to
+    # fall through they reach "no refspec → pushes the CURRENT branch", and from
+    # a feature branch that reads as safe — while `--all` pushes every local
+    # branch INCLUDING the default one, and `--mirror` additionally deletes
+    # remote refs that are absent locally. Both were allowed from a feature
+    # branch, in the plainest spelling of the one command CLAUDE.md marks
+    # irreversible on first attempt.
+    all_refs=0
     while [ $# -gt 0 ]; do
       tok=$(_unquote "$1")
       shift
@@ -209,6 +218,8 @@ if [ "$is_push" = 1 ]; then
       fi
       case "$tok" in
         --dry-run | -n) dry=1 ;;
+        # The ref set is not enumerable from argv — see all_refs above.
+        --all | --mirror | --tags | --follow-tags) all_refs=1 ;;
         # Options that consume the following token; without this their value
         # would be counted as a positional and shift the refspec analysis.
         -o | --push-option | --receive-pack | --exec | --repo) skipnext=1 ;;
@@ -232,6 +243,14 @@ if [ "$is_push" = 1 ]; then
 
     # A dry run never mutates the remote — let it through.
     [ "$dry" = 1 ] && continue
+
+    # `--all`/`--mirror` reach the default branch from any current branch, so
+    # they are judged as a push to it regardless of where HEAD sits. Checked
+    # before the refspec analysis, which by construction cannot see these refs.
+    if [ "$all_refs" = 1 ]; then
+      push_to_default=1
+      break
+    fi
 
     # No refspec (at most a remote) → this pushes the CURRENT branch.
     if [ -z "$refspecs" ]; then
