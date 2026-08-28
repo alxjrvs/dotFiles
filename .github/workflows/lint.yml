@@ -169,6 +169,12 @@ jobs:
       - name: gate regression tests
         run: scripts/tests/gates.sh
 
+      # verify-gate.sh is a Stop hook — it runs every turn and can BLOCK one, so its no-op
+      # paths and its once-per-session loop-breaker are the load-bearing cases. A gate that
+      # can block forever strands a session, which is worse than no gate at all.
+      - name: verify-gate regression tests
+        run: dot-claude/hooks/tests/verifygate.sh
+
       - name: guard regression tests
         run: dot-claude/hooks/tests/run.sh
 
