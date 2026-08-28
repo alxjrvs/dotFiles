@@ -61,13 +61,13 @@ X
 
 #   karabiner-elements — replaced by the hidutil LaunchAgent for the single
 #     Caps Lock remap; no kernel extension needed. Uninstall by hand.
-#   zulu@17 — the same JDK as the declared `zulu17`, installed twice under two
-#     cask names. Its Caskroom holds only .metadata (no version directory), so
-#     it is the empty one. Uninstall by hand.
+#   zulu17 — the RETIRED upstream name for the declared `zulu@17`. It no longer
+#     resolves as a cask at all, so it can only ever be a leftover install, never
+#     a declaration. Uninstall by hand: `brew uninstall --cask zulu17`.
 excluded_casks() {
   cat << 'X'
 karabiner-elements
-zulu@17
+zulu17
 X
 }
 
