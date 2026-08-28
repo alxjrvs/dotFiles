@@ -250,6 +250,24 @@ _unquote() { # $1 = token -> printed without quotes/parens
   printf '%s' "$v"
 }
 
+# Strip QUOTES ONLY, keeping parens. `_unquote` deletes parens too, which would
+# destroy the `'('*` arm in `_norm` (a segment can legitimately open with one).
+# The program token is the one place a stray quote is fatal rather than
+# cosmetic, so it gets its own narrower helper.
+_dequote() { # $1 = token -> printed without quotes
+  local v=$1
+  v=${v//\"/}
+  v=${v//\'/}
+  printf '%s' "$v"
+}
+
+# Emitted by `_norm` in place of a program name it cannot resolve statically —
+# `$OP read`, `$(echo op) read`, a backticked name. A guard that sees this must
+# DENY: a program name the guard cannot read is the same "unknown, therefore
+# closed" case op-guard already applies to an unrecognized op subcommand.
+# Deliberately un-spellable as a real program, so it can never collide with one.
+_UNRESOLVED='%%unresolved%%'
+
 # Normalize one segment to its real argv: drop shell-construct keywords, leading
 # environment assignments and exec wrappers, then stop at a `#` comment. Each was
 # a live bypass — the guards compared against the bare token `git`, so `(git`,
@@ -258,19 +276,27 @@ _unquote() { # $1 = token -> printed without quotes/parens
 #
 # Tokens carry no spaces (they come from word splitting), so rejoining the
 # normalized argv with spaces is lossless.
+# Every `case` below matches the DEQUOTED token, and the program name is
+# emitted dequoted. Before that, `_norm` compared and emitted the program token
+# raw, so one pair of quotation marks walked past every guard sourcing this
+# library: `"op" read op://…` resolved its program name to `"op"`, which is not
+# `op`, so op-guard waved a live credential onto stdout. `"git" push origin
+# main` and `"gh" issue create` were the same hole in the other guards. The
+# prefix walk needs it too, or `"sudo" op read` skips the sudo arm.
 _norm() { # $1 = segment -> prints normalized argv, space-separated
-  local first
+  local first tok
   set -f
   # shellcheck disable=SC2086 # intentional word-split of one shell segment
   set -- $1
   set +f
   while [ $# -gt 0 ]; do
-    case "$1" in
+    tok=$(_dequote "$1")
+    case "$tok" in
       '(' | ')' | '{' | '}' | '!' | if | then | else | elif | fi | while | until | for | do | done | in)
         shift
         ;;
       '('*)
-        first=${1#\(}
+        first=${tok#\(}
         shift
         set -- "$first" "$@"
         ;;
@@ -307,6 +333,19 @@ _norm() { # $1 = segment -> prints normalized argv, space-separated
       *) break ;;
     esac
   done
+  # The program token, dequoted — or the refusal sentinel when it is a shell
+  # expansion this guard cannot statically read. Arguments are emitted as-is:
+  # a quoted `-m "note about op read"` must stay one opaque blob, or stripping
+  # its quotes would hand the scanners the very prose false positive the suite
+  # exists to prevent.
+  if [ $# -gt 0 ]; then
+    tok=$(_dequote "$1")
+    case "$tok" in
+      *'$'* | *'`'*) printf '%s ' "$_UNRESOLVED" ;;
+      *) printf '%s ' "$tok" ;;
+    esac
+    shift
+  fi
   while [ $# -gt 0 ]; do
     case "$1" in '#'*) break ;; esac
     printf '%s ' "$1"
