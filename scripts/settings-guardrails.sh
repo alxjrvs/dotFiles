@@ -82,8 +82,22 @@ note() {
   fail=1
 }
 
+# A gate that asserts nothing must never print `ok`. Called with a path that
+# does not exist, this printed `ok settings guardrails (…)` and exited 0 — and
+# CI hands it a literal path, so renaming the settings file would have left the
+# required `lint` check green while the deny floor went unchecked. That is the
+# incident already recorded in DECISIONS.md: "scripts on disk, linked, suites
+# passing, enforcing nothing."
+[ "$#" -gt 0 ] || {
+  echo "no inputs — the caller's glob matched nothing, so nothing was checked" >&2
+  exit 1
+}
+
 for f in "$@"; do
-  [ -f "$f" ] || continue
+  [ -f "$f" ] || {
+    note "$f: expected settings file is missing"
+    continue
+  }
 
   jq -e . "$f" > /dev/null || {
     note "$f: not valid JSON"

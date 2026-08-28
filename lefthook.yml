@@ -165,6 +165,14 @@ pre-commit:
       # it exists to prevent, so this suite is what keeps it honest.
       glob: "{hooks/*.sh,dot-claude/hooks/tests/*}"
       run: dot-claude/hooks/tests/canary.sh
+    gate-tests:
+      # The same property the canary suite above asserts, for the three shared
+      # assertions in scripts/: a gate that checked nothing must not print `ok`.
+      # All three used to — `settings-guardrails.sh` handed a nonexistent path
+      # printed `ok` and exited 0, so renaming the settings file would have left
+      # this very gate green with the deny floor unchecked.
+      glob: "scripts/*.sh"
+      run: scripts/tests/gates.sh
 
 # commit-msg: forward-only hygiene guard. Rejects throwaway subjects (bare
 # "WIP"/"wip" or a single character) so they don't land in permanent history.
