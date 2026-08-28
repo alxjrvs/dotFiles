@@ -72,6 +72,27 @@ else's server with our PAT, and one broke silently for weeks behind a misleading
 | `enabledPlugins` | One marketplace, entries earned by measured use. Check `~/.claude.json` `.skillUsage` before adding or defending one — transcripts are pruned and undercount. |
 | `extraKnownMarketplaces` | The `gnar` marketplace. `autoUpdate` stays off: a merge upstream would otherwise be unattended code execution here. |
 
+## Sandbox
+
+| key | what it is for |
+|---|---|
+| `sandbox.credentials.envVars` | The reason this block exists. `permissions.deny` and `op-guard.sh` both gate the *command* that resolves a secret; neither can do anything once the value is in the environment of a process that then prints it. Seatbelt-enforced masking is the only layer that reaches there, and it is the countermeasure for the transcript leak in `DECISIONS.md`. |
+| `sandbox.filesystem.denyRead` | The Bash path to a credential FILE. `permissions.deny`'s `Read(~/.ssh/id_*)` gates the Read tool only — `cat` was never covered by it. |
+
+Two things worth knowing before editing this block.
+
+**It is not the `~/.ssh` rule it looks like.** `~/.ssh/` on this machine holds
+`id_ed25519.pub`, `known_hosts` and `allowed_signers` — no private key. Signing
+goes through 1Password's agent socket (`ssh/config` `IdentityAgent`). The
+`~/.ssh/id_*` entry is cheap insurance against a key appearing there later, not
+the thing this block is for. The env-var masking is.
+
+**It can break `git push` silently.** `.gitconfig` sets `helper = osxkeychain`
+globally and `!gh auth git-credential` for GitHub, and `op-agent` runs as a
+credential helper. A sandbox that blocks the keychain read those depend on
+produces "git is broken", not "the sandbox is wrong". Verify with a real push
+before trusting it.
+
 ## Behaviour
 
 | key | what it is for |

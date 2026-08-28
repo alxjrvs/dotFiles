@@ -139,6 +139,31 @@ all became controls, and an enforced rule belongs nowhere per the routing table.
 the always-loaded file smaller, not larger — which is the argument for doing it in this direction
 rather than writing more rules.
 
+### The sandbox, and the `~/.ssh` rule that is mostly theatre
+
+The guards above all fail open by design, and every one of them gates a COMMAND.
+None can act once a secret is already in a process's environment. `sandbox`
+is the layer that can, because Seatbelt enforces it on every Bash command and
+its children rather than on the spelling of the command.
+
+The review that produced this stack first recommended it as an `~/.ssh` fix.
+Checking the box before writing the PR showed that was wrong: `~/.ssh/` holds
+`id_ed25519.pub`, `known_hosts` and `allowed_signers` and no private key at all
+— signing goes through 1Password's agent socket. So `filesystem.denyRead` on
+`~/.ssh/id_*` guards an empty cupboard. It is kept as cheap insurance against a
+key landing there later, and recorded here so nobody re-argues for it as though
+it were the point.
+
+The point is `credentials.envVars`. That is the shape of the PAT-in-transcript
+leak, and it is the one thing no guard in this repo can reach.
+
+The risk is asymmetric and worth naming: `.gitconfig` sets `helper = osxkeychain`
+globally and `!gh auth git-credential` for GitHub, and `op-agent` is itself a
+credential helper. A credentials sandbox that blocks the keychain read those
+depend on presents as "git push is broken", not as "the sandbox is
+misconfigured". That is why this landed as a draft with its verification steps
+attached rather than as a merged change.
+
 ### The other half: written three times
 
 The same review found the inverse failure. The eleven-entry deny floor was written out verbatim in
