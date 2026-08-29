@@ -17,9 +17,18 @@ duplicated fact in this repo has taken before it rotted.
 ## Setup (fresh machine)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/alxjrvs/boom/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/alxjrvs/boom/v0.29.0/install.sh | sh
 boom source set alxjrvs/dotFiles
 ```
+
+The installer is pinned to a **tag, not `main`**, and that is the whole of the
+change worth making here. `install.sh` already verifies the binary it downloads
+against the release's published `SHA256SUMS`, refuses to install unverified, and
+checks the macOS signature — so the payload was never the exposed part. The
+script *fetching* it was: served from a mutable branch, it could have been
+rewritten to drop those checks, and nothing would have noticed. A tag is
+immutable. Bump it when `install.sh` itself changes; it bootstraps whatever the
+latest boom release is, so the pin does not pin your boom version.
 
 `boom source set` clones this repo into boom's managed config cache, records it,
 and reconciles the machine. Preview without touching anything first:
