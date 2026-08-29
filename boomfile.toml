@@ -565,6 +565,24 @@ cmd = "scripts/brew-drift.sh"
 on = "verify"
 cmd = "scripts/schedule-health.sh"
 
+# Interactive shell startup has not got structurally slower.
+#
+# zsh/30-plugins.zsh carries the baseline and it is maintained honestly — it was
+# re-measured, the number moved 199 → 250 ms, and the comment says so. But a
+# comment cannot notice: the drift it tracks is six `eval`s of six independently
+# upgrading tools, none of which announces getting heavier. CLAUDE.md bans
+# measurements against a tool version precisely because they expire unwatched,
+# and the answer it gives is to enforce rather than describe. The comment stays
+# as the explanation; this is the part that fires.
+#
+# A ceiling well above the baseline, not a baseline comparison: load, a cold
+# cache and a Rosetta shell all move the number, and a check that fires on those
+# is one you learn to ignore.
+[[section.run]]
+on = "verify"
+timeout = 60
+cmd = "scripts/startup-budget.sh"
+
 # `settings.local.json` must not exist. One `absent` entry covers both verbs:
 # sync removes it, verify fails while it is there.
 #
