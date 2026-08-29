@@ -15,43 +15,35 @@ upgrade_on_sync = "check"
 # Desktop-notify (macOS osascript) when a scheduled `boom verify` finds drift, so the
 # boom-verify launchd timer's signal surfaces instead of dying in its log.
 notify = true
-# `code reap --push` daily, as a BACKSTOP to the publish-at-idle hook (see the end of this
-# comment): Claude Code keeps an agent worktree whenever a commit reachable from
-# HEAD is on no remote-tracking ref, and refuses to remove it ("Worktree kept at … — has commits
-# that are not pushed anywhere") — which is what stops a finished subagent from being closed.
+# `code reap` daily. Claude Code keeps an agent worktree whenever a commit reachable from HEAD is
+# on no remote-tracking ref, and refuses to remove it ("Worktree kept at … — has commits that are
+# not pushed anywhere") — which is what stops a finished subagent from being closed.
 # Measured against 2.1.237 rather than inferred from the message: the client's check (`deleteJob`,
 # gated on `rev-list --max-count=1 HEAD --not --remotes`) does carry a second, content-based escape
 # — every commit patch-id-matching `origin/<default>` — but that escape is gated on the branch's
 # upstream reading exactly `gone`, and an agent worktree is cut `--no-track`, so it has no upstream
 # at all and the escape can never fire. Hence a squash-merged branch stays blocked even though its
-# content landed. `force` does NOT help: it bypasses the `dirty` arm only, and there is no setting,
-# keystroke or discard path for the unpushed arm — so the condition can only be falsified, never
-# waived. That is the whole reason this timer exists.
+# content landed. `force` does NOT help: it bypasses the `dirty` arm only, so the condition can
+# only be falsified, never waived. That is the whole reason this timer exists.
 #   `code reap` falsifies it correctly, and is smarter than the client: it re-decides by content
 # (git patch-id), reads `gh stack` topology, and removes only clean, unlocked,
 # already-merged-or-pushed worktrees, always leaving the branch ref — so it cannot lose a commit.
-# Neither can the client, whose removal is `git worktree remove` semantics; the commits stay
-# reachable in the clone either way, so this guard is refusing a delete to prevent a loss that
-# would not actually happen here. `--push` covers the rest: a clean worktree whose commits exist
-# nowhere but this machine is published first (never forced), so nothing is ever stuck
-# un-closeable. It is outward-facing — those branches land on origin, including org repos — which
-# is the deliberate trade for "closing a session is never blocked". Dirty trees, live sessions and
-# detached HEADs are never pushed, and a stacked worktree is left for `gh stack submit`.
-#   DAILY, and deliberately back to daily (it was briefly 1h on 2026-08-20). Tightening the sweep
-# was the wrong axis: a sweep answers "eventually", and the actual requirement is "the delete I
-# press right now must not be refused", which no interval satisfies — at 1h the wall still gets
-# hit by hand, just less often, in exchange for 24x the background pushes. That requirement is met
-# at its source instead, by `dot-claude/hooks/worktree-publish.sh`, which publishes a worktree's
-# branch the moment its agent goes idle. So this timer is no longer the mechanism, it is the
-# BACKSTOP — it covers exactly what the hook deliberately skips: stacked worktrees (which want
-# `gh stack submit`), branches whose push was rejected or offline at idle, and worktrees left
-# behind by sessions that predate the hook. Daily is the right cadence for a backstop, and each
-# run walks every repo's worktrees in ~30s.
+#   `--push` was REMOVED on 2026-08-28, and the log is why. Over 14 sweeps this timer recorded
+# 0 successful pushes and 84 failures — `grep -c pushed` on
+# ~/.local/state/boom/logs/com.boomtube.code-reap---push.log returned zero. The cause is mundane
+# (`.gitconfig` resolves GitHub auth through `gh auth git-credential`, and a launchd job runs
+# outside any session where that works), but nobody noticed for weeks because the finding died in
+# a log nothing reads. It was carrying the entire outward blast radius of the design — those
+# branches land on origin, including org repos — for a benefit it never once delivered.
+#   The reap half DOES work and stays: one sweep reaped 33 worktrees. What is lost with `--push`
+# is a clean worktree whose commits exist nowhere but this machine, which now stays un-closeable
+# until someone types `git push`. That was already the state of the world; the flag was not
+# achieving otherwise.
 schedule = [
   { cmd = "code fetch", every = "15m" },
   # NOT "1d" — boom's schema accepts only s/m/h or a bare seconds count, so "1d" failed
   # validation and this timer never ran at all from the day it was added.
-  { cmd = "code reap --push", every = "24h" },
+  { cmd = "code reap", every = "24h" },
 ]
 
 [[section]]
@@ -274,22 +266,6 @@ src = "dot-claude/hooks/worktree-freshness.sh"
 dst = "~/.claude/hooks/worktree-freshness.sh"
 mode = "755"
 
-# Stop/SessionEnd hook: publish an agent worktree's branch so DELETING the session
-# is never refused. `deleteJob` keeps a worktree whenever a commit reachable from
-# HEAD is on no remote-tracking ref, and its one content-based escape (patch-id vs
-# origin/<default>) is gated on the branch's upstream reading exactly `gone` — which
-# a `--no-track` agent branch has no upstream to ever satisfy. `force` bypasses the
-# `dirty` arm only, never this one, and no setting or keystroke waives it, so the
-# condition can only be falsified. There is also no hook ON the delete path:
-# `WorktreeRemove` is dispatched from inside `removeAgentWorktree`, which is reached
-# only AFTER the unpushed check has already refused. So the push has to be in place
-# beforehand, and idle is the last moment that is true. Never forced, never the
-# default branch, never a stack (that is `gh stack submit`'s job).
-[[section.link]]
-src = "dot-claude/hooks/worktree-publish.sh"
-dst = "~/.claude/hooks/worktree-publish.sh"
-mode = "755"
-
 # SessionStart hook: give each agent worktree its own 10-port block, derived from
 # the worktree's name, so two agents told to "run the app" do not race for :3000 —
 # where the loser either reports the feature broken (EADDRINUSE) or, on a framework
@@ -321,16 +297,6 @@ dst = "~/.claude/hooks/tests/cases.tsv"
 [[section.link]]
 src = "dot-claude/hooks/tests/freshness.sh"
 dst = "~/.claude/hooks/tests/freshness.sh"
-mode = "755"
-
-# worktree-publish.sh's own suite, separate for the same reason: it asserts on which
-# refs exist on a bare origin afterwards, which is neither a `permissionDecision`
-# nor a HEAD commit. Most of its cases are "must NOT push", which a do-nothing hook
-# passes trivially — `publishes_unpushed` is the load-bearing one, and the header
-# records the negative control that proves the harness discriminates.
-[[section.link]]
-src = "dot-claude/hooks/tests/publish.sh"
-dst = "~/.claude/hooks/tests/publish.sh"
 mode = "755"
 
 # worktree-port.sh's own suite. Its two observable effects are the port block it
@@ -556,13 +522,17 @@ exit 1
 on = "verify"
 cmd = "git diff --quiet -- dot-claude/ || { echo 'live Claude config diverges from the committed contract (dirty boom config-repo)'; exit 1; }"
 
-# Two of the three worktree hooks are workarounds for client defects measured
+# The remaining worktree workarounds are written against client defects measured
 # against 2.1.237, and the client self-updates — so the version those
 # measurements describe is replaced silently and repeatedly. A workaround whose
-# bug is gone is not inert: worktree-publish.sh still pushes branches to origin
-# at idle, and worktree-freshness.sh still mutates worktrees. CLAUDE.md already
-# names this failure mode ("a measurement recorded against a tool version expires
-# unnoticed and nothing owns it"); this step owns it.
+# bug is gone is not inert: worktree-freshness.sh still mutates worktrees, and
+# boom's `code reap` still re-decides a removal the client refused. CLAUDE.md
+# already names this failure mode ("a measurement recorded against a tool version
+# expires unnoticed and nothing owns it"); this step owns it.
+#
+# The `unpushed` literal below is still load-bearing after worktree-publish.sh was
+# deleted on 2026-08-28: `code reap` exists to falsify exactly that refusal, so the
+# day the client stops emitting it is the day the reap timer can go too.
 #
 # INVERTED POLARITY, deliberately: it fails when the workaround looks
 # UNNECESSARY. A failure means "go re-measure", never "the bug is fixed" — the

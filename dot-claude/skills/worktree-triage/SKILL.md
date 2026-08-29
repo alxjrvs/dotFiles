@@ -60,11 +60,13 @@ so it does not arise in practice.
 
 ## The sweep
 
-`boom code reap --push` runs daily and is a BACKSTOP, not the mechanism.
-`worktree-publish.sh` publishes a branch the moment its agent goes idle, which is
-what makes closing a session work at the time you press it. If you are hitting
-the refusal by hand, the hook did not fire — check whether it is still wired in
-`dot-claude/settings.json` before reaching for the sweep.
+`boom code reap` runs daily, and since 2026-08-28 it is the ONLY mechanism.
+There was a `worktree-publish.sh` hook that published a branch the moment its
+agent went idle; it is gone, along with the `--push` half of this sweep, which had
+recorded 0 successful pushes against 84 failures over 14 runs. So a refusal you
+hit by hand is now expected rather than a hook that failed to fire — nothing
+publishes for you. Push it yourself, or leave it for the sweep to reap once its
+content lands on the default branch.
 
 `reap` is safer than the client's own check: it re-decides by content, reads
 `gh stack` topology, and removes only clean, unlocked, already-merged-or-pushed
@@ -72,9 +74,10 @@ worktrees, always leaving the branch ref. It cannot lose a commit.
 
 ## The gap worth knowing
 
-Subagent worktrees (`isolation: worktree`) get neither the port block nor the
-idle publish. `worktree-port.sh` and `worktree-publish.sh` are deliberately not
-wired on SubagentStart/SubagentStop because those events carry the PARENT's cwd,
-not the subagent's. So a finished subagent worktree falls through to the daily
-reap — up to 24h where it cannot be closed by hand. If you hit that, publish it
-directly: `git -C <worktree> push -u origin HEAD`.
+Subagent worktrees (`isolation: worktree`) get no port block: `worktree-port.sh`
+is deliberately not wired on SubagentStart/SubagentStop because those events carry
+the PARENT's cwd, not the subagent's. Nothing publishes them either — but that is
+now true of every worktree, not a subagent-specific gap. A finished subagent
+worktree falls through to the daily reap, up to 24h where it cannot be closed by
+hand. If you hit that, publish it directly:
+`git -C <worktree> push -u origin HEAD`.

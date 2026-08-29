@@ -123,9 +123,13 @@ has '86400000' || missing="$missing 86400000"
   rc=1
 }
 
-# --- worktree-publish.sh's bug ---------------------------------------------
+# --- the unpushed-worktree refusal `boom code reap` exists to falsify -------
+# This half outlived worktree-publish.sh, which was deleted 2026-08-28. The string
+# is still load-bearing because `code reap` is still here for exactly this refusal:
+# it re-decides by content what the client decides by SHA. The day the client stops
+# emitting it is the day the daily reap timer can go too.
 has 'has commits that are not pushed anywhere' || {
-  echo "claude-canary: $version no longer contains the 'has commits that are not pushed anywhere' refusal — the delete guard worktree-publish.sh exists to falsify may be gone. Re-measure (boomfile.toml's [boom] header records the deleteJob chain); if the client can now close an unpushed worktree, that hook stops pushing branches to origin at idle and is deletable."
+  echo "claude-canary: $version no longer contains the 'has commits that are not pushed anywhere' refusal — the delete guard 'boom code reap' exists to falsify may be gone. Re-measure (boomfile.toml's [boom] header records the deleteJob chain); if the client can now close an unpushed worktree by itself, the daily code reap timer is deletable."
   rc=1
 }
 

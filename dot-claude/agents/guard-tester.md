@@ -31,7 +31,6 @@ dot-claude/hooks/tests/run.sh
 dot-claude/hooks/tests/wtremove.sh
 dot-claude/hooks/tests/reposcope.sh
 dot-claude/hooks/tests/freshness.sh
-dot-claude/hooks/tests/publish.sh
 dot-claude/hooks/tests/port.sh
 dot-claude/hooks/tests/canary.sh
 ```
