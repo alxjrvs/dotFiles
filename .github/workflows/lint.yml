@@ -149,8 +149,8 @@ jobs:
       # boomfile.toml as a `verify` step; see the Claude section.
       # Same script lefthook now runs. This check used to live here alone,
       # which made it the one gate that failed only after a push.
-      - name: skill description cap
-        run: git ls-files -z 'dot-claude/skills/*/SKILL.md' | xargs -0 scripts/skill-description-cap.sh
+      - name: skill + agent description cap
+        run: git ls-files -z 'dot-claude/skills/*/SKILL.md' 'dot-claude/agents/*.md' | xargs -0 scripts/description-cap.sh
 
       # README's forking list, enforced rather than maintained. CI runs it too
       # because a fork's first commit is exactly where this matters.

@@ -98,12 +98,12 @@ pre-commit:
       # lint.yml. Hermetic, no network.
       glob: "{hooks/*.sh,dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
       run: dot-claude/hooks/tests/all.sh
-    skill-description-cap:
+    description-cap:
       # This existed ONLY in CI — the one asymmetry in the whole setup, and the
       # inverse of every other gate here: editing a SKILL.md description
       # committed clean locally and failed after the push.
-      glob: "dot-claude/skills/*/SKILL.md"
-      run: scripts/skill-description-cap.sh {staged_files}
+      glob: "{dot-claude/skills/*/SKILL.md,dot-claude/agents/*.md}"
+      run: scripts/description-cap.sh {staged_files}
 
     brew-drift:
       # Machine state, not file state: `brew bundle` installs what the Brewfile
