@@ -14,11 +14,6 @@ attempt, or lands in an unattended session with no one to ask.
 - **Never a local merge or push into a default branch.** Land work through GitHub's own gate.
 - **Never put a secret on stdout** — stdout is the transcript. A secret written to a file is a
   secret read. To *use* one, pass it: `op run --env-file=F -- CMD`.
-- **A Bash rule matches the whole command text**, `*` standing for any text. The space before a
-  trailing `*` is load-bearing: `Bash(ls *)` misses `lsof`, `Bash(ls*)` catches it. Verify any new
-  `deny` rule with a positive *and* a negative control before trusting it.
-- **The empty-string env vars in `settings.json` are load-bearing**, not leftovers: an unset
-  `${VAR}` is passed through as a literal and read as a real value.
 
 ## Where things go
 
@@ -28,6 +23,7 @@ It states the number; don't restate it here. Nothing goes in this file that fits
 | | |
 |---|---|
 | a procedure | a skill in `dot-claude/skills/` |
+| it only matters for some files | a path-scoped rule in `dot-claude/rules/` — free until one is read |
 | it must hold | a hook, `permissions.deny`, or a `boom verify` check |
 | a reason, an incident, a measurement | `dot-claude/DECISIONS.md` |
 | a `settings.json` key | `dot-claude/SETTINGS.md` |

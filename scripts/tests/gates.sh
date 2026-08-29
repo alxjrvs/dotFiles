@@ -84,6 +84,16 @@ case_exit inventory_missing_boomfile 1 \
 case_exit descriptioncap_agent_over 1 ./scripts/description-cap.sh scripts/tests/fixtures/agents/over-cap-agent.md
 case_exit descriptioncap_agent_real 0 ./scripts/description-cap.sh dot-claude/agents/drift-triage.md
 
+# --- rules must be path-scoped, or they are not free ------------------------
+# The rules directory is exempt from the byte ceiling on one condition: every
+# rule carries `paths:`, so it loads only when a matching file is read. A rule
+# that omits it is billed at launch exactly like CLAUDE.md — silent, and in the
+# expensive direction. Without this suite the exemption would be unearned.
+case_exit rules_unscoped 1 ./scripts/rules-scoped.sh scripts/tests/fixtures/rules/unscoped.md
+case_exit rules_real 0 ./scripts/rules-scoped.sh
+case_exit rules_no_rule_inputs 1 ./scripts/rules-scoped.sh README.md
+case_exit rules_missing_dir 1 env DIR=dot-claude/does-not-exist ./scripts/rules-scoped.sh
+
 # --- the cap must be able to SEE a multi-line description --------------------
 # A YAML folded block put the indicator (`>-`) on the `description:` line, and
 # the single-line parser scored that as one word — so any skill could carry an

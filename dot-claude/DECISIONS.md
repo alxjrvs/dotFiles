@@ -16,6 +16,7 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 <!-- toc:start -->
 - [Contents](#contents)
 - [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-29 — the byte ceiling was destroying guidance a free mechanism holds](#2026-08-29--the-byte-ceiling-was-destroying-guidance-a-free-mechanism-holds)
 - [2026-08-29 — `AGENTS.md` considered, and declined](#2026-08-29--agentsmd-considered-and-declined)
 - [2026-08-29 — the protected-branch rule is enforced twice, and both stay](#2026-08-29--the-protected-branch-rule-is-enforced-twice-and-both-stay)
 - [2026-08-28 — the publish-at-idle design is gone, and its log says why](#2026-08-28--the-publish-at-idle-design-is-gone-and-its-log-says-why)
@@ -84,6 +85,40 @@ fails. If a number matters enough to write down, make something check it; if it 
 the invariant and drop the digit.
 
 ---
+
+## 2026-08-29 — the byte ceiling was destroying guidance a free mechanism holds
+
+`scripts/context-budget.sh` caps the two symlinked `CLAUDE.md` files, and the cap works: it
+is the only thing that ever made a cut permanent. But it had exactly one lever — deletion —
+and that turned out to be a choice, not a constraint.
+
+Claude Code supports `~/.claude/rules/`, where a rule carrying `paths:` frontmatter loads
+**only when Claude reads a file matching one of its globs**. Guidance that is only true while
+editing one kind of file can therefore be written at any length and still cost a session
+nothing until that file is opened. A rule *without* `paths:` loads at launch with the same
+priority as `CLAUDE.md` — so the frontmatter is the whole difference between free and billed,
+and `scripts/rules-scoped.sh` gates it.
+
+Two rules moved out of the always-loaded file immediately: the Bash-pattern gotcha (`Bash(ls *)`
+misses `lsof`) and the empty-string env vars, both useful only while editing a `settings.json`.
+That is 325 bytes off a 1,800-byte file — but the size is the smaller half. Always-on guidance
+is *worse targeted*: it was paid for on every request and read at the moment it mattered only
+by luck. Scoped, it fires exactly when it applies.
+
+Two calibrations worth recording, because both cut against how strict this repo had been:
+
+- Anthropic's published guidance is *"target under 200 lines per CLAUDE.md file."* Both files
+  here are under 40. The self-imposed ceiling is roughly 5× stricter than the published one.
+  That is a defensible choice and it stays — but it was being paid for in deleted guidance,
+  which is a real cost that nobody had priced.
+- Block-level HTML comments are stripped before injection, so a maintainer note costs zero
+  tokens. The ceiling had been counting them, which meant free content was competing for a
+  scarce budget and losing. Fixed in the same pass.
+
+What this does NOT change: the routing table still sends a procedure to a skill and a reason
+here. A rule is the fourth destination, for the narrow case of "true only while touching these
+files". The failure mode to watch is a rule becoming a second CLAUDE.md by accumulation, which
+is why the directory is exempt from the ceiling only on the condition `rules-scoped.sh` asserts.
 
 ## 2026-08-29 — `AGENTS.md` considered, and declined
 

@@ -84,6 +84,7 @@ classify_link() {
     "~/.claude/loop.md") echo "read on demand by /loop" ;;
     "~/.claude/skills/") echo "descriptions billed — capped by description-cap.sh" ;;
     "~/.claude/agents/") echo "descriptions billed — capped by description-cap.sh" ;;
+    "~/.claude/rules/") echo "path-scoped — free until a matching file is read; gated by rules-scoped.sh" ;;
     *) echo "" ;;
   esac
 }

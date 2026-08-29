@@ -320,6 +320,31 @@ dst = "~/.claude/skills/"
 src = "dot-claude/agents/*"
 dst = "~/.claude/agents/"
 
+# Path-scoped rules. Same glob-destination shape again, but a different cost
+# model from either neighbour above, and it is the reason these exist:
+#
+# A rule carrying `paths:` frontmatter loads ONLY when Claude reads a file
+# matching one of its globs — "path-scoped rules trigger when Claude reads files
+# matching the pattern, not on every tool use". So guidance that is only true
+# while editing one kind of file can be written at any length and still cost a
+# session nothing until that file is opened.
+#
+# That closes the gap `scripts/context-budget.sh` had been paying for. The
+# ceiling on CLAUDE.md is real and stays, but until now the only way under it was
+# DELETION — guidance was destroyed to fit a budget a free mechanism would have
+# absorbed. Two rules moved out of the always-loaded file on the first pass (the
+# Bash-pattern gotcha and the empty-string env vars, both useful only while
+# editing a settings.json) and they now fire exactly when they apply, which is
+# also better targeting than always-on ever was.
+#
+# A rule WITHOUT `paths:` loads at launch with the same priority as CLAUDE.md —
+# i.e. it is billed like the file it was supposed to relieve. That is the failure
+# mode worth gating, so `scripts/rules-scoped.sh` fails on any rule here that
+# omits the key.
+[[section.link]]
+src = "dot-claude/rules/*"
+dst = "~/.claude/rules/"
+
 # Skill refresh moved to the top-level `[boom] skill_on_sync = true` — boom regenerates its
 # own SKILL.md from the running binary each sync, no `run` step needed.
 

@@ -98,6 +98,14 @@ pre-commit:
       # lint.yml. Hermetic, no network.
       glob: "{hooks/*.sh,dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
       run: dot-claude/hooks/tests/all.sh
+    rules-scoped:
+      # A rule carrying `paths:` is free — it loads only when Claude reads a
+      # matching file. One that omits it is billed at launch like CLAUDE.md
+      # itself, which is the entire thing the rules directory exists to avoid,
+      # and nothing about the omission looks wrong. See scripts/rules-scoped.sh.
+      glob: "dot-claude/rules/*.md"
+      run: scripts/rules-scoped.sh {staged_files}
+
     description-cap:
       # This existed ONLY in CI — the one asymmetry in the whole setup, and the
       # inverse of every other gate here: editing a SKILL.md description

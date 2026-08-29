@@ -149,6 +149,12 @@ jobs:
       # boomfile.toml as a `verify` step; see the Claude section.
       # Same script lefthook now runs. This check used to live here alone,
       # which made it the one gate that failed only after a push.
+      # The rules directory is exempt from the byte ceiling on exactly one
+      # condition: every rule is path-scoped, so it costs nothing until a
+      # matching file is read. This is that condition.
+      - name: rules are path-scoped
+        run: scripts/rules-scoped.sh
+
       - name: skill + agent description cap
         run: git ls-files -z 'dot-claude/skills/*/SKILL.md' 'dot-claude/agents/*.md' | xargs -0 scripts/description-cap.sh
 
