@@ -81,9 +81,9 @@ case_exit skillcap_folded_under 0 ./scripts/skill-description-cap.sh scripts/tes
 # for having run nothing, which is precisely how sixteen wired-up suites became
 # zero without turning the `lint` check red.
 #
-# Run against fixture directories, never the real one: the real roster is 312
-# cases and ~21s, and it already runs as its own gate. These four assert the
-# runner's contract, not the suites'.
+# Run against fixture directories, never the real one: the real roster already runs
+# as its own gate, and running it twice would only make this file slower. These
+# four assert the runner's CONTRACT, not the suites' cases.
 allsh=$(cd "$(dirname "$0")/../.." && pwd)/dot-claude/hooks/tests/all.sh
 allfix=$(mktemp -d "${TMPDIR:-/tmp}/all-sh-fixture.XXXXXX")
 trap 'rm -rf "$allfix"' EXIT INT TERM
