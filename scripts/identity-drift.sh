@@ -45,7 +45,6 @@ boomfile.toml
 dot-claude/settings.json
 dot-claude/CLAUDE.md
 dot-claude/hooks/guard-lib.sh
-dot-claude/hooks/pr-review.sh
 dot-claude/skills/butter-stack/SKILL.md
 dot-claude/skills/agent-friendly-repo/SKILL.md
 .claude/settings.json

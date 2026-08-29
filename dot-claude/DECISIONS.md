@@ -15,6 +15,7 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 <!-- toc:start -->
 - [Contents](#contents)
 - [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-28 — the PR reviewer is gone, both halves](#2026-08-28--the-pr-reviewer-is-gone-both-halves)
 - [2026-08-28 — the guard read a program name, and six programs were not it](#2026-08-28--the-guard-read-a-program-name-and-six-programs-were-not-it)
 - [2026-08-28 — the `if:` rules were narrower than the guards they gate](#2026-08-28--the-if-rules-were-narrower-than-the-guards-they-gate)
 - [2026-08-28 — a new suite committed to its own branch, twice, before anyone noticed](#2026-08-28--a-new-suite-committed-to-its-own-branch-twice-before-anyone-noticed)
@@ -75,6 +76,57 @@ Three corollaries, each mechanical:
 Counts that survive are the ones with an owner: a `jq` assertion, a `wc -c` gate, a test that
 fails. If a number matters enough to write down, make something check it; if it does not, describe
 the invariant and drop the digit.
+
+---
+
+## 2026-08-28 — the PR reviewer is gone, both halves
+
+`dot-claude/hooks/pr-review.sh` (244 lines), `pr-review-settings.json`, its three PostToolUse
+handlers, and `.github/workflows/claude-review.yml` are all deleted. Not narrowed — deleted.
+
+### The finding that forced it
+
+`pr-review.sh:26` stated its scope as *"opt-in per repo via `PR_REVIEW_REPOS` (a space-separated
+allowlist)."* `PR_REVIEW_REPOS` was set **nowhere** — not in `zsh/`, not in `settings.json`, not in
+the boomfile. So `:72`'s `: "${PR_REVIEW_REPOS:=$(_owned_orgs …)}"` defaulted it to every owned
+org, and every `gh pr create`, `git push` and `gh stack submit` across six organizations fired a
+background review that posted a comment.
+
+The documented scope and the actual scope disagreed, in the direction that matters: the header's
+own security note concedes the input is *"attacker-controlled (any contributor to a
+`PR_REVIEW_REPOS` repo)"*. A hook that reads untrusted text from six orgs' PRs, on a laptop that
+holds a service-account token and a PAT, is not something to re-scope. `CLAUDE.md`'s rule is
+"Describing a control is not the control" — an allowlist nothing sets is a description.
+
+### Why the workflow went too
+
+`claude-review.yml` was the other half of the same decision, and its own header framed it as an
+either/or: *"add `pull_request` here and delete `hooks/pr-review.sh` … or delete this file and keep
+the local hook."* It was never resolved, because resolving it needed a measurement (E2 — whether
+subscription-token Action runs draw on the weekly interactive limits) that needed the file on
+`main` first.
+
+Both branches of that choice keep a reviewer. Neither was taken, and the reason is in the file's
+own notes: the CI reviewer is not a like-for-like replacement either. It *"skips … pull requests it
+judges not to need a review"*, so coverage becomes non-deterministic; and on a public repo it
+cannot run on fork PRs at all, silently. Meanwhile the thing it was going to restore — a blocking
+check — was already conceded dead: *"Even the managed Code Review product completes its check run
+neutral by design."*
+
+So the honest reading is that this capability had no shape anyone wanted. `/code-review` still
+exists, on demand, scoped to what is asked for, with no allowlist to drift and no daemon reading
+other people's PRs.
+
+### What the removal touched
+
+`settings.json` loses its entire `PostToolUse` block — those three handlers were its only
+occupants. `settings-guardrails.sh` loses the wiring assertion, `identity-drift.sh` the owner-list
+entry, `boomfile.toml` both link stanzas, and README's fork list the sentence naming it.
+
+`_owned_orgs()` is the one that changes meaning rather than losing a line. It is now a single
+security boundary with a single reader (`repo-scope-guard.sh`). It had two readers, and the second
+one is how a list written to answer *"where may an agent WRITE?"* came to also answer *"whose PRs
+do we read?"* — a question nobody asked it.
 
 ---
 

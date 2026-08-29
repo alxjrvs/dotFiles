@@ -66,9 +66,8 @@ least-privilege recommendation, and the file says so.
 **3 — Org scope, which is a security control and not a preference.**
 
 `_owned_orgs()` in `dot-claude/hooks/guard-lib.sh` is the single source: it gates
-which repos `repo-scope-guard.sh` will let an agent write to, and it seeds
-`pr-review.sh`'s review scope. On a fork it protects the wrong orgs until you
-change it.
+which repos `repo-scope-guard.sh` will let an agent write to. On a fork it
+protects the wrong orgs until you change it.
 
 **4 — Cosmetic, in your own time.** The launchd labels
 (`launchd/com.alxjrvs.*.plist`, wired at `boomfile.toml`), the OTEL attribution

@@ -249,26 +249,6 @@ src = "dot-claude/hooks/op-guard.sh"
 dst = "~/.claude/hooks/op-guard.sh"
 mode = "755"
 
-# PostToolUse hook: after `gh pr create` / `git push`, run the adversarial review
-# locally (subscription-covered, unlike an agent in GitHub Actions) and post it as
-# a PR review. No commit status — it is advisory, no ruleset ever required it, and
-# a check that cannot fail a merge only dilutes the checks list.
-# Backgrounds itself so it can never block a turn.
-[[section.link]]
-src = "dot-claude/hooks/pr-review.sh"
-dst = "~/.claude/hooks/pr-review.sh"
-mode = "755"
-
-# The reviewer's confinement boundary, loaded via `claude --settings`. It must sit
-# beside pr-review.sh, which resolves it as `$(dirname "$0")/pr-review-settings.json`.
-# `--allowedTools` alone does NOT confine (measured: it is additive pre-approval,
-# so anything unlisted falls to the auto-mode classifier and runs). A bare tool
-# name in `permissions.deny` does — deny is evaluated first, survives `auto`, and
-# removes the tool from the model's context entirely.
-[[section.link]]
-src = "dot-claude/hooks/pr-review-settings.json"
-dst = "~/.claude/hooks/pr-review-settings.json"
-
 # Stop hook: run the repo's OWN commit gate before an agent may call itself done.
 # Every other hook here stops a bad ACTION; this is the only one that asks whether the
 # WORK is correct. It has no opinion of its own — it runs whatever `lefthook.yml` the

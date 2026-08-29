@@ -41,7 +41,6 @@ repo-scope-guard.sh
 worktree-freshness.sh
 worktree-port.sh
 worktree-publish.sh
-pr-review.sh
 verify-gate.sh
 HOOKS
 }
