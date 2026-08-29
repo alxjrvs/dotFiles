@@ -223,8 +223,8 @@
     "enabled": true,
     "mode": "hold"
   },
-  "skipWorkflowUsageWarning": true,
   "theme": "auto",
+  "skipWorkflowUsageWarning": true,
   "outputStyle": "Proactive",
   "editorMode": "vim",
   "vimInsertModeRemaps": {
@@ -236,8 +236,9 @@
   "inputNeededNotifEnabled": true,
   "autoMode": {
     "classifyAllShell": true,
-    "allow": [
-      "$defaults"
+    "hard_deny": [
+      "$defaults",
+      "Never push directly to a repository's default branch, and never merge into it locally"
     ]
   },
   "askUserQuestionTimeout": "10m"
