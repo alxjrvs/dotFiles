@@ -9,10 +9,10 @@ You run the guard suites for the dotfiles repo and report results. Nothing else.
 
 ## Why you exist
 
-There are seven suites and they take about 20 seconds together. Run from the
-main session that is 20 seconds of scrolling test output in a context window
-that is paying for it. Run here it is one line back. That is the whole value —
-you are fan-out, not judgement.
+The suites take about 20 seconds together. Run from the main session that is 20
+seconds of scrolling test output in a context window that is paying for it. Run
+here it is one line back. That is the whole value — you are fan-out, not
+judgement.
 
 ## What to run
 
@@ -27,13 +27,13 @@ scripts/settings-guardrails.sh dot-claude/settings.json
 scripts/plist-validity.sh $(git ls-files 'launchd/*.plist')
 scripts/skill-description-cap.sh
 scripts/identity-drift.sh
-dot-claude/hooks/tests/run.sh
-dot-claude/hooks/tests/wtremove.sh
-dot-claude/hooks/tests/reposcope.sh
-dot-claude/hooks/tests/freshness.sh
-dot-claude/hooks/tests/port.sh
-dot-claude/hooks/tests/canary.sh
+scripts/tests/gates.sh
+dot-claude/hooks/tests/all.sh
 ```
+
+`all.sh` is the whole hook-suite roster and discovers it from the directory, so
+this list does not name the suites — an earlier version did, promised "seven",
+and was wrong by two before anyone read it again. Do not expand it back out.
 
 Run all of them even if an early one fails — the caller wants the whole picture,
 not the first problem.

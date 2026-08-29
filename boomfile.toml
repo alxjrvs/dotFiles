@@ -280,45 +280,17 @@ src = "dot-claude/hooks/worktree-port.sh"
 dst = "~/.claude/hooks/worktree-port.sh"
 mode = "755"
 
-# Regression suite for the three PreToolUse guards. Linked so it can be run on the
-# machine, not just in CI; `mode` keeps the runner executable.
-[[section.link]]
-src = "dot-claude/hooks/tests/run.sh"
-dst = "~/.claude/hooks/tests/run.sh"
-mode = "755"
-
-[[section.link]]
-src = "dot-claude/hooks/tests/cases.tsv"
-dst = "~/.claude/hooks/tests/cases.tsv"
-
-# worktree-freshness.sh's own suite. Separate from run.sh because that harness
-# asserts on a PreToolUse `permissionDecision`; this hook mutates a worktree, so
-# the assertion is which commit HEAD lands on.
-[[section.link]]
-src = "dot-claude/hooks/tests/freshness.sh"
-dst = "~/.claude/hooks/tests/freshness.sh"
-mode = "755"
-
-# worktree-port.sh's own suite. Its two observable effects are the port block it
-# announces and whether a `.env` gained a `PORT=` line, so neither run.sh (which
-# asserts a `permissionDecision`) nor the other two harnesses can express it.
-# `skip_env_symlink` is the case that matters most: it proves the hook cannot
-# write through a linked `.env` into the user's primary checkout.
-[[section.link]]
-src = "dot-claude/hooks/tests/port.sh"
-dst = "~/.claude/hooks/tests/port.sh"
-mode = "755"
-
-# hooks/claude-canary.sh's suite, and the only one here whose load-bearing cases
-# are the ones where the thing under test must FAIL. It feeds synthetic bundles,
-# because the real client cannot be fixtured — so it proves the decision logic
-# (which absence fails, and that an unreadable bundle reports a BROKEN CHECK
-# rather than all-clear), never that the literals still match a real client. Only
-# a re-measure does that, which is what a canary failure asks for.
-[[section.link]]
-src = "dot-claude/hooks/tests/canary.sh"
-dst = "~/.claude/hooks/tests/canary.sh"
-mode = "755"
+# The hook SUITES are deliberately not linked. Five of the eight were — run.sh,
+# cases.tsv, freshness, port, canary — and verifygate, wtremove and reposcope were
+# not, an asymmetry with no stated reason behind it. The runner that replaced
+# their gate declarations discovers its roster from the directory it sits in,
+# which turns a partial link set into the one failure mode a test runner must not
+# have: a green run over a roster missing three suites.
+#
+# Linking all of them instead would buy a convenience `cd ~/Code/DevEnv/dotFiles &&
+# dot-claude/hooks/tests/all.sh` already provides, on a machine that by
+# definition has this repo — boom cloned it to get here. So: none, and the
+# asymmetry cannot come back.
 
 # Standing prompt for a bare `/loop`. `.claude/loop.md` is a real Claude Code
 # config surface (the binary carries `<<loop.md>>` sentinels), so versioning it

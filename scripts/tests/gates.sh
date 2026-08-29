@@ -74,6 +74,55 @@ case_exit skillcap_folded_over 1 ./scripts/skill-description-cap.sh scripts/test
 # replaced one broken gate with another.
 case_exit skillcap_folded_under 0 ./scripts/skill-description-cap.sh scripts/tests/fixtures/folded-under-cap-SKILL.md
 
+# --- the suite runner is itself a gate, and gets the same treatment ----------
+# `dot-claude/hooks/tests/all.sh` discovers its roster from its own directory.
+# That is what stops the roster rotting — but it is also the failure this file
+# exists to catch: point it somewhere empty and a naive runner reports success
+# for having run nothing, which is precisely how sixteen wired-up suites became
+# zero without turning the `lint` check red.
+#
+# Run against fixture directories, never the real one: the real roster is 312
+# cases and ~21s, and it already runs as its own gate. These four assert the
+# runner's contract, not the suites'.
+allsh=$(cd "$(dirname "$0")/../.." && pwd)/dot-claude/hooks/tests/all.sh
+allfix=$(mktemp -d "${TMPDIR:-/tmp}/all-sh-fixture.XXXXXX")
+trap 'rm -rf "$allfix"' EXIT INT TERM
+
+mk_all() { # $1 = fixture subdir name; echoes the path to a copy of all.sh in it
+  local d=$allfix/$1
+  mkdir -p "$d"
+  cp "$allsh" "$d/all.sh"
+  chmod +x "$d/all.sh"
+  printf '%s' "$d/all.sh"
+}
+
+# An empty directory means the glob that feeds this runner matched nothing.
+# Exit 2, not 0 — "checked nothing" is a broken gate, not a passing one.
+empty=$(mk_all empty)
+case_exit all_empty_dir 2 "$empty"
+
+# Positive control: a runner that fails on everything is no more useful than one
+# that passes on everything.
+okdir=$(mk_all ok)
+printf '#!/bin/sh\nexit 0\n' > "$allfix/ok/a-suite.sh"
+chmod +x "$allfix/ok/a-suite.sh"
+case_exit all_passing_suite 0 "$okdir"
+
+# A failing suite must surface even when another one passed — the runner keeps
+# going so the caller sees every failure, but it must not exit 0 for it.
+mixdir=$(mk_all mixed)
+printf '#!/bin/sh\nexit 0\n' > "$allfix/mixed/a-suite.sh"
+printf '#!/bin/sh\nexit 1\n' > "$allfix/mixed/b-suite.sh"
+chmod +x "$allfix/mixed/a-suite.sh" "$allfix/mixed/b-suite.sh"
+case_exit all_propagates_failure 1 "$mixdir"
+
+# A suite committed without the executable bit is a staging mistake. Skipping it
+# silently is the same all-clear-for-nothing this section guards against.
+nxdir=$(mk_all nonexec)
+printf '#!/bin/sh\nexit 0\n' > "$allfix/nonexec/a-suite.sh"
+chmod -x "$allfix/nonexec/a-suite.sh"
+case_exit all_nonexecutable_suite 1 "$nxdir"
+
 if [ "$fail" -gt 0 ]; then
   echo "gate-tests: $pass passed, $fail FAILED"
   exit 1

@@ -83,47 +83,21 @@ pre-commit:
       # (hermetic, offline); won't reformat the hand-aligned link tables.
       glob: "*.toml"
       run: taplo check --no-schema {staged_files}
-    guard-tests:
-      # The PreToolUse guards are the enforcement floor; a regression there is
-      # silent and security-relevant. Runs whenever a guard or its cases change.
-      # Hermetic (throwaway git fixtures in $TMPDIR), no network, ~5s.
+    hook-tests:
+      # Every suite under dot-claude/hooks/tests/, one command. This was eight
+      # commands here and eight steps in lint.yml — sixteen declarations of nine
+      # scripts, each with its own glob and its own paragraph. Four of those globs
+      # were byte-identical and three more were strict subsets, so one guard edit
+      # forked five suites off a single trigger while the wiring implied they were
+      # separately scoped.
       #
-      # cases.tsv is in the glob because editing ONLY the expectations — which is
-      # how you weaken a suite — previously ran nothing. `tests/*` also covers the
-      # runner itself. Note this globs guard-lib.sh too, which is correct: it is
-      # sourced by both guards, so a change there can regress either one.
-      glob: "{dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
-      run: dot-claude/hooks/tests/run.sh
-    freshness-tests:
-      # worktree-freshness.sh mutates a git worktree (`merge --ff-only`) rather
-      # than returning a permission verdict, so it needs its own harness — see the
-      # header of freshness.sh. Same glob as guard-tests on purpose: both suites
-      # should run whenever anything under hooks/ moves, because the failure mode
-      # being guarded against is editing the expectations instead of the code.
-      glob: "{dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
-      run: dot-claude/hooks/tests/freshness.sh
-    port-tests:
-      # worktree-port.sh's effects are a port block in additionalContext and a
-      # PORT= line in a worktree's .env, so it needs its own harness as well.
-      # Same glob as the other three: the failure mode being guarded against is
-      # editing the expectations instead of the code.
-      glob: "{dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
-      run: dot-claude/hooks/tests/port.sh
-
-    wtremove-tests:
-      # Same shape as the other four standalone suites: this guard's verdicts
-      # depend on whether a pid in a lock file is running, which no fixture
-      # table can express, so it carries its own harness.
-      glob: "dot-claude/hooks/{worktree-remove-guard.sh,guard-lib.sh,tests/wtremove.sh}"
-      run: dot-claude/hooks/tests/wtremove.sh
-
-    reposcope-tests:
-      # Every verdict depends on which repo the cwd points at, so each case
-      # needs a fixture with a real origin remote — no cases.tsv row can carry
-      # that. No network: the guard resolves the owner locally by design.
-      glob: "dot-claude/hooks/{repo-scope-guard.sh,guard-lib.sh,tests/reposcope.sh}"
-      run: dot-claude/hooks/tests/reposcope.sh
-
+      # The glob is the union of what the eight covered, so nothing narrowed: a
+      # change to a guard, to the repo's own hooks/, to a suite, or to cases.tsv
+      # runs all of them. The roster lives in the directory, not here — all.sh
+      # discovers it, which is why adding a suite needs no edit to this file or to
+      # lint.yml. Hermetic, no network, ~21s for 312 cases.
+      glob: "{hooks/*.sh,dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
+      run: dot-claude/hooks/tests/all.sh
     skill-description-cap:
       # This existed ONLY in CI — the one asymmetry in the whole setup, and the
       # inverse of every other gate here: editing a SKILL.md description
@@ -151,21 +125,6 @@ pre-commit:
       # headings, which is the drift this repo keeps finding elsewhere.
       glob: "dot-claude/DECISIONS.md"
       run: scripts/decisions-toc.sh --check
-    canary-tests:
-      # hooks/claude-canary.sh is a `boom verify` step, not an agent hook, so its
-      # glob covers the repo's own hooks/ too. Its load-bearing cases are the ones
-      # where the canary must FAIL — an always-green canary is exactly the failure
-      # it exists to prevent, so this suite is what keeps it honest.
-      glob: "{hooks/*.sh,dot-claude/hooks/tests/*}"
-      run: dot-claude/hooks/tests/canary.sh
-    verifygate-tests:
-      # verify-gate.sh is a Stop hook, the most dangerous shape in dot-claude/hooks/: it runs
-      # every turn, and one that blocks when it should not strands a session with no way out.
-      # So its load-bearing cases are the ones where it must NOT block — a clean tree, a repo
-      # declaring no gate, an unreadable payload — plus the once-per-session loop-breaker.
-      glob: "{dot-claude/hooks/verify-gate.sh,dot-claude/hooks/tests/verifygate.sh}"
-      run: dot-claude/hooks/tests/verifygate.sh
-
     actionlint:
       # The workflows are the remote gate, and were the only config here with no
       # linter. Declared in mise.toml and checksummed in mise.lock all along —
