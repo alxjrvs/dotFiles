@@ -336,9 +336,21 @@ cmd_audit() {
   #    itself, DECISIONS.md (history, which discusses items precisely because they
   #    were removed), and the guard fixtures under tests/ (which name arbitrary
   #    items to assert a DENY, so a fixture would vouch for anything).
+  #
+  #    The VAULT segment allows `$VAULT`/`${BOOM_vault}` and not just a literal, because
+  #    that is how this very file spells every ref it resolves: `PAT_REF="op://$VAULT/
+  #    claude-git-pat/credential"`. A pattern anchored on a lowercase literal cannot see
+  #    its own consumer, and on 2026-08-29 that produced a false orphan — deleting the
+  #    retired `header` verb removed the last COMMENT that happened to spell the vault
+  #    out longhand, and `claude-git-pat` was reported unconsumed while git's credential
+  #    helper was still resolving it on every push. The item segment stays a strict
+  #    literal: that is the half being matched against the manifest, and a variable there
+  #    would vouch for anything.
   local root refs orphans=""
   root="$(cd -- "$(dirname -- "$manifest")" && pwd)"
-  refs="$(grep -rho 'op://[a-z0-9-]*/[a-z0-9-]*' "$root" \
+  # shellcheck disable=SC2016 # the `$` is a literal to MATCH, not an expansion: refs are
+  # spelled `op://$VAULT/item/field` in this file, so the pattern has to contain a real `$`.
+  refs="$(grep -rho 'op://[A-Za-z0-9${}_-]*/[a-z0-9-]*' "$root" \
     --exclude="$(basename -- "$manifest")" \
     --exclude=DECISIONS.md \
     --exclude-dir=.git \
