@@ -171,8 +171,8 @@ Very little, and most apparent gaps are documented deliberate choices (no pinned
   versions *because they expire unnoticed* — but shell startup now measures **237 ms**
   against a documented ~199 ms, a 19% regression that nothing owns. The rule exists; the
   enforcement does not.
-- **Unused hook events.** `SessionEnd`, `PreCompact`, `UserPromptSubmit`, and `Notification`
-  are unhooked. `PreCompact` is the interesting one for long agent sessions.
+- ~~**Unused hook events.**~~ Checked and closed — hook coverage is complete, and the three
+  genuinely unused events are not worth wiring. See the withdrawn Finding 8.
 - **`gh` extensions are pinned by nothing.** `gh-extensions.txt` says so itself: boom
   installs misses and never upgrades, and `boom lock` covers brew + mise only. `gh stack`
   is a v0.1.0 preview tool sitting on whatever version landed first.
