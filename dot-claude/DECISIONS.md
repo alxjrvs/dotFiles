@@ -15,6 +15,7 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 <!-- toc:start -->
 - [Contents](#contents)
 - [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-28 — `op-agent header` deleted, for the second and final time](#2026-08-28--op-agent-header-deleted-for-the-second-and-final-time)
 - [2026-08-28 — the PR reviewer is gone, both halves](#2026-08-28--the-pr-reviewer-is-gone-both-halves)
 - [2026-08-28 — the guard read a program name, and six programs were not it](#2026-08-28--the-guard-read-a-program-name-and-six-programs-were-not-it)
 - [2026-08-28 — the `if:` rules were narrower than the guards they gate](#2026-08-28--the-if-rules-were-narrower-than-the-guards-they-gate)
@@ -76,6 +77,42 @@ Three corollaries, each mechanical:
 Counts that survive are the ones with an owner: a `jq` assertion, a `wc -c` gate, a test that
 fails. If a number matters enough to write down, make something check it; if it does not, describe
 the invariant and drop the digit.
+
+---
+
+## 2026-08-28 — `op-agent header` deleted, for the second and final time
+
+The verb emitted `{"Authorization":"Bearer <token>"}` for an HTTP MCP `headersHelper`. An audit
+found it still dispatched at `hooks/op-agent.sh:445` and reachable by name, with **no consumer
+anywhere in the repo** — every other mention is a guard denying it, a comment about it, or its own
+definition.
+
+This file's own rule, stated at the top of `op-agent.sh`: *"Every verb has a live consumer — no
+speculative surface."*
+
+### The loop it was stuck in
+
+It was cut on 2026-07-25 when the GitHub MCP was removed, restored days later when that server came
+back, and then the server went away again and the verb did not. `dot-claude/SETTINGS.md:62` now
+says outright: *"Do not re-add `api.githubcopilot.com/mcp/` behind a bespoke `headersHelper`."* So
+the condition under which it was restored has been explicitly retired, and the restoration was
+never undone.
+
+That matters more than the 35 lines, because this is the verb that printed a live PAT into a
+transcript on 2026-07-25. A dispatchable-but-unused spelling of the one command with a confirmed
+leak is the worst shape speculative surface can take.
+
+### What was deliberately NOT removed
+
+`header` stays in `op-guard.sh`'s `_OP_VERB_RE`. That pattern is **detection**, not documentation:
+it decides whether an interpreter payload looks op-shaped. A hook resolves `~/.claude/hooks/` at
+run time while `op-agent` resolves on `PATH`, so a machine mid-provision — or holding a stale link
+— can pair this guard with an `op-agent` that still has the verb. Keeping a retired spelling costs
+one branch in a regex; dropping one costs a credential.
+
+The deny **message** is the opposite case and was corrected: it told the user `header` prints a
+credential, which is now a description of something they cannot run. A guard that names verbs that
+do not exist teaches its reader a false model of the system it guards.
 
 ---
 

@@ -173,6 +173,14 @@ _bad_op_run_child() { # $1 = basename of the command after `--`, $2.. = its argv
 # The op-subcommand pattern, named once because two scans now share it and must
 # never drift apart. Anchored on a real SUBCOMMAND, so the bare word `op` in a
 # commit message is not a match.
+#
+# `header` stays in this list although the verb was deleted on 2026-08-28. This
+# pattern is DETECTION, not documentation: it decides whether an interpreter
+# payload looks op-shaped, and a hook resolves `~/.claude/hooks/` at run time
+# while `op-agent` resolves on PATH — a machine mid-provision, or holding a stale
+# link, can pair this guard with an op-agent that still has the verb. Keeping a
+# retired spelling costs a branch in a regex; dropping one costs a credential.
+# The deny MESSAGE below is where a dead verb must not appear, and does not.
 _OP_VERB_RE='(^|[^A-Za-z0-9_-])op(-agent)?[[:space:]]+(read|inject|run|item|document|vault|account|user|group|service-account|whoami|signin|secret|header|git-credential)([^A-Za-z0-9_-]|$)'
 
 # A payload piped INTO an interpreter is never an argv token of the interpreter's
@@ -264,7 +272,7 @@ $SAFE_SHAPES"
     case "${1:-}" in
       status) continue ;;
       *)
-        deny "\`op-agent ${1:-}\` is denied. \`secret\`, \`header\` and \`git-credential get\` each print a live credential to stdout, and stdout is model context — \`op-agent header\` is the command that put a PAT into a transcript on 2026-07-25. op-agent is plumbing: MCP resolvers and git exec it themselves, so an agent never needs to type it. Only \`op-agent status\` (a verdict, no secret) is permitted.
+        deny "\`op-agent ${1:-}\` is denied. \`secret\` and \`git-credential get\` each print a live credential to stdout, and stdout is model context — the deleted \`header\` verb is what put a PAT into a transcript on 2026-07-25. op-agent is plumbing: MCP resolvers and git exec it themselves, so an agent never needs to type it. Only \`op-agent status\` (a verdict, no secret) is permitted.
 
 $SAFE_SHAPES"
         ;;
