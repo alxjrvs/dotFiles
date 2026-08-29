@@ -16,6 +16,7 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 <!-- toc:start -->
 - [Contents](#contents)
 - [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-29 — the guard in front of every push was making a network call](#2026-08-29--the-guard-in-front-of-every-push-was-making-a-network-call)
 - [2026-08-29 — the byte ceiling was destroying guidance a free mechanism holds](#2026-08-29--the-byte-ceiling-was-destroying-guidance-a-free-mechanism-holds)
 - [2026-08-29 — `AGENTS.md` considered, and declined](#2026-08-29--agentsmd-considered-and-declined)
 - [2026-08-29 — the protected-branch rule is enforced twice, and both stay](#2026-08-29--the-protected-branch-rule-is-enforced-twice-and-both-stay)
@@ -85,6 +86,44 @@ fails. If a number matters enough to write down, make something check it; if it 
 the invariant and drop the digit.
 
 ---
+
+## 2026-08-29 — the guard in front of every push was making a network call
+
+An audit flagged `rebase-guard.sh` as double-wired: it is listed under both
+`if: "Bash(*git*)"` and `if: "Bash(*gh*)"`, and `git push && gh pr create --fill` contains both
+substrings, so both arms fire and the guard runs twice on the single commonest command in this
+workflow. True, and worth measuring before fixing — which turned up something larger.
+
+**Measured, 40 runs each.** Bail-out on a command the guard has no opinion about: **22 ms**. A
+git command it actually inspects: **453 ms**. Nearly all of that was one line —
+`GIT fetch --quiet origin "$branch"` — a synchronous network call, unbounded, inside a
+PreToolUse hook, in front of every push and every PR create. Unbounded is the worse half: a hung
+DNS lookup or an unreachable remote would stall the publish path for as long as git waited, with
+the agent simply blocked and no timeout to end it.
+
+Two changes, and the second is the real one:
+
+- **Bounded.** `timeout 5`, via a `GIT_BOUNDED` helper (`timeout` cannot wrap a shell function,
+  so the branches are spelled out). A timed-out fetch is not a failure: the comparison then runs
+  against the last-known ref, which can only make this guard MISS a behind-target push, never
+  invent one. Missing is the correct direction for a guard that fails open everywhere else.
+- **Cached.** Skip the fetch when `FETCH_HEAD` is under 120 s old. `boom code fetch` already
+  refreshes every `~/Code` repo on a 15-minute timer, so in normal operation the round trip buys
+  nothing. **453 ms → 75 ms**, a 6× cut on the hot path.
+
+Getting the cache right took two wrong versions, both instructive: `refs/remotes/origin/<branch>`
+is not in a worktree's own git dir and may be packed rather than a loose file; and `FETCH_HEAD`
+is written **per worktree** — `git -C <worktree> fetch` updates
+`.git/worktrees/<name>/FETCH_HEAD` and leaves the common one untouched. Checking only the common
+dir made the cache never hit from inside a worktree, which is where every agent session runs. It
+now checks the per-worktree dir first.
+
+**The double-fire is accepted, deliberately, and this is the arithmetic.** Collapsing to one
+unfiltered entry costs 22 ms on *every* Bash call to save 75 ms on the rarer publish path; at any
+realistic ratio of `ls` to `git push` that is a net loss. The two filters are individually
+correct, the guard is idempotent and fails open, so the duplicate is now 150 ms of latency on one
+command rather than a correctness problem — where before the fix it was 900 ms. Revisit only if
+the `if` syntax gains a union, or if the bail-out gets materially cheaper than a process start.
 
 ## 2026-08-29 — the byte ceiling was destroying guidance a free mechanism holds
 
