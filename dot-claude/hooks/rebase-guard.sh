@@ -151,6 +151,20 @@ GIT() {
   fi
 }
 
+# Same, but bounded — for the single network call below. `timeout` cannot wrap a
+# shell function, so the two branches are spelled out rather than composed.
+GIT_BOUNDED() {
+  if command -v timeout > /dev/null 2>&1; then
+    if [ -n "$work_dir" ]; then
+      timeout 5 git -C "$work_dir" "$@"
+    else
+      timeout 5 git "$@"
+    fi
+  else
+    GIT "$@"
+  fi
+}
+
 GIT rev-parse --is-inside-work-tree > /dev/null 2>&1 || allow
 
 # Resolve the target branch: an explicit `--base` wins, else origin/HEAD.
@@ -283,7 +297,54 @@ fi
 
 # --- Behind-target rebase guard (push or pr-create) -------------------------
 # Compare against the real remote tip, not a stale local ref.
-GIT fetch --quiet origin "$branch" 2> /dev/null
+#
+# BOUNDED, because this is the one network call in any guard here and it sits in
+# front of every push and every `gh pr create`. Measured at ~450 ms on a warm
+# network against ~22 ms for the bail-out path — so it is the entire cost of this
+# guard, and unbounded it is worse than slow: a hung DNS lookup or an
+# unreachable remote would stall the publish path for as long as git waited,
+# inside a PreToolUse hook, with the agent simply blocked.
+#
+# A timed-out fetch is not a failure. The comparison below just runs against the
+# last-known `origin/<branch>`, which the `code fetch` timer refreshes every 15m
+# anyway; the worst case is a stale ref, which can only make this guard MISS a
+# behind-target push, never invent one. Missing is the correct direction for a
+# guard that fails open everywhere else.
+#
+# `timeout` is not in the macOS base system — it arrives with coreutils, which
+# the Brewfile declares. Absent, the fetch runs unbounded exactly as before
+# rather than being skipped: degrading to the old behaviour beats degrading to
+# no check.
+# Skipped entirely when the remote-tracking ref is already fresh. `boom code
+# fetch` runs `git fetch` across every ~/Code repo on a 15-minute timer, so in
+# normal operation this ref was refreshed by something else minutes ago and the
+# round trip buys nothing. 120 s is well inside that window while still catching
+# the case this guard is for: a teammate or another agent landing on the target
+# between two pushes of your own.
+# FETCH_HEAD, not the remote-tracking ref: it is written by every fetch, it
+# answers "when did we last talk to origin" directly, and it exists as a real
+# file. The ref would have been wrong twice over — `refs/remotes/...` lives in
+# the COMMON git dir rather than a worktree's own gitdir, and it may not be a
+# loose file at all once refs are packed.
+# BOTH git dirs, and the per-worktree one FIRST, because that is where a
+# worktree's own fetch lands: measured, `git -C <worktree> fetch` writes
+# .git/worktrees/<name>/FETCH_HEAD and leaves the common one untouched. Checking
+# only the common dir made this cache never hit from inside a worktree — which
+# is where every agent session runs, i.e. it would have been dead code exactly
+# where it matters.
+fresh=0
+for d in "$(GIT rev-parse --git-dir 2> /dev/null || printf '')" \
+  "$(GIT rev-parse --git-common-dir 2> /dev/null || printf '')"; do
+  [ -n "$d" ] && [ -f "$d/FETCH_HEAD" ] || continue
+  # `find -newermt` is the portable mtime comparison; BSD and GNU find both take
+  # it. Any failure leaves fresh=0 and the fetch runs, which is the safe way for
+  # this to be wrong.
+  if [ -n "$(find "$d/FETCH_HEAD" -newermt '-120 seconds' 2> /dev/null)" ]; then
+    fresh=1
+    break
+  fi
+done
+[ "$fresh" = 1 ] || GIT_BOUNDED fetch --quiet origin "$branch" 2> /dev/null
 GIT rev-parse --verify --quiet "$target" > /dev/null 2>&1 || allow
 
 # Up to date: the target is an ancestor of HEAD → the branch already contains it.
