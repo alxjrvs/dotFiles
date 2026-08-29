@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+#
+# covers: the sources below. `all.sh --changed <files>` reads these lines to
+# decide whether this suite has anything to say about a change; with no
+# argument every suite runs regardless. A suite that declares nothing always
+# runs, so forgetting a line costs time, never coverage.
+# covers: dot-claude/hooks/repo-scope-guard.sh
 # Regression suite for repo-scope-guard.sh.
 #
 # Its own harness rather than a cases.tsv block: every verdict depends on which

@@ -152,6 +152,15 @@ jobs:
       # The rules directory is exempt from the byte ceiling on exactly one
       # condition: every rule is path-scoped, so it costs nothing until a
       # matching file is read. This is that condition.
+      # The one gate that ran locally and nowhere else, so `--no-verify` landed a
+      # stale reference to the retired verb with a green build. That is the exact
+      # asymmetry the skill-description-cap step below was moved here to fix, in
+      # the other direction. Same `git grep` lefthook runs.
+      - name: dead verbs
+        run: |
+          hits=$(git grep -n 'boom apply' -- ':!Brewfile' ':!lefthook.yml' ':!.github/workflows/lint.yml' || true)
+          [ -z "$hits" ] || { echo "$hits"; echo "'boom apply' is not a boom verb — use 'boom source'"; exit 1; }
+
       - name: rules are path-scoped
         run: scripts/rules-scoped.sh
 

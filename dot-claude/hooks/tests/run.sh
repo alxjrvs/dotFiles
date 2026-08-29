@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
+#
+# covers: the sources below. `all.sh --changed <files>` reads these lines to
+# decide whether this suite has anything to say about a change; with no
+# argument every suite runs regardless. A suite that declares nothing always
+# runs, so forgetting a line costs time, never coverage.
+# covers: dot-claude/hooks/guard-lib.sh
+# covers: dot-claude/hooks/op-guard.sh
+# covers: dot-claude/hooks/rebase-guard.sh
+# covers: dot-claude/hooks/worktree-checkout-guard.sh
+# covers: dot-claude/hooks/tests/cases.tsv
 # Regression suite for the three PreToolUse guards.
 #
 # The guards are 200+ lines of load-bearing, security-relevant shell — they are
