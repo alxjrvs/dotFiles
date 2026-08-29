@@ -552,6 +552,33 @@ cmd = "hooks/claude-canary.sh"
 on = "verify"
 cmd = "scripts/brew-drift.sh"
 
+# Every scheduled job has run, and its last run succeeded.
+#
+# This repo has three recorded incidents of one shape — a job registered, firing,
+# failing, and reporting only into a log nobody reads: boom-verify dead 28 days
+# behind an unexpanded `~`; `code reap --push` at 0 successes against 84 failures
+# over 14 sweeps; `git maintenance` pointed at two paths that no longer exist,
+# exiting 1 on every fire. Each was found by hand and fixed individually, so the
+# next one was always going to be found the same way: late, and by luck.
+#
+# The comment further down this file that concluded "the right amount of new
+# machinery here is none" was reasoning about DETECTION, and it was right about
+# that — the gap was never that drift went unseen. This is the other half: the
+# scheduled job that carries the detection can itself be dead, and then every
+# check it runs is silently absent rather than green. `notify = true` cannot help,
+# because nothing ran to notify.
+#
+# Asserts the SYMPTOM, not any cause: launchd reports `runs` and `last exit code`,
+# and a job that never ran or last failed is broken whatever the reason. A future
+# failure nobody has imagined still trips it. plist-validity.sh keeps catching the
+# one specific cause it knows; this catches the rest.
+#
+# Verify-only, and machine state — CI has no launchd and a runner's job history is
+# meaningless.
+[[section.run]]
+on = "verify"
+cmd = "scripts/schedule-health.sh"
+
 # `settings.local.json` must not exist. One `absent` entry covers both verbs:
 # sync removes it, verify fails while it is there.
 #
@@ -947,6 +974,13 @@ exit 1
 # once running, its findings died in a log until `[boom] notify = true` started surfacing them.
 # The gap was notification, not detection — so the fix was the plist and `notify`, both already
 # in place, and the right amount of new machinery here is none.
+#
+# CORRECTED: that reasoning is sound about detection and incomplete about the thing doing the
+# detecting. A scheduled job can be dead, and then every check it carries is silently ABSENT
+# rather than green — which is precisely what those 28 days were, and `notify` could not help
+# because nothing ran to notify. `scripts/schedule-health.sh`, wired as a verify step above, is
+# the missing half: it asserts that each job has run and that its last run exited 0. Two of the
+# three incidents named here would have surfaced on the first nightly verify after they began.
 
 # The third-party GitHub MCP is GONE from both clients, in favour of Anthropic's own
 # GitHub integration. What was here: a remote `api.githubcopilot.com/mcp/` server in
@@ -983,6 +1017,14 @@ name = "boom-verify launchd"
 # StartInterval — elapsed-time, which drifts relative to the clock. Collapsing it into the
 # schedule array would trade a fixed daily slot for a drifting one; that is the trade, stated
 # honestly, rather than a capability claim that stopped being true.
+#
+# An audit proposed collapsing it anyway, on the grounds that a hand-rolled plist is what cost
+# this job 28 days. It is not moving, and the paragraph above is why: the reason is a real
+# capability difference, written down before the audit looked. What the audit was right about is
+# the RISK, and that is now addressed at the level it belongs to — `schedule-health.sh` watches
+# every scheduled job on this machine, whichever mechanism installed it, so the plist is no
+# longer a blind spot that the boom-generated timers are not. The mechanism question is settled
+# by whoever needs wall-clock timing, not by which one is easier to monitor.
 [[section.launchd]]
 src = "launchd/com.alxjrvs.boom-verify.plist"
 

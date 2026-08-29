@@ -94,6 +94,24 @@ case_exit rules_real 0 ./scripts/rules-scoped.sh
 case_exit rules_no_rule_inputs 1 ./scripts/rules-scoped.sh README.md
 case_exit rules_missing_dir 1 env DIR=dot-claude/does-not-exist ./scripts/rules-scoped.sh
 
+# --- scheduled jobs actually run, and their last run succeeded ---------------
+# Three recorded incidents of one shape: boom-verify dead 28 days behind an
+# unexpanded `~`; `code reap --push` at 0 successes against 84 failures; `git
+# maintenance` pointed at paths that no longer existed, exiting 1 on every fire.
+# Each was found by hand. The fixture stands in for launchctl so these assert the
+# script rather than whatever this machine happens to be doing today.
+FIX=scripts/tests/fixtures/launchctl-print.sh
+case_exit schedule_healthy 0 env PRINT_CMD="$FIX" FIXTURE_MODE=healthy ./scripts/schedule-health.sh
+case_exit schedule_failing 1 env PRINT_CMD="$FIX" FIXTURE_MODE=failing ./scripts/schedule-health.sh
+case_exit schedule_absent 1 env PRINT_CMD="$FIX" FIXTURE_MODE=absent ./scripts/schedule-health.sh
+# runs=0 is REPORTED, not failed: a freshly provisioned machine looks identical,
+# and a check that is noisy on day one is bypassed by day two.
+case_exit schedule_never_ran 0 env PRINT_CMD="$FIX" FIXTURE_MODE=never-ran ./scripts/schedule-health.sh
+# No jobs at all must FAIL rather than pass silently — the property this whole
+# suite exists to assert.
+case_exit schedule_no_jobs 1 \
+  env PRINT_CMD="$FIX" LIST_CMD=true LAUNCHD_DIR=scripts/tests/fixtures/no-launchd ./scripts/schedule-health.sh
+
 # --- the cap must be able to SEE a multi-line description --------------------
 # A YAML folded block put the indicator (`>-`) on the `description:` line, and
 # the single-line parser scored that as one word — so any skill could carry an
