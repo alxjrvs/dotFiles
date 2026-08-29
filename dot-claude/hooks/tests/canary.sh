@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+#
+# covers: the sources below. `all.sh --changed <files>` reads these lines to
+# decide whether this suite has anything to say about a change; with no
+# argument every suite runs regardless. A suite that declares nothing always
+# runs, so forgetting a line costs time, never coverage.
+# covers: hooks/claude-canary.sh
 # Regression suite for hooks/claude-canary.sh.
 #
 # The canary reads the installed Claude Code client, which this suite cannot

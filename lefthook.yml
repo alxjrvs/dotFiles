@@ -50,7 +50,7 @@ pre-commit:
       # Anything else is drift, and drift in a command name is the kind that
       # only ever surfaces in front of someone new.
       run: |
-        hits=$(git grep -n 'boom apply' -- ':!Brewfile' ':!lefthook.yml' || true)
+        hits=$(git grep -n 'boom apply' -- ':!Brewfile' ':!lefthook.yml' ':!.github/workflows/lint.yml' || true)
         [ -z "$hits" ] || { echo "$hits"; echo "'boom apply' is not a boom verb — use 'boom source'"; exit 1; }
 
     context-budget:
@@ -96,8 +96,15 @@ pre-commit:
       # runs all of them. The roster lives in the directory, not here — all.sh
       # discovers it, which is why adding a suite needs no edit to this file or to
       # lint.yml. Hermetic, no network.
+      #
+      # `--changed` runs only the suites that cover the staged files. Measured,
+      # the full sweep is ~18s and run.sh alone is 10s of it, paid on every
+      # commit touching any guard — the most frequently edited code here.
+      # Editing worktree-port.sh now costs 1.6s. CI still runs all seven, so
+      # the merge gate is unchanged and a wrong `covers:` line cannot let a
+      # regression through; it only costs local latency.
       glob: "{hooks/*.sh,dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
-      run: dot-claude/hooks/tests/all.sh
+      run: dot-claude/hooks/tests/all.sh --changed {staged_files}
     rules-scoped:
       # A rule carrying `paths:` is free — it loads only when Claude reads a
       # matching file. One that omits it is billed at launch like CLAUDE.md

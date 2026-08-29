@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+#
+# covers: the sources below. `all.sh --changed <files>` reads these lines to
+# decide whether this suite has anything to say about a change; with no
+# argument every suite runs regardless. A suite that declares nothing always
+# runs, so forgetting a line costs time, never coverage.
+# covers: dot-claude/hooks/worktree-freshness.sh
 # Regression suite for worktree-freshness.sh.
 #
 # Deliberately NOT folded into run.sh/cases.tsv. That harness pipes a synthetic
