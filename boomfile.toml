@@ -466,11 +466,13 @@ message = "Fable pinned as default model in ~/.claude/settings.json (Fable is /m
 
 # The deny floor and the hook inventory — the Bash path to a *resolved* secret,
 # and the guards that must stay wired for the pre-approved shapes to remain safe.
-# `op-agent header` and `op-agent git-credential get` each print a live
-# credential to stdout, and stdout is model context; `op-agent header` is the
-# command with the confirmed transcript leak. That postmortem produced a prose
-# rule and no deny entry, so the one command with an incident stayed reachable
-# while `op-agent secret`, which never leaked, was blocked twice.
+# `op-agent secret` and `op-agent git-credential get` each print a live credential
+# to stdout, and stdout is model context. The verb with the confirmed transcript
+# leak was `op-agent header`, deleted 2026-08-28 once an audit found it dispatched
+# but consumed by nothing. That postmortem produced a prose rule and no deny
+# entry, so the one command with an incident stayed reachable while `op-agent
+# secret`, which never leaked, was blocked twice — which is the whole reason the
+# floor below is asserted by a script rather than described here.
 #
 # The assertions now live in scripts/settings-guardrails.sh, called here against
 # the LIVE file and from lefthook and lint.yml against the staged and committed
