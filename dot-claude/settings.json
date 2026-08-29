@@ -154,32 +154,32 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/worktree-checkout-guard.sh",
-            "if": "Bash(git *)"
+            "if": "Bash(*git*)"
           },
           {
             "type": "command",
             "command": "~/.claude/hooks/rebase-guard.sh",
-            "if": "Bash(git *)"
+            "if": "Bash(*git*)"
           },
           {
             "type": "command",
             "command": "~/.claude/hooks/rebase-guard.sh",
-            "if": "Bash(gh *)"
+            "if": "Bash(*gh*)"
           },
           {
             "type": "command",
             "command": "~/.claude/hooks/worktree-remove-guard.sh",
-            "if": "Bash(git *)"
+            "if": "Bash(*git*)"
           },
           {
             "type": "command",
             "command": "~/.claude/hooks/worktree-remove-guard.sh",
-            "if": "Bash(rm *)"
+            "if": "Bash(*rm*)"
           },
           {
             "type": "command",
             "command": "~/.claude/hooks/repo-scope-guard.sh",
-            "if": "Bash(gh *)"
+            "if": "Bash(*gh*)"
           }
         ]
       }

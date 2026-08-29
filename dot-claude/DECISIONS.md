@@ -15,6 +15,7 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 <!-- toc:start -->
 - [Contents](#contents)
 - [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-28 — the `if:` rules were narrower than the guards they gate](#2026-08-28--the-if-rules-were-narrower-than-the-guards-they-gate)
 - [2026-08-28 — a new suite committed to its own branch, twice, before anyone noticed](#2026-08-28--a-new-suite-committed-to-its-own-branch-twice-before-anyone-noticed)
 - [2026-08-28 — every Bash call forked five guards, and four of them had no opinion](#2026-08-28--every-bash-call-forked-five-guards-and-four-of-them-had-no-opinion)
 - [2026-08-28 — the sandbox block was inert, and `mask` would have broken auth if it were not](#2026-08-28--the-sandbox-block-was-inert-and-mask-would-have-broken-auth-if-it-were-not)
@@ -72,6 +73,49 @@ Three corollaries, each mechanical:
 
 Counts that survive are the ones with an owner: a `jq` assertion, a `wc -c` gate, a test that
 fails. If a number matters enough to write down, make something check it; if it does not, describe
+the invariant and drop the digit.
+
+---
+
+## 2026-08-28 — the `if:` rules were narrower than the guards they gate
+
+Gating the `PreToolUse` guards with `if:` cut 135 ms off every Bash call, and re-opened the
+bypasses the four commits before it had just closed. The rules were written in program position —
+`Bash(git *)`, `Bash(gh *)`, `Bash(rm *)` — but a Bash rule **matches the whole command text**,
+which is the correction recorded two entries down in this very file. So every spelling that does
+not literally begin `git ` skipped the guard entirely:
+
+| command | in `cases.tsv` | reached the guard |
+|---|---|---|
+| `/usr/bin/git push origin main` | `deny` | no |
+| `env git push origin main` | `deny` | no |
+| `(git push origin main)` | `deny` | no |
+| `sudo git push origin main` | `deny` | no |
+| `bash -c "git push origin main"` | `deny` | no |
+| `echo "git push origin main" \| bash` | `deny` | no |
+
+Those are not hypotheticals — each is an existing case in `cases.tsv`, asserted `deny`, and
+`_norm` was extended precisely to resolve them. **The suite stayed green the whole time**, because
+it invokes the guard scripts directly and never reads `settings.json`. An always-green suite over
+a disabled control is the exact shape `lefthook.yml`'s canary comment warns about, reproduced one
+commit after it was written down.
+
+The entry below argues that `Bash(git push *)` would be too narrow and settles on `Bash(git *)`.
+The argument was right and stopped one step early: `Bash(git *)` is too narrow for the same
+reason. The rules are now the substring form — `Bash(*git*)`, `Bash(*gh*)`, `Bash(*rm*)` — which
+is the only shape that can see a program name the guard can resolve but a prefix cannot.
+
+Over-firing is free here and under-firing is the whole bug: a guard that runs on `bun run format`
+because it contains `rm` costs one process and returns "allow", while a guard that does not run on
+`sudo git push origin main` costs the default branch. The measured saving survives regardless —
+`grep`, `sed`, `find` and `cat` dominate the call volume and match none of the three.
+
+`settings-guardrails.sh` now asserts the shape, so the next person to narrow one of these rules
+back into program position fails lefthook, CI and `boom verify` rather than silently turning a
+guard off.
+
+---
+
 ## 2026-08-28 — a new suite committed to its own branch, twice, before anyone noticed
 
 Writing the suite for `verify-gate.sh` reproduced, from scratch, the exact hazard `run.sh`
@@ -107,7 +151,15 @@ Fixtures also run with `core.hooksPath=/dev/null`, because `init.templateDir` is
 machine — so a bare `git init` in a fixture installs the house pre-commit hook, and a fixture
 that declares a `lefthook.yml` then runs the real lefthook, which runs this suite.
 
-the invariant and drop the digit.
+**It also landed unlinked.** `settings.json` grew a `Stop` handler for `verify-gate.sh`, but
+`boomfile.toml` never grew the `[[section.link]]` that puts the file at
+`~/.claude/hooks/verify-gate.sh`, and `settings-guardrails.sh` never grew the name that would
+have failed the build for exactly that. `hook-authoring/SKILL.md` lists four steps to wire a
+hook; two of them were done. So the gate was on disk, tested by two suites, and pointed at a path
+that did not exist. Both are added here — the link, and the assertion that keeps the link.
+
+---
+
 ## 2026-08-28 — every Bash call forked five guards, and four of them had no opinion
 
 Measured on this machine, 20 iterations each with a benign `ls -la` payload:

@@ -269,6 +269,19 @@ mode = "755"
 src = "dot-claude/hooks/pr-review-settings.json"
 dst = "~/.claude/hooks/pr-review-settings.json"
 
+# Stop hook: run the repo's OWN commit gate before an agent may call itself done.
+# Every other hook here stops a bad ACTION; this is the only one that asks whether the
+# WORK is correct. It has no opinion of its own — it runs whatever `lefthook.yml` the
+# repo already declares — and it is a no-op unless the tree has uncommitted changes.
+# The link is what makes it real: it landed in `settings.json` without one, so the
+# handler pointed at a path that did not exist and the gate enforced nothing. That is
+# the failure this repo keeps recording, and `settings-guardrails.sh` now names this
+# file so un-wiring it fails lefthook, CI and `boom verify` instead of passing all three.
+[[section.link]]
+src = "dot-claude/hooks/verify-gate.sh"
+dst = "~/.claude/hooks/verify-gate.sh"
+mode = "755"
+
 # SessionStart/SubagentStart hook: start an agent on CURRENT code. The client's
 # `worktree.baseRef: "fresh"` cuts from the local `origin/<default>` ref and only
 # refreshes it when .git/FETCH_HEAD is more than 24h old, so an agent can silently
