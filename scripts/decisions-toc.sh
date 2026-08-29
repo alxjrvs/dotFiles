@@ -35,21 +35,62 @@ grep -qF "$START" "$FILE" || {
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-# `## ` headings only. The `### ` level is detail within an entry; indexing it
-# would make the index long enough to need its own index.
+# `## ` always; `### ` only inside a section big enough to need it.
+#
+# This used to index `## ` alone, reasoning that "the `### ` level is detail
+# within an entry; indexing it would make the index long enough to need its own
+# index". Sound in general, and measurably wrong for this file in particular: 80
+# of 114 headings (70%) were unindexed, and the two largest sections — about 28%
+# of the file between them — were one TOC line each. The index was longest
+# exactly where it was least useful, which is the opposite of what an index is
+# for.
+#
+# So the rule is by SIZE, not by level. A section under the threshold stays a
+# single line, because for those the original reasoning holds. A section over it
+# gets its `### ` children nested underneath, because at that size "find the
+# section, then read 500 lines" is the full-file read the index was supposed to
+# replace. Sections cross the threshold on their own as they grow, so nothing has
+# to be maintained.
+BIG_SECTION_BYTES=${BIG_SECTION_BYTES:-8000}
 awk -v s="$START" -v e="$END" '
   $0 == s { print; inblock=1; next }
   $0 == e { inblock=0 }
   !inblock { print }
 ' "$FILE" > "$tmp/stripped"
 
+# Two passes. The first measures each `## ` section so the second knows which
+# ones are big enough to expand — a section's size is not knowable until the next
+# one starts, so it cannot be decided in a single streaming pass.
 awk '
+  /^## / { if (sec != "") print sec "\t" bytes; sec = substr($0, 4); bytes = 0; next }
+  { bytes += length($0) + 1 }
+  END { if (sec != "") print sec "\t" bytes }
+' "$tmp/stripped" > "$tmp/sizes"
+
+awk -v big="$BIG_SECTION_BYTES" -v sizes="$tmp/sizes" '
+  function anchor(t,   a) {
+    a = tolower(t)
+    gsub(/[^a-z0-9 -]/, "", a)
+    gsub(/ /, "-", a)
+    return a
+  }
+  BEGIN {
+    while ((getline line < sizes) > 0) {
+      split(line, f, "\t")
+      size[f[1]] = f[2] + 0
+    }
+    close(sizes)
+  }
   /^## / {
     title = substr($0, 4)
-    anchor = tolower(title)
-    gsub(/[^a-z0-9 -]/, "", anchor)
-    gsub(/ /, "-", anchor)
-    printf "- [%s](#%s)\n", title, anchor
+    expand = (size[title] >= big)
+    printf "- [%s](#%s)\n", title, anchor(title)
+    next
+  }
+  /^### / {
+    if (!expand) next
+    title = substr($0, 5)
+    printf "  - [%s](#%s)\n", title, anchor(title)
   }
 ' "$tmp/stripped" > "$tmp/toc"
 
