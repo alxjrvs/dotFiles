@@ -25,7 +25,7 @@ shfmt -d -i 2 -ci -sr $(git ls-files '*.sh' 'git-template/hooks/*')
 scripts/context-budget.sh
 scripts/settings-guardrails.sh dot-claude/settings.json
 scripts/plist-validity.sh $(git ls-files 'launchd/*.plist')
-scripts/skill-description-cap.sh
+scripts/description-cap.sh
 scripts/identity-drift.sh
 scripts/tests/gates.sh
 dot-claude/hooks/tests/all.sh

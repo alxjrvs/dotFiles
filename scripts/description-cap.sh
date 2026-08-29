@@ -1,12 +1,20 @@
 #!/usr/bin/env sh
-# Skill frontmatter description cap — the single source, and now enforced in
-# BOTH places rather than only in CI.
+# Frontmatter description cap for SKILLS AND SUBAGENTS — the single source, and
+# enforced in both gates rather than only in CI.
 #
-# WHY IT EXISTS. Every skill's `description:` is loaded into every session so the
-# model can decide whether the skill is relevant. The body is not. A description
-# that grows into a summary is a permanent tax on every request, paid to explain
-# a skill that may never be invoked — the same argument scripts/context-budget.sh
-# makes for the two symlinked CLAUDE.md files.
+# WHY IT EXISTS. A skill's or subagent's `description:` is loaded into every
+# session so the model can decide whether it is relevant. The body is not. A
+# description that grows into a summary is a permanent tax on every request, paid
+# to explain something that may never be invoked — the same argument
+# scripts/context-budget.sh makes for the two symlinked CLAUDE.md files.
+#
+# WHY AGENTS TOO, AND WHY THE RENAME. This was `skill-description-cap.sh` and
+# read only dot-claude/skills/. But boomfile.toml links dot-claude/agents/ into
+# ~/.claude/ as well, and a subagent's description is billed on exactly the same
+# terms — so two of the seven always-loaded surfaces sat outside the only cap
+# that governs them. context-budget.sh's link inventory now asserts that this
+# script covers both, which is what makes that classification true rather than
+# aspirational.
 #
 # WHY THIS FILE EXISTS. The check lived only in .github/workflows/lint.yml, with
 # no lefthook twin — the inverse of every other gate here, and the one asymmetry
@@ -19,14 +27,14 @@ CAP=60
 fail=0
 
 if [ "$#" -eq 0 ]; then
-  set -- dot-claude/skills/*/SKILL.md
+  set -- dot-claude/skills/*/SKILL.md dot-claude/agents/*.md
 fi
 
 # See settings-guardrails.sh. This one already defaults to a glob when called
 # with no arguments, but the glob itself can match nothing — and an explicit
 # path that does not exist was silently skipped rather than reported.
 [ "$#" -gt 0 ] || {
-  echo "no inputs — the skills glob matched nothing, so no description was checked" >&2
+  echo "no inputs — the skill/agent globs matched nothing, so no description was checked" >&2
   exit 1
 }
 
@@ -36,8 +44,13 @@ for f in "$@"; do
     fail=1
     continue
   }
+  # Both shapes carry a billed description: a skill's SKILL.md and a subagent's
+  # dot-claude/agents/<name>.md. Anything else a caller passes is ignored, so
+  # lefthook can hand this its whole staged-file list.
   case "$f" in
     *SKILL.md) ;;
+    dot-claude/agents/*.md) ;;
+    */agents/*.md) ;;
     *) continue ;;
   esac
 

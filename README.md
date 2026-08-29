@@ -91,7 +91,7 @@ in `.claude/settings.json`, the statusline source repo in
 | `Brewfile` / `mise.toml` | Packages (Lean A: brew = casks, mise = dev CLIs) |
 | `sheldon/`, `atuin/`, `bat/`, `ssh/`, `gh/config.yml` | Payload configs |
 | `lefthook.yml`, `.github/workflows/lint.yml` | Commit + CI gate: shellcheck, shfmt, biome, gitleaks, the hook suites, and the assertions in `scripts/` |
-| `scripts/` | The shared assertions both gates call, so neither can drift from the other: `context-budget.sh`, `settings-guardrails.sh`, `plist-validity.sh`, `skill-description-cap.sh`, `brew-drift.sh` |
+| `scripts/` | The shared assertions both gates call, so neither can drift from the other: `context-budget.sh`, `settings-guardrails.sh`, `plist-validity.sh`, `description-cap.sh`, `brew-drift.sh` |
 | `LICENSE` | MIT |
 
 ## Secrets, signing, terminal, packaging

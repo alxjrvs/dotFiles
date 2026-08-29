@@ -1,0 +1,17 @@
+# Fixture for scripts/tests/gates.sh.
+#
+# A boomfile that links something into ~/.claude/ which context-budget.sh has
+# never been told the cost of. The inventory must FAIL on it — that is the whole
+# point of the inventory, and the failure this fixture pins is the one that
+# already happened three times in the real file (skills/, agents/, loop.md all
+# arrived as links with the budget none the wiser).
+[[section]]
+name = "fixture"
+
+[[section.link]]
+src = "dot-claude/CLAUDE.md"
+dst = "~/.claude/CLAUDE.md"
+
+[[section.link]]
+src = "dot-claude/something-new.md"
+dst = "~/.claude/something-new.md"

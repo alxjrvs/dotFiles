@@ -47,10 +47,10 @@ case_exit() {
 # --- a named input that does not exist must FAIL, never be skipped -----------
 case_exit guardrails_missing_path 1 ./scripts/settings-guardrails.sh dot-claude/does-not-exist.json
 case_exit plist_missing_path 1 ./scripts/plist-validity.sh launchd/does-not-exist.plist
-case_exit skillcap_missing_path 1 ./scripts/skill-description-cap.sh dot-claude/skills/nope/SKILL.md
+case_exit skillcap_missing_path 1 ./scripts/description-cap.sh dot-claude/skills/nope/SKILL.md
 
 # --- an EMPTY input list must FAIL: the caller's glob matched nothing --------
-# `skill-description-cap.sh` is excluded here on purpose — it defaults to its
+# `description-cap.sh` is excluded here on purpose — it defaults to its
 # own glob when called with no arguments, which is a deliberate convenience and
 # still resolves to real files.
 case_exit guardrails_no_args 1 ./scripts/settings-guardrails.sh
@@ -61,18 +61,38 @@ case_exit guardrails_real 0 ./scripts/settings-guardrails.sh dot-claude/settings
 # Globbed, not named: a hardcoded plist label is an owner this suite would
 # carry into every fork, and identity-drift.sh is right to reject one.
 case_exit plist_real 0 ./scripts/plist-validity.sh launchd/*.plist
-case_exit skillcap_default_glob 0 ./scripts/skill-description-cap.sh
+case_exit skillcap_default_glob 0 ./scripts/description-cap.sh
 case_exit context_budget_real 0 ./scripts/context-budget.sh
+
+# --- the ~/.claude/ link inventory ------------------------------------------
+# context-budget.sh caps two files, but seven surfaces are billed, and the gap
+# was invisible: skills/, agents/ and loop.md were each linked into ~/.claude/
+# with the budget none the wiser, while four docs went on claiming only two
+# files were linked at all. The inventory closes that, so it needs the same
+# treatment as the gates above — a positive control, a negative control, and a
+# refusal to pass when it read nothing.
+case_exit inventory_unclassified_link 1 \
+  env BOOMFILE=scripts/tests/fixtures/unclassified-link-boomfile.toml ./scripts/context-budget.sh
+case_exit inventory_missing_boomfile 1 \
+  env BOOMFILE=scripts/tests/fixtures/does-not-exist.toml ./scripts/context-budget.sh
+
+# --- the cap covers SUBAGENTS, not just skills ------------------------------
+# dot-claude/agents/ is linked into ~/.claude/ and every agent `description:` is
+# billed per session, but the cap read only dot-claude/skills/ — two of the seven
+# always-loaded surfaces sat outside the only cap that governs them. This is the
+# control that keeps the rename honest.
+case_exit descriptioncap_agent_over 1 ./scripts/description-cap.sh scripts/tests/fixtures/agents/over-cap-agent.md
+case_exit descriptioncap_agent_real 0 ./scripts/description-cap.sh dot-claude/agents/drift-triage.md
 
 # --- the cap must be able to SEE a multi-line description --------------------
 # A YAML folded block put the indicator (`>-`) on the `description:` line, and
 # the single-line parser scored that as one word — so any skill could carry an
 # unbounded description past a gate reporting `ok (1 words)`. The cap is this
 # script's entire purpose, and that spelling removed it.
-case_exit skillcap_folded_over 1 ./scripts/skill-description-cap.sh scripts/tests/fixtures/folded-over-cap-SKILL.md
+case_exit skillcap_folded_over 1 ./scripts/description-cap.sh scripts/tests/fixtures/folded-over-cap-SKILL.md
 # Positive control: a SHORT folded block must still pass, or the fix would have
 # replaced one broken gate with another.
-case_exit skillcap_folded_under 0 ./scripts/skill-description-cap.sh scripts/tests/fixtures/folded-under-cap-SKILL.md
+case_exit skillcap_folded_under 0 ./scripts/description-cap.sh scripts/tests/fixtures/folded-under-cap-SKILL.md
 
 # --- the suite runner is itself a gate, and gets the same treatment ----------
 # `dot-claude/hooks/tests/all.sh` discovers its roster from its own directory.
