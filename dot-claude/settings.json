@@ -2,6 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1",
     "GIT_AUTHOR_NAME": "Claude",
     "GIT_AUTHOR_EMAIL": "alxjrvs+claude@gmail.com",
     "GIT_COMMITTER_NAME": "Claude",
@@ -50,27 +51,27 @@
       "envVars": [
         {
           "name": "GITHUB_TOKEN",
-          "mode": "mask"
+          "mode": "deny"
         },
         {
           "name": "GH_TOKEN",
-          "mode": "mask"
+          "mode": "deny"
         },
         {
           "name": "NPM_TOKEN",
-          "mode": "mask"
+          "mode": "deny"
         },
         {
           "name": "NINETY_API_TOKEN",
-          "mode": "mask"
+          "mode": "deny"
         },
         {
           "name": "OP_SERVICE_ACCOUNT_TOKEN",
-          "mode": "mask"
+          "mode": "deny"
         },
         {
           "name": "ANTHROPIC_API_KEY",
-          "mode": "mask"
+          "mode": "deny"
         }
       ]
     },
@@ -231,15 +232,7 @@
   "autoMode": {
     "classifyAllShell": true,
     "allow": [
-      "$defaults",
-      "Bash(bun run check:*)",
-      "Bash(bun run test:*)",
-      "Bash(gh issue view:*)",
-      "Bash(boom verify:*)",
-      "Bash(boom plan:*)",
-      "Bash(biome check:*)",
-      "Bash(shellcheck:*)",
-      "Bash(dot-claude/hooks/tests/run.sh)"
+      "$defaults"
     ]
   },
   "askUserQuestionTimeout": "10m"

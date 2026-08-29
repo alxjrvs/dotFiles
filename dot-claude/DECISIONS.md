@@ -15,6 +15,8 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 <!-- toc:start -->
 - [Contents](#contents)
 - [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-28 — the sandbox block was inert, and `mask` would have broken auth if it were not](#2026-08-28--the-sandbox-block-was-inert-and-mask-would-have-broken-auth-if-it-were-not)
+- [2026-08-28 — `autoMode.allow` was inert, and wrong-shaped](#2026-08-28--automodeallow-was-inert-and-wrong-shaped)
 - [2026-08-28 — the permission-matching rule in `CLAUDE.md` was backwards](#2026-08-28--the-permission-matching-rule-in-claudemd-was-backwards)
 - [2026-08-28 — the three rules that were prose, and the guard that had six ways past it](#2026-08-28--the-three-rules-that-were-prose-and-the-guard-that-had-six-ways-past-it)
 - [2026-08-26 — heroku: the Brewfile was the obvious home and the wrong one](#2026-08-26--heroku-the-brewfile-was-the-obvious-home-and-the-wrong-one)
@@ -71,6 +73,69 @@ fails. If a number matters enough to write down, make something check it; if it 
 the invariant and drop the digit.
 
 ---
+## 2026-08-28 — the sandbox block was inert, and `mask` would have broken auth if it were not
+
+`sandbox.enabled` is opt-in and unset in every settings file on this machine, and both
+`sandbox.credentials` and `sandbox.filesystem` affect **sandboxed Bash commands only**. So the
+six masked credentials and the `denyRead` list enforced nothing. `SETTINGS.md` called that block
+"the countermeasure for the transcript leak" — the repo's own routing table has a row for this:
+*already enforced → nowhere. Describing a control is not the control.* This was a control that
+described itself.
+
+**And enabling it as written would have been worse than leaving it off.** All six entries used
+`mode: "mask"`, which does not block a credential — it shows the command a sentinel and has the
+sandbox proxy swap the real value back in on outbound requests to hosts named in `injectHosts`.
+That requires `network.tlsTerminate` and the destination in `network.allowedDomains`. Neither is
+set, and there is no `injectHosts` anywhere. The documented result: *"masking fails without
+exposing anything: the command still sees only the sentinel, but the sentinel reaches the server
+unchanged and authentication fails."* Every `gh` and `npm` call inside the sandbox would have
+authenticated with a sentinel.
+
+So the modes are now `deny`, which unsets the variable before each sandboxed command — the mode
+that is correct for a configuration with no network block. `mask` is the right answer only
+alongside a full network policy, and that is a different change.
+
+Two claims from the audit were checked and **not** acted on:
+
+- *"Move `~/.config/gh/hosts.yml` out of `filesystem.denyRead` into `credentials.files`."* The
+  docs say a `credentials.files` entry with `mode: "deny"` applies *"the same restriction that
+  `filesystem.denyRead` applies"*. The two are equivalent for reads, so the move buys nothing and
+  the churn was declined.
+- *"There is no `unset` mode."* The audit recommended `mode: "unset"`. The documented values are
+  `deny` and `mask`; `deny` is the one that unsets. Writing `unset` would have produced invalid
+  config.
+
+`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is the part that works without any of this: it strips
+Anthropic and cloud-provider credentials from **all** subprocesses regardless of sandboxing. It
+is set now, because it needed nothing else to be true first.
+
+Turning `sandbox.enabled` on is deliberately not part of this change. Go-based CLIs — `gh`,
+`gcloud`, `terraform` — are documented to fail TLS verification under macOS Seatbelt and need
+`excludedCommands`; `open` and `osascript` are blocked by default; and `.gitconfig` routes git
+credentials through the keychain and `op-agent`. Each is a way for "the sandbox is on" to present
+as "git is broken". It needs a live `/sandbox` session and a real push, which is a human test.
+
+## 2026-08-28 — `autoMode.allow` was inert, and wrong-shaped
+
+Eight tool patterns sat in `autoMode.allow`: `Bash(bun run check:*)`, `Bash(boom verify:*)`, and
+so on. Three independent reasons none of them did anything:
+
+1. **Wrong shape.** The field takes *natural-language rules* — prose the classifier reads. It was
+   being handed permission-rule syntax, so the classifier read the literal string
+   `"Bash(boom verify:*)"` as a sentence.
+2. **Nothing to except.** An `allow` entry acts only as an exception to a matching `soft_deny`
+   rule. Nothing in the built-in soft-deny list blocks `bun run check` or `boom verify`, so there
+   was no denial for these to override.
+3. **Suspended anyway.** `classifyAllShell: true`, three lines above, *"suspends every Bash and
+   PowerShell allow rule while auto mode is active"*. Even correct patterns would not have
+   applied.
+
+Cut to `["$defaults"]`. The key that would actually help is `autoMode.environment` — the
+classifier trusts only the working directory and the current repo's remotes by default, so
+naming the owned orgs and 1Password there is what widens it correctly. Not written blind:
+`/auto-mode-setup` drafts those entries and `claude auto-mode critique` scores them, and both
+want a live session.
+
 
 ## 2026-08-28 — the permission-matching rule in `CLAUDE.md` was backwards
 
