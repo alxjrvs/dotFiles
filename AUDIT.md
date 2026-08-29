@@ -45,14 +45,18 @@ matcher matches `rm` inside the word `remove`. It does not: `git worktree remove
 /path` contains zero occurrences of the substring `rm` (`r` is followed by `e`). That claim
 is **struck**. The neighbouring claim about `rebase-guard.sh` *is* correct and is Finding 9.
 
-Remaining gaps, stated rather than papered over:
+On a second pass the teams delivered the rest. Two earlier gaps are now **closed**:
 
-- **Claude Code feature-gap coverage is absent** — that agent returned nothing readable, so
-  the "what settings are inert or deprecated" question is unanswered.
-- The **boom source read is shallow** — I sized it and confirmed its test surface, but did
-  not audit its internals. The boom verdict below is hedged accordingly.
-- The **orphan list was never delivered**, so "which tracked files are referenced by
-  nothing" remains open.
+- **Orphans: there are none.** The reference graph is closed. Exactly four tracked files
+  score zero direct references — `dot-claude/agents/drift-triage.md`,
+  `dot-claude/hooks/tests/verifygate.sh`, `zsh/20-vi.zsh`, `zsh/70-aliases.zsh` — and all
+  four are reached by glob or discovery (`boomfile.toml:307,320,597`, and `all.sh:28`, which
+  iterates the directory on purpose). Nothing to cut.
+- **Settings are clean.** No deprecated, misspelled, or wrong-scope keys. The empty-string
+  `NINETY_*` vars and `skipWorkflowUsageWarning` were each checked and are load-bearing.
+
+One gap remains: the **boom source read is shallow** — I sized it and confirmed its test
+surface, but did not audit its internals. The boom verdict below is hedged accordingly.
 
 ## Measured facts
 
@@ -86,6 +90,12 @@ Remaining gaps, stated rather than papered over:
 | Real fixed per-session context cost | ~6,193 B ≈ **1,550 tokens** |
 | `DECISIONS.md` on demand | ~41,650 tokens |
 | Skill descriptions vs 60-word cap | 88–93% — a ratchet at rest |
+| Two largest skills, loaded in full on trigger | ~5,600 tokens each |
+| `DECISIONS.md` headings not in the generated TOC | **80 of 114 (70%)** |
+| The mis-stated per-session fact, copies / wrong | **8 / 4** |
+| `mise.lock` | 83,268 B, refreshed by nothing |
+| CI runners | `ubuntu-latest` only — target OS untested |
+| Tracked files referenced by nothing | **0** — graph is closed |
 
 ## Q1 — Do we do too much?
 
@@ -151,6 +161,9 @@ Very little, and most apparent gaps are documented deliberate choices (no pinned
   gate noticing. The script's own header predicts this exact failure. See Finding 10.
 - **Nothing owns the scheduled-job failure class.** Three instances, three individual fixes,
   class still open. See Finding 11.
+- **CI never runs on the target OS.** Both workflows are `ubuntu-latest`; the README's whole
+  setup path is executed by nothing. See Finding 17.
+- **83 KB of pins nothing refreshes.** `mise.lock`, invisible to Dependabot. See Finding 18.
 - **No stale-measurement detector.** `CLAUDE.md` bans recording measurements against tool
   versions *because they expire unnoticed* — but shell startup now measures **237 ms**
   against a documented ~199 ms, a 19% regression that nothing owns. The rule exists; the
@@ -219,8 +232,13 @@ not redundancy. Worth documenting so a future cleanup does not remove the wrong 
 Carried over unfixed from the June 2026 audit.
 → *One-line action:* pin a release tag and verify a published SHA before executing.
 
-**8 · ADD — a `PreCompact` hook** is the highest-value unused event for this setup, given
-119 commits/30 days of long agent sessions.
+**8 · ~~ADD — a `PreCompact` hook~~ — WITHDRAWN.** I proposed this on the reasoning that
+119 commits/30 days implies long sessions. The Claude Code specialist checked the full
+event list and disagrees: of the three unused events (`Notification`, `PreCompact`,
+`UserPromptSubmit`), `PreCompact` has no actionable event to hook, and even `Notification` —
+the highest-value unused one — is audit-only and low velocity value. Two further events
+(`SessionEnd`, `PostToolUse`) are unused because their machinery was *deliberately deleted*
+on 2026-08-28. **Hook coverage is complete; there is nothing worth adding here.**
 
 **9 · FIX — `rebase-guard.sh` runs twice on the commonest command in this workflow.**
 _(team, verified.)_ It is wired at both `if: "Bash(*git*)"` and `if: "Bash(*gh*)"`
@@ -285,7 +303,56 @@ unannotated (`:2270` "the merge queue stopped being optional" reversed 97 lines 
 2026-08-28. At ~41,650 tokens the file is **2.3× larger than the `CLAUDE.md` whose bloat its
 own entry records as the disease.** The cure outgrew the disease.
 Related: all four skill descriptions sit at **88–93% of the 60-word cap** — the cap is not
-forcing anything, it is a ratchet at rest.
+forcing anything, it is a ratchet at rest. And `decisions-toc.sh` is *not* a maintenance tax
+(generated, `--check`-gated, zero manual edits ever) but it indexes `##` only: **80 of 114
+headings (70%) are unindexed**, and the two largest sections — ~28% of the file — are one
+TOC line each.
+
+**15 · CUT — duplication is the rot generator, and it is countable.** _(team.)_ The fact that
+Finding 10 shows is *wrong* appears in **8 places, and 4 of them are already wrong**
+(`CLAUDE.md:35-37`, `README.md:92`, `README.md:101-104`, `DECISIONS.md:6-9`,
+`SETTINGS.md:3-4`, `REFERENCE.md:3`, plus two script copies). That is the mechanism: a fact
+stated 8 times rots in 4. Also duplicated — the principles (twice: `CLAUDE.md:13-19` and a
+`README.md:12-17` paraphrase that *then links to the original*), the "Lean A" brew/mise split
+(×4), the routing table (×4), and the `code reap` rationale (×5, of which only
+`claude-canary.sh` has a runtime check behind the literal).
+→ *One-line action:* keep the copies that are error text in a script — those are earned,
+because they fire — and reduce the doc copies to links.
+
+**16 · MOVE — two skills are docs wearing skill frontmatter.** _(team.)_ `butter-stack`
+(22,675 B / 229 lines) and `agent-friendly-repo` (21,897 B / 283 lines) are each a single
+file with no `references/`, so **~5,600 tokens loads in full on any trigger** — and most of
+it is inventory or unused branches. `hook-authoring` (5,256 B) and `worktree-triage`
+(4,095 B) are correctly sized; none of the four is dead.
+→ *One-line action:* split the stack table and the ruleset/optional branches into linked
+files, leaving the procedure in `SKILL.md`.
+
+**17 · ADD — CI never executes the path the README documents.** _(team, verified.)_ Both
+workflows are `runs-on: ubuntu-latest`; nothing tests macOS. The retired-cask failure
+(`zulu17` → `zulu@17`) and the `"1d"` schedule value that failed validation and silently
+never ran were **both invisible to an Ubuntu runner**. This is the same class as Finding 11:
+a failure that surfaces only on a real machine, at the moment of highest cost — a fresh one.
+→ *One-line action:* one `macos-26` job running a dry-run reconcile against a fresh checkout.
+
+**18 · ADD — 83 KB of pins that nothing refreshes.** _(team, verified.)_ `mise.lock` is
+83,268 B, and Dependabot structurally cannot see it — it is actions-only here. Most
+`mise.toml` entries are `"latest"`, so the lockfile is the only thing pinning ~28 binaries.
+→ *One-line action:* add Renovate's `mise` manager to the existing weekly auto-merge lane.
+Skip the Brewfile — it has no datasource.
+
+**19 · FIX — refines Finding 7: the wrong installer is unpinned.** _(team.)_ Of the two
+`curl | sh` bootstraps, the Claude one is **Anthropic's, self-updating, and already
+mitigated** by an `unless` guard — leave it. The one that matters is **boom's own
+`install.sh`**, in the README one-liner: he owns both ends and there is no integrity check at
+all. `timeout` covers hanging, not tampering.
+→ *One-line action:* publish a checksum for `boom/install.sh` and verify it in the one-liner.
+
+**20 · KEEP — `AGENTS.md` buys nothing here.** _(team.)_ It is a genuine de-facto standard
+(60,000+ repos, stewarded by the Agentic AI Foundation under the Linux Foundation), but
+**Claude Code does not read it** — the documented bridges are an `@AGENTS.md` import or a
+symlink, and an import costs full context at launch. With Claude Code as the only agent, a
+rename is context-neutral at best and adds indirection `context-budget.sh` would have to
+chase. Revisit only if a second agent lands.
 
 ## Q3 — boom: does it do too much?
 
@@ -335,16 +402,21 @@ until `boom source` runs.
 
 1. **Finding 11** — the scheduled-job exit-code check. Closes a *class* where three fixes
    closed three instances, and the open one (`code fetch`) fails as apparent model error.
-2. **Finding 1** — move `boom verify` into `[boom].schedule`. Falls out of 11 naturally.
-3. **Finding 10** — correct `README.md:92` and teach `context-budget.sh` to notice new
-   `~/.claude/` links. The budget doctrine is currently resting on a false premise.
-4. **Finding 12**, then **9** — both are one-line, and 9 is on your hottest command path.
-5. **Finding 4** (reclaims 18 s per guard commit), then **2** and **14** together.
-6. Findings 5, 3, 13, 7, 8 when convenient.
+2. **Finding 17** — a macOS CI job. Same class as 11, and it is the only thing that would
+   ever execute the path the README documents.
+3. **Finding 1** — move `boom verify` into `[boom].schedule`. Falls out of 11 naturally.
+4. **Finding 10** — correct `README.md:92` and teach `context-budget.sh` to notice new
+   `~/.claude/` links. The budget doctrine is resting on a false premise.
+5. **Findings 12, 9, 19, 18** — all one-line; 9 is on your hottest command path and 19 is
+   the only genuinely unpinned installer.
+6. **Finding 4** (reclaims 18 s per guard commit), then **15**, **2**, **14**, **16**
+   together — they are one problem.
+7. Findings 5, 3, 13 when convenient. Finding 8 is withdrawn; Finding 20 is a decision to
+   *not* act.
 
-Findings 2, 3 and 14 matter most long-term and are the easiest to defer, because the cost
-they impose is authorship time, which never shows up as a failing check. That is precisely
-why they need a mechanical ceiling rather than a resolution.
+Findings 2, 3, 14, 15 and 16 matter most long-term and are the easiest to defer, because the
+cost they impose is authorship time, which never shows up as a failing check. That is
+precisely why they need a mechanical ceiling rather than a resolution.
 
 ## Postscript — the audit's own evidence
 
@@ -356,8 +428,15 @@ because of the 28-day outage) and `skill-description-cap.sh` (which is the only 
 billing error in Finding 10 is provable), and four of this audit's findings exist because a
 mechanical check already fired.
 
-And one finding relayed from a subagent was **false on verification** (the `rm`-in-`remove`
-double-fire). That is worth recording next to the rest: at 119 commits/30 days, most of the
-input to this repo is now agent-authored, and the failure mode is not a bad commit — it is a
-plausible, well-argued, precisely-cited claim that nobody checked. Every mechanical gate in
-this repo is, in effect, defense against that. The prose is not.
+Two claims in this audit did not survive checking — one relayed from a subagent (the
+`rm`-in-`remove` double-fire, struck) and **one of my own** (Finding 8, withdrawn after the
+specialist checked the actual event list against my inference from commit volume). Both were
+plausible, specific, and cited. Neither was true.
+
+That is worth recording next to the rest. At 119 commits/30 days most of the input to this
+repo is now agent-authored, and the failure mode is not a bad commit — it is a well-argued,
+precisely-cited claim nobody checked. Note which of this audit's findings were *mechanically*
+produced (the timings, the churn ratios, the 14 symlinks, the 80-of-114 TOC gap) and which
+came from reasoning about the repo. Only the first kind was ever wrong by accident. Every
+mechanical gate here is, in effect, defense against the second kind. The prose is not —
+which is the same finding as 3, 14 and 15, arriving from a different direction.
