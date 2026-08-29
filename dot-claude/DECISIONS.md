@@ -15,6 +15,7 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 <!-- toc:start -->
 - [Contents](#contents)
 - [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-28 — one inert key removed, one real floor added, and they are the same key](#2026-08-28--one-inert-key-removed-one-real-floor-added-and-they-are-the-same-key)
 - [2026-08-28 — `op-agent header` deleted, for the second and final time](#2026-08-28--op-agent-header-deleted-for-the-second-and-final-time)
 - [2026-08-28 — the PR reviewer is gone, both halves](#2026-08-28--the-pr-reviewer-is-gone-both-halves)
 - [2026-08-28 — the guard read a program name, and six programs were not it](#2026-08-28--the-guard-read-a-program-name-and-six-programs-were-not-it)
@@ -77,6 +78,65 @@ Three corollaries, each mechanical:
 Counts that survive are the ones with an owner: a `jq` assertion, a `wc -c` gate, a test that
 fails. If a number matters enough to write down, make something check it; if it does not, describe
 the invariant and drop the digit.
+
+---
+
+## 2026-08-28 — one inert key removed, one real floor added, and they are the same key
+
+`autoMode.allow` held exactly `["$defaults"]`. Per the settings reference, `$defaults` *"keeps
+those built-in rules at that position and adds yours around them"* — so an array containing only
+`$defaults` resolves to precisely the documented unset behaviour: *"the classifier uses only its
+built-in rules."* It did nothing. Worse than nothing, because a key that looks load-bearing invites
+the next edit to build on it.
+
+What it should have been is the floor under this repo's first rule.
+
+### The regression it should have been catching
+
+`v2.1.211` removed the classifier's protected-branch treatment. The docs are explicit:
+
+> *"Before v2.1.211, the context slots also included a Default / protected branches entry that
+> treated `main` and `master` as protected until you named others. v2.1.211 removed it: pushes to
+> any branch of the repository you're working in are allowed by default, so there is no
+> protected-branch default to configure."*
+
+This machine runs `permissions.defaultMode: "auto"`. `CLAUDE.md`'s first irreversible-on-first-
+attempt rule is *"Never a local merge or push into a default branch."* Between that removal and
+today, the rule was enforced by exactly one thing — `rebase-guard.sh:281` — a shell hook that fails
+open on a missing `jq`, and that the same audit found reachable around via `mise exec --` and
+`caffeinate`.
+
+`hard_deny` is the right instrument rather than `soft_deny` or `permissions.ask`: hard rules
+*"block unconditionally. User intent and `allow` exceptions don't apply"*, where `soft_deny` yields
+if *"the user's message directly and specifically describes the exact action"* — and a prompt
+injection is a message that does exactly that. The docs' other recipe, `permissions.ask:
+["Bash(git push *)"]`, prompts on **every** push, which fights the unattended posture this whole
+setup is built around.
+
+Verified against the published schema before shipping, because the failure being corrected here is
+a key that was assumed to work: `autoMode.hard_deny` is present, typed `array` of `string`, and
+documented as splicing the built-ins at the position of the literal `$defaults`.
+
+### `skipWorkflowUsageWarning`, removed
+
+It is the one key in this file that `json.schemastore.org/claude-code-settings.json` does not know,
+absent from every docs page, marked `@internal`, and written by the app itself when the workflow
+usage warning is accepted. `SETTINGS.md`'s own test is that a key equal to the current default does
+not belong here — and this is the key whose default cannot be known. The app re-adds it if it wants
+it.
+
+### A stale reason corrected in place, not appended beside
+
+`SETTINGS.md` justified `sandbox.filesystem.denyRead` with *"`permissions.deny`'s
+`Read(~/.ssh/id_*)` gates the Read tool only — `cat` was never covered by it."* That is now false:
+deny rules *"apply to Claude's built-in file tools and to file commands Claude Code recognizes in
+Bash, such as `cat`, `head`, `tail`, and `sed`."*
+
+The block stays, on the half that is still true — those rules *"don't apply to arbitrary
+subprocesses that read or write files indirectly, like a Python or Node script that opens files
+itself."* An OS boundary reaches there and a permission rule cannot. This is the shape this file
+warns about: a correct-sounding rationale that expired without anything noticing, kept alive
+because it was written down.
 
 ---
 
