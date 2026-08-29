@@ -3,8 +3,9 @@
 Why the Claude Code setup is the way it is: root causes, postmortems, settings that were
 removed and why, and the measurements behind the calls.
 
-**Not auto-loaded.** Only `CLAUDE.md` and `settings.json` are symlinked into `~/.claude/`, so
-this costs nothing per session — read it on demand. It exists so `CLAUDE.md` can stay a short
+**Not auto-loaded.** This file is not symlinked into `~/.claude/`, so it costs nothing per
+session — read it on demand. (It is *not* true that only `CLAUDE.md` and `settings.json` are
+linked; 14 links are declared, and `scripts/context-budget.sh` owns the billed set.) It exists so `CLAUDE.md` can stay a short
 list of things to *obey*: an instruction file that also carries its own changelog gets skimmed,
 and it is paid for on every request of every session.
 
@@ -15,6 +16,8 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 <!-- toc:start -->
 - [Contents](#contents)
 - [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-29 — `AGENTS.md` considered, and declined](#2026-08-29--agentsmd-considered-and-declined)
+- [2026-08-29 — the protected-branch rule is enforced twice, and both stay](#2026-08-29--the-protected-branch-rule-is-enforced-twice-and-both-stay)
 - [2026-08-28 — the publish-at-idle design is gone, and its log says why](#2026-08-28--the-publish-at-idle-design-is-gone-and-its-log-says-why)
 - [2026-08-28 — one inert key removed, one real floor added, and they are the same key](#2026-08-28--one-inert-key-removed-one-real-floor-added-and-they-are-the-same-key)
 - [2026-08-28 — `op-agent header` deleted, for the second and final time](#2026-08-28--op-agent-header-deleted-for-the-second-and-final-time)
@@ -81,6 +84,48 @@ fails. If a number matters enough to write down, make something check it; if it 
 the invariant and drop the digit.
 
 ---
+
+## 2026-08-29 — `AGENTS.md` considered, and declined
+
+`AGENTS.md` is a real de-facto standard: 60,000+ repos, stewarded by the Agentic AI
+Foundation under the Linux Foundation, and read by Codex, Jules, Cursor, Factory and Amp.
+It is recorded here as **declined**, not overlooked, so the next person to notice its absence
+finds a reason instead of a gap.
+
+Claude Code does not read it. The docs are flat about this — *"Claude Code reads `CLAUDE.md`,
+not `AGENTS.md`"* — and offer two bridges: an `@AGENTS.md` import line, or
+`ln -s AGENTS.md CLAUDE.md`.
+
+Neither buys anything here, and the import actively costs. Imported files *"are expanded and
+loaded into context at launch"*, so an import is context-neutral at best while adding a hop
+that `context-budget.sh` would have to follow to keep measuring the right bytes. A symlink
+avoids the cost but only works when there is no Claude-specific content, and there is.
+
+The condition that would reverse this is narrow and worth naming: **a second agent on this
+machine.** Until then the standard is solving a problem this setup does not have — one agent,
+one instruction file.
+
+## 2026-08-29 — the protected-branch rule is enforced twice, and both stay
+
+`autoMode.hard_deny` carries *"Never push directly to a repository's default branch, and never
+merge into it locally"*. `rebase-guard.sh` blocks the same push by tokenizing the command. The
+two overlap completely on that one shape, and an audit flagged it as redundancy.
+
+It is not. They fail differently, which is the whole reason to keep both:
+
+- `hard_deny` is a **natural-language rule read by a classifier**. It covers shapes nobody
+  enumerated — a novel git alias, an unfamiliar porcelain — and it applies unconditionally,
+  ahead of user intent and `allow` exceptions. What it cannot promise is determinism.
+- `rebase-guard.sh` is **deterministic tokenization**. It resolves `origin/HEAD`, walks the
+  argument list, and is immune to phrasing. What it cannot do is generalize: a shape its
+  tokenizer does not model passes.
+
+A classifier miss and a tokenizer gap are uncorrelated failures, so the pair is defense in
+depth rather than duplication. `rebase-guard.sh` also owns a second job that `hard_deny` does
+not touch at all — refusing a push when the branch is *behind* its target.
+
+Recorded because the overlap looks like waste from either side alone, and the next cleanup
+that notices it should remove neither.
 
 ## 2026-08-28 — the publish-at-idle design is gone, and its log says why
 
