@@ -9,6 +9,11 @@
 # ways to cut the two largest are dropping plugins (sheldon) or deferring atuin
 # init (loses instant Ctrl-R history) — both are UX tradeoffs, so the baseline
 # is accepted as-is. Re-measure with: zsh -i -c exit under `time`.
+#
+# The number above is now also ENFORCED, not only recorded: scripts/startup-budget.sh
+# runs as a `boom verify` step against a ceiling set well above this baseline, so
+# structural drift surfaces on the nightly rather than whenever someone thinks to
+# re-time it. Move the ceiling deliberately if the baseline is re-measured upward.
 
 # Homebrew completions
 
