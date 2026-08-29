@@ -15,6 +15,7 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 <!-- toc:start -->
 - [Contents](#contents)
 - [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-28 — every Bash call forked five guards, and four of them had no opinion](#2026-08-28--every-bash-call-forked-five-guards-and-four-of-them-had-no-opinion)
 - [2026-08-28 — the sandbox block was inert, and `mask` would have broken auth if it were not](#2026-08-28--the-sandbox-block-was-inert-and-mask-would-have-broken-auth-if-it-were-not)
 - [2026-08-28 — `autoMode.allow` was inert, and wrong-shaped](#2026-08-28--automodeallow-was-inert-and-wrong-shaped)
 - [2026-08-28 — the permission-matching rule in `CLAUDE.md` was backwards](#2026-08-28--the-permission-matching-rule-in-claudemd-was-backwards)
@@ -71,6 +72,52 @@ Three corollaries, each mechanical:
 Counts that survive are the ones with an owner: a `jq` assertion, a `wc -c` gate, a test that
 fails. If a number matters enough to write down, make something check it; if it does not, describe
 the invariant and drop the digit.
+## 2026-08-28 — every Bash call forked five guards, and four of them had no opinion
+
+Measured on this machine, 20 iterations each with a benign `ls -la` payload:
+
+| guard | per call |
+|---|---|
+| `op-guard.sh` | 20 ms |
+| `worktree-checkout-guard.sh` | 23 ms |
+| `rebase-guard.sh` | 29 ms |
+| `repo-scope-guard.sh` | 35 ms |
+| `worktree-remove-guard.sh` | 46 ms |
+| **total** | **155 ms** |
+
+No `PreToolUse` handler carried an `if` field, so all five ran on every Bash tool call
+regardless of relevance. Against the call volume `pr-review.sh` cites in its own header, that is
+roughly two and a half hours a month of hook latency on commands none of the five has an opinion
+about. The mechanism was already in the repo — `pr-review.sh` uses three `if`-gated handlers, and
+`hook-authoring/SKILL.md` documents putting `if` on the handler and never on the matcher group.
+The guards simply never adopted it.
+
+**Gated on the program, not the subcommand.** Each guard's dispatch was read from its source
+rather than inferred from its name:
+
+| guard | dispatches on |
+|---|---|
+| `worktree-checkout-guard.sh` | `git` |
+| `rebase-guard.sh` | `git` (push), `gh` (pr create) |
+| `worktree-remove-guard.sh` | `git` (worktree), `rm` |
+| `repo-scope-guard.sh` | `gh` |
+
+A narrower rule — `Bash(git push *)` rather than `Bash(git *)` — would be faster still and was
+declined. **An `if` that is too narrow silently disables a guard**, which is the exact failure
+class the rest of this work exists to remove, and the saving it buys is nothing: the calls that
+dominate the volume are `grep`, `sed`, `find` and `cat`, and none of them is a `git` command
+either way.
+
+Two properties of the `if` matcher make this safe, both documented: it checks **each subcommand
+of a compound command**, so `cd /elsewhere && git push origin main` still reaches the guards that
+track a leading `cd` for working-directory context; and its `$()` over-firing bug was fixed in
+2.1.250, below the installed client.
+
+**`op-guard.sh` stays unconditional.** An `if` rule cannot see inside a quoted interpreter
+payload, so gating it would open a bypass on the one guard that must not have one — the same
+reason its interpreter doctrine is refuse-rather-than-expand while the others expand. Its cheap
+`grep` bail-out already does the job an `if` would.
+
 
 ---
 ## 2026-08-28 — the sandbox block was inert, and `mask` would have broken auth if it were not
