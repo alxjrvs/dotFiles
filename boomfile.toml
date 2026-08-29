@@ -15,30 +15,16 @@ upgrade_on_sync = "check"
 # Desktop-notify (macOS osascript) when a scheduled `boom verify` finds drift, so the
 # boom-verify launchd timer's signal surfaces instead of dying in its log.
 notify = true
-# `code reap` daily. Claude Code keeps an agent worktree whenever a commit reachable from HEAD is
-# on no remote-tracking ref, and refuses to remove it ("Worktree kept at … — has commits that are
-# not pushed anywhere") — which is what stops a finished subagent from being closed.
-# Measured against 2.1.237 rather than inferred from the message: the client's check (`deleteJob`,
-# gated on `rev-list --max-count=1 HEAD --not --remotes`) does carry a second, content-based escape
-# — every commit patch-id-matching `origin/<default>` — but that escape is gated on the branch's
-# upstream reading exactly `gone`, and an agent worktree is cut `--no-track`, so it has no upstream
-# at all and the escape can never fire. Hence a squash-merged branch stays blocked even though its
-# content landed. `force` does NOT help: it bypasses the `dirty` arm only, so the condition can
-# only be falsified, never waived. That is the whole reason this timer exists.
-#   `code reap` falsifies it correctly, and is smarter than the client: it re-decides by content
-# (git patch-id), reads `gh stack` topology, and removes only clean, unlocked,
-# already-merged-or-pushed worktrees, always leaving the branch ref — so it cannot lose a commit.
-#   `--push` was REMOVED on 2026-08-28, and the log is why. Over 14 sweeps this timer recorded
-# 0 successful pushes and 84 failures — `grep -c pushed` on
-# ~/.local/state/boom/logs/com.boomtube.code-reap---push.log returned zero. The cause is mundane
-# (`.gitconfig` resolves GitHub auth through `gh auth git-credential`, and a launchd job runs
-# outside any session where that works), but nobody noticed for weeks because the finding died in
-# a log nothing reads. It was carrying the entire outward blast radius of the design — those
-# branches land on origin, including org repos — for a benefit it never once delivered.
-#   The reap half DOES work and stays: one sweep reaped 33 worktrees. What is lost with `--push`
-# is a clean worktree whose commits exist nowhere but this machine, which now stays un-closeable
-# until someone types `git push`. That was already the state of the world; the flag was not
-# achieving otherwise.
+# `code reap` daily. Claude Code refuses to remove an agent worktree holding a commit on no
+# remote-tracking ref ("has commits that are not pushed anywhere"), which is what leaves a
+# finished subagent un-closeable; `code reap` re-decides that by content (git patch-id) and
+# removes only clean, unlocked, already-merged-or-pushed worktrees, always leaving the branch ref.
+# `--push` was removed after 14 sweeps recorded 0 successes and 84 failures.
+#
+# The measurement, the client-internals reasoning behind it, and why `force` cannot help:
+# DECISIONS.md, "Why `boom code reap` exists". Kept there rather than here — the routing rule in
+# CLAUDE.md sends a reason and a measurement to that file, and this block was a second copy of it,
+# 24 lines long, in a file nobody reads to answer "why does this timer exist".
 schedule = [
   { cmd = "code fetch", every = "15m" },
   # NOT "1d" — boom's schema accepts only s/m/h or a bare seconds count, so "1d" failed
