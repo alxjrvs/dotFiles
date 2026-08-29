@@ -165,6 +165,14 @@ pre-commit:
       # it exists to prevent, so this suite is what keeps it honest.
       glob: "{hooks/*.sh,dot-claude/hooks/tests/*}"
       run: dot-claude/hooks/tests/canary.sh
+    verifygate-tests:
+      # verify-gate.sh is a Stop hook, the most dangerous shape in dot-claude/hooks/: it runs
+      # every turn, and one that blocks when it should not strands a session with no way out.
+      # So its load-bearing cases are the ones where it must NOT block — a clean tree, a repo
+      # declaring no gate, an unreadable payload — plus the once-per-session loop-breaker.
+      glob: "{dot-claude/hooks/verify-gate.sh,dot-claude/hooks/tests/verifygate.sh}"
+      run: dot-claude/hooks/tests/verifygate.sh
+
     actionlint:
       # The workflows are the remote gate, and were the only config here with no
       # linter. Declared in mise.toml and checksummed in mise.lock all along —

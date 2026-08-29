@@ -15,6 +15,7 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 <!-- toc:start -->
 - [Contents](#contents)
 - [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-28 — a new suite committed to its own branch, twice, before anyone noticed](#2026-08-28--a-new-suite-committed-to-its-own-branch-twice-before-anyone-noticed)
 - [2026-08-28 — every Bash call forked five guards, and four of them had no opinion](#2026-08-28--every-bash-call-forked-five-guards-and-four-of-them-had-no-opinion)
 - [2026-08-28 — the sandbox block was inert, and `mask` would have broken auth if it were not](#2026-08-28--the-sandbox-block-was-inert-and-mask-would-have-broken-auth-if-it-were-not)
 - [2026-08-28 — `autoMode.allow` was inert, and wrong-shaped](#2026-08-28--automodeallow-was-inert-and-wrong-shaped)
@@ -71,6 +72,41 @@ Three corollaries, each mechanical:
 
 Counts that survive are the ones with an owner: a `jq` assertion, a `wc -c` gate, a test that
 fails. If a number matters enough to write down, make something check it; if it does not, describe
+## 2026-08-28 — a new suite committed to its own branch, twice, before anyone noticed
+
+Writing the suite for `verify-gate.sh` reproduced, from scratch, the exact hazard `run.sh`
+already documents at the top of itself:
+
+> Hermetic or worthless. Git exports `GIT_DIR` / `GIT_INDEX_FILE` / `GIT_PREFIX` into every hook
+> it runs, so under lefthook the fixtures silently resolved to the REAL repo.
+
+**Those variables override `git -C`.** So a fixture built with `git -C "$tmp" commit` writes to
+whatever `GIT_DIR` says — and under lefthook, `GIT_DIR` says the repository being committed to.
+The suite passed standalone, then put three commits titled `base` on its own branch during the
+commit that added it. The branch was reset and the commits dropped; nothing reached a remote.
+
+The lesson is not "remember to unset `GIT_*`". It is that **the fix was already written down, in
+the file that does it correctly, and a new suite in the same directory did not inherit it.** A
+convention that lives only in one file's header is a convention exactly one file follows.
+
+Three things now hold it:
+
+- The scrub block, copied from `run.sh`.
+- A throwaway `HOME`. The scrub removes the agent env's `GIT_CONFIG_*` pairs, which is where
+  `commit.gpgsign=false` lives — so with the scrub but without a fake `HOME`, fixtures fall back
+  to the real `~/.gitconfig`, whose `gpg.format = ssh` routes signing through 1Password. Every
+  fixture commit then **hangs** on an auth prompt that never comes. A hang is worse than a
+  failure: it looks like a slow test, not a broken one, and it cost two 120-second timeouts
+  before the cause was obvious.
+- An assertion. If any of `GIT_DIR`, `GIT_INDEX_FILE`, `GIT_WORK_TREE`, `GIT_PREFIX` or
+  `GIT_CONFIG_COUNT` survives the scrub, the suite refuses to run at all rather than operating on
+  a real repository. Per this file's own rule: a number or an invariant that matters gets
+  something that checks it.
+
+Fixtures also run with `core.hooksPath=/dev/null`, because `init.templateDir` is set on this
+machine — so a bare `git init` in a fixture installs the house pre-commit hook, and a fixture
+that declares a `lefthook.yml` then runs the real lefthook, which runs this suite.
+
 the invariant and drop the digit.
 ## 2026-08-28 — every Bash call forked five guards, and four of them had no opinion
 
