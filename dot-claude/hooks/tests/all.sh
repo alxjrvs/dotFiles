@@ -46,10 +46,30 @@ if [ "${1:-}" = "--changed" ]; then
   # Run everything rather than nothing: this gate must never silently pass by
   # checking zero suites.
   [ -n "$changed" ] || changed=''
+
+  # A change to THIS file changes how every suite is selected, so selection
+  # cannot be trusted to scope it. Run the lot.
+  for _c in $changed; do
+    case "$_c" in
+      *"$SELF") changed='' ;;
+    esac
+  done
 fi
 
 # Does $1 (a suite) cover any of the changed files?
+#
+# A suite always covers ITSELF, implicitly. Nothing declares that, because
+# requiring a `# covers:` line naming the file it is written in is a declaration
+# that can only ever be forgotten — and it was, immediately: the commit that
+# introduced this mechanism changed all seven suites and skipped all seven,
+# reporting "no suite covers the changed files". Editing a test must run it.
 covers_changed() {
+  for _c in $changed; do
+    case "$_c" in
+      *"$(basename -- "$1")") return 0 ;;
+    esac
+  done
+
   _srcs=$(sed -n 's/^# covers:[[:space:]]*//p' "$1")
   # Declares nothing → always runs.
   [ -n "$_srcs" ] || return 0
