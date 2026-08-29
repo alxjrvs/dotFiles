@@ -102,13 +102,6 @@ pre-commit:
       # being guarded against is editing the expectations instead of the code.
       glob: "{dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
       run: dot-claude/hooks/tests/freshness.sh
-    publish-tests:
-      # worktree-publish.sh WRITES TO A REMOTE, so it gets its own harness too:
-      # the assertion is which refs exist on a bare origin afterwards. Same glob
-      # as the other two suites, for the same reason — the failure mode being
-      # guarded against is editing the expectations instead of the code.
-      glob: "{dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
-      run: dot-claude/hooks/tests/publish.sh
     port-tests:
       # worktree-port.sh's effects are a port block in additionalContext and a
       # PORT= line in a worktree's .env, so it needs its own harness as well.

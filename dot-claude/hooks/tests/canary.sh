@@ -92,12 +92,14 @@ if [ "$st" -ne 0 ] && printf '%s' "$out" | grep -q 'worktree-freshness'; then ok
   note freshness_gone "expected a non-zero exit naming worktree-freshness, got exit $st: $out"
 fi
 
-# --- 3. LOAD-BEARING: the publish bug's refusal string is gone ------------
+# --- 3. LOAD-BEARING: the unpushed refusal string is gone -----------------
+# Greps for `code reap` now. The hook this used to name was deleted 2026-08-28,
+# and this assertion was the thing keeping that name alive in a shipped message.
 b=$(mk_bundle nopublish "$ANCHOR" "$FRESH1" "$FRESH2")
 out=$("$CANARY" "$b" 2>&1)
 st=$?
-if [ "$st" -ne 0 ] && printf '%s' "$out" | grep -q 'worktree-publish'; then ok; else
-  note publish_gone "expected a non-zero exit naming worktree-publish, got exit $st: $out"
+if [ "$st" -ne 0 ] && printf '%s' "$out" | grep -q 'code reap'; then ok; else
+  note publish_gone "expected a non-zero exit naming code reap, got exit $st: $out"
 fi
 
 # --- 4. LOAD-BEARING: both gone → both named in one run ------------------
@@ -108,7 +110,7 @@ out=$("$CANARY" "$b" 2>&1)
 st=$?
 if [ "$st" -ne 0 ] &&
   printf '%s' "$out" | grep -q 'worktree-freshness' &&
-  printf '%s' "$out" | grep -q 'worktree-publish'; then ok; else
+  printf '%s' "$out" | grep -q 'code reap'; then ok; else
   note both_gone "expected one non-zero run naming BOTH hooks, got exit $st: $out"
 fi
 

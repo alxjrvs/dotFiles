@@ -40,7 +40,6 @@ worktree-remove-guard.sh
 repo-scope-guard.sh
 worktree-freshness.sh
 worktree-port.sh
-worktree-publish.sh
 verify-gate.sh
 HOOKS
 }

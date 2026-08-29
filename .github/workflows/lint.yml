@@ -186,14 +186,6 @@ jobs:
       - name: worktree-freshness regression tests
         run: dot-claude/hooks/tests/freshness.sh
 
-      # worktree-publish.sh is the only hook here that writes to a REMOTE, so it
-      # is asserted that way: `publishes_unpushed` proves it actually publishes,
-      # and the `skip_*`/`never_force` cases prove it is not an indiscriminate
-      # `push --force`. A step in THIS job for the same reason as the two above —
-      # the required context is ["lint"], so a separate job would not be required.
-      - name: worktree-publish regression tests
-        run: dot-claude/hooks/tests/publish.sh
-
       # worktree-port.sh is asserted the same way: `emits_block` and `writes_env`
       # prove it actually assigns and persists a block, and `skip_env_symlink`
       # proves it cannot write through a linked .env into the primary checkout.

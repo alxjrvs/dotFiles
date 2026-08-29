@@ -134,20 +134,6 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/verify-gate.sh"
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/worktree-publish.sh"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/worktree-publish.sh"
           }
         ]
       }
