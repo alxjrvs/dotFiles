@@ -96,6 +96,9 @@ surface, but did not audit its internals. The boom verdict below is hedged accor
 | `mise.lock` | 83,268 B, refreshed by nothing |
 | CI runners | `ubuntu-latest` only — target OS untested |
 | Tracked files referenced by nothing | **0** — graph is closed |
+| `CLAUDE.md` files vs Anthropic's 200-line guidance | 37 lines each; ceiling ~5x stricter |
+| boom verbs used by its only consumer | **6 of ~21** |
+| `boom.lock` vs `mise.lock` | 939 B of versions vs 83,268 B with checksums |
 
 ## Q1 — Do we do too much?
 
@@ -347,6 +350,52 @@ mitigated** by an `unless` guard — leave it. The one that matters is **boom's 
 all. `timeout` covers hanging, not tampering.
 → *One-line action:* publish a checksum for `boom/install.sh` and verify it in the one-liner.
 
+**21 · ADD — the context ceiling over-constrains in three ways, and the escape hatch exists.**
+_(team, verified against the primary source.)_ `scripts/context-budget.sh` caps
+`dot-claude/CLAUDE.md` at 2,500 B and `CLAUDE.md` at 3,000 B, on the stated premise that
+"every byte is billed to every request of every session." Three problems, each confirmed
+against https://code.claude.com/docs/en/memory:
+
+- **Its scope is wrong.** It caps 2 files; 7 surfaces are billed (Finding 10).
+- **It bills what Claude Code doesn't.** *"Block-level HTML comments (`<!-- maintainer
+  notes -->`) in CLAUDE.md files are stripped before the content is injected into Claude's
+  context."* The script counts raw bytes, so maintainer notes that cost **zero tokens** still
+  consume the ceiling and get deleted to fit.
+- **The only way under the ceiling is deletion — and it needn't be.** `~/.claude/rules/`
+  supports `paths:` frontmatter, and *"path-scoped rules trigger when Claude reads files
+  matching the pattern, not on every tool use."* Guidance scoped to
+  `dot-claude/hooks/**/*.sh`, `boomfile.toml`, or `Brewfile` would cost **zero context until
+  the matching file is read**. (Rules *without* `paths:` load at launch — only the scoped
+  ones are free.) User-level `~/.claude/rules/` applies across every project.
+
+For calibration: Anthropic's published guidance is *"target under 200 lines per CLAUDE.md
+file."* Both of these files are **37 lines**. The self-imposed ceiling is roughly 5× stricter
+than the published one — a legitimate choice, but worth naming, because guidance is currently
+being *destroyed* to satisfy a constraint that a free mechanism would have absorbed.
+→ *One-line action:* move file-scoped guidance into `~/.claude/rules/` with `paths:`, move
+maintainer notes into HTML comments, and have the ceiling measure post-strip bytes.
+Related: the **`InstructionsLoaded` hook** exists and *"log[s] exactly which instruction files
+are loaded, when they load, and why"* — the right debugging tool for exactly this, and the
+answer to "prove what actually landed" across four instruction surfaces. `/doctor` (v2.1.206+)
+also proposes CLAUDE.md trims on the same doctrine this repo already follows.
+
+**22 · KEEP, but note — boom's verb surface has one consumer using a quarter of it.**
+_(team.)_ Of ~21 verbs, this boomfile uses **six** (`source`, `verify`, `code`, `skill`,
+`upgrade`, `lock`). Unused: `adopt`, `init`, `fleet`, `module`, `mcp`, `completions`, `man`,
+`doctor`, `status`, `plan`, `where`, `edit`, `rollback`, `checkpoint`, `uninstall`, plus an
+undocumented `askpass`. That is boom's business, not this repo's — but it answers the question
+this audit left open: **the surface did grow past its one consumer.**
+More consequential: boom's **launchd install/load is untested** — the plist *rendering* is
+tested, the *effects* never are. That is the same seam as Finding 11, reached independently:
+three launchd jobs silently failed on this machine, and the code that installs them has no
+effect-level test.
+**Correction to a team claim:** it was reported that `boom lock` writes a lockfile "nothing on
+this machine ever checks." That is false — `boom verify` runs a PINNING section, and
+`boom.lock` pins 7 brew + 30 mise packages. The real observation is narrower: `boom.lock`'s
+`[mise]` half records bare versions for tools `mise.lock` already pins **with checksums and
+provenance** (83,268 B vs 939 B), and `lockfile = true` means mise enforces its own. The
+`[brew]` half is unique and load-bearing — nothing else pins brew versions.
+
 **20 · KEEP — `AGENTS.md` buys nothing here.** _(team.)_ It is a genuine de-facto standard
 (60,000+ repos, stewarded by the Agentic AI Foundation under the Linux Foundation), but
 **Claude Code does not read it** — the documented bridges are an `@AGENTS.md` import or a
@@ -400,19 +449,25 @@ until `boom source` runs.
 
 ## What I would actually do, in order
 
-1. **Finding 11** — the scheduled-job exit-code check. Closes a *class* where three fixes
+1. **Finding 21** — path-scoped rules. This is the one that changes the shape of the repo
+   rather than fixing a defect: it converts the context budget from a mechanism that
+   *destroys* guidance into one that *relocates* it at zero cost. Everything the byte ceiling
+   has cut since it was introduced is a candidate to come back.
+2. **Finding 11** — the scheduled-job exit-code check. Closes a *class* where three fixes
    closed three instances, and the open one (`code fetch`) fails as apparent model error.
-2. **Finding 17** — a macOS CI job. Same class as 11, and it is the only thing that would
+   Finding 22 shows the same seam from boom's side: the launchd install path has no
+   effect-level test.
+3. **Finding 17** — a macOS CI job. Same class as 11, and it is the only thing that would
    ever execute the path the README documents.
-3. **Finding 1** — move `boom verify` into `[boom].schedule`. Falls out of 11 naturally.
-4. **Finding 10** — correct `README.md:92` and teach `context-budget.sh` to notice new
-   `~/.claude/` links. The budget doctrine is resting on a false premise.
-5. **Findings 12, 9, 19, 18** — all one-line; 9 is on your hottest command path and 19 is
+4. **Finding 1** — move `boom verify` into `[boom].schedule`. Falls out of 11 naturally.
+5. **Finding 10** — correct `README.md:92` and teach `context-budget.sh` to notice new
+   `~/.claude/` links. Do this *with* 21; they are the same repair.
+6. **Findings 12, 9, 19, 18** — all one-line; 9 is on your hottest command path and 19 is
    the only genuinely unpinned installer.
-6. **Finding 4** (reclaims 18 s per guard commit), then **15**, **2**, **14**, **16**
+7. **Finding 4** (reclaims 18 s per guard commit), then **15**, **2**, **14**, **16**
    together — they are one problem.
-7. Findings 5, 3, 13 when convenient. Finding 8 is withdrawn; Finding 20 is a decision to
-   *not* act.
+8. Findings 5, 3, 13 when convenient. Finding 8 is withdrawn; Findings 20 and 22 are
+   decisions to *not* act.
 
 Findings 2, 3, 14, 15 and 16 matter most long-term and are the easiest to defer, because the
 cost they impose is authorship time, which never shows up as a failing check. That is
