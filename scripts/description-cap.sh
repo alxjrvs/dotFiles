@@ -24,6 +24,21 @@
 set -eu
 
 CAP=60
+
+# A skill BODY is not always-loaded — but it does load in full the moment the
+# skill fires, so an oversized one taxes every invocation to carry branches most
+# of them never touch. Two skills were 22,675 and 21,897 bytes as single files
+# with no references/, about 5,600 tokens each on any trigger, and most of that
+# was inventory: what the stack IS rather than what to do, the whole ruleset JSON
+# rather than the branch in hand.
+#
+# This is a ceiling on the BODY only, and only for skills — an agent file has no
+# body worth capping. Progressive disclosure is the escape: move the inventory to
+# references/ and link it, which costs nothing until the procedure says to read
+# it. Set well above the two correctly-sized skills (5,256 and 4,095) so it
+# forces a split rather than nagging.
+BODY_CAP=${BODY_CAP:-12000}
+
 fail=0
 
 if [ "$#" -eq 0 ]; then
@@ -103,6 +118,17 @@ for f in "$@"; do
   else
     echo "ok $f ($w words)"
   fi
+
+  case "$f" in
+    *SKILL.md)
+      b=$(wc -c < "$f" | tr -d ' ')
+      if [ "$b" -gt "$BODY_CAP" ]; then
+        echo "$f: body is $b bytes (cap $BODY_CAP) — it loads in full whenever the skill fires"
+        echo "   move the inventory to references/ and link it from the procedure"
+        fail=1
+      fi
+      ;;
+  esac
 done
 
 [ "$fail" -eq 0 ] || exit 1

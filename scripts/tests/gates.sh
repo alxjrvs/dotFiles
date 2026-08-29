@@ -127,6 +127,14 @@ case_exit boomsrc_dangling 1 ./scripts/boomfile-sources.sh scripts/tests/fixture
 case_exit toc_current 0 ./scripts/decisions-toc.sh --check
 case_exit toc_missing_file 2 env FILE=dot-claude/does-not-exist.md ./scripts/decisions-toc.sh --check
 
+# --- a skill body loads in full when the skill fires -------------------------
+# Two skills were ~22 KB single files with no references/, about 5,600 tokens
+# each on any trigger, mostly inventory the invocation never needed. The body cap
+# is what keeps the split from silently growing back.
+case_exit skillbody_real 0 ./scripts/description-cap.sh
+case_exit skillbody_over 1 \
+  env BODY_CAP=5000 ./scripts/description-cap.sh dot-claude/skills/butter-stack/SKILL.md
+
 # --- the cap must be able to SEE a multi-line description --------------------
 # A YAML folded block put the indicator (`>-`) on the `description:` line, and
 # the single-line parser scored that as one word — so any skill could carry an
