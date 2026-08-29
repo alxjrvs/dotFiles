@@ -16,6 +16,28 @@ permissions:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    # Job-wide, not just on the install step: mise installs on DEMAND through its
+    # shims, so the first `jq` a guard runs during the test step triggers a fresh
+    # install-and-verify of its own. Setting this only where tools are installed
+    # explicitly left that path still hitting the quota, which is how the failure
+    # survived the first fix.
+    env:
+      # Honour mise.lock on the runner. `lockfile = true` lives in
+      # mise-settings.toml, which is global config symlinked on the machine and
+      # never reaches CI — so every `mise install` here resolved "latest" by
+      # asking the GitHub API for each tool's release list, which is what ran the
+      # quota to 0/5000 and took this gate down. The lockfile pins ~28 tools with
+      # checksums, so CI asks for far less and installs what the machine runs.
+      #
+      # Attestation verification stays ON, and the first attempt to turn it off
+      # is why this comment exists. Disabling it looked like the obvious way to
+      # dodge the rate limit; mise refused, correctly: "Lockfile requires
+      # github-attestations provenance for aqua:jqlang/jq@1.8.1 but no
+      # verification was used. This may indicate a downgrade attack." The lock
+      # records HOW each tool was verified, so silently verifying less is exactly
+      # what it exists to prevent. The rate limit is transient; the weakening
+      # would not have been.
+      MISE_LOCKFILE: "1"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -73,8 +95,32 @@ jobs:
       - uses: jdx/mise-action@v4
         with:
           install: false
+      # This step took the gate down with "API rate limit exceeded for
+      # installation" -- a 403 while mise installed jq -- and the fallout was far
+      # worse than a missing tool. Every guard here fails OPEN without jq, by
+      # design, so five suites reported ALLOW where they assert DENY and the run
+      # read as a guard regression. Someone else's exhausted quota must not look
+      # like broken security code, which is why the tool check below is not
+      # optional.
+      #
+      # GITHUB_TOKEN is passed so these calls bill this repo rather than a shared
+      # anonymous pool. It is not a complete answer on its own -- the observed
+      # limit was on the installation -- but combined with MISE_LOCKFILE above
+      # (no version resolution) the API traffic drops to the attestation checks
+      # alone.
       - name: Install lint tools
-        run: mise install shellcheck shfmt gitleaks jq taplo biome actionlint
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mise install shellcheck shfmt gitleaks jq taplo biome actionlint \
+            || { sleep 20; mise install shellcheck shfmt gitleaks jq taplo biome actionlint; }
+          # RUN each tool, never `command -v`. mise puts a SHIM on PATH whether or
+          # not the tool behind it installed, so `command -v jq` passed while jq
+          # was absent -- the install step went green and the failure surfaced
+          # forty log lines later as a fake DENY-to-ALLOW guard regression.
+          for t in shellcheck shfmt gitleaks jq taplo biome actionlint; do
+            "$t" --version > /dev/null 2>&1 || { echo "::error::$t did not install"; exit 1; }
+          done
 
       # Same file set as lefthook.yml's shell globs, resolved via git.
       - name: shellcheck
@@ -156,6 +202,13 @@ jobs:
       # stale reference to the retired verb with a green build. That is the exact
       # asymmetry the skill-description-cap step below was moved here to fix, in
       # the other direction. Same `git grep` lefthook runs.
+      # boomfile.toml IS the repo: it names ~56 payload files by path, and taplo
+      # proving the file parses says nothing about whether what it names is
+      # there. A missing src fails `boom source` partway through, on a real
+      # machine, after it has already changed things.
+      - name: boomfile sources exist
+        run: scripts/boomfile-sources.sh
+
       - name: dead verbs
         run: |
           hits=$(git grep -n 'boom apply' -- ':!Brewfile' ':!lefthook.yml' ':!.github/workflows/lint.yml' || true)
@@ -197,3 +250,23 @@ jobs:
       # would not be a required check.
       - name: hook regression tests
         run: dot-claude/hooks/tests/all.sh
+
+  # The whole gate ran ubuntu-latest only, so the setup path this repo documents
+  # was executed by nothing — and the failures that hides are not hypothetical.
+  # `zulu17` was RETIRED upstream and stopped resolving ("Cask 'zulu17' is
+  # unavailable"), failing `brew bundle` outright on a fresh machine; a file
+  # naming a cask that no longer exists is perfectly well-formed, so every
+  # file-reading check in the job above passes it. Only brew can answer, and brew
+  # needs macOS.
+  #
+  # NOT a required check, deliberately: it depends on Homebrew's live API, so a
+  # transient upstream outage must not block an unattended agent's merge. It is
+  # a signal on the PR, and the nightly `boom verify` is the backstop that runs
+  # against the actual machine.
+  macos:
+    runs-on: macos-26
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - name: declared brew names still resolve
+        run: scripts/brew-resolves.sh

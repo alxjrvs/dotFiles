@@ -112,6 +112,14 @@ case_exit schedule_never_ran 0 env PRINT_CMD="$FIX" FIXTURE_MODE=never-ran ./scr
 case_exit schedule_no_jobs 1 \
   env PRINT_CMD="$FIX" LIST_CMD=true LAUNCHD_DIR=scripts/tests/fixtures/no-launchd ./scripts/schedule-health.sh
 
+# --- boomfile srcs exist ----------------------------------------------------
+# taplo proves the file parses, which says nothing about whether the ~56 paths it
+# names are there. A missing src fails `boom source` partway through, on a real
+# machine, after it has already changed things.
+case_exit boomsrc_real 0 ./scripts/boomfile-sources.sh
+case_exit boomsrc_missing_file 1 ./scripts/boomfile-sources.sh boomfile-does-not-exist.toml
+case_exit boomsrc_dangling 1 ./scripts/boomfile-sources.sh scripts/tests/fixtures/dangling-src-boomfile.toml
+
 # --- the cap must be able to SEE a multi-line description --------------------
 # A YAML folded block put the indicator (`>-`) on the `description:` line, and
 # the single-line parser scored that as one word — so any skill could carry an
