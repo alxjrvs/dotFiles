@@ -17,7 +17,7 @@ duplicated fact in this repo has taken before it rotted.
 ## Setup (fresh machine)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/alxjrvs/boom/v0.29.0/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/alxjrvs/boom/v0.30.0/install.sh | sh
 boom source set alxjrvs/dotFiles
 ```
 
