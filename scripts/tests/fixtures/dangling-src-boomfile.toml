@@ -1,0 +1,24 @@
+# Fixture for scripts/tests/gates.sh.
+#
+# A boomfile that parses cleanly and names a payload file that is not there. That
+# combination is the point: every other check in this repo reads files, and this
+# file is perfectly well-formed TOML — so a rename or deletion that orphans a
+# link passes taplo and everything else, then fails `boom source` partway through
+# on a real machine.
+#
+# Both spellings of the failure are here: a plain path, and a glob that matches
+# nothing (the one that arrives silently when a directory is emptied).
+[[section]]
+name = "fixture"
+
+[[section.link]]
+src = "README.md"
+dst = "~/.config/fixture/README.md"
+
+[[section.link]]
+src = "dot-claude/this-payload-was-renamed.md"
+dst = "~/.config/fixture/renamed.md"
+
+[[section.link]]
+src = "scripts/tests/fixtures/empty-dir/*.sh"
+dst = "~/.config/fixture/"

@@ -156,6 +156,13 @@ jobs:
       # stale reference to the retired verb with a green build. That is the exact
       # asymmetry the skill-description-cap step below was moved here to fix, in
       # the other direction. Same `git grep` lefthook runs.
+      # boomfile.toml IS the repo: it names ~56 payload files by path, and taplo
+      # proving the file parses says nothing about whether what it names is
+      # there. A missing src fails `boom source` partway through, on a real
+      # machine, after it has already changed things.
+      - name: boomfile sources exist
+        run: scripts/boomfile-sources.sh
+
       - name: dead verbs
         run: |
           hits=$(git grep -n 'boom apply' -- ':!Brewfile' ':!lefthook.yml' ':!.github/workflows/lint.yml' || true)
@@ -197,3 +204,23 @@ jobs:
       # would not be a required check.
       - name: hook regression tests
         run: dot-claude/hooks/tests/all.sh
+
+  # The whole gate ran ubuntu-latest only, so the setup path this repo documents
+  # was executed by nothing — and the failures that hides are not hypothetical.
+  # `zulu17` was RETIRED upstream and stopped resolving ("Cask 'zulu17' is
+  # unavailable"), failing `brew bundle` outright on a fresh machine; a file
+  # naming a cask that no longer exists is perfectly well-formed, so every
+  # file-reading check in the job above passes it. Only brew can answer, and brew
+  # needs macOS.
+  #
+  # NOT a required check, deliberately: it depends on Homebrew's live API, so a
+  # transient upstream outage must not block an unattended agent's merge. It is
+  # a signal on the PR, and the nightly `boom verify` is the backstop that runs
+  # against the actual machine.
+  macos:
+    runs-on: macos-26
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - name: declared brew names still resolve
+        run: scripts/brew-resolves.sh
