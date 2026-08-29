@@ -42,6 +42,7 @@ worktree-freshness.sh
 worktree-port.sh
 worktree-publish.sh
 pr-review.sh
+verify-gate.sh
 HOOKS
 }
 
@@ -129,6 +130,23 @@ for f in "$@"; do
       exit 1
     }
   done || fail=1
+
+  # A guard's `if` must be a SUBSTRING rule, never program position. A Bash rule
+  # matches the whole command text, so `Bash(git *)` misses every spelling the
+  # guards were extended to resolve — `/usr/bin/git push`, `sudo git push`,
+  # `env git push`, `(git push …)`, `bash -c "git push origin main"`. Each of
+  # those is an existing `deny` case in cases.tsv, and each skipped its guard
+  # entirely while the suite stayed green, because the suite calls the guard
+  # scripts directly and never reads this file. Over-firing costs one process;
+  # under-firing costs the default branch. See DECISIONS.md.
+  bad_if=$(jq -r '
+    [ .hooks.PreToolUse[]?.hooks[]?
+      | select(.command | test("hooks/(rebase|worktree-checkout|worktree-remove|repo-scope)-guard\\.sh"))
+      | select(has("if"))
+      | select(.["if"] | test("^Bash\\(\\*.*\\*\\)$") | not)
+      | "\(.command) -> \(.["if"])"
+    ] | .[]' "$f" 2> /dev/null)
+  [ -z "$bad_if" ] || note "$f: guard \`if\` rule is not the substring form (Bash(*…*)): $bad_if"
 
   deny_floor | while IFS= read -r d; do
     [ -n "$d" ] || continue
