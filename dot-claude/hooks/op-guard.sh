@@ -47,9 +47,33 @@ input=$(cat)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2> /dev/null) || allow
 [ -n "$cmd" ] || allow
 
-# Cheap bail-out: if no `op` token appears anywhere, this guard has no opinion.
-# Word-boundary, so `open`, `loop`, `--option` and `chmod` do not wake it up.
-printf '%s' "$cmd" | grep -qE '(^|[^A-Za-z0-9_.-])op(-agent)?([^A-Za-z0-9_-]|$)' || allow
+# Cheap bail-out: if none of the secret-printing programs appears anywhere, this
+# guard has no opinion. Word-boundary on `op`, so `open`, `loop`, `--option` and
+# `chmod` do not wake it up.
+#
+# `boom`, `security` and `git` are here because each has ONE subcommand that
+# prints a live credential to stdout, and none of those commands contains an `op`
+# token, so the original pattern slept through all three. `security
+# find-generic-password` is the sharpest: the token it guards is the SERVICE
+# ACCOUNT's, which reads every item in the vault, and the keychain item is named
+# `op-claude-agent` — where the character after `op` is `-`, which this pattern's
+# own exclusion class rules out. The highest-value secret on the machine sat
+# behind the one rule that could never fire.
+#
+# Each of those three is anchored on its SUBCOMMAND, not on the program name, and
+# that is load-bearing rather than tidy. Waking on the bare word `git` drags every
+# ordinary git command into this guard's unconditional deny paths — the ones for a
+# program name that comes from a command substitution, and for a name it cannot
+# statically read. Measured on 2026-08-28, waking on the program name alone turned
+# `$(git rev-parse --show-toplevel)/scripts/gates.sh`, `$(brew --prefix)/bin/git
+# status` and `$HOME/.local/bin/boom verify` from allow into DENY — the last being
+# boom's actual install path on this machine — and answered each with an
+# op-secrets lecture. Those deny paths are correct for an `op`-shaped command and
+# wrong for anything else, so the bail-out is what must stay narrow.
+#
+# `op` keeps its bare-program anchor: every `op` verb is a candidate, which is the
+# whole premise of the allow-list below.
+printf '%s' "$cmd" | grep -qE '(^|[^A-Za-z0-9_.-])(op(-agent)?([^A-Za-z0-9_-]|$)|boom([^A-Za-z0-9_-]|$).*askpass|security([^A-Za-z0-9_-]|$).*find-(generic|internet)-password|security([^A-Za-z0-9_-]|$).*find-(certificate|identity)|git([^A-Za-z0-9_-]|$).*credential)' || allow
 
 # shellcheck source=dot-claude/hooks/guard-lib.sh
 . "$(dirname -- "$0")/guard-lib.sh" 2> /dev/null || allow
@@ -241,6 +265,83 @@ $SAFE_SHAPES"
       status) continue ;;
       *)
         deny "\`op-agent ${1:-}\` is denied. \`secret\`, \`header\` and \`git-credential get\` each print a live credential to stdout, and stdout is model context — \`op-agent header\` is the command that put a PAT into a transcript on 2026-07-25. op-agent is plumbing: MCP resolvers and git exec it themselves, so an agent never needs to type it. Only \`op-agent status\` (a verdict, no secret) is permitted.
+
+$SAFE_SHAPES"
+        ;;
+    esac
+  fi
+
+  # `security find-generic-password` reads the login keychain, and the item it
+  # reads here is the 1Password SERVICE ACCOUNT token — the credential that can
+  # read every item in the agent vault. `permissions.deny` carries
+  # `Bash(security find-generic-password:*)`, but that rule is name-anchored and
+  # never got the path-spelling sibling `Bash(*/op *)` and `Bash(*/op-agent *)`
+  # both have, so `/usr/bin/security find-generic-password -w` walked past it.
+  # Only the value-printing subcommands are denied: `security list-keychains`
+  # and the rest stay ordinary commands.
+  if [ "$prog" = "security" ]; then
+    shift
+    case "${1:-}" in
+      find-generic-password | find-internet-password | find-certificate | find-identity)
+        deny "\`security ${1:-}\` is denied. With \`-w\` it prints a keychain secret to stdout, and the item this machine keeps there is the 1Password service-account token — the one credential that can read every item in the agent vault. Read nothing; to USE a secret, pass it with \`op run --\`.
+
+$SAFE_SHAPES"
+        ;;
+      *) continue ;;
+    esac
+  fi
+
+  # `git credential` resolves through the helper chain in settings.json, which
+  # ends at `op-agent git-credential` — and that prints `password=<PAT>` on
+  # stdout. So `git credential fill` hands the model a live PAT: the same class
+  # as the 2026-07-25 `op-agent header` incident, through a different door.
+  # `Bash(git credential:*)` is name-anchored like the `security` rule above, so
+  # `/usr/bin/git credential fill` and `git -C /tmp credential fill` both walked
+  # past it. `_skip_global` steps over `-C`/`-c`/`--git-dir` first, so one arm
+  # closes every spelling.
+  if [ "$prog" = "git" ]; then
+    shift
+    set -f
+    # shellcheck disable=SC2046 # intentional word-split: _skip_global emits space-separated tokens
+    set -- $(_skip_global "$@")
+    set +f
+    case "${1:-}" in
+      credential | credential-store | credential-cache)
+        deny "\`git ${1:-}\` is denied. The credential helper chain in \`settings.json\` ends at \`op-agent git-credential\`, which prints \`password=<PAT>\` on stdout — so this hands a live GitHub PAT to model context. git uses the helper itself on every push and fetch; an agent never needs to invoke it.
+
+$SAFE_SHAPES"
+        ;;
+      *) continue ;;
+    esac
+  fi
+
+  # `boom` is a secret-printing program too, and was in no deny rule and no arm
+  # here. Its own --help: "askpass  Resolve a secret ref to stdout (the
+  # SUDO_ASKPASS helper — not for interactive use)". Measured 2026-08-28:
+  # `boom askpass op://claude-agent/…/credential` reached ALLOW silently, so
+  # every item in the service-account vault was one command away — through the
+  # binary this repo drives on every sync, past an allow-list built precisely
+  # because "a deny-list of verbs missed the one verb that leaked".
+  #
+  # Allow-listed, not deny-listed, for that same recorded reason: an unknown
+  # verb fails CLOSED, which is the direction that stays safe when boom adds a
+  # command. That is the treatment this guard already gives an unrecognized
+  # `op` subcommand. Extending the list is one word plus a case in cases.tsv.
+  if [ "$prog" = "boom" ]; then
+    shift
+    case "${1:-}" in
+      verify | status | plan | source | where | edit | rollback | checkpoint | \
+        upgrade | doctor | lock | adopt | init | fleet | module | code | mcp | \
+        completions | man | skill | uninstall | --help | -h | --version | -v | '')
+        continue
+        ;;
+      askpass)
+        deny "\`boom askpass\` is denied. It resolves a secret ref to stdout, and stdout is model context — the same shape as \`op read\` and \`op-agent header\`, which are denied for the same reason. It exists as a SUDO_ASKPASS helper for boom to exec itself, not as a command to type.
+
+$SAFE_SHAPES"
+        ;;
+      *)
+        deny "\`boom ${1:-}\` is not a verb this guard recognizes, so it is denied rather than assumed safe — \`boom askpass\` prints a live credential to stdout, and a deny-list of verbs is exactly what missed \`op-agent header\` on 2026-07-25. If this verb cannot print a secret, add it to the allow-list in \`dot-claude/hooks/op-guard.sh\` and a case to \`dot-claude/hooks/tests/cases.tsv\`.
 
 $SAFE_SHAPES"
         ;;
