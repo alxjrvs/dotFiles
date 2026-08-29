@@ -169,46 +169,16 @@ jobs:
       - name: gate regression tests
         run: scripts/tests/gates.sh
 
-      # verify-gate.sh is a Stop hook — it runs every turn and can BLOCK one, so its no-op
-      # paths and its once-per-session loop-breaker are the load-bearing cases. A gate that
-      # can block forever strands a session, which is worse than no gate at all.
-      - name: verify-gate regression tests
-        run: dot-claude/hooks/tests/verifygate.sh
 
-      - name: guard regression tests
-        run: dot-claude/hooks/tests/run.sh
-
-      # worktree-freshness.sh is the only hook here that WRITES to a git worktree,
-      # so it gets asserted like one: `ff_virgin_behind` proves it actually
-      # fast-forwards, the `skip_*` cases prove it is not a blunt `reset --hard`.
-      # A step in THIS job for the same reason as the one above — the required
-      # context is ["lint"], so a separate job would not be a required check.
-      - name: worktree-freshness regression tests
-        run: dot-claude/hooks/tests/freshness.sh
-
-      # worktree-port.sh is asserted the same way: `emits_block` and `writes_env`
-      # prove it actually assigns and persists a block, and `skip_env_symlink`
-      # proves it cannot write through a linked .env into the primary checkout.
-      - name: worktree-port regression tests
-        run: dot-claude/hooks/tests/port.sh
-
-      # worktree-remove-guard.sh: the only irreversible action here with no PR
-      # and no reflog behind it. Its load-bearing cases are the seven DENY ones;
-      # the two `_dead` cases are what prove it reads liveness rather than
-      # refusing every removal, which would make the guard unusable.
-      - name: worktree-remove guard regression tests
-        run: dot-claude/hooks/tests/wtremove.sh
-
-      # repo-scope-guard.sh: the widest hole the audit found, since
-      # `.claude/settings.local.json` had `Bash(gh api *)` pre-approved. Its
-      # load-bearing cases are the twelve DENY ones; the owned-org ALLOW cases
-      # prove it reads the owner rather than refusing every write.
-      - name: repo-scope guard regression tests
-        run: dot-claude/hooks/tests/reposcope.sh
-
-      # The canary's suite, whose polarity is inverted from every other one here:
-      # its load-bearing cases are the ones where the canary must FAIL, because an
-      # always-green canary reports all-clear forever. A step in THIS job for the
-      # same reason as the others — the required context is ["lint"].
-      - name: claude-canary regression tests
-        run: dot-claude/hooks/tests/canary.sh
+      # Every suite under dot-claude/hooks/tests/, one step. This was eight steps
+      # here and eight commands in lefthook.yml — sixteen declarations of nine
+      # scripts. all.sh discovers the roster from the directory, so a new suite is
+      # covered by both gates the moment it is added, with no edit here: the
+      # hardcoded roster had already rotted once (agents/guard-tester.md promised
+      # "seven suites" against a directory holding nine).
+      #
+      # One step in THIS job, not a job of its own, for the reason the eight it
+      # replaces each stated: the required context is ["lint"], so a separate job
+      # would not be a required check.
+      - name: hook regression tests
+        run: dot-claude/hooks/tests/all.sh
