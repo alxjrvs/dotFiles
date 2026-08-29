@@ -74,6 +74,15 @@ Read(~/.ssh/id_*)
 Read(~/.aws/credentials)
 Bash(*/op *)
 Bash(*/op-agent *)
+Bash(boom askpass:*)
+Bash(*/boom askpass *)
+Bash(*/security find-generic-password *)
+Bash(*/security find-internet-password *)
+Bash(*/security find-certificate *)
+Bash(*/security find-identity *)
+Bash(*/git credential *)
+Bash(*/git credential-store *)
+Bash(*/git credential-cache *)
 DENY
 }
 

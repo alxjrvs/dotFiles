@@ -488,3 +488,128 @@ op	nonrepo	echo "a |python3 payload calling op read op://x is denied"	allow
 op	nonrepo	echo "op read op://x/y" | bash	deny
 op	nonrepo	echo "op read op://x/y" | sh -s	deny
 op	nonrepo	printf 'op read op://x/y' | python3	deny
+
+# --- op-guard: command runners, and boom's own askpass ----------------------
+# REGRESSION (2026-08-28 audit). Two holes, one shape: the guard resolves a
+# program name and dispatches on it, so anything that RUNS a program without
+# being one of the wrappers `_norm` strips reaches the real command unread.
+#
+# 1. `boom askpass <ref>` resolves a secret ref to stdout — it is in boom's own
+#    --help — and `boom` was in no deny rule and no guard arm. The allow-list
+#    architecture in op-guard.sh exists because "a deny-list of verbs missed the
+#    one verb that leaked"; this was a fourth spelling of the same leak, in the
+#    binary this repo drives on every sync.
+#
+# 2. Development-environment runners. Claude Code's built-in wrapper list is
+#    fixed and documents that `mise exec`, `npx`, `devbox run` and `docker exec`
+#    are NOT in it, so `permissions.deny` cannot see past them either. Both
+#    layers missed the same eight spellings.
+op	nonrepo	boom askpass op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	/Users/jarvis/.local/bin/boom askpass op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	"boom" askpass op://claude-agent/claude-git-pat/credential	deny
+# boom's read-only verbs are how the machine is actually driven — denying these
+# would make the guard unusable, which is the failure mode that got a
+# binary-scoped `Bash(op:*)` deny reverted once already.
+op	nonrepo	boom verify	allow
+op	nonrepo	boom source sync	allow
+op	nonrepo	boom status --json	allow
+# The runners. `--` present and absent, since neither form is required.
+op	nonrepo	mise exec -- op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	mise x -- op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	mise exec node@20 -- op-agent secret op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	npx -y -- op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	bunx op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	caffeinate op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	caffeinate -i op-agent secret op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	arch -arm64 op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	direnv exec . op read op://claude-agent/claude-git-pat/credential	deny
+# Positive controls: the runners themselves are ordinary commands and must not
+# become undeniable just because they appear in a command line.
+op	nonrepo	mise install	allow
+op	nonrepo	mise exec -- npm test	allow
+op	nonrepo	npx tsc --noEmit	allow
+op	nonrepo	caffeinate -i bun run build	allow
+
+# --- op-guard: the two secret-printers with no path-spelling sibling --------
+# REGRESSION (2026-08-28 audit). `deny_floor()` deliberately carries
+# `Bash(*/op *)` and `Bash(*/op-agent *)` so a path spelling cannot walk past a
+# name-anchored rule. Two entries never got that treatment:
+#
+#   Bash(security find-generic-password:*)  — guards the SERVICE-ACCOUNT TOKEN,
+#     which reads every item in the vault. The single highest-value secret on
+#     the machine sat behind the weakest rule in the list.
+#   Bash(git credential:*)                  — the helper chain ends at
+#     `op-agent git-credential`, which prints `password=<PAT>` on stdout, so
+#     `git credential fill` hands the model a live PAT. Same class as the
+#     2026-07-25 `op-agent header` incident, through a different door.
+#
+# op-guard never woke for either: its bail-out regex excludes `-` after `op`, so
+# `op-claude-agent` never matched, and it had no `security` or `git` arm at all.
+op	nonrepo	security find-generic-password -s op-claude-agent -w	deny
+op	nonrepo	/usr/bin/security find-generic-password -s op-claude-agent -w	deny
+op	nonrepo	git credential fill	deny
+op	nonrepo	/usr/bin/git credential fill	deny
+op	nonrepo	git -C /tmp credential fill	deny
+op	nonrepo	mise exec -- git credential fill	deny
+# Positive controls: `security` and `git` are ordinary commands. Denying them
+# wholesale would break the machine — only the credential-printing verbs go.
+op	nonrepo	security list-keychains	allow
+op	nonrepo	git status	allow
+op	nonrepo	git commit -m "credential handling notes"	allow
+
+# --- op-guard: the runner arms, second pass -------------------------------
+# REGRESSION (pre-merge review of the first pass). The arms added above shipped
+# four defects of their own, all found by measurement rather than reading:
+#
+#   npm exec / npm x / docker exec had no arm at all — same shape, installed.
+#   `mise exec <tool> -- CMD` broke out early unless the tool spec carried an `@`,
+#     so `mise exec rg -- op read` resolved its program to `rg`. The only case
+#     covering it used `node@20`, which passed for the wrong reason.
+#   caffeinate/arch/setsid/chroot shared one flag list across four incompatible
+#     grammars: `-w` takes an argument for caffeinate and NONE for setsid, arch's
+#     `-d`/`-e` were absent, and chroot's mandatory newroot operand was never
+#     skipped, so that arm could not reach a command on any platform.
+#   `npx -c '<command string>'` skipped its argument as if it were a flag's, which
+#     hid the command rather than failing to read it.
+#
+# Each row below was `allow` before the second pass.
+op	nonrepo	npm exec -- op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	npm x -- op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	docker exec somebox op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	docker exec -it somebox op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	mise exec rg -- op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	arch -d FOO op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	setsid -w op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	chroot /newroot op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	chroot -u nobody /newroot op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	npx -c 'op read op://claude-agent/claude-git-pat/credential'	deny
+# The same shapes must not reach a default-branch push either — the arms live in
+# guard-lib.sh, so rebase-guard inherits every one of them.
+rebase	primary	npm exec -- git push origin main	deny
+rebase	primary	arch -d FOO git push origin main	deny
+rebase	primary	docker exec box git push origin main	deny
+# Positive controls: every runner is an ordinary command in its ordinary shape.
+op	nonrepo	npm install	allow
+op	nonrepo	npm exec -- tsc --noEmit	allow
+op	nonrepo	docker ps	allow
+op	nonrepo	arch -x86_64 uname -m	allow
+op	nonrepo	setsid true	allow
+op	nonrepo	mise exec rg -- rg --version	allow
+
+# --- op-guard: the bail-out must not swallow ordinary commands --------------
+# REGRESSION (same review). Widening the bail-out to wake on the bare program
+# names `boom`, `security` and `git` dragged every ordinary git command into this
+# guard's two unconditional deny paths — the one for a program name that comes
+# from a command substitution, and the one for a name it cannot statically read.
+# Measured: these five were `allow` before the widening and DENY after it, and the
+# fourth is boom's actual install path on this machine. The bail-out is anchored on
+# the SUBCOMMAND now, so the guard never sees them.
+op	nonrepo	$(git rev-parse --show-toplevel)/scripts/gates.sh	allow
+op	nonrepo	$(brew --prefix)/bin/git status	allow
+op	nonrepo	$HOME/bin/git status	allow
+op	nonrepo	$HOME/.local/bin/boom verify	allow
+op	nonrepo	gitk --all	allow
+# …while the subcommands that DO print a credential still wake it, by every
+# spelling, including behind a runner.
+op	nonrepo	mise exec -- git credential fill	deny
+op	nonrepo	npm exec -- security find-generic-password -s op-claude-agent -w	deny

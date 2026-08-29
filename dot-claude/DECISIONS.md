@@ -15,6 +15,7 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 <!-- toc:start -->
 - [Contents](#contents)
 - [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-28 — the guard read a program name, and six programs were not it](#2026-08-28--the-guard-read-a-program-name-and-six-programs-were-not-it)
 - [2026-08-28 — the `if:` rules were narrower than the guards they gate](#2026-08-28--the-if-rules-were-narrower-than-the-guards-they-gate)
 - [2026-08-28 — a new suite committed to its own branch, twice, before anyone noticed](#2026-08-28--a-new-suite-committed-to-its-own-branch-twice-before-anyone-noticed)
 - [2026-08-28 — every Bash call forked five guards, and four of them had no opinion](#2026-08-28--every-bash-call-forked-five-guards-and-four-of-them-had-no-opinion)
@@ -74,6 +75,117 @@ Three corollaries, each mechanical:
 Counts that survive are the ones with an owner: a `jq` assertion, a `wc -c` gate, a test that
 fails. If a number matters enough to write down, make something check it; if it does not, describe
 the invariant and drop the digit.
+
+---
+
+## 2026-08-28 — the guard read a program name, and six programs were not it
+
+An audit piped a `PreToolUse` envelope into `op-guard.sh` for every spelling of "run something
+else" that this machine can actually execute. Six reached a live credential, silently:
+
+```
+boom askpass op://claude-agent/…/credential          => allow
+mise exec -- op read op://claude-agent/…/credential  => allow
+mise x -- op read …                                  => allow
+npx -y -- op read …                                  => allow
+caffeinate op read …                                 => allow
+arch -arm64 op read …                                => allow
+direnv exec . op read …                              => allow
+```
+
+The controls denied correctly the whole time — `op read`, `env op read`, `sudo op read`,
+`op-agent secret` all returned `deny` in the same run — which is what makes this a hole in the
+guard rather than a broken harness.
+
+### One cause, two shapes
+
+`_norm` resolves a segment to its program name and every guard dispatches on that. It strips
+`command`/`env`/`exec`/`sudo`/`timeout`, so those arms all worked. It did not strip the
+*development-environment runners*, so `mise exec -- op read` resolved to `mise` and fell out of the
+`op` arm untouched.
+
+`permissions.deny` cannot cover that shape either, and the docs say so plainly: Claude Code's
+built-in stripped-wrapper list is fixed, and `mise exec`, `npx`, `devbox run` and `docker exec` are
+explicitly *not* in it. So both layers missed the same eight spellings, for the same reason, and
+this library is the only place the shape can be closed.
+
+`boom askpass` is the second shape and the sharper one. boom's own `--help`: *"askpass  Resolve a
+secret ref to stdout (the SUDO_ASKPASS helper — not for interactive use)."* A fourth spelling of
+the exact thing `op read` and `op-agent header` are denied for — in the binary this repo drives on
+every sync — and it appeared in no deny rule and no guard arm. The allow-list architecture in
+`op-guard.sh` exists *because* a deny-list of verbs missed `op-agent header` on 2026-07-25. This
+was that miss again, one binary over.
+
+### Why the boom arm is an allow-list
+
+Same reason as the `op-agent` arm, and it is the reason recorded in this file already: a deny-list
+names the verbs you thought of. An unknown `boom` verb now fails **closed**, which is the direction
+that stays safe when boom ships a new command — the treatment this guard already gives an
+unrecognized `op` subcommand. The cost is one word plus a case in `cases.tsv` the next time boom
+grows a verb, paid by whoever hits it, immediately.
+
+### Negative controls — re-run these if you change either arm
+
+The runners must stay ordinary commands, or the guard starts denying the tooling it is supposed to
+be invisible to: `mise install`, `mise exec -- npm test`, `npx tsc --noEmit`,
+`caffeinate -i bun run build` all ALLOW. So do boom's read-only verbs — `boom verify`,
+`boom source sync`, `boom status --json` — which is what a binary-scoped deny got wrong once
+already, when `Bash(op:*)` broke `op --version` and had to be reverted.
+
+### The same audit found two more, and they were the worst two
+
+Both are the shape `deny_floor()` already knows about — a name-anchored rule with no
+path-spelling sibling — applied to the two entries that never got one:
+
+```
+security find-generic-password -s op-claude-agent -w           => allow
+/usr/bin/security find-generic-password -s op-claude-agent -w  => allow
+git credential fill                                            => allow
+/usr/bin/git credential fill                                   => allow
+git -C /tmp credential fill                                    => allow
+```
+
+`Bash(*/op *)` and `Bash(*/op-agent *)` exist precisely so a path spelling cannot walk past a
+name-anchored rule. `Bash(security find-generic-password:*)` and `Bash(git credential:*)` never got
+the same treatment — and they guard, respectively, the **service-account token** (which reads every
+item in the vault) and the **agent PAT** (`hooks/op-agent.sh:164` prints `password=<PAT>` on stdout,
+so `git credential fill` hands it straight to model context). The highest-value secret on this
+machine sat behind the weakest rule in the list.
+
+op-guard never woke for either. Its bail-out regex is anchored on an `op` token, and the keychain
+item is named `op-claude-agent` — where the character after `op` is `-`, which the pattern's own
+exclusion class rules out. `git credential fill` contains no `op` at all. The bail-out now wakes for
+`boom`, `security` and `git` too: widening it costs a `grep` on commands the guard then declines to
+judge, and missing one costs a credential.
+
+Only the value-printing subcommands are denied. `security list-keychains`, `git status` and
+`git commit -m "credential handling notes"` all still ALLOW — the last one because the guard reads
+argv, not prose.
+
+### One fix, three guards
+
+The runner arms went into `guard-lib.sh`, which all three guards source, so `rebase-guard` inherited
+them for free — measured after the change:
+
+```
+mise exec -- git push origin main   => deny
+caffeinate git push origin main     => deny
+```
+
+That half matters more than it looks. `v2.1.211` removed the classifier's default-branch backstop,
+so `rebase-guard.sh` is now the only thing enforcing "never a local merge or push into a default
+branch" — and it was reachable around by a wrapper this machine has installed.
+
+### What is still open
+
+The runner list is open, not complete. `docker exec`, `ssh`, and any wrapper not named in `_norm`
+remain unread; `ssh host "op read …"` is covered only because the interpreter arm catches a quoted
+payload. A runner nobody has named is a bypass, and no gate here can enumerate them — the cases in
+`cases.tsv` are the only record of which ones have been closed.
+
+The deny floor stays name-anchored in the other direction too: `Bash(*/security *)` catches a path
+spelling, nothing catches `env security …` or a shell alias. That is what the guard is for, and why
+the guard is the layer that got the real work.
 
 ---
 
