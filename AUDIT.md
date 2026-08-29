@@ -35,16 +35,24 @@ Timings are single-run wall clock on the owner's machine.
 
 **Disclosure:** five research subagents were dispatched (Claude Code feature gaps, dotfiles
 ecosystem/web research, orphan-and-duplication sweep, boom source audit, docs/context
-budget). All five went idle without returning reports, and re-requesting them did not
-recover the output. **This audit therefore rests entirely on my own direct measurement.**
-Two consequences, stated plainly rather than papered over:
+budget). Their reports arrived late and **truncated at a 16,000-character transport limit** —
+three delivered partial output, two delivered none. Findings below marked _(team)_ come from
+those partial reports; everything else is my own direct measurement.
 
-- The **web-research dimension is missing**. Claims about "published best practice" are
-  limited to what is verifiable on this machine. Where I could not verify an external
-  claim, I say so instead of asserting it.
+**Every relayed claim was re-verified before inclusion, and one did not survive.** The
+orphan sweep reported that `worktree-remove-guard.sh` double-fires because the `Bash(*rm*)`
+matcher matches `rm` inside the word `remove`. It does not: `git worktree remove --force
+/path` contains zero occurrences of the substring `rm` (`r` is followed by `e`). That claim
+is **struck**. The neighbouring claim about `rebase-guard.sh` *is* correct and is Finding 9.
+
+Remaining gaps, stated rather than papered over:
+
+- **Claude Code feature-gap coverage is absent** — that agent returned nothing readable, so
+  the "what settings are inert or deprecated" question is unanswered.
 - The **boom source read is shallow** — I sized it and confirmed its test surface, but did
-  not audit its internals for dead code as scoped. The boom verdict below is
-  correspondingly hedged, and marked as such.
+  not audit its internals. The boom verdict below is hedged accordingly.
+- The **orphan list was never delivered**, so "which tracked files are referenced by
+  nothing" remains open.
 
 ## Measured facts
 
@@ -74,6 +82,10 @@ Two consequences, stated plainly rather than papered over:
 | `boom verify` | 25.3 s (launchd timer — *not* per turn) |
 | boom source | 12,791 LOC TS, 184 test files |
 | launchd jobs loaded | 4, from **2 different mechanisms** |
+| `~/.claude/` links declared in boomfile | 14 (README claims 2) |
+| Real fixed per-session context cost | ~6,193 B ≈ **1,550 tokens** |
+| `DECISIONS.md` on demand | ~41,650 tokens |
+| Skill descriptions vs 60-word cap | 88–93% — a ratchet at rest |
 
 ## Q1 — Do we do too much?
 
@@ -134,6 +146,11 @@ dominant artifact in the repo, it is bespoke, it all fails open by design, and i
 Very little, and most apparent gaps are documented deliberate choices (no pinned model, no
 `autoMode.environment`, no `.mcp.json`, `boom mcp add` deliberately unused). Real gaps:
 
+- **No detector for the budget's own scope.** `context-budget.sh` caps two files; the billed
+  set is seven, and has silently gained three (`skills/`, `agents/`, `loop.md`) without the
+  gate noticing. The script's own header predicts this exact failure. See Finding 10.
+- **Nothing owns the scheduled-job failure class.** Three instances, three individual fixes,
+  class still open. See Finding 11.
 - **No stale-measurement detector.** `CLAUDE.md` bans recording measurements against tool
   versions *because they expire unnoticed* — but shell startup now measures **237 ms**
   against a documented ~199 ms, a 19% regression that nothing owns. The rule exists; the
@@ -205,6 +222,71 @@ Carried over unfixed from the June 2026 audit.
 **8 · ADD — a `PreCompact` hook** is the highest-value unused event for this setup, given
 119 commits/30 days of long agent sessions.
 
+**9 · FIX — `rebase-guard.sh` runs twice on the commonest command in this workflow.**
+_(team, verified.)_ It is wired at both `if: "Bash(*git*)"` and `if: "Bash(*gh*)"`
+(`dot-claude/settings.json`). `git push && gh pr create --fill` contains both substrings, so
+both arms fire and the guard executes twice — tokenizing, resolving `origin/HEAD`, and
+shelling out to git each time. It fails open and is idempotent, so this is pure latency, not
+a correctness bug. **Note:** the same report's claim that `worktree-remove-guard.sh`
+double-fires via `rm` inside `remove` is false and was struck; that guard is wired correctly.
+→ *One-line action:* drop rebase-guard's `Bash(*gh*)` arm and widen the `*git*` arm, or merge
+the two into one matcher.
+
+**10 · FIX — the repo's docs are wrong about what is actually billed per session.**
+_(team, verified.)_ `boomfile.toml` declares **14** `dst = "~/.claude/…"` links (`:177–321`),
+including `skills/` (`:308`) and `agents/` (`:321`). But `README.md:92` states that
+`skills/` and `hooks/` "are not" symlinked, and that only `CLAUDE.md` + `settings.json` are
+"billed to every session." Both halves are wrong, and the repo's *own* gate already knows:
+`scripts/skill-description-cap.sh` exists precisely because every skill `description:` is
+loaded into every session. The real fixed cost is ~6,193 B / **~1,550 tokens** — two
+`CLAUDE.md` files, four skill descriptions, two agent descriptions, and the generated `boom`
+skill description. This is the load-bearing fact the entire context-budget doctrine rests on,
+and it is misstated in four files.
+→ *One-line action:* correct `README.md:92`, and make `scripts/context-budget.sh` fail when a
+`dst = "~/.claude/` link exists that the budget doesn't know about — it has silently gained
+three (`skills/`, `agents/`, `loop.md`).
+
+**11 · FIX — the silent-failing scheduled job is a *class*, and nothing owns it.** _(team.)_
+The boomfile records three separate instances, each fixed individually: `boom-verify` dead 28
+days (`~` in a plist value, EX_CONFIG 78); `code reap --push` at **0 successes / 84 failures
+across 14 sweeps**; and `git maintenance` registered against two paths that do not exist.
+`[boom] notify = true` closes exactly one verb (`verify`) — it is verb-driven, not
+schedule-gated. The `code fetch` timer is load-bearing for agent worktree cuts, and if it
+dies the way the others did, the symptom is agents branching from stale bases — which reads
+as *model* error, not infrastructure failure.
+**This generalizes Finding 1 and is the single highest-leverage addition in the audit.**
+→ *One-line action:* one `boom verify` check asserting every scheduled job and managed plist
+has exited 0 within N× its interval — `launchctl print gui/$UID/<label>` exposes `last exit
+code` and `runs`.
+
+**12 · FIX — `dead-verbs` is the one gate with no CI backstop.** _(team.)_ It runs only in
+`lefthook.yml:40-54`; `git commit --no-verify` lands a stale reference to the retired verb
+with a green build. This is the mirror image of the asymmetry `lint.yml` documents having
+*just* fixed for `skill-description-cap`.
+→ *One-line action:* add the same `git grep` as a step in `lint.yml`.
+
+**13 · CUT — `scripts/brew-drift.sh` hand-rolls a capability that exists, minus the half that
+would end the chore.** _(team.)_ nix-darwin's `homebrew.onActivation.cleanup` supports
+`check` (fail, listing installed-but-undeclared) and `uninstall`/`zap` (actually remove).
+`brew-drift.sh` plus the Brewfile's "NOT here, deliberately" block plus its nine-name
+exclusion list reimplement `check` — and still cannot remove anything. The Brewfile admits it:
+every excluded name "is still installed today and wants `brew uninstall` by hand." That is a
+permanent manual chore with no end state.
+**Do not migrate to nix** — that is a velocity loss and an all-at-once move. Steal the
+capability.
+→ *One-line action:* add `brew bundle --cleanup` as an opt-in boom option, the same shape as
+the existing `[[section.absent]]`.
+
+**14 · FIX — `DECISIONS.md` rot is measurable, not hypothetical.** _(team.)_ 33,645 →
+166,618 B in 24 days (**4.95×, ~5,540 B/day, never once smaller**). In the oldest 20%,
+**≥5 of 22 entries (23%) are dead** — including a reversal pair retained at full length and
+unannotated (`:2270` "the merge queue stopped being optional" reversed 97 lines later by
+`:2367` "the merge queue is declined"), plus entries for PR-review machinery deleted whole on
+2026-08-28. At ~41,650 tokens the file is **2.3× larger than the `CLAUDE.md` whose bloat its
+own entry records as the disease.** The cure outgrew the disease.
+Related: all four skill descriptions sit at **88–93% of the 60-word cap** — the cap is not
+forcing anything, it is a ratchet at rest.
+
 ## Q3 — boom: does it do too much?
 
 **Hedged, per the disclosure above** — I sized boom and confirmed its test surface but did
@@ -251,11 +333,31 @@ until `boom source` runs.
 
 ## What I would actually do, in order
 
-1. Finding 1 (structural, removes a whole failure class) — 20 minutes.
-2. Finding 4 (reclaims 18 s per guard commit) — 30 minutes.
-3. Finding 2 (retention policy, before the file doubles again) — 30 minutes.
-4. Finding 5, then 3. Findings 7 and 8 when convenient.
+1. **Finding 11** — the scheduled-job exit-code check. Closes a *class* where three fixes
+   closed three instances, and the open one (`code fetch`) fails as apparent model error.
+2. **Finding 1** — move `boom verify` into `[boom].schedule`. Falls out of 11 naturally.
+3. **Finding 10** — correct `README.md:92` and teach `context-budget.sh` to notice new
+   `~/.claude/` links. The budget doctrine is currently resting on a false premise.
+4. **Finding 12**, then **9** — both are one-line, and 9 is on your hottest command path.
+5. **Finding 4** (reclaims 18 s per guard commit), then **2** and **14** together.
+6. Findings 5, 3, 13, 7, 8 when convenient.
 
-Findings 3 and 2 are the ones that matter most long-term and are the easiest to defer,
-because the cost they impose is authorship time, which never shows up as a failing check.
-That is precisely why they need a mechanical ceiling rather than a resolution.
+Findings 2, 3 and 14 matter most long-term and are the easiest to defer, because the cost
+they impose is authorship time, which never shows up as a failing check. That is precisely
+why they need a mechanical ceiling rather than a resolution.
+
+## Postscript — the audit's own evidence
+
+This file was blocked by the repo's own gate **twice while being written** —
+`identity-drift.sh` caught it on the first commit attempt, and `dead-verbs` caught it on the
+second, for naming the retired verb inside the sentence describing the check that catches
+the retired verb. Neither was a false positive. Add the `~`-in-plist gate (which exists
+because of the 28-day outage) and `skill-description-cap.sh` (which is the only reason the
+billing error in Finding 10 is provable), and four of this audit's findings exist because a
+mechanical check already fired.
+
+And one finding relayed from a subagent was **false on verification** (the `rm`-in-`remove`
+double-fire). That is worth recording next to the rest: at 119 commits/30 days, most of the
+input to this repo is now agent-authored, and the failure mode is not a bad commit — it is a
+plausible, well-argued, precisely-cited claim that nobody checked. Every mechanical gate in
+this repo is, in effect, defense against that. The prose is not.
