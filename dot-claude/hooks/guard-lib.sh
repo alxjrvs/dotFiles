@@ -61,12 +61,17 @@ EOF
 # `sh -c 'op read op://…'` walks straight past a program-name check. CLAUDE.md
 # names this exact case as the residue `permissions.deny` structurally cannot
 # cover ("deny cannot cover an arbitrary interpreter"). It is covered here.
-# The GitHub owners this machine may WRITE to. Single source: repo-scope-guard.sh
-# gates writes on it, and pr-review.sh defaults its review scope from it.
+# The GitHub owners this machine may WRITE to. Single consumer: repo-scope-guard.sh
+# gates writes on it.
 #
-# It was two lists until now, and they had already drifted: CLAUDE.md named six
+# It seeded a second consumer until 2026-08-28 — pr-review.sh took its review
+# scope from here, which is how a hook documented as "opt-in per repo" came to
+# fire across six organizations by default. That hook is gone; the list is now
+# exactly one security boundary with one reader.
+#
+# It was two lists before that, and they had already drifted: CLAUDE.md named six
 # owners, pr-review.sh named five — `Criterium-Engineers` was missing from the
-# one that executes. That is the whole argument for putting it here; a list that
+# one that executed. That is the whole argument for putting it here; a list that
 # governs a security boundary cannot be maintained in prose beside a copy.
 _owned_orgs() {
   cat << 'ORGS'
