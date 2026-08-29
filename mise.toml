@@ -1,10 +1,11 @@
 # mise.toml — language toolchains + ALL dev CLIs.
 #
-# Policy (Lean A): the Brewfile holds `brew "mise"` + casks only. Every
-# dev CLI lives here. Single update path: `mise upgrade`. PATH includes
-# `~/.local/share/mise/shims` via `.zshenv` so tools resolve in every
-# shell context (interactive, non-interactive, git hooks, editor
-# subprocesses) without waiting for `mise activate`.
+# The brew/mise split and its rationale are stated once, in the Brewfile header.
+# Read it there; this file does not restate it.
+#
+# Unique to this file: PATH includes `~/.local/share/mise/shims` via `.zshenv` so
+# tools resolve in every shell context (interactive, non-interactive, git hooks,
+# editor subprocesses) without waiting for `mise activate`.
 #
 # Resolution order: registry short-name first (verified with `mise
 # registry <name>`); fall back to `aqua:owner/repo` then `github:`/`cargo:`

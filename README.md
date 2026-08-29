@@ -9,12 +9,10 @@ repo ([TheGnarCo/claude-statusline](https://github.com/TheGnarCo/claude-statusli
 
 ## Philosophy
 
-Small, native, and legible by intent. Configs carry only deliberate divergences
-from a tool's defaults — never a line that restates one. Every dependency is
-guilty until proven load-bearing; bespoke machinery gets cut the moment a
-built-in can do the job (extracting the engine into `boom` was the largest such
-cut). One config runs on every machine with no host overlays. The full set of
-principles lives in [`CLAUDE.md`](CLAUDE.md#principles).
+Small, native, and legible by intent. The principles live in
+[`CLAUDE.md`](CLAUDE.md#principles) — once, there, rather than paraphrased here
+and linked as well. A paraphrase beside its own source is the shape every
+duplicated fact in this repo has taken before it rotted.
 
 ## Setup (fresh machine)
 
@@ -89,7 +87,7 @@ in `.claude/settings.json`, the statusline source repo in
 | `starship.toml` | Prompt |
 | `ghostty/config` | Terminal (Ghostty, sole terminal) |
 | `nvim/init.lua` | Plugin-free neovim (native LSP, ≥0.11) |
-| `dot-claude/` | User-global Claude config. `CLAUDE.md` + `settings.json` are symlinked into `~/.claude/` and billed to every session; `DECISIONS.md`, `SETTINGS.md`, `REFERENCE.md`, `skills/`, `hooks/` are not |
+| `dot-claude/` | User-global Claude config. Symlinked into `~/.claude/` (14 links): `CLAUDE.md`, `settings.json`, `loop.md`, every `hooks/*.sh`, `skills/`, `agents/`. What is *billed to every session* is a smaller set than what is linked — the two `CLAUDE.md` files plus each skill's and agent's `description:` frontmatter, ~1,550 tokens; hook scripts and skill *bodies* cost nothing until used. `DECISIONS.md`, `SETTINGS.md`, `REFERENCE.md` are not linked at all. `scripts/context-budget.sh` owns the numbers and fails on an unbudgeted link |
 | `Brewfile` / `mise.toml` | Packages (Lean A: brew = casks, mise = dev CLIs) |
 | `sheldon/`, `atuin/`, `bat/`, `ssh/`, `gh/config.yml` | Payload configs |
 | `lefthook.yml`, `.github/workflows/lint.yml` | Commit + CI gate: shellcheck, shfmt, biome, gitleaks, the hook suites, and the assertions in `scripts/` |
@@ -98,10 +96,11 @@ in `.claude/settings.json`, the statusline source repo in
 
 ## Secrets, signing, terminal, packaging
 
-`CLAUDE.md` holds only what every session must load; the reasoning behind these
-choices lives in [`dot-claude/DECISIONS.md`](dot-claude/DECISIONS.md) and the
-`settings.json` key index in [`dot-claude/SETTINGS.md`](dot-claude/SETTINGS.md) —
-neither is symlinked, so neither costs a session anything. In brief:
+Where each kind of writing goes is stated once, in
+[`CLAUDE.md`](CLAUDE.md#where-things-go); the reasoning lives in
+[`dot-claude/DECISIONS.md`](dot-claude/DECISIONS.md) and the `settings.json` key
+index in [`dot-claude/SETTINGS.md`](dot-claude/SETTINGS.md). Neither is
+symlinked, so neither costs a session anything. In brief:
 
 - **Git signing** is 1Password via `op-ssh-sign` (`gpg.format = ssh`); the
   machine-local `~/.gitconfig.local` carries `gpgSign`/`signingkey` so a box
