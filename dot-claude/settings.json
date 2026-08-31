@@ -26,6 +26,8 @@
   },
   "permissions": {
     "allow": [
+      "Artifact",
+      "WebSearch",
       "Bash(gh pr merge:*)",
       "Bash(gh stack merge:*)",
       "Bash(git stash:*)",
