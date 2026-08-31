@@ -507,6 +507,24 @@ cmd = "hooks/claude-canary.sh"
 on = "verify"
 cmd = "scripts/brew-drift.sh"
 
+# Do the names in the Brewfile still RESOLVE? Different question from the drift
+# check above, and only brew can answer it: a cask retired upstream leaves a
+# perfectly well-formed line that every file-reading gate passes, and then fails
+# `brew bundle` outright on a fresh machine. `zulu17` did exactly that.
+#
+# This lived in a `macos` CI job marked `continue-on-error: true`, whose only
+# step it was. There it could not fail a build, could not block a merge, and did
+# not run on the nightly — it could only paint a job green-with-an-x that
+# auto-merge ignores. The reason it was not a required check is sound (it
+# depends on Homebrew's live API, and a transient upstream outage must not block
+# an unattended agent), but "not required" and "cannot be noticed" are different
+# things, and it was the second.
+#
+# Here it reaches a human: the scheduled verify notifies on drift.
+[[section.run]]
+on = "verify"
+cmd = "scripts/brew-resolves.sh"
+
 # NOTE — scheduled-job liveness is now boom's job, not a script here.
 #
 # This repo has three recorded incidents of one shape: a job registered, firing,
