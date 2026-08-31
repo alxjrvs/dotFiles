@@ -1,6 +1,6 @@
 # Claude Code Reference Cheatsheets
 
-Personal notes that aren't instructions. Not auto-loaded — only `CLAUDE.md` and `settings.json` are symlinked into `~/.claude/`. Read this on demand.
+Personal notes that aren't instructions. This file is not symlinked, so it costs nothing per session — read it on demand. (`boomfile.toml` links rather more than this file once claimed; `scripts/context-budget.sh` owns the billed set.)
 
 ## Built-in slash commands worth remembering
 

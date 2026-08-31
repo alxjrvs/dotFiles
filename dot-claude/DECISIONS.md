@@ -4,8 +4,7 @@ Why the Claude Code setup is the way it is: root causes, postmortems, settings t
 removed and why, and the measurements behind the calls.
 
 **Not auto-loaded.** This file is not symlinked into `~/.claude/`, so it costs nothing per
-session — read it on demand. (It is *not* true that only `CLAUDE.md` and `settings.json` are
-linked; every `dst = "~/.claude/…"` in `boomfile.toml` is a link, and `scripts/context-budget.sh` owns the billed set.) It exists so `CLAUDE.md` can stay a short
+session — read it on demand. It exists so `CLAUDE.md` can stay a short
 list of things to *obey*: an instruction file that also carries its own changelog gets skimmed,
 and it is paid for on every request of every session.
 
