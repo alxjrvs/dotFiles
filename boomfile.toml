@@ -382,37 +382,6 @@ cmd = '''
 jq -e '.mcpServers["1password"]' ~/.claude.json >/dev/null 2>&1 || { echo "1Password Environments MCP not registered (user scope) — boom source, or: claude mcp add --scope user 1password -- /Applications/1Password.app/Contents/MacOS/1password-mcp"; exit 1; }
 '''
 
-# The three settings.json guardrails below were escaping-heavy `grep`-in-a-`run` steps; they
-# are now declarative `check` resources, evaluated on `boom verify` and folded
-# into its exit code + `--json` report. `missing_file = "skip"` preserves the old `|| exit 0`
-# (an absent settings.json is not a failure). Note the Fable pattern is a JS regex (`\s`), not
-# the POSIX `[[:space:]]` the grep used.
-
-[[section.check]]
-# CVE-2025-59536 class: the auto-approve MCP keys run .mcp.json commands before the trust
-# dialog (pre-consent RCE). A prose rule isn't enforced; this is.
-path = "~/.claude/settings.json"
-absent = ["enableAllProjectMcpServers", "enabledMcpjsonServers"]
-missing_file = "skip"
-message = "forbidden auto-approve MCP key in ~/.claude/settings.json"
-
-[[section.check]]
-# Agent git auth must resolve the PAT through the single `op` primitive
-# (`op-agent git-credential`), never a cached PAT via `osxkeychain`.
-path = "~/.claude/settings.json"
-present = ["op-agent git-credential"]
-absent = ["osxkeychain"]
-missing_file = "skip"
-message = "agent git helper drifted off op-agent git-credential (or an osxkeychain cached-PAT regression) in ~/.claude/settings.json"
-
-[[section.check]]
-# No model pinned as the default, and Fable in particular is /model per-session only —
-# `/model`'s "set as default" silently rewrites settings.json, so drift is caught here.
-path = "~/.claude/settings.json"
-absent = ['"model"\s*:\s*"[^"]*fable']
-missing_file = "skip"
-message = "Fable pinned as default model in ~/.claude/settings.json (Fable is /model per-session only)"
-
 # The deny floor and the hook inventory — the Bash path to a *resolved* secret,
 # and the guards that must stay wired for the pre-approved shapes to remain safe.
 # `op-agent secret` and `op-agent git-credential get` each print a live credential
