@@ -12,8 +12,9 @@ When you change the config, put the *rule* in `CLAUDE.md` and the *reasoning* he
 
 ## Retention
 
-Measured: this file went 33,645 → 166,618 bytes in 24 days, across 47 commits, and **not one of
-them made it smaller**. Uncapped is the right call — it is not symlinked, so it costs nothing per
+Measured: this file went 33,645 → 166,618 bytes in 24 days, across 47 commits, and not one of
+them made it smaller. That held for another 18 KB before rule 3 below was exercised for the first
+time on 2026-08-31, moving a dead mechanism's entry to `DECISIONS-ARCHIVE.md`. Uncapped is the right call — it is not symlinked, so it costs nothing per
 session, and capping the overflow destination would push content back into the file that *is*
 billed. But uncapped and unmaintained are different things, and only the first was ever decided.
 
@@ -45,7 +46,6 @@ sections large enough to need it, so growth costs navigability rather than silen
 - [2026-08-29 — the byte ceiling was destroying guidance a free mechanism holds](#2026-08-29--the-byte-ceiling-was-destroying-guidance-a-free-mechanism-holds)
 - [2026-08-29 — `AGENTS.md` considered, and declined](#2026-08-29--agentsmd-considered-and-declined)
 - [2026-08-29 — the protected-branch rule is enforced twice, and both stay](#2026-08-29--the-protected-branch-rule-is-enforced-twice-and-both-stay)
-- [2026-08-28 — the publish-at-idle design is gone, and its log says why](#2026-08-28--the-publish-at-idle-design-is-gone-and-its-log-says-why)
 - [2026-08-28 — one inert key removed, one real floor added, and they are the same key](#2026-08-28--one-inert-key-removed-one-real-floor-added-and-they-are-the-same-key)
 - [2026-08-28 — `op-agent header` deleted, for the second and final time](#2026-08-28--op-agent-header-deleted-for-the-second-and-final-time)
 - [2026-08-28 — the PR reviewer is gone, both halves](#2026-08-28--the-pr-reviewer-is-gone-both-halves)
@@ -332,58 +332,6 @@ not touch at all — refusing a push when the branch is *behind* its target.
 
 Recorded because the overlap looks like waste from either side alone, and the next cleanup
 that notices it should remove neither.
-
-## 2026-08-28 — the publish-at-idle design is gone, and its log says why
-
-`dot-claude/hooks/worktree-publish.sh` (168 lines), `tests/publish.sh` (293), the `Stop` and
-`SessionEnd` wiring, both boomfile link stanzas, and the `--push` flag on the daily `code reap`
-timer are all removed.
-
-### The measurement
-
-```
-~/.local/state/boom/logs/com.boomtube.code-reap---push.log
-  grep -c 'CODE REAP'   → 14
-  grep -c 'pushed'      → 0
-  grep -c 'push failed' → 84
-```
-
-**Zero successful pushes in fourteen sweeps.** The cause is mundane — `.gitconfig` resolves GitHub
-auth through `gh auth git-credential`, and a launchd job runs outside any session where that works
-— but it went unnoticed for weeks, because the finding died in a log nothing reads. The timer was
-carrying the entire outward blast radius of the design (those branches land on origin, including
-org repos) for a benefit it had never once delivered.
-
-That is a cleaner argument than any reasoning about the design: the `--push` half could be deleted
-with **no** behavioural change, because it was already not happening.
-
-### The hook is a separate argument, and it is honest to say so
-
-`worktree-publish.sh` ran in-session, where `gh auth` works, so it plausibly *was* publishing. The
-0/84 does not indict it. What indicts it is what it is: a synchronous, outward-facing `git push`
-to any of six organizations, fired at the end of every agent turn, before the user sees the reply.
-
-Its purpose was real — Claude Code refuses to remove a worktree holding commits on no remote, and
-`force` bypasses only the `dirty` arm, so the condition can be falsified but never waived. The
-question is what falsifying it is worth. Measured against the reap log's own numbers, the sweeps
-found 4–16 stuck worktrees each; the cost of the refusal is typing `git push` before closing a
-session, on the order of thirty seconds, a few times a week.
-
-Half a minute of friction is not worth a daemon authorized to write to other people's
-repositories. `boom code reap` still runs daily and still falsifies the same condition the correct
-way — by content, with `git patch-id` — and one sweep reaped 33 worktrees, so the mechanism that
-works is the one that stayed.
-
-### What is now un-handled, stated plainly
-
-A clean worktree whose commits exist nowhere but this machine stays un-closeable until someone
-pushes it. There is no automation left for that case, deliberately.
-
-The canary keeps watching the `has commits that are not pushed anywhere` literal. It is still
-load-bearing: `code reap` exists to falsify exactly that refusal, so the day the client stops
-emitting the string is the day the reap timer can go too.
-
----
 
 ## 2026-08-28 — one inert key removed, one real floor added, and they are the same key
 
@@ -2466,6 +2414,11 @@ override — see 2.1.207). Hence `permissions.allow: Bash(gh pr merge:*)`. A lit
 `git merge`/`git push` onto `main` remains off-limits regardless.
 
 ### Why `boom code reap` exists
+
+> **`boom code reap` was removed 2026-08-31**, with the rest of `boom code`. Kept here
+> rather than archived because the limitation below is still live — a squash-merge still
+> leaves a worktree the client will not close — and nothing re-decides it by content any
+> more. The manual check is in the `worktree-triage` skill.
 
 Claude Code's worktree-remove guard keeps any worktree whose HEAD commits exist on no remote, but it
 tests **SHA identity** — and a squash-merge rewrites history, so the content lands on the default
