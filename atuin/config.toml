@@ -33,19 +33,22 @@ workspaces = true
 # removes the per-command sync fork, ~40 ms of the measured ~250 ms shell startup.
 search_mode = "daemon-fuzzy"
 
-[daemon]
-enabled = true
-autostart = true
-
-[sync]
-# Atuin sync v2 (encrypted record sync). Required for cross-machine history.
-
-[history]
-# Drop accidentally-typed secrets BEFORE they're stored / synced. zsh's
-# HIST_IGNORE_SPACE doesn't propagate to atuin's preexec hook.
-secret_filters = [
+# Drop accidentally-typed secrets BEFORE they are stored or synced; zsh's
+# HIST_IGNORE_SPACE does not propagate to atuin's preexec hook. Atuin's own
+# `secrets_filter` (default true) already covers well-known token shapes; this
+# adds the `key: value` form it does not.
+#
+# TOP-LEVEL, and that is the whole point of this block: it was written as
+# `[history] secret_filters` for five weeks. Atuin has no `[history]` section and
+# no `secret_filters` key, and its parser does not reject unknown keys — so the
+# block was read, discarded, and did nothing, while reading like a control.
+history_filter = [
   "(?i)(password|secret|token|apikey|api[_-]?key|pat)\\s*[:=]\\s*\\S+",
   "gh[oprsu]_[A-Za-z0-9]{20,}",
   "sk-[A-Za-z0-9_-]{20,}",
   "AKIA[0-9A-Z]{16}",
 ]
+
+[daemon]
+enabled = true
+autostart = true

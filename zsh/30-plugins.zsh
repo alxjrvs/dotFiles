@@ -15,8 +15,6 @@
 # structural drift surfaces on the nightly rather than whenever someone thinks to
 # re-time it. Move the ceiling deliberately if the baseline is re-measured upward.
 
-# Homebrew completions
-
 # Sheldon plugins (adds zsh-completions to fpath, loads FSH last)
 eval "$(sheldon source)"
 

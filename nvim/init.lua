@@ -17,7 +17,6 @@ opt.tabstop = 2
 opt.smartindent = true
 opt.ignorecase = true
 opt.smartcase = true
-opt.termguicolors = true
 opt.clipboard = "unnamedplus"
 opt.undofile = true
 opt.signcolumn = "yes"
@@ -32,11 +31,11 @@ local map = vim.keymap.set
 map("n", "<leader>w", "<cmd>write<cr>", { desc = "Save" })
 map("n", "<leader>q", "<cmd>quit<cr>", { desc = "Quit" })
 map("n", "<esc>", "<cmd>nohlsearch<cr>", { desc = "Clear search highlight" })
--- grn / gra / grr are Neovim's OWN defaults since 0.11 (verified mapped in
--- `nvim --clean` on 0.12.3), so restating them here bought nothing. `gd` is
--- not a default and stays.
+-- grn / gra / grr are Neovim's OWN defaults since 0.11, and so is `K` -> hover;
+-- restating them bought nothing, and the `K` map actively suppressed the default
+-- it duplicated (the default applies "unless a custom keymap for K exists").
+-- `gd` is not a default and stays.
 map("n", "gd", vim.lsp.buf.definition, { desc = "LSP definition" })
-map("n", "K", vim.lsp.buf.hover, { desc = "LSP hover" })
 
 -- ── Language servers (native, no lspconfig) ────────────────────────────────
 -- One vim.lsp.config block per language server; enabled together below.

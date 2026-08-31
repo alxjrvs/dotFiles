@@ -34,11 +34,10 @@ symbol = " "
 style = "blue"
 format = '[\[](bright-black)[$symbol$branch]($style)[\]](bright-black)'
 
-# State chip: muted [ ] around the rebase/merge/cherry-pick label (bold yellow,
-# starship's own default state color — kept as-is since it already matches this
-# file's palette). Empty and invisible outside those states, same as the rest.
+# State chip: muted [ ] around the rebase/merge/cherry-pick label. Empty and
+# invisible outside those states, same as the rest. `style` is omitted: starship's
+# default is already `bold yellow`.
 [git_state]
-style = "bold yellow"
 format = '[\[](bright-black)[$state]($style)[\]](bright-black)'
 
 # Status chip: one muted [ ] around per-state glyphs, each colored to match the
