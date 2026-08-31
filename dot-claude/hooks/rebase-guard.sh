@@ -306,21 +306,22 @@ fi
 # inside a PreToolUse hook, with the agent simply blocked.
 #
 # A timed-out fetch is not a failure. The comparison below just runs against the
-# last-known `origin/<branch>`, which the `code fetch` timer refreshes every 15m
-# anyway; the worst case is a stale ref, which can only make this guard MISS a
-# behind-target push, never invent one. Missing is the correct direction for a
-# guard that fails open everywhere else.
+# last-known `origin/<branch>`; the worst case is a stale ref, which can only make
+# this guard MISS a behind-target push, never invent one. Missing is the correct
+# direction for a guard that fails open everywhere else.
 #
 # `timeout` is not in the macOS base system — it arrives with coreutils, which
 # the Brewfile declares. Absent, the fetch runs unbounded exactly as before
 # rather than being skipped: degrading to the old behaviour beats degrading to
 # no check.
-# Skipped entirely when the remote-tracking ref is already fresh. `boom code
-# fetch` runs `git fetch` across every ~/Code repo on a 15-minute timer, so in
-# normal operation this ref was refreshed by something else minutes ago and the
-# round trip buys nothing. 120 s is well inside that window while still catching
-# the case this guard is for: a teammate or another agent landing on the target
-# between two pushes of your own.
+# Skipped entirely when the remote-tracking ref is already fresh, which collapses
+# a burst of pushes into one round trip. This used to lean on `boom code fetch`
+# warming every ~/Code repo on a 15-minute timer; that timer is gone, so the cache
+# now hits only behind something that genuinely just fetched — a prior run of this
+# guard, worktree-freshness.sh's PREFETCH, or a fetch you ran yourself. Expect the
+# ~450 ms path more often than the ~22 ms one. 120 s still catches the case this
+# guard is for: a teammate or another agent landing on the target between two
+# pushes of your own.
 # FETCH_HEAD, not the remote-tracking ref: it is written by every fetch, it
 # answers "when did we last talk to origin" directly, and it exists as a real
 # file. The ref would have been wrong twice over — `refs/remotes/...` lives in

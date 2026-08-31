@@ -1,36 +1,17 @@
-# boom's own self-wiring, folded into the reconcile it already runs —
-# so these stop being hand-rolled `run`/plist steps below:
+# boom's own self-wiring, folded into the reconcile it already runs:
 #   - skill_on_sync: regenerate ~/.claude/skills/boom/SKILL.md from the running binary each
 #     sync, so the self-describing skill never lags a `boom upgrade` (replaces the
 #     `boom skill --install` run step).
 #   - upgrade_on_sync = "check": after a sync, warn (offline-safe, non-fatal) when a newer boom
 #     ships — the exact stale-binary drift that let a 0.9.1 machine propagate renamed-away
 #     command names before anyone noticed. ("auto" would self-upgrade instead of warning.)
-#   - schedule: launchd timers running `boom <cmd>` on an interval. `code fetch` every 15m
-#     `git fetch`es every ~/Code repo to keep origin/HEAD warm for agent worktree cuts
-#     (replaces the agent-fetch plist + section). One array — any boom command can be scheduled.
 [boom]
 skill_on_sync = true
 upgrade_on_sync = "check"
-# Desktop-notify (macOS osascript) when a scheduled `boom verify` finds drift, so the
-# boom-verify launchd timer's signal surfaces instead of dying in its log.
+# Desktop-notify (macOS osascript) when `boom verify` finds drift. Verb-driven, not
+# schedule-gated, so it still surfaces a drift result now that nothing runs verify
+# on a timer.
 notify = true
-# `code reap` daily. Claude Code refuses to remove an agent worktree holding a commit on no
-# remote-tracking ref ("has commits that are not pushed anywhere"), which is what leaves a
-# finished subagent un-closeable; `code reap` re-decides that by content (git patch-id) and
-# removes only clean, unlocked, already-merged-or-pushed worktrees, always leaving the branch ref.
-# `--push` was removed after 14 sweeps recorded 0 successes and 84 failures.
-#
-# The measurement, the client-internals reasoning behind it, and why `force` cannot help:
-# DECISIONS.md, "Why `boom code reap` exists". Kept there rather than here — the routing rule in
-# CLAUDE.md sends a reason and a measurement to that file, and this block was a second copy of it,
-# 24 lines long, in a file nobody reads to answer "why does this timer exist".
-schedule = [
-  { cmd = "code fetch", every = "15m" },
-  # NOT "1d" — boom's schema accepts only s/m/h or a bare seconds count, so "1d" failed
-  # validation and this timer never ran at all from the day it was added.
-  { cmd = "code reap", every = "24h" },
-]
 
 [[section]]
 name = "Shell + git"
@@ -357,9 +338,9 @@ cmd = "curl -fsSL https://claude.ai/install.sh | bash"
 # ever passes through it.
 #
 # `unless` keys off the registration, not the binary, so this converges once and stays quiet.
-# Registration lives in `~/.claude.json`, which nothing tracks — that is the same gap CLAUDE.md
-# records for the project-scoped `github`/`render` servers ("neither is declared in the boomfile,
-# so a fresh machine reproduces neither"). This step closes it for this one server.
+# Registration lives in `~/.claude.json`, which nothing tracks, so a fresh machine reproduces no
+# project-scoped server at all. CLAUDE.md used to record that gap and no longer does, so this is
+# now the only place it is written down. This step closes it for this one server.
 [[section.run]]
 on = "sync"
 unless = '''test ! -x /Applications/1Password.app/Contents/MacOS/1password-mcp || jq -e '.mcpServers["1password"]' ~/.claude.json >/dev/null 2>&1'''
@@ -374,7 +355,7 @@ cmd = "claude mcp add --scope user 1password -- /Applications/1Password.app/Cont
 # check — and note that server reports `✔ Connected` even with nobody at the keyboard, because
 # its human approval gate is at TOOL-CALL time, per Environment, not at connect. That was
 # measured before adopting it precisely because a server that needed auth to connect would have
-# failed `boom verify` on every unattended nightly run.
+# failed `boom verify` on every scheduled run, back when there was one.
 [[section.run]]
 on = "verify"
 cmd = '''
@@ -477,15 +458,20 @@ on = "verify"
 # more), several of which are unlikely ever to be authenticated deliberately. So
 # the unfiltered check failed on essentially every run, which is exactly the
 # "a check that cries wolf gets bypassed" failure this repo has already paid for
-# twice — and it would have trained the nightly notify to be ignored.
+# twice — and it would have trained the drift notification to be ignored.
 #
 # The filter is on the client's display prefix rather than a jq read of
 # ~/.claude.json, because the failure direction is right: if that prefix ever
 # changes, the check goes NOISY, which is visible, rather than silently green.
 #
-# The stale note that used to sit here described `github` and `render` as
-# project-scoped servers this check could not see. Both are gone — `github` was
-# deleted with the third-party GitHub MCP, and `render` never existed in any scope.
+# The note that used to sit here described `github` and `render` as project-scoped
+# servers this check could not see, and its replacement was false in both halves.
+# `github` was NOT gone: it stayed registered for SU-SRD at project AND local scope
+# until 2026-08-31, its helper calling the `op-agent header` verb deleted on 08-28.
+# `render` DID exist and still does, still failing to connect — which the
+# `headersHelper` step below already said in as many words, while this line went on
+# contradicting it. Both `github` registrations are now removed; `render` is not,
+# and this check is the thing that reports it.
 cmd = '''
 for i in 1 2 3; do
   claude mcp list 2>&1 | grep -v '^claude\.ai ' | grep -qE '✘|! Needs authentication' || exit 0
@@ -505,17 +491,12 @@ exit 1
 on = "verify"
 cmd = "git diff --quiet -- dot-claude/ || { echo 'live Claude config diverges from the committed contract (dirty boom config-repo)'; exit 1; }"
 
-# The remaining worktree workarounds are written against client defects measured
-# against 2.1.237, and the client self-updates — so the version those
-# measurements describe is replaced silently and repeatedly. A workaround whose
-# bug is gone is not inert: worktree-freshness.sh still mutates worktrees, and
-# boom's `code reap` still re-decides a removal the client refused. CLAUDE.md
-# already names this failure mode ("a measurement recorded against a tool version
-# expires unnoticed and nothing owns it"); this step owns it.
-#
-# The `unpushed` literal below is still load-bearing after worktree-publish.sh was
-# deleted on 2026-08-28: `code reap` exists to falsify exactly that refusal, so the
-# day the client stops emitting it is the day the reap timer can go too.
+# worktree-freshness.sh is written against a client defect measured against
+# 2.1.237, and the client self-updates — so the version that measurement describes
+# is replaced silently and repeatedly. A workaround whose bug is gone is not inert:
+# it still mutates worktrees. CLAUDE.md already names this failure mode ("a
+# measurement recorded against a tool version expires unnoticed and nothing owns
+# it"); this step owns it.
 #
 # INVERTED POLARITY, deliberately: it fails when the workaround looks
 # UNNECESSARY. A failure means "go re-measure", never "the bug is fixed" — the
@@ -912,7 +893,7 @@ cmd = "op-agent audit agent-vault.txt"
 #   THE GAP, named because nothing here closes it: this proves the helper BINARY is executable,
 # never that its `op://` ref RESOLVES. A helper aimed at a deleted vault item is executable, exits
 # 0 and emits `{}` — green here while the server is dead. Closing it means resolving a secret on an
-# unattended launchd timer, which is a worse trade than the blind spot. `claude mcp list` is the
+# unattended run, which is a worse trade than the blind spot. `claude mcp list` is the
 # control that catches this class.
 [[section.run]]
 on = "verify"
@@ -978,12 +959,13 @@ exit 1
 # The gap was notification, not detection — so the fix was the plist and `notify`, both already
 # in place, and the right amount of new machinery here is none.
 #
-# CORRECTED: that reasoning is sound about detection and incomplete about the thing doing the
-# detecting. A scheduled job can be dead, and then every check it carries is silently ABSENT
-# rather than green — which is precisely what those 28 days were, and `notify` could not help
-# because nothing ran to notify. That half is now the ENGINE's: boom v0.30.0's `launchd` resource
-# reports an agent whose last run failed, which `[boom] schedule` timers already did. Two of the
-# three incidents named here would have surfaced on the first nightly verify after they began.
+# CORRECTED TWICE. The reasoning above is sound about detection and was incomplete about the
+# thing doing the detecting: a scheduled job can be dead, and then every check it carries is
+# silently ABSENT rather than green, which is precisely what those 28 days were. That argued for
+# watching the watcher. The scheduled verify has since been removed outright instead, so there is
+# no watcher to watch: `boom verify` runs when it is run. The checks in this file are only as
+# live as the last time someone invoked it, and that is now the whole story — stated here rather
+# than left implied, because the incidents above are what it costs to forget.
 
 # The third-party GitHub MCP is GONE from both clients, in favour of Anthropic's own
 # GitHub integration. What was here: a remote `api.githubcopilot.com/mcp/` server in
@@ -1000,36 +982,6 @@ exit 1
 #
 # Consequence worth knowing: `claude-git-pat` now has exactly ONE consumer, git's
 # `credential.helper` for agent pushes. It is no longer an MCP credential.
-
-[[section]]
-name = "boom-verify launchd"
-
-# The `boom verify` guardrails above (MCP auto-approve, osxkeychain regression, Fable-default
-# drift) only fire when someone runs `boom verify` — so drift can sit undetected. This plist
-# runs it on a timer; the `launchd` resource collapses the old link + `launchctl unload;load -w`
-# pair into one stanza that owns the load/unload lifecycle itself.
-#
-# It used to say the plist stayed because a `[boom] schedule` timer for `verify` "doesn't fire a
-# desktop notification on drift". That was false, and had been since `notify = true` was adopted:
-# notify is VERB-driven, not schedule-gated (settings.ts's applyNotify returns early only on
-# `ctx.verb !== "verify"`), so a scheduled verify notifies identically. The plist was also
-# carrying its own `|| osascript`, so every drift raised TWO notifications; that half is gone.
-#
-# What actually keeps it a plist is timing, which is a real difference: this uses
-# StartCalendarInterval (21:47 daily, wall-clock), while `[boom] schedule` only renders
-# StartInterval — elapsed-time, which drifts relative to the clock. Collapsing it into the
-# schedule array would trade a fixed daily slot for a drifting one; that is the trade, stated
-# honestly, rather than a capability claim that stopped being true.
-#
-# An audit proposed collapsing it anyway, on the grounds that a hand-rolled plist is what cost
-# this job 28 days. It is not moving, and the paragraph above is why: the reason is a real
-# capability difference, written down before the audit looked. What the audit was right about is
-# the RISK, and that is now addressed at the level it belongs to — boom v0.30.0 checks last exit
-# for BOTH mechanisms, so a hand-authored plist is no longer a blind spot the generated timers
-# are not. The mechanism question is settled by whoever needs wall-clock timing, not by which one
-# is easier to monitor.
-[[section.launchd]]
-src = "launchd/com.alxjrvs.boom-verify.plist"
 
 [[section]]
 name = "capslock-control launchd"

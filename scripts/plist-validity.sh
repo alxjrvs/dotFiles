@@ -9,8 +9,9 @@
 # WHY TWO ASSERTIONS AND NOT ONE. launchd does NOT expand `~` or `$HOME` in a
 # plist value. It fails the job with EX_CONFIG (78) BEFORE running it, so the
 # only symptom is a job that silently never runs. `com.alxjrvs.boom-verify.plist`
-# reported runs=0 for 28 days for exactly this reason — while the identical bug
-# had already been found and fixed in the capslock plist and not carried across.
+# (since deleted with the scheduled verify) reported runs=0 for 28 days for exactly
+# this reason — while the identical bug had already been found and fixed in the
+# capslock plist and not carried across.
 # Structural validity does not catch it: both plists parsed cleanly the whole
 # time. The path-value assertion is the one that would have.
 #

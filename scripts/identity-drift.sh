@@ -49,7 +49,6 @@ dot-claude/skills/butter-stack/SKILL.md
 dot-claude/skills/butter-stack/references/stack.md
 dot-claude/skills/agent-friendly-repo/SKILL.md
 .claude/settings.json
-launchd/com.alxjrvs.boom-verify.plist
 launchd/com.alxjrvs.capslock-control.plist
 hooks/claude_statusline.ts
 CLAUDE.md
@@ -57,7 +56,6 @@ Brewfile
 dot-claude/DECISIONS.md
 dot-claude/SETTINGS.md
 dot-claude/REFERENCE.md
-AUDIT.md
 dot-claude/hooks/repo-scope-guard.sh
 dot-claude/hooks/tests/cases.tsv
 dot-claude/hooks/tests/reposcope.sh

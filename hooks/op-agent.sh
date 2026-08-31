@@ -237,8 +237,8 @@ cmd_status() {
   # fails with no warning. Probe it here — the one place that already handles the
   # PAT, so the boomfile/launchd stay clean and the token never touches a tracked
   # file or the model's context. Resolve via the SA and hit the API; only OK/expiry
-  # is printed, never the token. A 401 = dead → fail (surfaces via `boom verify` +
-  # the boom-verify launchd); 403 (rate-limit/SSO) and network/tooling gaps are
+  # is printed, never the token. A 401 = dead → fail (surfaces on the next `boom
+  # verify`, which is now run by hand); 403 (rate-limit/SSO) and network/tooling gaps are
   # advisory so a flaky connection or throttle never fails verify.
   command -v op > /dev/null 2>&1 && command -v curl > /dev/null 2>&1 || return 0
   _load_sa
@@ -392,9 +392,24 @@ cmd_audit() {
 
   # 2. Membership, both directions. An UNDECLARED item is blast radius nobody
   #    reviewed; a MISSING one means a consumer is about to fail.
+  #
+  #    LC_ALL=C ON `comm`, NOT ONLY ON `sort`. Both inputs are C-sorted above, and
+  #    `comm` requires its inputs to be sorted IN ITS OWN COLLATION. Left ambient
+  #    (en_US.UTF-8 here), `comm` uses a locale where case is folded, so `Name`
+  #    collates between `gninety` and `npm-publish-token` while the C-sorted input
+  #    puts it first. BSD `comm` on macOS does not warn about misordered input the
+  #    way GNU does — it silently emits nonsense.
+  #
+  #    Measured with the real vault contents (Name, claude-git-pat, gninety,
+  #    npm-publish-token) against a manifest of the latter three: the unpinned form
+  #    reported `claude-git-pat` and `gninety` as BOTH undeclared and missing, which
+  #    is impossible, and reported nothing at all about the one item that actually
+  #    was undeclared. The whole membership control — the reason this file exists,
+  #    since service-account vault scope is immutable and membership is the only
+  #    lever — was silently wrong for any capitalized title.
   local undeclared missing
-  undeclared="$(comm -23 <(printf '%s\n' "$actual") <(printf '%s\n' "$expected"))"
-  missing="$(comm -13 <(printf '%s\n' "$actual") <(printf '%s\n' "$expected"))"
+  undeclared="$(LC_ALL=C comm -23 <(printf '%s\n' "$actual") <(printf '%s\n' "$expected"))"
+  missing="$(LC_ALL=C comm -13 <(printf '%s\n' "$actual") <(printf '%s\n' "$expected"))"
   if [[ -n "$undeclared" ]]; then
     echo "op-agent: vault ($VAULT) holds items not declared in $manifest:" >&2
     printf '%s\n' "$undeclared" | _prefixed '  + ' >&2

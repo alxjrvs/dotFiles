@@ -48,7 +48,7 @@ cat "$(git rev-parse --git-common-dir)/worktrees/<name>/locked" 2>/dev/null
 |---|---|---|
 | `rev-list` empty | already closeable | close it; nothing to do |
 | Commits, no upstream, work is real | never published | `git push -u origin HEAD` |
-| Commits, but content is on main | squash-merged; the patch-ids match and the escape still cannot fire | `boom code reap` — it re-decides by `git patch-id` and removes what actually landed |
+| Commits, but content is on main | squash-merged; the patch-ids match and the escape still cannot fire | confirm with `git cherry -v origin/main HEAD` (every line `-`), then `git worktree remove --force <path>` |
 | Dirty tree | waivable | commit it, or discard and force |
 | Part of a `gh stack` | do NOT push it bare; that retargets nothing | `gh stack submit` |
 | `locked` names a LIVE pid | another session is working in it | wait, or close that session. `worktree-remove-guard.sh` refuses this |
@@ -60,17 +60,18 @@ so it does not arise in practice.
 
 ## The sweep
 
-`boom code reap` runs daily, and since 2026-08-28 it is the ONLY mechanism.
-There was a `worktree-publish.sh` hook that published a branch the moment its
-agent went idle; it is gone, along with the `--push` half of this sweep, which had
-recorded 0 successful pushes against 84 failures over 14 runs. So a refusal you
-hit by hand is now expected rather than a hook that failed to fire — nothing
-publishes for you. Push it yourself, or leave it for the sweep to reap once its
-content lands on the default branch.
+There isn't one. `boom code reap` ran daily and went with the rest of `boom code`;
+before it, a `worktree-publish.sh` hook published a branch the moment its agent
+went idle, and that went on 2026-08-28 along with the `--push` half of the sweep,
+which had recorded 0 successful pushes against 84 failures over 14 runs.
 
-`reap` is safer than the client's own check: it re-decides by content, reads
-`gh stack` topology, and removes only clean, unlocked, already-merged-or-pushed
-worktrees, always leaving the branch ref. It cannot lose a commit.
+So a refusal you hit by hand is expected, and nothing publishes or reaps for you.
+Push it yourself, or remove it once you have confirmed the content landed.
+
+Claude Code's own `cleanupPeriodDays` retires orphaned subagent worktrees, but it
+decides by AGE — it is a floor against unbounded accumulation, not a check that a
+commit exists somewhere else. Verify before removing: an empty
+`git rev-list --max-count=1 HEAD --not --remotes` means closeable.
 
 ## The gap worth knowing
 
@@ -78,6 +79,5 @@ Subagent worktrees (`isolation: worktree`) get no port block: `worktree-port.sh`
 is deliberately not wired on SubagentStart/SubagentStop because those events carry
 the PARENT's cwd, not the subagent's. Nothing publishes them either — but that is
 now true of every worktree, not a subagent-specific gap. A finished subagent
-worktree falls through to the daily reap, up to 24h where it cannot be closed by
-hand. If you hit that, publish it directly:
-`git -C <worktree> push -u origin HEAD`.
+worktree now waits on `cleanupPeriodDays` unless you close it yourself. If you hit
+that, publish it directly: `git -C <worktree> push -u origin HEAD`.

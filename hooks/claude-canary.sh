@@ -2,24 +2,17 @@
 # `boom verify` step — fail when a Claude Code workaround in this repo may have
 # become obsolete.
 #
-# WHY THIS EXISTS. Two of the three worktree hooks here are not features, they are
-# workarounds for client defects measured against 2.1.237 and recorded in
-# dot-claude/DECISIONS.md:
+# WHY THIS EXISTS. worktree-freshness.sh is not a feature, it is a workaround for a
+# client defect measured against 2.1.237 and recorded in dot-claude/DECISIONS.md:
+# the `worktree.baseRef: "fresh"` path cuts from the LOCAL `origin/<default>` ref
+# and only refreshes it when .git/FETCH_HEAD is older than 24h (86400000 ms) — a
+# cache with no invalidation.
 #
-#   worktree-freshness.sh  the `worktree.baseRef: "fresh"` path cuts from the LOCAL
-#                          `origin/<default>` ref and only refreshes it when
-#                          .git/FETCH_HEAD is older than 24h (86400000 ms) — a
-#                          cache with no invalidation.
-#   worktree-publish.sh    `deleteJob` refuses to remove a worktree holding commits
-#                          on no remote ("has commits that are not pushed
-#                          anywhere"), and its one content-based escape can never
-#                          fire for a `--no-track` agent branch.
-#
-# Nothing told us when either is fixed. The client self-updates, so the version
-# those measurements describe is replaced silently and repeatedly; a workaround
-# whose bug is gone is then dead code that still pushes branches to origin and
-# still mutates worktrees, and CLAUDE.md's own rule is that a measurement recorded
-# against a tool version "expires unnoticed and nothing owns it". This owns it.
+# Nothing told us when it is fixed. The client self-updates, so the version that
+# measurement describes is replaced silently and repeatedly; a workaround whose bug
+# is gone is then dead code that still mutates worktrees, and CLAUDE.md's own rule
+# is that a measurement recorded against a tool version "expires unnoticed and
+# nothing owns it". This owns it.
 #
 # WHAT IT ACTUALLY ASSERTS — and what it does not. It greps the installed client
 # for the string literals those defects are built out of. Minified identifiers
@@ -29,18 +22,16 @@
 # `FETCH_HEAD` stops appearing in the bundle at all, that code path is gone.
 # Treat a failure as "go re-measure", never as "the bug is fixed".
 #
-# The two halves are not equally likely to fire. The publish refusal is a genuine
-# defect that could be fixed outright. The 24h fetch is DOCUMENTED behavior, so
-# its literals going missing would mean the behavior changed rather than a bug
-# closed — still worth knowing, because worktree-freshness.sh's ENFORCE layer is
-# redundant either way, but it is not the same claim.
+# The 24h fetch is DOCUMENTED behavior, so its literals going missing would mean
+# the behavior changed rather than a bug closed — still worth knowing, because
+# worktree-freshness.sh's ENFORCE layer is redundant either way.
 #
 # POLARITY, which is the whole design. This check fails when the WORKAROUND looks
 # unnecessary, not when it looks needed — the opposite of every other check here.
 # Three outcomes:
 #
 #   client not found          exit 0, one line. A machine that installs Claude Code
-#                             somewhere else must not fail a nightly verify.
+#                             somewhere else must not fail a verify run.
 #   fingerprints intact       exit 0, silent. The normal case.
 #   a fingerprint missing     exit 1, naming which hook is now suspect.
 #
@@ -120,16 +111,6 @@ has 'FETCH_HEAD' || missing="$missing FETCH_HEAD"
 has '86400000' || missing="$missing 86400000"
 [ -z "$missing" ] || {
   echo "claude-canary: $version no longer contains$missing — the 24h FETCH_HEAD cache that worktree-freshness.sh exists for may be gone. Re-measure (dot-claude/DECISIONS.md, '2026-08-20 — agents were starting from a base up to 24h stale'); if the client now fetches honestly, that hook is deletable."
-  rc=1
-}
-
-# --- the unpushed-worktree refusal `boom code reap` exists to falsify -------
-# This half outlived worktree-publish.sh, which was deleted 2026-08-28. The string
-# is still load-bearing because `code reap` is still here for exactly this refusal:
-# it re-decides by content what the client decides by SHA. The day the client stops
-# emitting it is the day the daily reap timer can go too.
-has 'has commits that are not pushed anywhere' || {
-  echo "claude-canary: $version no longer contains the 'has commits that are not pushed anywhere' refusal — the delete guard 'boom code reap' exists to falsify may be gone. Re-measure (boomfile.toml's [boom] header records the deleteJob chain); if the client can now close an unpushed worktree by itself, the daily code reap timer is deletable."
   rc=1
 }
 
