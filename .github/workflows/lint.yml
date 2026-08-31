@@ -202,7 +202,7 @@ jobs:
       # stale reference to the retired verb with a green build. That is the exact
       # asymmetry the skill-description-cap step below was moved here to fix, in
       # the other direction. Same `git grep` lefthook runs.
-      # boomfile.toml IS the repo: it names ~56 payload files by path, and taplo
+      # boomfile.toml IS the repo: it names the payload files by path, and taplo
       # proving the file parses says nothing about whether what it names is
       # there. A missing src fails `boom source` partway through, on a real
       # machine, after it has already changed things.
