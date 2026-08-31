@@ -22,7 +22,8 @@
     "NINETY_BASE_URL": ""
   },
   "attribution": {
-    "commit": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>"
+    "commit": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>",
+    "pr": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>"
   },
   "permissions": {
     "allow": [
@@ -218,5 +219,6 @@
       "Never push directly to a repository's default branch, and never merge into it locally"
     ]
   },
+  "autoMemoryEnabled": false,
   "askUserQuestionTimeout": "10m"
 }
