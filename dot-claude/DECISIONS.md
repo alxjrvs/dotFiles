@@ -534,23 +534,10 @@ delete.
 
 ### `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80` and `ENABLE_PROMPT_CACHING_1H=1` (removed 2026-07-25)
 
-Both were inert. Measured over **30,983 requests**: p50 context 143,853 tokens, p90 441,802, and
-only **1.4% above 800K**. An 80% threshold on a 1M window is essentially never reached. The
-statusline also reads the env var itself (`statusline.sh:492-497`), so the "the marker is
-hardcoded at 80%" rationale for keeping it was already false. The 1-hour prompt-cache TTL is
-requested by default on a subscription.
+Both were inert. An 80% autocompact threshold on a 1M-token window is essentially never
+reached, and the 1-hour prompt-cache TTL is requested by default on a subscription.
 
 Two enumerated divergences that did nothing. Principle 2 says they go.
-
-### `SessionStart` + `SubagentStart` git-fetch hooks (removed 2026-07-25)
-
-They existed to freshen `origin/HEAD` before a worktree branch was cut. `[boom] schedule` already
-runs `code fetch` every 15 minutes across every `~/Code` repo — `FETCH_HEAD` was verified stamped
-within 2 minutes of wall clock — so every repo is permanently warm on an interval that does not
-depend on session cwd. That also covers the `boom code claude` flat-symlink case the hooks never
-could, since there the cwd is not a repo at all and the hook silently no-opped.
-
-The freed `SessionStart` slot is now the keep-awake hook.
 
 ---
 
