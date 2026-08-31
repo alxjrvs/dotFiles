@@ -117,6 +117,26 @@ rebase	wt-c	git -C ../primary push origin feature-x	allow
 rebase	primary	git -C ../wt-c push origin feature-c	deny
 rebase	nonrepo	git -C ../primary push origin main	deny
 
+# REGRESSION — `-C` is not `cd`, and conflating them opened a hole worse than the bug the
+# original -C handling closed. `cd` persists across `&&` segments; `-C` binds to the one
+# invocation carrying it. Honouring a `-C` from an EARLIER segment retargeted the guard at that
+# directory, where the is-inside-work-tree probe fails, so a bare push to the default branch
+# FAILED OPEN. Measured against the shipped guard: all four of the deny cases below were ALLOWED.
+#
+# The first two are the bypass proper: an inert `-C` on a non-push segment must not move the
+# judgement. The next two are the other half — a `-C` on the push itself DOES name the repo git
+# will act on, so a cross-repo push to another checkout's default branch has to be judged against
+# THAT repo, cumulatively and relative to any preceding `cd`, exactly as git resolves it.
+rebase	primary	git -C ../nonrepo status && git push origin main	deny
+rebase	wt-a	git -C ../nonrepo log && git push origin main	deny
+rebase	wt-a	git -C ../primary push origin main	deny
+rebase	nonrepo	cd .. && git -C primary push origin main	deny
+rebase	primary	git -C .. -C primary push origin main	deny
+# …and the inert `-C` must stay inert in the ALLOW direction too, or the fix is just a
+# blanket-deny wearing a bypass fix's clothes.
+rebase	primary	git -C ../nonrepo status && git push origin feature-x	allow
+rebase	wt-c	git -C ../nonrepo status && git -C ../primary push origin feature-x	allow
+
 # Heredoc bodies are DATA, not command structure. Writing the commit message for
 # this very change was DENIED by the guard because the message explained
 # `git push origin main`. Prose apostrophes ("lefthook's") also unbalance the

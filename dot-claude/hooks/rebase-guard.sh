@@ -87,25 +87,50 @@ while IFS= read -r seg; do
   fi
   [ "$prog" = git ] || [ "$prog" = gh ] || continue
   shift
+  # `git -C <path>` names the repo THIS invocation acts on. It is NOT `cd`, and treating the two
+  # alike opened a bypass worse than the bug that change fixed:
+  #
+  #   git -C /tmp status && git push origin main      -> ALLOWED
+  #
+  # `cd` persists across `&&` segments, so honouring it for the whole command is right. `-C` binds
+  # to the single command carrying it, so a `-C` on an EARLIER segment must not retarget a later
+  # push. It did: work_dir became /tmp, the is-inside-work-tree probe failed there, and the guard
+  # FAILED OPEN on a bare push to the default branch — the one thing CLAUDE.md's first rule exists
+  # to stop. Measured against the shipped guard before this change; the three shapes are cases in
+  # cases.tsv.
+  #
+  # So collect per segment into seg_dir and promote it only if this segment turns out to be the
+  # push. A `-C` on a non-push segment is then correctly inert.
+  seg_dir=''
   while [ $# -gt 0 ]; do
     case "$1" in
-      # `git -C <path>` names the repo the command acts on exactly as a leading
-      # `cd` does, so it has to set work_dir rather than being skipped with the
-      # other value-taking flags. Discarding it judged every cross-repo push
-      # against the SESSION's cwd repo: a legitimate push blocked by an
-      # unrelated checkout's staleness, and — worse — a push to another repo's
-      # default branch judged against the wrong default, or waved through
-      # entirely when the cwd was not a repo at all.
-      #
-      # Same "before the push only" doctrine as `cd`: a `-C` on a later segment
-      # cannot retarget a push that was already matched.
+      # Discarding -C entirely was the ORIGINAL bug, and it is still a bug: it judged every
+      # cross-repo push against the SESSION's cwd repo — a legitimate push blocked by an unrelated
+      # checkout's staleness, and worse, a push to another repo's default branch judged against
+      # the wrong default. It has to be read; it just must not leak across segments.
       -C)
         shift
-        if [ $# -gt 0 ] && [ "$is_push" = 0 ]; then
-          work_dir=$(_unquote "$1")
-          case "$work_dir" in
-            '~') work_dir=$HOME ;;
-            '~'/*) work_dir=$HOME/${work_dir#'~'/} ;;
+        if [ $# -gt 0 ]; then
+          d=$(_unquote "$1")
+          case "$d" in
+            '~') d=$HOME ;;
+            '~'/*) d=$HOME/${d#'~'/} ;;
+          esac
+          # git applies repeated -C cumulatively and resolves a relative one against the cwd it
+          # already has — which here is any preceding `cd`. `cd ../foo && git -C bar push` acts on
+          # ../foo/bar, and `git -C a -C b` on a/b. Checking ./bar or ./b would land on a
+          # nonexistent path and fail open, which is the failure this whole block is about.
+          case "$d" in
+            /*) seg_dir=$d ;;
+            *)
+              if [ -n "$seg_dir" ]; then
+                seg_dir=$seg_dir/$d
+              elif [ -n "$work_dir" ]; then
+                seg_dir=$work_dir/$d
+              else
+                seg_dir=$d
+              fi
+              ;;
           esac
         fi
         [ $# -gt 0 ] && shift
@@ -119,7 +144,11 @@ while IFS= read -r seg; do
     esac
   done
   sub=${1:-}
-  [ "$prog" = git ] && [ "$sub" = push ] && is_push=1
+  if [ "$prog" = git ] && [ "$sub" = push ]; then
+    is_push=1
+    # Promote here, and only here: this segment IS the push, so its -C is the repo git will act on.
+    [ -n "$seg_dir" ] && work_dir=$seg_dir
+  fi
   if [ "$prog" = gh ] && [ "$sub" = pr ] && [ "${2:-}" = create ]; then
     is_prcreate=1
     # A stacked PR (`--base <parent>`) must be judged against ITS base, not
