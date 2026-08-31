@@ -15,18 +15,11 @@
 # `*_COMMAND` resolvers (spacebase, gninety) exec it by path, and git execs it as
 # a credential helper; the boomfile drives provision/status via `on apply|verify`.
 #
-# `header` is deleted, for the second and final time. It emitted a bearer token
-# for an HTTP MCP `headersHelper`, was cut on 2026-07-25 when the GitHub MCP went
-# away, and was restored days later when that server came back — then the server
-# went away again and the verb did not. On 2026-08-28 an audit found it dispatched
-# but unreachable: nothing in the repo declares an HTTP MCP server, and
-# `dot-claude/SETTINGS.md` now says outright "Do not re-add
-# api.githubcopilot.com/mcp/ behind a bespoke headersHelper".
-#
-# It is the verb that printed a live PAT into a transcript on 2026-07-25, so a
-# dispatchable-but-unused spelling of it is the worst kind of speculative surface.
-# Restoring it is `git log -S cmd_header` — but read that SETTINGS.md line first,
-# because the last two restorations both preceded the consumer disappearing again.
+# `header` is deleted. It emitted a bearer token for an HTTP MCP `headersHelper`; nothing in
+# the repo declares an HTTP MCP server, and it is the verb that printed a live PAT into a
+# transcript on 2026-07-25. Do not re-add api.githubcopilot.com/mcp/ behind a bespoke
+# headersHelper. Restoring it is `git log -S cmd_header`.
+
 set -euo pipefail
 
 # Normalize PATH so `op` (brew) resolves even when a plugin resolver execs us

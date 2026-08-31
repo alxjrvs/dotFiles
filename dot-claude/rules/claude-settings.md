@@ -21,4 +21,4 @@ instead: a path-scoped rule costs nothing until Claude reads a matching file.
 
 `permissions.deny` is a floor, not the whole control — `dot-claude/hooks/op-guard.sh`
 sits above it as an allow-list, because a deny-list of verbs fails open on the
-verb nobody thought of. Per-key reasoning: `dot-claude/SETTINGS.md`.
+verb nobody thought of.

@@ -32,6 +32,5 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
   `.mcp.json`. To use a secret, pass it (`op run --env-file=F -- CMD`), never read it.
 - The hooks, guards, and their suites carry their own reasoning in their headers. Each guard fails
   open by design; add a regression case before changing one.
-- Reasons, incidents, measurements: `dot-claude/DECISIONS.md`. The `settings.json` key index:
-  `dot-claude/SETTINGS.md`. Neither is symlinked, so neither costs anything per session — which is
-  exactly why they, and not this file, hold the history.
+- Reasons, incidents, measurements: `dot-claude/DECISIONS.md`. Not symlinked, so it costs nothing
+  per session — which is exactly why it, and not this file, holds the history.

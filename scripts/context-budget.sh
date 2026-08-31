@@ -24,7 +24,7 @@
 # whatever is cheapest to delete, not whatever is least worth loading. Each
 # leaves roughly a fifth free: enough for a legitimate addition, not a section.
 #
-# WHY AN EXPLICIT LIST, NEVER A *.md GLOB: DECISIONS.md and SETTINGS.md are
+# WHY AN EXPLICIT LIST, NEVER A *.md GLOB: DECISIONS.md is
 # deliberately UNCAPPED and unbanned. They are not symlinked
 # into ~/.claude/, so they cost nothing per session. Capping the overflow
 # destination would push content back into the loaded file, inverting the whole
@@ -220,7 +220,6 @@ if [ "$fail" -ne 0 ]; then
   echo "  a procedure           -> a skill in dot-claude/skills/"
   echo "  it must actually hold -> a hook, permissions.deny, or a boom verify check"
   echo "  a reason or history   -> dot-claude/DECISIONS.md"
-  echo "  a settings.json key   -> dot-claude/SETTINGS.md"
   echo "  a note to a human     -> an HTML comment; the client strips it, so it is free"
   echo "  already enforced      -> nowhere. Describing a control is not the control."
   exit 1
