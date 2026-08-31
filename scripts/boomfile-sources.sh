@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # Every `src` the boomfile links actually exists in this repo.
 #
-# WHY. `boomfile.toml` is the repo — it names ~40 payload files by path, and a
+# WHY. `boomfile.toml` is the repo — it names the payload files by path, and a
 # path that no longer exists is a `boom source` that fails partway through on a
 # real machine, after it has already changed things. Renaming or deleting a
 # payload file without updating its link is the obvious way in, and nothing

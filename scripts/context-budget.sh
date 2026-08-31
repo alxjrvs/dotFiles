@@ -75,7 +75,7 @@ classify_link() {
   # against the raw `dst = "~/.claude/…"` strings read out of boomfile.toml, not
   # against a resolved path. Expanding to $HOME would make every pattern miss —
   # which is the bug this had before the quotes went on, when the inventory
-  # reported all fourteen links as unknown.
+  # reported every link as unknown.
   # shellcheck disable=SC2088
   case "$1" in
     "~/.claude/CLAUDE.md") echo "billed in full — capped above" ;;
@@ -141,6 +141,42 @@ for l in $links; do
   fi
 done
 [ "$fail" -ne 0 ] || echo "ok link inventory ($n_links ~/.claude/ links, all classified)"
+
+# ── no prose may restate a count this repo computes ───────────────────
+# WHY. An audit tested every checkable factual claim in this repo's prose and
+# found all of them wrong — including three separate statements of the link
+# count (README, DECISIONS.md, and a comment six lines above the line that
+# PRINTS the correct one), and three different figures for the payload files
+# boomfile.toml names. DECISIONS.md already publishes the rule this enforces:
+# a number "may never describe how the system currently is — name the
+# authority instead of the value".
+#
+# NOT a comment-ratio ceiling. That was considered and is the wrong
+# instrument: a ratio cannot tell a hard-won mechanism explanation from a
+# restated constant, so it forces deletion of whichever comment is cheapest
+# rather than whichever is least worth keeping. This asserts one property
+# instead — if a script here computes it, prose may not also assert it.
+#
+# Scoped deliberately to the two counts that actually rotted. A general
+# "no digits near nouns" rule would fire on every measurement in a dated
+# DECISIONS.md entry, and those are honest: the date is what makes them true.
+# NO `\b`. git grep's ERE does not implement it: the pattern compiles, matches
+# nothing, and the gate passes on everything — verified by injecting "14 links"
+# and watching the first draft of this check report ok. Explicit character-class
+# boundaries, the same idiom `guard-lib.sh` uses for its verb regex.
+_B='([^A-Za-z0-9_-]|$)'
+restated=$(git grep -nEI \
+  "(^|[^A-Za-z0-9_-])([0-9]+|ten|eleven|twelve|(thir|four|fif|six|seven|eigh|nine)teen|twenty) (~/\.claude/ )?(links|payload files)$_B" \
+  -- . ':(exclude)scripts/context-budget.sh' 2> /dev/null || true)
+if [ -n "$restated" ]; then
+  echo "$restated" | while IFS= read -r hit; do
+    echo "context-budget: $hit"
+  done
+  echo "context-budget: prose restates a count a script computes — name the authority, not the value (see DECISIONS.md, \"How to write a number so it cannot rot\")"
+  fail=1
+else
+  echo "ok no restated counts"
+fi
 
 # ── per-file ceilings ─────────────────────────────────────────────────
 if [ "$#" -eq 0 ]; then

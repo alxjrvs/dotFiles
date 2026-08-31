@@ -11,7 +11,7 @@ pre-commit:
   parallel: true
   commands:
     shellcheck:
-      # `*.sh` matches the hooks + boominit.sh recursively.
+      # `*.sh` matches every shell payload recursively.
       glob: "{*.sh,git-template/hooks/*}"
       run: shellcheck -x {staged_files}
     shfmt-check:

@@ -64,6 +64,22 @@ case_exit plist_real 0 ./scripts/plist-validity.sh launchd/*.plist
 case_exit skillcap_default_glob 0 ./scripts/description-cap.sh
 case_exit context_budget_real 0 ./scripts/context-budget.sh
 
+# --- the restated-count check must not be written with `\b` -----------------
+# git grep's ERE does not implement the word-boundary escape: the pattern
+# compiles, matches nothing, and the check reports ok on a file that plainly
+# violates it. The first draft of the restated-count gate did exactly that, and
+# passed a planted counter-example in README.md. This asserts the shape rather
+# than the behaviour, because the check greps the whole repo and has no fixture
+# form — and the failure being guarded is that a silent no-op looks identical
+# to a pass. Comment lines are excluded: this file and that one both have to be
+# able to NAME the escape in order to explain it.
+if grep -v '^[[:space:]]*#' scripts/context-budget.sh | grep -q '\\b'; then
+  fail=$((fail + 1))
+  echo "  [context_budget_no_word_boundary] scripts/context-budget.sh uses the word-boundary escape, which git grep silently ignores"
+else
+  pass=$((pass + 1))
+fi
+
 # --- the ~/.claude/ link inventory ------------------------------------------
 # context-budget.sh caps two files, but seven surfaces are billed, and the gap
 # was invisible: skills/, agents/ and loop.md were each linked into ~/.claude/
@@ -95,7 +111,7 @@ case_exit rules_no_rule_inputs 1 ./scripts/rules-scoped.sh README.md
 case_exit rules_missing_dir 1 env DIR=dot-claude/does-not-exist ./scripts/rules-scoped.sh
 
 # --- boomfile srcs exist ----------------------------------------------------
-# taplo proves the file parses, which says nothing about whether the ~56 paths it
+# taplo proves the file parses, which says nothing about whether the paths it
 # names are there. A missing src fails `boom source` partway through, on a real
 # machine, after it has already changed things.
 case_exit boomsrc_real 0 ./scripts/boomfile-sources.sh
