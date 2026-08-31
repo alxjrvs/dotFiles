@@ -31,7 +31,7 @@
 # Three outcomes:
 #
 #   client not found          exit 0, one line. A machine that installs Claude Code
-#                             somewhere else must not fail a nightly verify.
+#                             somewhere else must not fail a verify run.
 #   fingerprints intact       exit 0, silent. The normal case.
 #   a fingerprint missing     exit 1, naming which hook is now suspect.
 #

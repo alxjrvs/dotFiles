@@ -18,7 +18,7 @@
 # "different from measured" — a machine under load, a cold cache, or a Rosetta
 # shell all move the number, and a check that fires on those trains you to ignore
 # it. Set well above the ~250 ms baseline so it means "something changed
-# structurally", which is the only signal worth a nightly notification.
+# structurally", which is the only signal worth a notification.
 #
 # Verify-only, and machine state: CI has no sheldon, no atuin, no mise shims and
 # no plugins, so a runner would measure a shell that does not exist here.

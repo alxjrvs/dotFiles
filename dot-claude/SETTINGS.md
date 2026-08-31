@@ -52,7 +52,7 @@ fails when `claude mcp list` reports `✘` or `! Needs authentication`.
 account-level **claude.ai connectors** — Asana, Atlassian, Box, Canva, Figma, HubSpot, Intercom,
 Linear, monday.com, Notion and more — which are configured at claude.ai, not here. Most sit
 unauthenticated, so an unfiltered check failed on essentially every run and would have trained the
-nightly notify to be ignored. The verify step now skips lines the client prefixes with
+drift notification to be ignored. The verify step now skips lines the client prefixes with
 `claude.ai `, so it only judges what this machine actually configures.
 
 If one of these two genuinely needs re-authentication, the check fires and that is correct — run

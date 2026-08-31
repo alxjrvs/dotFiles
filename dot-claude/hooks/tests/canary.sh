@@ -31,7 +31,7 @@
 # The reason both numbers are that high is deliberate: no case asserts on the
 # exit code alone. Each one also requires the message to name the hook that just
 # became suspect, or to say the check itself is broken — because an operator
-# woken by the nightly notify has only that line to act on, and "exit 1" with
+# reading a verify failure has only that line to act on, and "exit 1" with
 # the wrong explanation would send them to re-measure the wrong defect.
 set -u
 
@@ -118,7 +118,7 @@ if [ "$st" -ne 0 ] && printf '%s' "$out" | grep -q 'fingerprint method is broken
   note unreadable_strings "expected a non-zero exit reporting a broken method, got exit $st: $out"
 fi
 
-# --- 5. no client installed → skip, never a nightly false alarm ----------
+# --- 5. no client installed → skip, never a false alarm ------------------
 out=$("$CANARY" "$ROOT/does-not-exist" 2>&1)
 st=$?
 if [ "$st" -eq 0 ] && printf '%s' "$out" | grep -q 'skipping'; then ok; else

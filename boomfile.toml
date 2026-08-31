@@ -338,9 +338,9 @@ cmd = "curl -fsSL https://claude.ai/install.sh | bash"
 # ever passes through it.
 #
 # `unless` keys off the registration, not the binary, so this converges once and stays quiet.
-# Registration lives in `~/.claude.json`, which nothing tracks — that is the same gap CLAUDE.md
-# records for the project-scoped `github`/`render` servers ("neither is declared in the boomfile,
-# so a fresh machine reproduces neither"). This step closes it for this one server.
+# Registration lives in `~/.claude.json`, which nothing tracks, so a fresh machine reproduces no
+# project-scoped server at all. CLAUDE.md used to record that gap and no longer does, so this is
+# now the only place it is written down. This step closes it for this one server.
 [[section.run]]
 on = "sync"
 unless = '''test ! -x /Applications/1Password.app/Contents/MacOS/1password-mcp || jq -e '.mcpServers["1password"]' ~/.claude.json >/dev/null 2>&1'''
@@ -355,7 +355,7 @@ cmd = "claude mcp add --scope user 1password -- /Applications/1Password.app/Cont
 # check — and note that server reports `✔ Connected` even with nobody at the keyboard, because
 # its human approval gate is at TOOL-CALL time, per Environment, not at connect. That was
 # measured before adopting it precisely because a server that needed auth to connect would have
-# failed `boom verify` on every unattended nightly run.
+# failed `boom verify` on every scheduled run, back when there was one.
 [[section.run]]
 on = "verify"
 cmd = '''
@@ -458,15 +458,20 @@ on = "verify"
 # more), several of which are unlikely ever to be authenticated deliberately. So
 # the unfiltered check failed on essentially every run, which is exactly the
 # "a check that cries wolf gets bypassed" failure this repo has already paid for
-# twice — and it would have trained the nightly notify to be ignored.
+# twice — and it would have trained the drift notification to be ignored.
 #
 # The filter is on the client's display prefix rather than a jq read of
 # ~/.claude.json, because the failure direction is right: if that prefix ever
 # changes, the check goes NOISY, which is visible, rather than silently green.
 #
-# The stale note that used to sit here described `github` and `render` as
-# project-scoped servers this check could not see. Both are gone — `github` was
-# deleted with the third-party GitHub MCP, and `render` never existed in any scope.
+# The note that used to sit here described `github` and `render` as project-scoped
+# servers this check could not see, and its replacement was false in both halves.
+# `github` was NOT gone: it stayed registered for SU-SRD at project AND local scope
+# until 2026-08-31, its helper calling the `op-agent header` verb deleted on 08-28.
+# `render` DID exist and still does, still failing to connect — which the
+# `headersHelper` step below already said in as many words, while this line went on
+# contradicting it. Both `github` registrations are now removed; `render` is not,
+# and this check is the thing that reports it.
 cmd = '''
 for i in 1 2 3; do
   claude mcp list 2>&1 | grep -v '^claude\.ai ' | grep -qE '✘|! Needs authentication' || exit 0
@@ -888,7 +893,7 @@ cmd = "op-agent audit agent-vault.txt"
 #   THE GAP, named because nothing here closes it: this proves the helper BINARY is executable,
 # never that its `op://` ref RESOLVES. A helper aimed at a deleted vault item is executable, exits
 # 0 and emits `{}` — green here while the server is dead. Closing it means resolving a secret on an
-# unattended launchd timer, which is a worse trade than the blind spot. `claude mcp list` is the
+# unattended run, which is a worse trade than the blind spot. `claude mcp list` is the
 # control that catches this class.
 [[section.run]]
 on = "verify"
