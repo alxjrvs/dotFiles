@@ -7,7 +7,6 @@
 # covers: dot-claude/hooks/guard-lib.sh
 # covers: dot-claude/hooks/op-guard.sh
 # covers: dot-claude/hooks/rebase-guard.sh
-# covers: dot-claude/hooks/worktree-checkout-guard.sh
 # covers: dot-claude/hooks/tests/cases.tsv
 # Regression suite for the three PreToolUse guards.
 #
@@ -108,7 +107,6 @@ fixture_dir() {
 guard_path() {
   case "$1" in
     rebase) printf '%s' "$GUARD_DIR/rebase-guard.sh" ;;
-    worktree) printf '%s' "$GUARD_DIR/worktree-checkout-guard.sh" ;;
     op) printf '%s' "$GUARD_DIR/op-guard.sh" ;;
     *) return 1 ;;
   esac

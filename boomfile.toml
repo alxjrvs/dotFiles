@@ -166,14 +166,6 @@ src = "dot-claude/hooks/rebase-guard.sh"
 dst = "~/.claude/hooks/rebase-guard.sh"
 mode = "755"
 
-# PreToolUse guard (runs before rebase-guard): blocks `git checkout/switch
-# <default>` from inside a linked worktree, where it fails "'<default>' is already
-# used by worktree". The single highest-frequency mechanical crash agents hit.
-[[section.link]]
-src = "dot-claude/hooks/worktree-checkout-guard.sh"
-dst = "~/.claude/hooks/worktree-checkout-guard.sh"
-mode = "755"
-
 # PreToolUse guard: refuses to destroy a worktree whose lock names a LIVE pid.
 # The one irreversible action here with no PR and no reflog behind it — the
 # commits may exist nowhere else and the working tree certainly does not.

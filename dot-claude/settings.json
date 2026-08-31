@@ -142,11 +142,6 @@
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/worktree-checkout-guard.sh",
-            "if": "Bash(*git*)"
-          },
-          {
-            "type": "command",
             "command": "~/.claude/hooks/rebase-guard.sh",
             "if": "Bash(*git*)"
           },
