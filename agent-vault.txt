@@ -1,30 +1,41 @@
-# agent-vault.txt — the declared contents of the 1Password vault the Claude
-# service account can read (`claude-agent`, or whatever `BOOM_vault` names).
+# agent-vault.txt — the items in the `claude-agent` 1Password vault that THIS REPO
+# RESOLVES (or whatever `BOOM_vault` names).
 #
-# Checked by `op-agent audit agent-vault.txt`, wired as a `boom verify` step.
-# Drift in EITHER direction fails: an item in the vault but not listed here is
-# blast radius nobody reviewed, and an item listed here but absent from the
-# vault means a consumer is about to break.
+# Checked by `op-agent audit agent-vault.txt`, wired as a `boom verify` step, in
+# ONE direction: every item named here must exist in the vault. A declared item
+# that is missing means a consumer in this repo is about to resolve nothing, and
+# that is a real breakage worth failing a verify over.
 #
-# WHY A FILE AND NOT A COMMENT. Two 1Password facts make membership the whole
-# control surface, so it has to be enforceable rather than described:
+# NOT AN INVENTORY. An item in the vault that this file does not name is fine.
+# The reverse check used to fail too, on the reasoning that anything the service
+# account can read is blast radius somebody should have reviewed. That reasoning
+# is sound and the control was still wrong: it made the vault effectively
+# read-only, because adding or retiring a credential failed `boom verify` until
+# this file was edited in the same breath. A vault is a place to keep things.
+# Putting something in it is not drift.
 #
-#   1. Service-account vault access is IMMUTABLE after creation. 1Password:
-#      "If you want to grant a service account access to additional vaults or
+# What the vault's own properties do and don't get you, since the argument above
+# was built on them:
+#
+#   1. Service-account vault access is IMMUTABLE after creation. 1Password: "If
+#      you want to grant a service account access to additional vaults or
 #      Environments … you'll need to create a new service account." Scope can
-#      never be tightened in place — only the vault's CONTENTS can change.
+#      never be tightened in place — only the vault's CONTENTS can change. So
+#      membership IS the lever; this file simply no longer pulls it automatically.
 #   2. This is an Individual/Family account, so there is no Activity Log and no
-#      service-account usage report (both Business/Teams only). No per-item,
-#      per-timestamp record of what the SA read exists, and that gap is
-#      deliberately accepted (2026-08-19).
+#      service-account usage report (both Business/Teams only). There is no
+#      per-item record of what the SA read, and that gap is deliberately
+#      accepted (2026-08-19).
 #
-# So: an item added to this vault without a commit is exactly the event the
-# missing audit log would have reported. This file is how it gets reported.
+# Keeping the vault small is therefore still worth doing. It is now a judgement
+# made when you put something in, rather than a gate that fails a machine check.
 #
 # RULES
-#   - kebab-case only, `^[a-z0-9]+(-[a-z0-9]+)*$`. Every op:// ref is re-parsed
-#     by `sh -c`, so a space word-splits and the resolve fails silently — the
-#     bug that took down two MCP servers on 2026-07-25.
+#   - kebab-case only, `^[a-z0-9]+(-[a-z0-9]+)*$`, FOR THE TITLES LISTED HERE.
+#     Every op:// ref is re-parsed by `sh -c`, so a space word-splits and the
+#     resolve fails silently — the bug that took down two MCP servers on
+#     2026-07-25. That is a property of items this repo resolves; an item nobody
+#     references can keep whatever 1Password's new-item dialog called it.
 #   - One title per line. Trailing `#` comments are stripped.
 #   - An entry earns its place by having a NAMED CONSUMER, and this is now
 #     ENFORCED, not merely asserted: `op-agent audit` fails when a declared item

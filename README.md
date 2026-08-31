@@ -90,7 +90,7 @@ in `.claude/settings.json`, the statusline source repo in
 | `hooks/` | **boom lifecycle hooks.** `op-agent.sh` (1Password-agent CLI), `git-signing.ts`, `claude_statusline.ts`, `claude-canary.sh`. The directory name is boom's contract, not a choice — `[[section.hook]]` resolves scripts from a hardcoded `hooks/`, so this cannot be renamed to something less collision-prone |
 | `dot-claude/hooks/` | **Claude Code guards**, unrelated to the above: PreToolUse/SessionStart/Stop hooks plus their suites. Symlinked into `~/.claude/hooks/` |
 | `git-template/hooks/` | **git hooks**, copied into every new repo via `init.templateDir` |
-| `agent-vault.txt` | Declared contents of the `claude-agent` 1Password vault; drift in either direction fails `boom verify` |
+| `agent-vault.txt` | The `claude-agent` 1Password vault items this repo resolves; `boom verify` fails when a declared one is missing. Not an inventory — the vault may hold more |
 | `.zshrc` / `zsh/` | Thin loader + numbered zsh fragments |
 | `.gitconfig`, `.gitmessage` | Git identity, commit template, 1Password SSH signing |
 | `starship.toml` | Prompt |

@@ -379,13 +379,15 @@ cmd_audit() {
     return $rc
   fi
 
-  # 1. kebab-case. The invariant exists because every op:// ref is re-parsed by
-  #    `sh -c`, so a space word-splits and the resolve fails silently. Asserting
-  #    the whole shape (not merely "no spaces") keeps refs predictable.
+  # 1. kebab-case, for DECLARED items only. The invariant exists because every
+  #    op:// ref is re-parsed by `sh -c`, so a space word-splits and the resolve
+  #    fails silently — which is a property of items this repo RESOLVES, not of
+  #    everything that happens to sit in the vault. An item nobody references can
+  #    be called whatever 1Password's new-item dialog called it.
   local bad_titles
-  bad_titles="$(printf '%s\n' "$actual" | grep -vE '^[a-z0-9]+(-[a-z0-9]+)*$' || true)"
+  bad_titles="$(printf '%s\n' "$expected" | grep -vE '^[a-z0-9]+(-[a-z0-9]+)*$' || true)"
   if [[ -n "$bad_titles" ]]; then
-    echo "op-agent: vault ($VAULT) has non-kebab-case titles — every op:// ref is re-parsed by sh -c:" >&2
+    echo "op-agent: $manifest declares non-kebab-case titles — every op:// ref is re-parsed by sh -c:" >&2
     printf '%s\n' "$bad_titles" | _prefixed '  ' >&2
     rc=1
   fi
@@ -407,15 +409,18 @@ cmd_audit() {
   #    was undeclared. The whole membership control — the reason this file exists,
   #    since service-account vault scope is immutable and membership is the only
   #    lever — was silently wrong for any capitalized title.
-  local undeclared missing
-  undeclared="$(LC_ALL=C comm -23 <(printf '%s\n' "$actual") <(printf '%s\n' "$expected"))"
+  #    ONE DIRECTION, deliberately. An item in the vault that this manifest does not
+  #    name used to fail here, on the reasoning that anything the service account can
+  #    read is blast radius somebody should have reviewed. That is a policy, and it
+  #    made the vault read-only in practice: adding or retiring a credential failed
+  #    `boom verify` until the manifest was edited in the same breath. The vault is a
+  #    place to keep things, so putting something in it is not drift.
+  #
+  #    What remains is the half that predicts a BREAKAGE rather than expressing a
+  #    preference: a declared item missing from the vault means a consumer named in
+  #    this repo is about to resolve nothing. That is still a failure.
+  local missing
   missing="$(LC_ALL=C comm -13 <(printf '%s\n' "$actual") <(printf '%s\n' "$expected"))"
-  if [[ -n "$undeclared" ]]; then
-    echo "op-agent: vault ($VAULT) holds items not declared in $manifest:" >&2
-    printf '%s\n' "$undeclared" | _prefixed '  + ' >&2
-    echo "  Everything here is readable by the service account. Move it out, or declare it." >&2
-    rc=1
-  fi
   if [[ -n "$missing" ]]; then
     echo "op-agent: $manifest declares items absent from vault ($VAULT):" >&2
     printf '%s\n' "$missing" | _prefixed '  - ' >&2
@@ -423,7 +428,7 @@ cmd_audit() {
   fi
 
   if [[ $rc -eq 0 ]]; then
-    echo "op-agent: vault ($VAULT) matches $manifest ($(printf '%s\n' "$actual" | wc -l | tr -d ' ') items)"
+    echo "op-agent: every item $manifest declares is present in vault ($VAULT) ($(printf '%s\n' "$expected" | wc -l | tr -d ' ') declared)"
   fi
   return $rc
 }

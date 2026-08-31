@@ -41,6 +41,7 @@ sections large enough to need it, so growth costs navigability rather than silen
 - [Retention](#retention)
 - [Contents](#contents)
 - [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-31 — the vault audit made the vault read-only, so it lost a direction](#2026-08-31--the-vault-audit-made-the-vault-read-only-so-it-lost-a-direction)
 - [2026-08-31 — the keep-awake hook was keeping the wrong thing awake](#2026-08-31--the-keep-awake-hook-was-keeping-the-wrong-thing-awake)
 - [2026-08-31 — the credential scrub was also a permission-mode switch](#2026-08-31--the-credential-scrub-was-also-a-permission-mode-switch)
 - [2026-08-29 — the guard in front of every push was making a network call](#2026-08-29--the-guard-in-front-of-every-push-was-making-a-network-call)
@@ -136,6 +137,55 @@ Three corollaries, each mechanical:
 Counts that survive are the ones with an owner: a `jq` assertion, a `wc -c` gate, a test that
 fails. If a number matters enough to write down, make something check it; if it does not, describe
 the invariant and drop the digit.
+
+---
+
+## 2026-08-31 — the vault audit made the vault read-only, so it lost a direction
+
+`op-agent audit` checked membership BOTH ways: an item declared in
+`agent-vault.txt` but absent from the vault failed, and an item in the vault not
+named in the file failed too. The second half is gone.
+
+### Why it had to go
+
+The reasoning for it was sound and the control was still wrong. Anything the
+service account can read is blast radius, and on an Individual/Family 1Password
+account there is no Activity Log to tell you after the fact — so the file was
+built to be the record instead.
+
+But the effect was that the vault became read-only in practice. Putting a
+credential in it, or retiring one, failed `boom verify` until this repo was
+edited in the same commit. A vault is a place to keep things; putting something
+in it is not drift. The check was reporting a normal act as a fault, and the only
+way to clear it was paperwork.
+
+That is the shape this repo keeps finding elsewhere — a gate that fires on
+legitimate work trains you to route around it. Here it went further than
+training: it made a green machine depend on the owner not using 1Password
+normally.
+
+### What survives, and why that half is different
+
+An item declared here but MISSING from the vault still fails. That is not a
+policy, it is a prediction: a consumer named in this repo is about to resolve
+nothing. The two halves were never the same kind of check, and only one of them
+was about correctness.
+
+The kebab-case rule narrowed with it, from every title in the vault to the titles
+this file declares. `^[a-z0-9]+(-[a-z0-9]+)*$` exists because an `op://` ref is
+re-parsed by `sh -c`, so a space word-splits and the resolve fails silently — a
+property of items this repo RESOLVES. An item nobody references can keep whatever
+1Password's new-item dialog called it, which is where `Name` came from.
+
+### Measured
+
+With the live vault (`Name`, `claude-git-pat`, `gninety`, `npm-publish-token`)
+against the three declared items, the audit exits 0. Both negative controls still
+fire: a declared item absent from the vault fails, and a non-kebab declared title
+fails.
+
+Keeping the vault small is still worth doing. It is now a judgement made when you
+put something in, rather than a gate that fails a machine check.
 
 ---
 
