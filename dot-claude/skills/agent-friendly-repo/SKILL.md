@@ -1,6 +1,7 @@
 ---
 name: agent-friendly-repo
 description: Configure a GitHub repo for automated PR → auto-merge: squash-only merges, a branch-protection ruleset, stacked PRs via the official github/gh-stack, and optional Dependabot auto-merge or merge queue. Use for "make this repo agent-friendly", "set up auto-merge", "align merge settings + branch protection", "add a merge queue", "set up stacked PRs", "auto-merge dependabot", "carry .env into worktrees".
+disable-model-invocation: true
 ---
 
 # agent-friendly-repo

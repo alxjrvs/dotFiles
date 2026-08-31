@@ -7,8 +7,13 @@
 # nasty: a forker's agent commits get authored as someone else, or `boom verify`
 # fails against a 1Password vault that was never theirs.
 #
-# So the list is enforced rather than maintained. Every file that legitimately
+# So a NEW hardcoded name cannot land unnoticed. Every file that legitimately
 # names the owner is enumerated below; anywhere else, the name is drift.
+#
+# What this does NOT do, and used to claim it did: assert that README's forking
+# section lists these files. It checks its own allowlist, which is a superset -
+# most entries here (LICENSE, .gitmessage, Brewfile) have no reason to appear in
+# that section. Keeping README's list correct is still a human job.
 #
 # WHY NOT JUST BAN IT EVERYWHERE. Several of these files must name the owner to
 # work at all — the git identity IS the owner, the vault reference IS the vault.
