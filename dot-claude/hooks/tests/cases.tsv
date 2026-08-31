@@ -456,6 +456,21 @@ op	nonrepo	op run --env-file=$HOME/.env -- npm publish	allow
 op	nonrepo	git commit -m "fix `op read` guard"	allow
 op	nonrepo	tar -C "$(pwd)" -cf - .	allow
 
+# MUST STILL ALLOW, multi-line: `^` is a LINE anchor in grep, so before the
+# quote-state fix every line start of a multi-line argument read as program
+# position. A markdown code fence inside a PR body — a line beginning with a
+# backtick — was denied as a substituted program name. Measured three times in
+# one session, none of them invoking 1Password. The fence is INSIDE an open
+# quote, so it is data.
+op	nonrepo	gh pr create --body 'shapes:\n```\nop whoami\n```\nend'	allow
+op	nonrepo	git commit -F - <<'EOM'\n```\nsee op read\n```\nEOM	allow
+
+# MUST STILL DENY, multi-line: a newline IS a command separator when it is not
+# inside a quote or a heredoc body, so a substituted program name on the second
+# line is still program position. This is the case the fix must not widen past.
+op	nonrepo	echo starting\n$(echo op) read op://vault/item/field	deny
+op	nonrepo	echo starting\n`echo op` read op://vault/item/field	deny
+
 # --- REGRESSION: `git push --all` / `--mirror` from a feature branch --------
 # Both name their refs from the local ref namespace, not from argv, so the
 # refspec analysis could not see them and they fell through to "pushes the
