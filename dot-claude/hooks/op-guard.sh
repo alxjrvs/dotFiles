@@ -2,39 +2,23 @@
 # Claude Code PreToolUse guard — makes the 1Password CLI USABLE by agents while
 # keeping resolved secrets out of model context.
 #
-# Until 2026-08-18 the control here was `permissions.deny` → `Bash(op:*)`, scoped
-# to the binary. That was the right call *for a deny-list*: the 2026-07-25
-# postmortem showed verb enumeration fails open — the list blocked `op-agent
-# secret`, `op read` and `op item get` but not `op-agent header`, the one command
-# with a confirmed leak. Binary scope covers every verb including unwritten ones.
-#
-# The cost was total: `op --version` was denied. So was `op run -- npm publish`,
-# which is 1Password's own recommended shape and prints no secret at all —
-# CLAUDE.md's advice was "run it from your own terminal". A control that blocks
-# the vendor's recommended pattern isn't a floor, it's an outage.
-#
-# This inverts the list. It is an ALLOW-list of shapes that provably do not put a
-# secret VALUE on stdout, and it denies everything else `op`-shaped. That flips
-# the failure mode: under a deny-list a forgotten verb sails through, under an
-# allow-list a forgotten verb is blocked. `op read`, `op document get`, a verb
-# 1Password ships next year, and a typo all fail the same closed way.
+# It is an ALLOW-list of shapes that provably do not put a secret VALUE on
+# stdout, and denies everything else `op`-shaped. The direction is the whole
+# design: under a deny-list a forgotten verb sails through; under an allow-list
+# a new verb, an unlisted one and a typo all fail the same closed way. What DOES
+# get through is SAFE_SHAPES below — a control that blocks the vendor's
+# recommended pattern is an outage, not a floor.
 #
 # WHAT IT NEVER DOES: emit `permissionDecision: "allow"`. A hook `allow` bypasses
-# the permission system entirely, which would put this script *above*
-# `permissions.deny`. It only ever denies or stays silent, so it can subtract
-# permission and never add it — `permissions.deny` remains the floor underneath,
-# and the two compose instead of racing.
+# the permission system entirely, putting this script *above* `permissions.deny`.
+# It only ever denies or stays silent, so it can subtract permission and never
+# add it, and the two compose instead of racing.
 #
-# Wired agent-side via dot-claude/settings.json `hooks.PreToolUse` (matcher
-# "Bash"), alongside rebase-guard.sh, worktree-remove-guard.sh and
-# repo-scope-guard.sh.
-#
-# It FAILS OPEN (allow) on a missing jq, a bad envelope, or a missing guard-lib —
-# same as its two siblings, and defensible for the same reason they are: the
-# residual `permissions.deny` entries (`op read`, `op item get`, `op document
-# get`, and the whole `op-agent` binary) still cover the paths with confirmed
-# incidents. Fail-open here degrades to roughly the pre-2026-08-18 floor minus
-# binary scope on `op`; it does not degrade to nothing.
+# Wired via dot-claude/settings.json `hooks.PreToolUse` (matcher "Bash"),
+# alongside rebase-guard.sh, worktree-remove-guard.sh and repo-scope-guard.sh.
+# It FAILS OPEN on a missing jq, a bad envelope or a missing guard-lib: the
+# residual `permissions.deny` entries still cover the paths with confirmed
+# incidents, so that degrades to a floor rather than to nothing.
 set -u
 
 allow() { exit 0; }
@@ -53,27 +37,17 @@ cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2> /dev/null) 
 # `chmod` do not wake it up.
 #
 # `boom`, `security` and `git` are here because each has ONE subcommand that
-# prints a live credential to stdout, and none of those commands contains an `op`
-# token, so the original pattern slept through all three. `security
-# find-generic-password` is the sharpest: the token it guards is the SERVICE
-# ACCOUNT's, which reads every item in the vault, and the keychain item is named
-# `op-claude-agent` — where the character after `op` is `-`, which this pattern's
-# own exclusion class rules out. The highest-value secret on the machine sat
-# behind the one rule that could never fire.
+# prints a live credential and none of them contains an `op` token. Each is
+# anchored on that SUBCOMMAND, not on the program name, and that is load-bearing
+# rather than tidy: waking on the bare word `git` or `boom` drags every ordinary
+# invocation into this guard's unconditional deny paths (a program name from a
+# command substitution, a name it cannot statically read), which are correct for
+# an `op`-shaped command and wrong for anything else. `security
+# find-generic-password` needs its own anchor because the keychain item is named
+# `op-claude-agent`, and `-` is outside the `op` anchor's word class.
 #
-# Each of those three is anchored on its SUBCOMMAND, not on the program name, and
-# that is load-bearing rather than tidy. Waking on the bare word `git` drags every
-# ordinary git command into this guard's unconditional deny paths — the ones for a
-# program name that comes from a command substitution, and for a name it cannot
-# statically read. Measured on 2026-08-28, waking on the program name alone turned
-# `$(git rev-parse --show-toplevel)/scripts/gates.sh`, `$(brew --prefix)/bin/git
-# status` and `$HOME/.local/bin/boom verify` from allow into DENY — the last being
-# boom's actual install path on this machine — and answered each with an
-# op-secrets lecture. Those deny paths are correct for an `op`-shaped command and
-# wrong for anything else, so the bail-out is what must stay narrow.
-#
-# `op` keeps its bare-program anchor: every `op` verb is a candidate, which is the
-# whole premise of the allow-list below.
+# `op` keeps its bare-program anchor: every verb is a candidate, which is the
+# premise of the allow-list below.
 printf '%s' "$cmd" | grep -qE '(^|[^A-Za-z0-9_.-])(op(-agent)?([^A-Za-z0-9_-]|$)|boom([^A-Za-z0-9_-]|$).*askpass|security([^A-Za-z0-9_-]|$).*find-(generic|internet)-password|security([^A-Za-z0-9_-]|$).*find-(certificate|identity)|git([^A-Za-z0-9_-]|$).*credential)' || allow
 
 # shellcheck source=dot-claude/hooks/guard-lib.sh
@@ -120,19 +94,16 @@ _bad_op_run_child() { # $1 = basename of the command after `--`, $2.. = its argv
   case "$_prog" in
     env | printenv | set | export | declare | typeset | printf | echo) return 0 ;;
     sh | bash | zsh | dash | ksh | fish | eval | xargs) return 0 ;;
-    # Same argument as the shells directly above, and the same omission the
-    # 2026-08-28 audit found in `_is_interpreter`: `op run -- python3 -c
-    # "print(os.environ)"` prints every INJECTED value, which is precisely what
-    # listing `env` and `printenv` here exists to stop. A language runtime is a
-    # more capable `printenv`, not a less capable one.
+    # A language runtime is a more capable `printenv`, not a less capable one:
+    # `op run -- python3 -c "print(os.environ)"` prints every INJECTED value,
+    # which is precisely what listing `env` and `printenv` here exists to stop.
     # `awk`'s program is inline by construction, so it has no safe shape here.
     awk) return 0 ;;
     # The other runtimes DO have a safe shape, and it is the main reason `op run`
     # exists: `op run -- node build.js` hands a secret to a program that consumes
-    # it. Denying the whole runtime broke exactly that — `op run -- bun run dev`
-    # and `op run -- node build.js` are allow-cases in this suite, and both went
-    # red. What is unsafe is the INLINE script: `-e`/`-c` is a `printenv` whose
-    # output you cannot predict. So the FLAG decides, not the language.
+    # it, so denying the whole runtime breaks the feature. The INLINE script is
+    # what is unsafe — `-e`/`-c` is an unpredictable `printenv` — so the FLAG
+    # decides, not the language.
     python | python2 | python3 | ruby | perl | node | bun | deno | php | lua)
       for _a in "$@"; do
         case "$_a" in
@@ -150,24 +121,13 @@ _bad_op_run_child() { # $1 = basename of the command after `--`, $2.. = its argv
     # credentials from the credential helper, never from `op run`, so denying
     # this costs nothing and keeps the push guards unbypassable.
     git | gh) return 0 ;;
-    # THE SAME ARGUMENT, APPLIED TO `op` ITSELF — and this one was missed until
-    # 2026-08-19. `op run -- op read op://…` walked straight past everything:
-    # this guard saw the child as an unremarkable program and allowed it, and
-    # `permissions.deny` never matched because its rules are anchored on `op
-    # read` / `op-agent` as the FIRST token, while here the first token is `op
-    # run`. `permissions.allow` carries `Bash(op run:*)`, so the shape was not
-    # merely permitted, it was pre-approved. Measured: `op run -- op read`,
-    # `op run -- op-agent secret` and `op run -- op item edit` were all allowed.
-    #
-    # Masking does not rescue it. `op run` conceals values it INJECTED into the
-    # child's environment; a child that reads a secret itself injected nothing,
-    # so there is no value to match and the credential lands on stdout — which
-    # is model context, and is the exact 2026-07-25 leak.
-    #
-    # So `op run` may not be used as a trampoline back into `op`. Nothing
-    # legitimate needs it: `op run` exists to hand a secret to a program that
-    # consumes it, and `op` consuming its own output is not that. Path spellings
-    # are covered because the caller basenames $child before this runs.
+    # THE SAME ARGUMENT, APPLIED TO `op` ITSELF. `permissions.deny` cannot help:
+    # its rules are anchored on `op read` / `op-agent` as the FIRST token, while
+    # the first token here is `op run` — and `permissions.allow` carries
+    # `Bash(op run:*)`, so the shape is pre-approved rather than merely allowed.
+    # Masking does not rescue it: `op run` conceals values it INJECTED, and a
+    # child that reads a secret itself injected nothing, so the credential lands
+    # on stdout. Path spellings are covered because the caller basenames $child.
     op | op-agent) return 0 ;;
     *) return 1 ;;
   esac
@@ -175,18 +135,12 @@ _bad_op_run_child() { # $1 = basename of the command after `--`, $2.. = its argv
 
 # The vetting shared by `op run --` and `op plugin run --`. Both hand a live
 # credential to a child process, so both are safe exactly to the extent that the
-# child cannot print its own environment — the criterion, and therefore the code,
-# is identical. Factored out rather than copied when `op plugin` was admitted:
-# a copy is how the two spellings drift, and the 2026-08-19 finding is the proof
-# that matters — `op run -- op read` was allowed for months because the guard saw
-# an unremarkable child, and `op plugin run -- op read` is that same hole with a
-# different verb in front of it. One function, one fix.
+# child cannot print its own environment. One function rather than a copy,
+# because a copy is how the two spellings drift.
 #
-# `--no-masking` is checked for BOTH although 1Password documents it only on `op
-# run`. Masking on `op plugin run` is not documented either way, so this neither
-# assumes it exists nor assumes it doesn't: rejecting the flag costs nothing today
-# and fails closed if the flag is added tomorrow. That is the direction this guard
-# always takes on an unknown.
+# `--no-masking` is rejected for BOTH although 1Password documents it only on
+# `op run`: masking on `op plugin run` is undocumented either way, so rejecting
+# it costs nothing today and fails closed if the flag is added tomorrow.
 #
 # $1 = label for the deny messages, $2.. = argv AFTER the verb.
 _vet_injecting_run() {
@@ -227,26 +181,19 @@ $SAFE_SHAPES"
   fi
 }
 
-# The op-subcommand pattern, named once because two scans now share it and must
+# The op-subcommand pattern, named once because two scans share it and must
 # never drift apart. Anchored on a real SUBCOMMAND, so the bare word `op` in a
 # commit message is not a match.
 #
-# `header` stays in this list although the verb was deleted on 2026-08-28. This
-# pattern is DETECTION, not documentation: it decides whether an interpreter
-# payload looks op-shaped, and a hook resolves `~/.claude/hooks/` at run time
-# while `op-agent` resolves on PATH — a machine mid-provision, or holding a stale
-# link, can pair this guard with an op-agent that still has the verb. Keeping a
-# retired spelling costs a branch in a regex; dropping one costs a credential.
-# The deny MESSAGE below is where a dead verb must not appear, and does not.
+# `header` stays in this list although the verb has been deleted. This pattern is
+# DETECTION, not documentation, and a hook resolves `~/.claude/hooks/` at run
+# time while `op-agent` resolves on PATH — a machine mid-provision, or holding a
+# stale link, can pair this guard with an op-agent that still has the verb.
 #
-# `plugin` is here for ONE of its verbs. `op plugin run -- CMD` injects a live
-# credential into a child exactly as `op run --` does, so `sh -c "op plugin run
-# -- env"` is the interpreter trampoline re-spelled — and it was measured ALLOWED
-# before this verb joined the list, because the pattern's job is to decide
-# whether a payload looks op-shaped and `plugin` did not appear in it. The
-# discovery verbs pay a small price for that: `sh -c "op plugin list"` is denied
-# although it prints nothing. That is the same trade `item` already makes, and it
-# is the correct direction — run the discovery verb directly.
+# `plugin` is here for ONE of its verbs: `op plugin run -- CMD` injects a live
+# credential exactly as `op run --` does, so `sh -c "op plugin run -- env"` is
+# the trampoline re-spelled. The discovery verbs pay for that — `sh -c "op
+# plugin list"` is denied although it prints nothing. Run it directly.
 _OP_VERB_RE='(^|[^A-Za-z0-9_-])op(-agent)?[[:space:]]+(read|inject|run|item|document|vault|account|user|group|service-account|whoami|signin|secret|header|git-credential|plugin)([^A-Za-z0-9_-]|$)'
 
 # A payload piped INTO an interpreter is never an argv token of the interpreter's
@@ -255,18 +202,11 @@ _OP_VERB_RE='(^|[^A-Za-z0-9_-])op(-agent)?[[:space:]]+(read|inject|run|item|docu
 # alone, so this scans the WHOLE command — but only when it genuinely pipes into
 # an interpreter.
 #
-# The pipe is matched against a STRUCTURE-ONLY view: heredoc bodies removed and
-# quoted runs blanked. Previously both scans read the raw command, so a pipe
-# character inside a quoted argument counted as a shell operator, and
-# `git commit -m "note: x |eval can run op read op://a/b/c"` was DENIED while
-# the identical message without the pipe was allowed. That is the commit-message
-# false positive this suite exists to prevent, reopened by the gate meant to
-# keep it closed — it blocked read-only work three times during the 2026-08-28
-# audit, including the writing of this very finding.
-#
-# The op-verb scan below still reads the RAW command on purpose: the payload of
-# a genuine attack lives INSIDE the quotes, so blanking them for the content
-# scan would hide the thing being looked for. Structure from the blanked view,
+# The pipe is matched against a STRUCTURE-ONLY view (heredoc bodies removed,
+# quoted runs blanked); on the raw command a pipe inside a quoted argument counts
+# as a shell operator and denies `git commit -m "note: x |eval can run op read
+# op://a/b/c"`. The op-verb scan below still reads the RAW command on purpose:
+# an attack's payload lives INSIDE the quotes. Structure from the blanked view,
 # content from the raw one.
 if printf '%s' "$(_blank_quoted "$(_strip_heredocs "$cmd")")" |
   grep -qE '\|[[:space:]]*(sudo[[:space:]]+)?(env[[:space:]]+)?([A-Za-z0-9_./-]*/)?(sh|bash|zsh|dash|ksh|fish|eval|python[23]?|ruby|perl|node|bun|deno|php|lua|awk)([[:space:]]|$)'; then
@@ -278,21 +218,17 @@ $SAFE_SHAPES"
 fi
 
 # A command substitution in PROGRAM position — `` `echo op` read op://… `` or
-# `$(echo op) read op://…` — names a program only the shell can resolve, and
-# the shell resolves it AFTER this guard has run. It cannot be caught after
-# `_split`, because `_split` treats the substitution as a separator and
-# decomposes it: the pieces are `echo op` and `read op://…`, neither of which
-# has `op` in program position, so both fall through as ordinary commands.
+# `$(echo op) read op://…` — names a program only the shell can resolve, after
+# this guard has run. It cannot be caught after `_split`, which treats the
+# substitution as a separator and decomposes it into `echo op` and `read op://…`,
+# neither of which has `op` in program position.
 #
 # Anchored at the start of the command or immediately after a separator, so a
 # substitution inside an ARGUMENT is untouched — `git commit -m "fix \`op read\`
-# guard"` and `tar -C "$(pwd)" -cf -` are both prose or paths, not a program
-# name, and denying those would recreate the false positive this suite exists
-# to prevent.
-# Heredoc bodies and quoted runs are blanked first, with quote state carried
-# across lines: `^` is a LINE anchor in grep, so without this the start of every
-# line of a multi-line argument read as program position, and a markdown code
-# fence in a `gh pr create --body` was denied as a substituted program name.
+# guard"` and `tar -C "$(pwd)" -cf -` are prose or paths, not a program name.
+# Quoted runs are blanked with state carried ACROSS LINES first: `^` is a LINE
+# anchor in grep, so otherwise the start of every line of a multi-line argument
+# reads as program position.
 if printf '%s' "$(_blank_quoted_ml "$(_strip_heredocs "$cmd")")" |
   grep -qE '(^|[;&|]|&&|\|\|)[[:space:]]*(\$\(|`)'; then
   deny "This command's program name comes from a command substitution, so what actually runs is decided by the shell after this guard has already allowed it — and an unreadable program name is the case this guard closes rather than waves through. Spell the program out literally.
@@ -323,13 +259,12 @@ $SAFE_SHAPES"
   fi
 
   if _is_interpreter "$prog"; then
-    # Only interpreter segments get a substring scan — a prose `-m "add op
-    # support"` on a `git` segment is never reached, so the message false
-    # positive that this suite exists to prevent cannot recur here.
-    # Anchored on a real op SUBCOMMAND, not the bare word. `xargs grep op foo`
-    # and `bash -c 'echo loop'` must not trip this; `sh -c 'op read op://x'` and
-    # `sh -c '/opt/homebrew/bin/op read …'` must. A leading `/` is outside the
-    # word class, so every path spelling is caught by the same pattern.
+    # Only interpreter segments get a substring scan, so a prose `-m "add op
+    # support"` on a `git` segment is never reached. Anchored on a real op
+    # SUBCOMMAND, not the bare word: `xargs grep op foo` and `bash -c 'echo
+    # loop'` must not trip this; `sh -c 'op read op://x'` and `sh -c
+    # '/opt/homebrew/bin/op read …'` must. A leading `/` is outside the word
+    # class, so every path spelling is caught by the same pattern.
     if _scan_text "$seg" | grep -qE "$_OP_VERB_RE"; then
       deny "\`$prog\` is being handed a payload containing an \`op\` command, which this guard cannot tokenize — an interpreter is the one path that walks past both the guard and \`permissions.deny\`. Run the op command directly instead of through \`$prog -c\`.
 
@@ -352,12 +287,10 @@ $SAFE_SHAPES"
 
   # `security find-generic-password` reads the login keychain, and the item it
   # reads here is the 1Password SERVICE ACCOUNT token — the credential that can
-  # read every item in the agent vault. `permissions.deny` carries
-  # `Bash(security find-generic-password:*)`, but that rule is name-anchored and
-  # never got the path-spelling sibling `Bash(*/op *)` and `Bash(*/op-agent *)`
-  # both have, so `/usr/bin/security find-generic-password -w` walked past it.
-  # Only the value-printing subcommands are denied: `security list-keychains`
-  # and the rest stay ordinary commands.
+  # read every item in the agent vault. The `permissions.deny` rule for it is
+  # name-anchored with no path-spelling sibling, so `/usr/bin/security
+  # find-generic-password -w` walks past it. Only the value-printing subcommands
+  # are denied: `security list-keychains` and the rest stay ordinary commands.
   if [ "$prog" = "security" ]; then
     shift
     case "${1:-}" in
@@ -372,12 +305,10 @@ $SAFE_SHAPES"
 
   # `git credential` resolves through the helper chain in settings.json, which
   # ends at `op-agent git-credential` — and that prints `password=<PAT>` on
-  # stdout. So `git credential fill` hands the model a live PAT: the same class
-  # as the 2026-07-25 `op-agent header` incident, through a different door.
-  # `Bash(git credential:*)` is name-anchored like the `security` rule above, so
-  # `/usr/bin/git credential fill` and `git -C /tmp credential fill` both walked
-  # past it. `_skip_global` steps over `-C`/`-c`/`--git-dir` first, so one arm
-  # closes every spelling.
+  # stdout, handing the model a live PAT. `Bash(git credential:*)` is
+  # name-anchored like the `security` rule above, so `/usr/bin/git credential
+  # fill` and `git -C /tmp credential fill` both walk past it. `_skip_global`
+  # steps over `-C`/`-c`/`--git-dir` first, so one arm closes every spelling.
   if [ "$prog" = "git" ]; then
     shift
     set -f
@@ -394,18 +325,13 @@ $SAFE_SHAPES"
     esac
   fi
 
-  # `boom` is a secret-printing program too, and was in no deny rule and no arm
-  # here. Its own --help: "askpass  Resolve a secret ref to stdout (the
-  # SUDO_ASKPASS helper — not for interactive use)". Measured 2026-08-28:
-  # `boom askpass op://claude-agent/…/credential` reached ALLOW silently, so
-  # every item in the service-account vault was one command away — through the
-  # binary this repo drives on every sync, past an allow-list built precisely
-  # because "a deny-list of verbs missed the one verb that leaked".
+  # `boom askpass` resolves a secret ref to stdout (its own --help: "the
+  # SUDO_ASKPASS helper — not for interactive use"), so every item in the
+  # service-account vault is one command away through the binary this repo drives
+  # on every sync.
   #
-  # Allow-listed, not deny-listed, for that same recorded reason: an unknown
-  # verb fails CLOSED, which is the direction that stays safe when boom adds a
-  # command. That is the treatment this guard already gives an unrecognized
-  # `op` subcommand. Extending the list is one word plus a case in cases.tsv.
+  # Allow-listed, not deny-listed: an unknown verb fails CLOSED, which stays safe
+  # when boom adds a command. Extending it is one word plus a case in cases.tsv.
   if [ "$prog" = "boom" ]; then
     shift
     case "${1:-}" in
@@ -439,8 +365,7 @@ $SAFE_SHAPES"
   case "$sub" in
     # ---- op run: THE recommended shape ------------------------------------
     # Secrets are injected into the child's environment and never touch stdout;
-    # 1Password additionally masks any known secret value appearing in the
-    # child's output. This is the whole point of the change.
+    # 1Password additionally masks any known secret value in the child's output.
     run)
       shift
       _vet_injecting_run "op run" "$@"
@@ -448,27 +373,16 @@ $SAFE_SHAPES"
       ;;
 
     # ---- op plugin: the biometric path, for the CLIs an agent must NOT drive -
-    # Shell plugins are 1Password's answer to a CLI token sitting in plaintext on
-    # disk (`~/.netrc`, a `credentials.toml`, a CLI's own `config.json`): the
-    # credential lives in the vault and is released per-invocation behind Touch
-    # ID. Every verb of this was denied by the default-deny arm below, which is
-    # the exact failure the 2026-08-18 rewrite exists to end — `op --version` was
-    # denied then for the same reason, and a control that blocks the vendor's
-    # recommended pattern is an outage, not a floor.
+    # Shell plugins keep a CLI's credential in the vault instead of plaintext on
+    # disk (`~/.netrc`, a `credentials.toml`), released per-invocation behind
+    # Touch ID. They are admitted not because they are harmless but because they
+    # move a credential OUT of a file this agent can already read — and the
+    # biometric prompt is a control an agent cannot satisfy, which keeps the
+    # agent off the deploy CLIs while giving the human a keychain-free path.
     #
-    # The security argument for admitting them is not that they are harmless; it
-    # is that they move a credential OUT of a file this agent can already read.
-    # `permissions.deny` does not stop a plaintext token in a dotfile, and no
-    # guard here ever could. A plugin does, and a biometric prompt is a control
-    # an agent cannot satisfy — which is the point: these verbs are how the HUMAN
-    # gets a keychain-free path to the deploy CLIs, and the prompt is what keeps
-    # the agent off them.
-    #
-    # `list`, `inspect`, `clear` and `init` print configuration metadata — plugin
-    # names, required fields, which vault item is mapped, and (from `init`) a
-    # `source ~/.config/op/plugins.sh` line. No credential VALUE, which is this
-    # guard's actual criterion. `run` is the one verb that injects, so it takes
-    # the same vetting as `op run --`, above, through the same function.
+    # `list`, `inspect`, `clear` and `init` print configuration metadata, never a
+    # credential VALUE. `run` is the one verb that injects, so it takes the same
+    # vetting as `op run --` through the same function.
     plugin)
       shift
       case "${1:-}" in
@@ -516,20 +430,15 @@ $SAFE_SHAPES"
     '' | --version | -v | --help | -h | help | whoami | signin | signout | update)
       continue
       ;;
-    # `op item list` and `op item move` — allowed, and the note that used to sit
-    # here said they were excluded because inventory browsing "is not what was
-    # asked for". It has since been asked for, with a named use: `op-agent audit`
-    # reports an item in the agent vault that nothing declares, and moving it out
-    # is the fix. Both print titles and metadata, never a secret VALUE, which is
-    # this guard's actual criterion.
+    # `op item list` and `op item move` print titles and metadata, never a secret
+    # VALUE, which is this guard's actual criterion.
     #
     # `op item move` IS DIRECTIONAL, and that is the load-bearing part. Moving an
-    # item OUT of the agent vault can only narrow this agent's own reach. Moving
-    # one IN widens it, which is a self-escalation path — an agent could grant
-    # itself a production credential by relocating it into the vault its service
-    # account reads. SA vault access is immutable after creation, so membership is
-    # the only lever there is; inbound moves are the one way to pull that lever the
-    # wrong way. Outbound allowed, inbound denied.
+    # item OUT of the agent vault can only narrow this agent's own reach; moving
+    # one IN widens it — an agent granting itself a production credential by
+    # relocating it into the vault its service account reads. SA vault access is
+    # immutable after creation, so membership is the only lever there is.
+    # Outbound allowed, inbound denied.
     #
     # `op item get`, `edit`, `create` and `delete` are NOT here and fall through to
     # the default deny: reading prints values, and the rest mutate or destroy.
@@ -562,11 +471,9 @@ $SAFE_SHAPES"
       esac
       ;;
     # STILL DENIED: `op vault list`, `op account/user/group list`. These print no
-    # secret VALUE either, but the measured exposure recorded for them is a
-    # different capability from the one just granted: `op vault list` "enumerates
-    # every vault in the account (verified 2026-08-05, no prompt)", because the
-    # desktop integration answers for vaults far outside `claude-agent`. Scoped
-    # item access was asked for; account-wide enumeration was not.
+    # secret VALUE either, but they enumerate every vault and every account in
+    # the account, far outside `claude-agent` — scoped item access was asked for,
+    # account-wide enumeration was not.
     # `op service-account create` prints a NEW TOKEN to stdout. `ratelimit` is
     # the read-only counter that CLAUDE.md points at for usage on a plan tier
     # with no audit log.

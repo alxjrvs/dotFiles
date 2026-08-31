@@ -1,22 +1,11 @@
 #!/usr/bin/env bash
 # Regression suite for the shared assertion scripts in `scripts/`.
 #
-# Every case here asserts the SAME property: a gate that checked nothing must
-# not print `ok` and must not exit 0. That is not a hypothetical — on
-# 2026-08-28 three of these scripts did exactly that:
-#
-#   $ scripts/settings-guardrails.sh dot-claude/does-not-exist.json
-#   ok settings guardrails (dot-claude/does-not-exist.json)     EXIT=0
-#   $ scripts/plist-validity.sh
-#   ok plists ()                                                EXIT=0
-#
-# CI hands these scripts a literal path, or a `$(git ls-files …)` expansion that
-# can be empty. So renaming a settings file, or moving `launchd/`, would have
-# left the required `lint` check green while the deny floor and the launchd `~`
-# bug went unchecked. `lefthook.yml` names this failure in its own canary
-# comment — "an always-green canary is exactly the failure it exists to
-# prevent" — and wrote a suite to stop it recurring there. This is that suite
-# for the other three.
+# Every case here asserts the SAME property: a gate that checked nothing must not
+# print `ok` and must not exit 0. CI hands these scripts a literal path, or a
+# `$(git ls-files …)` expansion that can be empty, so renaming a settings file or
+# moving `launchd/` must not leave the required `lint` check green with the deny
+# floor and the launchd `~` bug unchecked.
 #
 # The positive controls matter as much as the negative ones: a gate that fails
 # on everything is no more useful than one that passes on everything.
@@ -50,17 +39,15 @@ case_exit plist_missing_path 1 ./scripts/plist-validity.sh launchd/does-not-exis
 case_exit skillcap_missing_path 1 ./scripts/description-cap.sh dot-claude/skills/nope/SKILL.md
 
 # --- an EMPTY input list must FAIL: the caller's glob matched nothing --------
-# `description-cap.sh` is excluded here on purpose — it defaults to its
-# own glob when called with no arguments, which is a deliberate convenience and
-# still resolves to real files.
+# `description-cap.sh` is excluded on purpose — with no arguments it defaults to
+# its own glob, which still resolves to real files.
 case_exit guardrails_no_args 1 ./scripts/settings-guardrails.sh
 case_exit plist_no_args 1 ./scripts/plist-validity.sh
 
 # A guard on disk that wired_hooks() does not name must FAIL. Without this, the
-# hand-maintained list silently stops covering a new guard, and settings.json
-# could drop that handler with every gate still green — the same "on disk,
-# linked, suites passing, enforcing nothing" shape as the cases above, one level
-# up. The fixture directory holds a single deliberately-unnamed guard.
+# hand-maintained list silently stops covering a new guard and settings.json
+# could drop that handler with every gate still green. The fixture directory
+# holds a single deliberately-unnamed guard.
 case_exit guardrails_unwired_guard 1 \
   env GUARD_DIR=scripts/tests/fixtures/hooks ./scripts/settings-guardrails.sh dot-claude/settings.json
 
@@ -75,12 +62,9 @@ case_exit context_budget_real 0 ./scripts/context-budget.sh
 # --- the restated-count check must not be written with `\b` -----------------
 # git grep's ERE does not implement the word-boundary escape: the pattern
 # compiles, matches nothing, and the check reports ok on a file that plainly
-# violates it. The first draft of the restated-count gate did exactly that, and
-# passed a planted counter-example in README.md. This asserts the shape rather
-# than the behaviour, because the check greps the whole repo and has no fixture
-# form — and the failure being guarded is that a silent no-op looks identical
-# to a pass. Comment lines are excluded: this file and that one both have to be
-# able to NAME the escape in order to explain it.
+# violates it. Asserted on the SHAPE rather than the behaviour, because the check
+# greps the whole repo and has no fixture form. Comment lines are excluded: this
+# file and that one both have to be able to NAME the escape to explain it.
 if grep -v '^[[:space:]]*#' scripts/context-budget.sh | grep -q '\\b'; then
   fail=$((fail + 1))
   echo "  [context_budget_no_word_boundary] scripts/context-budget.sh uses the word-boundary escape, which git grep silently ignores"
@@ -90,14 +74,12 @@ fi
 
 # --- the project-scoped settings.local.json must be caught -------------------
 # `.gitignore` hides this file at every scope, so it can never be committed and
-# never be reviewed. `boomfile.toml`'s `absent` resource covers only the
-# user-global twin. A real one was found on disk with the assertion missing, and
-# the 2026-08-28 incident file carried `Bash(gh api *)` under `defaultMode: auto`.
+# never be reviewed, and `boomfile.toml`'s `absent` resource covers only the
+# user-global twin.
 #
 # Driven for real rather than asserted on the source: the file is planted, the
 # gate must exit non-zero, and it is removed again. A `trap` does the cleanup so
-# a failure between the two does not leave the tree dirty — and the planted file
-# is exactly the shape the incident had.
+# a failure between the two does not leave the tree dirty.
 _local=".claude/settings.local.json"
 if [ -e "$_local" ]; then
   fail=$((fail + 1))
@@ -115,12 +97,10 @@ else
 fi
 
 # --- the ~/.claude/ link inventory ------------------------------------------
-# context-budget.sh caps two files, but seven surfaces are billed, and the gap
-# was invisible: skills/, agents/ and loop.md were each linked into ~/.claude/
-# with the budget none the wiser, while four docs went on claiming only two
-# files were linked at all. The inventory closes that, so it needs the same
-# treatment as the gates above — a positive control, a negative control, and a
-# refusal to pass when it read nothing.
+# context-budget.sh caps two files, but more surfaces than that are billed, and a
+# link arriving with the budget none the wiser is invisible. The inventory closes
+# that, so it needs the same treatment as the gates above — a positive control, a
+# negative control, and a refusal to pass when it read nothing.
 case_exit inventory_unclassified_link 1 \
   env BOOMFILE=scripts/tests/fixtures/unclassified-link-boomfile.toml ./scripts/context-budget.sh
 case_exit inventory_missing_boomfile 1 \
@@ -128,17 +108,14 @@ case_exit inventory_missing_boomfile 1 \
 
 # --- the cap covers SUBAGENTS, not just skills ------------------------------
 # dot-claude/agents/ is linked into ~/.claude/ and every agent `description:` is
-# billed per session, but the cap read only dot-claude/skills/ — two of the seven
-# always-loaded surfaces sat outside the only cap that governs them. This is the
-# control that keeps the rename honest.
+# billed per session, so the cap must read agents as well as skills.
 case_exit descriptioncap_agent_over 1 ./scripts/description-cap.sh scripts/tests/fixtures/agents/over-cap-agent.md
 case_exit descriptioncap_agent_real 0 ./scripts/description-cap.sh dot-claude/agents/drift-triage.md
 
 # --- rules must be path-scoped, or they are not free ------------------------
 # The rules directory is exempt from the byte ceiling on one condition: every
-# rule carries `paths:`, so it loads only when a matching file is read. A rule
-# that omits it is billed at launch exactly like CLAUDE.md — silent, and in the
-# expensive direction. Without this suite the exemption would be unearned.
+# rule carries `paths:`, so it loads only when a matching file is read. Without
+# this suite the exemption would be unearned.
 case_exit rules_unscoped 1 ./scripts/rules-scoped.sh scripts/tests/fixtures/rules/unscoped.md
 case_exit rules_real 0 ./scripts/rules-scoped.sh
 case_exit rules_no_rule_inputs 1 ./scripts/rules-scoped.sh README.md
@@ -153,18 +130,16 @@ case_exit boomsrc_missing_file 1 ./scripts/boomfile-sources.sh boomfile-does-not
 case_exit boomsrc_dangling 1 ./scripts/boomfile-sources.sh scripts/tests/fixtures/dangling-src-boomfile.toml
 
 # --- a skill body loads in full when the skill fires -------------------------
-# Two skills were ~22 KB single files with no references/, about 5,600 tokens
-# each on any trigger, mostly inventory the invocation never needed. The body cap
-# is what keeps the split from silently growing back.
+# The body cap is what keeps a split skill from silently growing back into one
+# oversized file billed in full on any trigger.
 case_exit skillbody_real 0 ./scripts/description-cap.sh
 case_exit skillbody_over 1 \
   env BODY_CAP=5000 ./scripts/description-cap.sh dot-claude/skills/butter-stack/SKILL.md
 
 # --- the cap must be able to SEE a multi-line description --------------------
-# A YAML folded block put the indicator (`>-`) on the `description:` line, and
-# the single-line parser scored that as one word — so any skill could carry an
-# unbounded description past a gate reporting `ok (1 words)`. The cap is this
-# script's entire purpose, and that spelling removed it.
+# A YAML folded block puts the indicator (`>-`) on the `description:` line, and a
+# single-line parser scores that as one word — so any skill could carry an
+# unbounded description past a gate reporting `ok (1 words)`.
 case_exit skillcap_folded_over 1 ./scripts/description-cap.sh scripts/tests/fixtures/folded-over-cap-SKILL.md
 # Positive control: a SHORT folded block must still pass, or the fix would have
 # replaced one broken gate with another.
@@ -174,12 +149,11 @@ case_exit skillcap_folded_under 0 ./scripts/description-cap.sh scripts/tests/fix
 # `dot-claude/hooks/tests/all.sh` discovers its roster from its own directory.
 # That is what stops the roster rotting — but it is also the failure this file
 # exists to catch: point it somewhere empty and a naive runner reports success
-# for having run nothing, which is precisely how sixteen wired-up suites became
-# zero without turning the `lint` check red.
+# for having run nothing.
 #
-# Run against fixture directories, never the real one: the real roster already runs
-# as its own gate, and running it twice would only make this file slower. These
-# four assert the runner's CONTRACT, not the suites' cases.
+# Run against fixture directories, never the real one: the real roster already
+# runs as its own gate. These four assert the runner's CONTRACT, not the suites'
+# cases.
 allsh=$(cd "$(dirname "$0")/../.." && pwd)/dot-claude/hooks/tests/all.sh
 allfix=$(mktemp -d "${TMPDIR:-/tmp}/all-sh-fixture.XXXXXX")
 trap 'rm -rf "$allfix"' EXIT INT TERM

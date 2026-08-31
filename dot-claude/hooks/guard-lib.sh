@@ -3,26 +3,24 @@
 # function here is pure: it reads its arguments and prints, touching no global
 # state, and it lives here so the guards cannot drift apart again.
 #
-# Portability: bash 3.2 (`/bin/bash`). A hook cannot assume the PATH it will be
-# handed — Claude Code, launchd and a mid-provision machine can each run this
-# with only the system bash reachable, and a library that fails to parse means
-# the guard never runs and nothing says so.
+# Portability: bash 3.2 (`/bin/bash`), because a hook cannot assume the PATH it
+# will be handed and a library that fails to parse means the guard never runs
+# and nothing says so.
 # No arrays, no `${arr[@]}` on a possibly-empty array, no `declare -g`.
 
-# Split a command into simple commands on shell separators, RESPECTING quotes.
-# Quoted text is data, never structure, and must not decide a verdict: a
-# quote-blind split breaks in both directions, denying a `&&` inside a commit
-# message and letting a `#`-commented `--dry-run` look like a real flag.
+# Split a command into simple commands on shell separators, RESPECTING quotes:
+# quoted text is data, never structure, and must not decide a verdict. A
+# quote-blind split both denies a `&&` inside a commit message and lets a
+# `#`-commented `--dry-run` look like a real flag.
 # A literal newline, for use as a `case` pattern below.
 _NL='
 '
 
 # Remove heredoc BODIES before any parsing. A heredoc body is data the command
 # writes, not command structure: `git commit -F - <<'MSG' … MSG` routinely
-# contains the very commands these guards look for. It also cannot be assumed to
-# be shell-quoted — ordinary prose apostrophes ("lefthook's") unbalance the quote
-# tracking below and scramble segmentation downstream.
-#
+# contains the very commands these guards look for, and it cannot be assumed to
+# be shell-quoted — prose apostrophes ("lefthook's") unbalance the quote tracking
+# below and scramble segmentation downstream.
 # `<<<` (herestring) has no body and is deliberately not matched.
 _strip_heredocs() { # $1 = command -> command with heredoc bodies removed
   local line delim='' d out='' trimmed
@@ -48,13 +46,11 @@ EOF
 }
 
 # An interpreter takes an opaque payload this guard cannot tokenize, so
-# `sh -c 'op read op://…'` walks straight past a program-name check. That is the
-# residue `permissions.deny` structurally cannot cover; it is covered here.
+# `sh -c 'op read op://…'` walks past a program-name check. That is the residue
+# `permissions.deny` structurally cannot cover; it is covered here.
 # The GitHub owners this machine may WRITE to. Single consumer:
-# repo-scope-guard.sh gates writes on it. It lives here rather than in prose
-# because a list that governs a security boundary cannot be maintained beside a
-# copy of itself — the two drift, and the executing copy is the one that is
-# wrong.
+# repo-scope-guard.sh gates writes on it. One copy, because a list that governs a
+# security boundary drifts the moment there are two.
 _owned_orgs() {
   cat << 'ORGS'
 alxjrvs
@@ -94,13 +90,12 @@ _scan_text() { # $1 = text -> punctuation flattened to spaces
 
 # Expand an interpreter's payload into extra segments, so `bash -c "git push
 # origin main"` is judged by the SAME refspec logic as a bare push. Refusing
-# every interpreter outright -- as op-guard must, because it cannot know what an
+# every interpreter outright -- as op-guard must, since it cannot know what an
 # `op` payload will print -- would block the legitimate `bash -c "git push
-# origin feature"` for no gain. Here the payload IS a git command.
+# origin feature"` for no gain; here the payload IS a git command.
 #
-# One level deep on purpose: each level of recursion is a way for this to loop
-# forever on a crafted input, and a guard that hangs is worse than one that
-# misses.
+# One level deep on purpose: each level of recursion is a way to loop forever on
+# a crafted input, and a guard that hangs is worse than one that misses.
 _expand_interpreters() { # $1 = raw command, $2 = segments -> segments + payloads
   local seg out payload q raw
   # $1 must be saved before the loop below: `set -- $(_norm ...)` inside it
@@ -136,11 +131,9 @@ EOF
 
   # A payload piped INTO an interpreter sits in the PRODUCING segment, whose
   # program name is `echo` -- neither segment names the real command. Pull the
-  # quoted runs out of the whole command and read each as a candidate.
-  #
-  # Gated on an actual pipe-into-interpreter, which is what keeps this away from
-  # `git commit -m "explain git push origin main"`: that has no pipe, so no
-  # quoted run is ever expanded and the prose stays prose.
+  # quoted runs out of the whole command and read each as a candidate. Gated on
+  # an actual pipe-into-interpreter, which is what keeps this away from
+  # `git commit -m "explain git push origin main"`: no pipe, no expansion.
   if printf '%s' "$raw" |
     grep -qE '\|[[:space:]]*(sudo[[:space:]]+)?(env[[:space:]]+)?([A-Za-z0-9_./-]*/)?(sh|bash|zsh|dash|ksh|fish|eval|python[23]?|ruby|perl|node|bun|deno)([[:space:]]|$)'; then
     while IFS= read -r q; do
@@ -162,12 +155,10 @@ _split() { # $1 = command -> one simple command per line
     c=${s:i:1}
     if [ -n "$q" ]; then
       # A newline inside quotes is DATA, but this function emits one segment per
-      # LINE, so a segment legitimately containing one is re-split by every
-      # caller's `while read` and a commit message then arrives at a guard
-      # looking like a real command. Collapsing it to a space keeps the segment
-      # on one line without changing tokenization — the program name and its
-      # flags are unaffected. An UNQUOTED newline still separates commands, via
-      # the `case` arm below.
+      # LINE, so a segment containing one is re-split by every caller's `while
+      # read` and a commit message then arrives at a guard looking like a real
+      # command. Collapsing it to a space keeps the segment on one line without
+      # changing tokenization. An UNQUOTED newline still separates commands.
       if [ "$c" = "$_NL" ]; then
         cur=$cur' '
       else
@@ -195,13 +186,13 @@ _split() { # $1 = command -> one simple command per line
       # reason: what follows one is a COMMAND, not an argument, so
       # `echo $(op read op://…)` must not read as a single `echo` segment.
       # Splitting routes the substitution body back through the ordinary
-      # allow-list on the next iteration, which is where the verdict already
-      # lives, rather than teaching this tokenizer to parse nesting.
+      # allow-list on the next iteration rather than teaching this tokenizer to
+      # parse nesting.
       #
       # Only UNQUOTED delimiters split — the quote branch above returns first —
       # so a paren inside a commit message is still prose. An unquoted `(` in
-      # shell is always a construct: subshell, `$(`, or `<(`. Splitting on the
-      # bare paren covers all three spellings without matching `$` or `<`.
+      # shell is always a construct: subshell, `$(`, or `<(`, so the bare paren
+      # covers all three spellings without matching `$` or `<`.
       ';' | '&' | '|' | '(' | ')' | '`' | "$_NL")
         printf '%s\n' "$cur"
         cur=''
@@ -225,13 +216,11 @@ _unquote() { # $1 = token -> printed without quotes/parens
 }
 
 # Blank out everything inside a quoted run, preserving length and every
-# character OUTSIDE the quotes. The result is a structure-only view of a
-# command: shell operators survive, prose does not.
-#
-# That is what separates `echo "op read op://x" | bash`, where the pipe is a
-# shell operator, from `git commit -m "note: x |eval can run op read op://a"`,
-# where the same characters are text inside an argument. A raw substring scan
-# cannot tell them apart, and denied the second.
+# character OUTSIDE the quotes: a structure-only view where shell operators
+# survive and prose does not. That is what separates `echo "op read op://x" |
+# bash`, where the pipe is a shell operator, from `git commit -m "note: x |eval
+# can run op read op://a"`, where the same characters are text inside an
+# argument. A raw substring scan cannot tell them apart, and denied the second.
 _blank_quoted() { # $1 = command -> same string with quoted runs blanked
   printf '%s' "$1" | awk '
     {
@@ -256,7 +245,7 @@ _blank_quoted() { # $1 = command -> same string with quoted runs blanked
 # substituted program name.
 #
 # Line structure is preserved, so a genuine multi-line command still presents a
-# real line start per command; only the CONTENT inside an open quote is blanked.
+# real line start per command; only CONTENT inside an open quote is blanked.
 _blank_quoted_ml() { # $1 = command -> quoted runs blanked, state kept across lines
   printf '%s' "$1" | awk '
     BEGIN { sq = 0; dq = 0 }
@@ -306,10 +295,8 @@ _has_ddash() {
 # environment assignments and exec wrappers, then stop at a `#` comment. Each is
 # a bypass otherwise — `(git`, `then`, `do`, `env git`, `command git`,
 # `FOO=bar git` and `/usr/bin/git` all sail past a bare-token comparison.
-# Callers take the basename of $1 to finish the job.
-#
-# Tokens carry no spaces (they come from word splitting), so rejoining the
-# normalized argv with spaces is lossless.
+# Callers take the basename of $1 to finish the job. Tokens carry no spaces (they
+# come from word splitting), so rejoining with spaces is lossless.
 #
 # Every `case` below matches the DEQUOTED token, and the program name is emitted
 # dequoted: `"op" read op://…` must resolve to `op`, not to `"op"`. The prefix
@@ -339,15 +326,13 @@ _norm() { # $1 = segment -> prints normalized argv, space-separated
         shift
         ;;
       # Development-environment runners. Each takes a command as arguments and
-      # runs it, so the program name after it is the real one.
+      # runs it, so the program name after it is the real one. `permissions.deny`
+      # cannot cover these and says so: Claude Code's built-in stripped-wrapper
+      # list is fixed and documents that `mise exec`, `npx`, `devbox run` and
+      # `docker exec` are NOT in it, so this library is the only place the shape
+      # can be closed. The list is open, not complete — a runner not named here
+      # is a bypass; add it with a case in `tests/cases.tsv` first.
       #
-      # `permissions.deny` cannot cover these either, and says so: Claude Code's
-      # built-in stripped-wrapper list is fixed and documents that `mise exec`,
-      # `npx`, `devbox run` and `docker exec` are NOT in it. So this library is
-      # the only place the shape can be closed.
-      #
-      # This list is open, not complete. A runner not named here is a bypass —
-      # add it with a case in `tests/cases.tsv` first.
       # Subcommand runners: `<prog> <sub> [args] [--] CMD`. Only the subcommand
       # that runs an ARBITRARY command enters here — `mise install` and `pnpm add`
       # stay ordinary commands, or the guard starts denying the tooling it is
@@ -372,10 +357,10 @@ _norm() { # $1 = segment -> prints normalized argv, space-separated
             [ $# -gt 0 ] && shift
             ;;
           *)
-            # `--` is the unambiguous separator, so when it is present the command
-            # begins right after it whatever preceded — tool specs included.
-            # Pattern-matching each token instead (`-* | *@*`) breaks on a bare
-            # tool name: `mise exec rg -- op read` resolves its program to `rg`.
+            # `--` is the unambiguous separator: when present the command begins
+            # right after it whatever preceded, tool specs included. Pattern-matching
+            # each token instead (`-* | *@*`) breaks on a bare tool name, resolving
+            # `mise exec rg -- op read` to the program `rg`.
             if _has_ddash "$@"; then
               while [ $# -gt 0 ]; do
                 if [ "$(_dequote "$1")" = "--" ]; then
@@ -504,10 +489,9 @@ _norm() { # $1 = segment -> prints normalized argv, space-separated
     esac
   done
   # The program token, dequoted — or the refusal sentinel when it is a shell
-  # expansion this guard cannot statically read. Arguments are emitted as-is:
-  # a quoted `-m "note about op read"` must stay one opaque blob, or stripping
-  # its quotes would hand the scanners the very prose false positive the suite
-  # exists to prevent.
+  # expansion this guard cannot statically read. Arguments are emitted as-is: a
+  # quoted `-m "note about op read"` must stay one opaque blob, or stripping its
+  # quotes hands the scanners a prose false positive.
   if [ $# -gt 0 ]; then
     tok=$(_dequote "$1")
     case "$tok" in

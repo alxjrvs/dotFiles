@@ -1,33 +1,16 @@
 #!/usr/bin/env sh
 # settings.json content guardrails — the single source for the assertions.
 #
-# Called from three places, deliberately: lefthook's pre-commit (against the
-# staged file, so a bad commit is caught immediately), .github/workflows/lint.yml
-# (so it holds for anything arriving without a local hook), and boomfile.toml's
-# `boom verify` (against the LIVE ~/.claude/settings.json, which is the only copy
-# that actually governs a session). Three call sites, one copy of the rules.
+# Called from lefthook's pre-commit (the staged file), lint.yml (anything
+# arriving without a local hook), and boomfile.toml's `boom verify` (the LIVE
+# ~/.claude/settings.json, the only copy that governs a session). Three call
+# sites, one copy of the rules.
 #
 # Usage: scripts/settings-guardrails.sh <file>...
 #
-# WHY THIS FILE EXISTS. Until now these assertions were written out three times —
-# lefthook.yml, lint.yml and boomfile.toml each carried the full list plus its
-# own copy of the reasoning, and two of them carried a comment instructing a
-# human to keep the inventory in sync by hand. They had already drifted in form:
-# boomfile expressed some checks as declarative `[[section.check]]` resources
-# while the other two grepped for the same thing.
-#
-# DECISIONS.md diagnosed this exact class for the context ceilings and the
-# diagnosis applies unchanged here: "both copies are executable, so both look
-# authoritative, and neither is wrong until the day they differ." This is that
-# prescription applied a second time. scripts/context-budget.sh is the model.
-#
-# WHY THE HOOK LIST IS THE WHOLE LIST. The previous assertion greped for
-# `op-guard.sh` and nothing else, so deleting the `rebase-guard.sh` or
-# `worktree-checkout-guard.sh` handler passed lefthook, CI *and* `boom verify`
-# green — the scripts still on disk, still linked, still passing their suites,
-# and enforcing nothing. A guard that can be silently un-wired is not a control.
-# Adding a hook to settings.json without adding it here is how this stops
-# applying, exactly as context-budget.sh warns about its own capped set.
+# WHY THE HOOK LIST IS THE WHOLE LIST, not a spot-check of one guard: a handler
+# that can be deleted with every gate still green leaves the script on disk,
+# linked, passing its suite, and enforcing nothing.
 set -eu
 
 # Hook scripts that must be wired. One name per line, no comments inline.
@@ -45,19 +28,13 @@ HOOKS
 
 # The secret-path deny floor: the Bash path to a *resolved* secret, not just to
 # `op`. `op-agent header` and `op-agent git-credential get` each print a live
-# credential to stdout, and stdout is model context — `op-agent header` is the
-# command that leaked a PAT into a transcript.
+# credential to stdout, and stdout is model context.
 #
-# ARRAY-AWARE, never a substring grep. The original form asked only whether a
-# string appeared anywhere in the file, so moving an entry from `deny` into
-# `allow` inverted the control with every gate still green. `jq index` asserts
-# membership of the deny ARRAY, and passing the value through --arg means it is
-# data rather than a pattern — which also sidesteps the metacharacters that made
-# `grep -F` necessary before.
-#
-# EVERY entry, not a chosen few: an earlier list asserted the `op`/`op-agent`/
-# `git credential` shapes only, so the keychain read and both `Read()` rules
-# could be deleted unnoticed.
+# ARRAY-AWARE, never a substring grep: a substring test only asks whether the
+# string appears anywhere in the file, so moving an entry from `deny` into
+# `allow` inverts the control with every gate green. `jq index` asserts
+# membership of the deny ARRAY; --arg passes the value as data, not a pattern.
+# EVERY entry — anything left out can be deleted unnoticed.
 deny_floor() {
   cat << 'DENY'
 Bash(security find-generic-password:*)
@@ -89,30 +66,20 @@ note() {
   fail=1
 }
 
-# A gate that asserts nothing must never print `ok`. Called with a path that
-# does not exist, this printed `ok settings guardrails (…)` and exited 0 — and
-# CI hands it a literal path, so renaming the settings file would have left the
-# required `lint` check green while the deny floor went unchecked. That is the
-# incident already recorded in DECISIONS.md: "scripts on disk, linked, suites
-# passing, enforcing nothing."
+# A gate that asserts nothing must never print `ok`. CI hands this a literal
+# path, so renaming the settings file must not leave the required `lint` check
+# green with the deny floor unchecked.
 [ "$#" -gt 0 ] || {
   echo "no inputs — the caller's glob matched nothing, so nothing was checked" >&2
   exit 1
 }
 
 # The wired_hooks() list is hand-maintained, and a guard MISSING from it is
-# invisible: this gate would pass while the new guard sat unwired in settings.json.
-# That is the same "scripts on disk, linked, suites passing, enforcing nothing"
-# shape the list itself was added to prevent, one level up — applied to the list
-# rather than to the handlers. Asserted here so the two can never drift.
-#
-# Repo-relative, and SKIPPED when the repo is not adjacent: this script also runs
-# from `boom verify` against the live ~/.claude/settings.json, and a missing
-# checkout there must not fail the gate. The assertion is about repo contents, so
-# it only means anything where the repo is.
-#
-# GUARD_DIR is overridable so scripts/tests/gates.sh can aim this at a fixture
-# and prove the assertion actually fires; it defaults to this repo's own guards.
+# invisible: this gate would pass while the new guard sat unwired. Repo-relative,
+# and SKIPPED when the repo is not adjacent — this also runs from `boom verify`
+# against the live settings.json, where a missing checkout must not fail the
+# gate. GUARD_DIR is overridable so scripts/tests/gates.sh can aim it at a
+# fixture and prove the assertion fires.
 _guard_dir=${GUARD_DIR:-$(
   unset CDPATH
   cd -- "$(dirname -- "$0")/../dot-claude/hooks" 2> /dev/null && pwd
@@ -153,10 +120,9 @@ for f in "$@"; do
     note "$f: Fable pinned as default model"
 
   # Every guard must still be wired. `permissions.allow` pre-approves
-  # `Bash(op run:*)`, and op-guard is what strips the unsafe variants of that
-  # shape before the permission system sees it — un-wiring a hook while leaving
-  # the allow entry is the one edit that silently converts this config from
-  # "narrower" into "wider".
+  # `Bash(op run:*)` and op-guard strips the unsafe variants before the
+  # permission system sees it — un-wiring it while leaving the allow entry is the
+  # one edit that silently widens this config.
   wired_hooks | while IFS= read -r h; do
     [ -n "$h" ] || continue
     grep -q "$h" "$f" || {
@@ -165,14 +131,11 @@ for f in "$@"; do
     }
   done || fail=1
 
-  # A guard's `if` must be a SUBSTRING rule, never program position. A Bash rule
-  # matches the whole command text, so `Bash(git *)` misses every spelling the
-  # guards were extended to resolve — `/usr/bin/git push`, `sudo git push`,
-  # `env git push`, `(git push …)`, `bash -c "git push origin main"`. Each of
-  # those is an existing `deny` case in cases.tsv, and each skipped its guard
-  # entirely while the suite stayed green, because the suite calls the guard
-  # scripts directly and never reads this file. Over-firing costs one process;
-  # under-firing costs the default branch. See DECISIONS.md.
+  # A guard's `if` must be a SUBSTRING rule, never program position: a Bash rule
+  # matches the whole command text, so `Bash(git *)` misses `/usr/bin/git push`,
+  # `sudo git push`, `env git push`, `(git push …)`, `bash -c "git push …"`. The
+  # suites call the guards directly and never read this file, so only this
+  # catches it. Over-firing costs one process; under-firing costs the branch.
   bad_if=$(jq -r '
     [ .hooks.PreToolUse[]?.hooks[]?
       | select(.command | test("hooks/(rebase|worktree-remove|repo-scope)-guard\\.sh"))
@@ -191,27 +154,16 @@ for f in "$@"; do
   done || fail=1
 done
 
-# THE SAME RULE, ONE SCOPE OVER. `boomfile.toml`'s `absent` resource asserts that
-# `~/.claude/settings.local.json` does not exist. `.gitignore` ignores
-# `**/.claude/settings.local.json` — EVERY scope. Between those two sits this
-# repo's own project-scoped `.claude/settings.local.json`: ignored by git, so it
-# can never be committed or reviewed, and asserted by nothing, so `boom verify`
-# was silent while one sat on disk.
+# THE SAME RULE, ONE SCOPE OVER. `boomfile.toml`'s `absent` resource covers only
+# the user-global `~/.claude/settings.local.json`, and `.gitignore` hides the
+# file at EVERY scope — so this repo's own project-scoped copy is never
+# committable, never reviewable, and asserted by nothing.
 #
-# It cannot be closed where its sibling is. boom's `absent` resource runs
-# `expandTilde` and nothing else, so a repo-relative path would resolve against
-# whatever directory boom happened to run in; and a `~`-anchored path to a
-# development clone is host detection, which CLAUDE.md rules out. The assertion
-# belongs where the repo root is unambiguous — here, in the script lefthook, CI
-# and `boom verify` all already call.
-#
-# The file found on 2026-08-31 was harmless (`permissions.allow: ["Artifact"]`).
-# The one found on 2026-08-28 carried `Bash(gh api *)` under `defaultMode: auto`
-# — POST and DELETE against any repo on GitHub, no prompt. The difference between
-# those two is luck, not control.
-#
-# Deliberately not `[ -f ]` on a hardcoded path from `$PWD`: resolved from this
-# script's own location, so it means the same thing from any working directory.
+# It cannot be closed where its sibling is: boom's `absent` runs `expandTilde`
+# and nothing else, so a repo-relative path resolves against whatever directory
+# boom ran in, and a `~`-anchored path to a development clone is host detection.
+# Hence here, resolved from this script's own location rather than `$PWD`, so it
+# means the same thing from any working directory.
 _repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 _local_settings="$_repo_root/.claude/settings.local.json"
 if [ -e "$_local_settings" ]; then

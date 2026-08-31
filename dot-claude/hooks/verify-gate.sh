@@ -2,9 +2,7 @@
 # Stop hook: run the repo's OWN gate before an agent is allowed to call itself done.
 #
 # Everything else in dot-claude/hooks/ stops a bad ACTION. Nothing checked that the WORK is
-# correct. The published guidance is the other way round — give Claude a check it can run and
-# gate the stop on it — and the adversarial review here fires from PostToolUse on `git push`,
-# which is after the work has already left the machine. This is the half that was missing.
+# correct; this is the half that was missing.
 #
 # Deliberately narrow, because a Stop hook runs on every turn and a slow or noisy one gets
 # deleted:

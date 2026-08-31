@@ -2,16 +2,10 @@
 # Every rule in dot-claude/rules/ must carry `paths:` frontmatter.
 #
 # WHY. A path-scoped rule is free: it loads only when Claude reads a file
-# matching one of its globs. A rule WITHOUT `paths:` is not — it "load[s] at
-# launch with the same priority as .claude/CLAUDE.md", so it is billed to every
-# request of every session, exactly like the file the rules directory exists to
-# relieve.
-#
-# That makes the omission the whole failure mode. Nothing about a rule missing
-# its frontmatter looks wrong: it still works, it still applies, it is simply now
-# permanently loaded. Silent, and in the expensive direction — the same shape as
-# the two defects context-budget.sh was carrying before it learned to measure
-# post-strip bytes and to notice new links.
+# matching one of its globs. A rule WITHOUT `paths:` "load[s] at launch with the
+# same priority as .claude/CLAUDE.md", so it is billed to every request of every
+# session — and nothing about the omission looks wrong: the rule still works, it
+# is simply now permanently loaded. Silent, and in the expensive direction.
 #
 # So the rules directory is exempt from the byte ceiling ONLY on the condition
 # this script asserts. Break the condition and the exemption is unearned.
@@ -55,10 +49,9 @@ for f in "$@"; do
 
   # Frontmatter only: a `paths:` mentioned in the body is prose, not config.
   #
-  # The result is carried in a flag rather than an early `exit`. awk runs END
-  # even when a rule calls exit, so an `END { exit 1 }` overrides the `exit 0`
-  # that just fired and every rule reports as unscoped — which is what the first
-  # version of this did, failing both correctly-scoped rules in the directory.
+  # The result is carried in a flag rather than an early `exit`: awk runs END
+  # even when a rule calls exit, so an `END { exit 1 }` would override the
+  # `exit 0` that just fired and every rule would report as unscoped.
   if awk '
     NR == 1 && /^---[[:space:]]*$/ { fm = 1; next }
     fm && /^---[[:space:]]*$/ { fm = 0; next }

@@ -3,17 +3,15 @@
 #
 # `brew bundle` INSTALLS what the Brewfile names. It never uninstalls what the
 # Brewfile omits, so a package installed by hand stays forever, invisible, and a
-# fresh machine silently does not get it. That is one-directional drift with no
-# alarm.
+# fresh machine silently does not get it — one-directional drift with no alarm.
 #
 # WHAT THIS CHECKS. Only `brew leaves` (top-level formulae, not the dependency
 # closure) and casks. A dependency is the business of whatever pulled it in.
 #
 # THE EXCLUSION LIST IS PART OF THE CONTRACT. Some packages are installed and
-# deliberately NOT declared, each for a reason: they are owned by mise, they pull
-# in a second copy of a runtime, or a native macOS path replaced them. Naming
-# them here is what makes "deliberately excluded" different from "nobody
-# noticed".
+# deliberately NOT declared, each for a reason: owned by mise, a second copy of a
+# runtime, or replaced by a native macOS path. Naming them here is what makes
+# "deliberately excluded" different from "nobody noticed".
 set -eu
 
 BREWFILE=${1:-Brewfile}

@@ -1,54 +1,36 @@
 #!/usr/bin/env bash
 # Claude Code SessionStart/SubagentStart hook — starts an agent on CURRENT code.
 #
-# THE BUG THIS EXISTS FOR. `worktree.baseRef: "fresh"` promises a worktree cut
-# from `origin/<default>`, and the docs say exactly that. What the client
-# actually does (measured against 2.1.237, decompiled and then reproduced
-# end-to-end) is cut from the *local remote-tracking ref* and only refresh it
-# when `.git/FETCH_HEAD` is more than 24h old:
-#
-#     let E = await stat(join(gitdir,"FETCH_HEAD")).then(c=>c.mtimeMs, ()=>0)
-#     if (Date.now() - E > 86400000) { git fetch origin <default> }
-#
-# So `origin/main` can be a day stale and every agent spawned in that window
-# silently branches from it. Reproduced hermetically: with FETCH_HEAD freshly
-# touched, `claude --worktree` based the tree on the stale commit; with
-# FETCH_HEAD aged past 24h the same command fetched and based it on the real
-# tip. Both directions in tests/freshness.sh, because a suite that only asserts
-# the good case cannot tell enforcement from a no-op.
-#
-# Worse, ANY fetch touches FETCH_HEAD — so a `git fetch origin some-branch` for
-# unrelated reasons re-arms the 24h skip while leaving `origin/<default>` exactly
-# as stale as it was. The gate is a cache with no invalidation.
+# THE BUG THIS EXISTS FOR. `worktree.baseRef: "fresh"` documents a worktree cut
+# from `origin/<default>`. What the client actually does is cut from the LOCAL
+# remote-tracking ref and refresh it only when `.git/FETCH_HEAD` is more than 24h
+# old — and ANY fetch touches FETCH_HEAD, so an unrelated `git fetch origin
+# some-branch` re-arms that skip while leaving `origin/<default>` exactly as
+# stale. The gate is a cache with no invalidation. tests/freshness.sh asserts
+# BOTH directions, because a suite that only asserts the good case cannot tell
+# enforcement from a no-op.
 #
 # TWO LAYERS, because neither alone covers every way an agent gets spawned.
 #
 #   PREFETCH (session starts in the primary checkout) — refresh
 #     `origin/<default>` in the background. All worktrees of a clone share one
-#     object store and one set of remote-tracking refs, so this is a repo-level
-#     property: keep the ref honest and the client's 24h skip becomes harmless,
-#     because the ref it decides to trust is genuinely current. This fixes the
-#     base AT CREATION, which is the only place it can be fixed for free.
-#     Backgrounded so it never delays session start, which means it RACES a
-#     dispatch that happens immediately — hence the second layer.
+#     object store and one set of remote-tracking refs, so keeping the ref honest
+#     makes the client's 24h skip harmless. Backgrounded so it never delays
+#     session start, which means it RACES an immediate dispatch — hence layer two.
 #
 #   ENFORCE (session starts inside a linked worktree) — fetch synchronously and
-#     fast-forward the branch onto its intended base. This is the backstop that
-#     does not care how the agent was spawned or whether the prefetch won its
-#     race, and it is the layer that actually holds.
+#     fast-forward the branch onto its intended base. The backstop that does not
+#     care how the agent was spawned, and the layer that actually holds.
 #
 # SAFETY. ENFORCE only ever runs `git merge --ff-only`, and only when HEAD is
-# already an ancestor of the target — so it is arithmetically incapable of
-# discarding a commit. A fresh agent worktree is created with `--no-track -B` at
-# the base commit, so it is a virgin branch and the fast-forward is exactly the
-# "start from current code" the agent wanted. A worktree with real work on it
-# fails the ancestor test and gets a one-line advisory instead, which pairs with
-# rebase-guard.sh: that guard blocks a stale PUSH, this one prevents the stale
-# START that makes the push stale in the first place.
+# already an ancestor of the target — arithmetically incapable of discarding a
+# commit. A fresh agent worktree is created `--no-track -B` at the base commit,
+# so the fast-forward is exactly the "start from current code" the agent wanted;
+# a worktree with real work fails the ancestor test and gets an advisory instead.
 #
 # FAILS OPEN, always. Offline, no remote, detached HEAD, dirty tree, missing jq,
-# a fetch that times out — every one of them exits 0 and changes nothing. A hook
-# that runs before the agent can say a word must never be able to wedge it.
+# a fetch that times out — every one exits 0 and changes nothing. A hook that
+# runs before the agent can say a word must never be able to wedge it.
 set -u
 
 quiet() { exit 0; }
@@ -110,9 +92,8 @@ default_branch() {
 # whole correctness argument. The obvious spelling — `--absolute-git-dir` against
 # a `cd`-ed `--git-common-dir` — compares a symlink-resolved path to a logical
 # one, so on macOS (where $TMPDIR is /var/folders → /private/var/folders) the two
-# never matched and the PRIMARY CHECKOUT was misread as a linked worktree and
-# fast-forwarded. Caught by tests/freshness.sh `skip_primary`, which is why that
-# case asserts on the user's own clone rather than only on worktrees.
+# never match and the PRIMARY CHECKOUT is misread as a linked worktree and
+# fast-forwarded. Covered by tests/freshness.sh `skip_primary`.
 gd=$(cd "$(git rev-parse --git-dir 2> /dev/null)" 2> /dev/null && pwd -P) || quiet
 gcd=$(cd "$(git rev-parse --git-common-dir 2> /dev/null)" 2> /dev/null && pwd -P) || quiet
 

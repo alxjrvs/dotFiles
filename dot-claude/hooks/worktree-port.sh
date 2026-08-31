@@ -1,46 +1,25 @@
 #!/usr/bin/env bash
 # Claude Code SessionStart hook — give each agent worktree its own port block, so
-# two agents running dev servers do not fight over :3000.
-#
-# THE PROBLEM. Every worktree is a full checkout of the same repo, so every one of
-# them reads the same `vite.config.ts`, the same `PORT ?? 3000`, the same
-# docker-compose port map. Two agents told to "run the app and check the page"
-# therefore race for one socket: the second gets EADDRINUSE (and reports the
-# feature broken), or — worse on the frameworks that auto-increment — silently
-# binds :3001 and drives a browser against the OTHER worktree's server, which
-# looks like a passing check of code that was never loaded.
+# two agents running dev servers do not fight over :3000. Every worktree is a
+# full checkout of the same repo and reads the same `PORT ?? 3000`, so the second
+# agent gets EADDRINUSE (and reports the feature broken) or — worse, on a
+# framework that auto-increments — silently binds :3001 and drives a browser
+# against the OTHER worktree's server, which looks like a passing check of code
+# that was never loaded.
 #
 # WHAT IT DOES. Derives a 10-port block from the worktree's own name and announces
 # it as `additionalContext`, then makes it real for anything that reads `.env`:
 #
 #     block = 20000 + (cksum(name) % 1000) * 10      # 20000-29999, 1000 blocks
 #
-# Blocks, not single ports, because a real app is rarely one listener — web plus
-# an API plus a websocket wants three, and handing out `base`..`base+9` keeps a
-# worktree's services inside its own range instead of walking into a neighbour's.
-#
+# Blocks, not single ports, because a real app is rarely one listener.
 # DERIVED, NOT ALLOCATED, and that is the whole design. A registry of live
 # reservations would need a lock, a stale-entry reaper and a place to live; a
 # derivation needs none of that and is stable across sessions of the same
 # worktree, which is what makes it safe to write into `.env` and safe to print
-# twice. `cksum` is POSIX, so there is no dependency to install. The cost is
-# birthday collisions: two worktrees of the same repo share a block roughly 1 in
-# 1000, and no check here can prevent that. It degrades to exactly today's
-# behaviour — one EADDRINUSE — which is the point: the failure mode of the fix is
-# the status quo, not something new.
-#
-# THE `.env` WRITE IS THE ENFORCEMENT. A line of context is advice, and this
-# repo's own rule is that describing a control is not the control — so where an
-# agent worktree already has a `.env` (which `.worktreeinclude` now copies into
-# every worktree the client cuts), `PORT=<base>` is appended to it and every tool
-# that reads dotenv picks it up without the agent having to remember anything.
-# Four conditions gate that write, and each one is a way it could otherwise
-# damage something:
-#
-#   - the file exists            — this hook never CREATES a `.env`; a repo with
-#                                  no dotenv convention does not acquire one.
-#   - it is not a symlink        — a linked `.env` points at the primary
-#                                  checkout, and appending through it would edit
+# twice. `cksum` is POSIX. The cost is birthday collisions — two worktrees of one
+# repo share a block roughly 1 in 1000 — which degrades to exactly today's
+# behaviour, one EADDRINUSE.
 #                                  the user's real file. Asserted directly.
 #   - git ignores it             — so the append can never show up as a tracked
 #                                  diff and never be committed by an agent.
@@ -48,20 +27,17 @@
 #                                  made on purpose; this must not silently
 #                                  override it.
 #
-# ONLY EVER AN AGENT WORKTREE. The same two conditions worktree-publish.sh uses,
-# for the same reasons: a LINKED worktree (git-dir != git-common-dir, both
+# ONLY EVER AN AGENT WORKTREE: a LINKED worktree (git-dir != git-common-dir, both
 # resolved with `pwd -P` — the macOS $TMPDIR symlink is how that comparison once
 # misread the primary checkout) AND physically under `.claude/worktrees/`. The
 # user's own checkout fails both, which is what keeps this hook off their `.env`.
 #
 # NOT WIRED ON SubagentStart. That event carries the PARENT process cwd, not the
-# teammate's worktree — the caveat already measured for worktree-freshness.sh — so
-# it could not find the worktree whose port it would be assigning. SessionStart
-# fires inside the agent's own session, which is where the worktree is.
+# teammate's worktree, so it could not find the worktree whose port it would be
+# assigning. SessionStart fires inside the agent's own session.
 #
 # FAILS OPEN, always. No jq, no git, a non-repo cwd, a read-only `.env`, a cksum
-# that returns something non-numeric — every one exits 0 and says nothing. A hook
-# that runs before the agent can speak must never be able to wedge it.
+# that returns something non-numeric — every one exits 0 and says nothing.
 set -u
 
 quiet() { exit 0; }
