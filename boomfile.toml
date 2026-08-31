@@ -8,8 +8,9 @@
 [boom]
 skill_on_sync = true
 upgrade_on_sync = "check"
-# Desktop-notify (macOS osascript) when a scheduled `boom verify` finds drift, so the
-# boom-verify launchd timer's signal surfaces instead of dying in its log.
+# Desktop-notify (macOS osascript) when `boom verify` finds drift. Verb-driven, not
+# schedule-gated, so it still surfaces a drift result now that nothing runs verify
+# on a timer.
 notify = true
 
 [[section]]
@@ -953,12 +954,13 @@ exit 1
 # The gap was notification, not detection — so the fix was the plist and `notify`, both already
 # in place, and the right amount of new machinery here is none.
 #
-# CORRECTED: that reasoning is sound about detection and incomplete about the thing doing the
-# detecting. A scheduled job can be dead, and then every check it carries is silently ABSENT
-# rather than green — which is precisely what those 28 days were, and `notify` could not help
-# because nothing ran to notify. That half is now the ENGINE's: boom v0.30.0's `launchd` resource
-# reports an agent whose last run failed, which `[boom] schedule` timers already did. Two of the
-# three incidents named here would have surfaced on the first nightly verify after they began.
+# CORRECTED TWICE. The reasoning above is sound about detection and was incomplete about the
+# thing doing the detecting: a scheduled job can be dead, and then every check it carries is
+# silently ABSENT rather than green, which is precisely what those 28 days were. That argued for
+# watching the watcher. The scheduled verify has since been removed outright instead, so there is
+# no watcher to watch: `boom verify` runs when it is run. The checks in this file are only as
+# live as the last time someone invoked it, and that is now the whole story — stated here rather
+# than left implied, because the incidents above are what it costs to forget.
 
 # The third-party GitHub MCP is GONE from both clients, in favour of Anthropic's own
 # GitHub integration. What was here: a remote `api.githubcopilot.com/mcp/` server in
@@ -975,36 +977,6 @@ exit 1
 #
 # Consequence worth knowing: `claude-git-pat` now has exactly ONE consumer, git's
 # `credential.helper` for agent pushes. It is no longer an MCP credential.
-
-[[section]]
-name = "boom-verify launchd"
-
-# The `boom verify` guardrails above (MCP auto-approve, osxkeychain regression, Fable-default
-# drift) only fire when someone runs `boom verify` — so drift can sit undetected. This plist
-# runs it on a timer; the `launchd` resource collapses the old link + `launchctl unload;load -w`
-# pair into one stanza that owns the load/unload lifecycle itself.
-#
-# It used to say the plist stayed because a `[boom] schedule` timer for `verify` "doesn't fire a
-# desktop notification on drift". That was false, and had been since `notify = true` was adopted:
-# notify is VERB-driven, not schedule-gated (settings.ts's applyNotify returns early only on
-# `ctx.verb !== "verify"`), so a scheduled verify notifies identically. The plist was also
-# carrying its own `|| osascript`, so every drift raised TWO notifications; that half is gone.
-#
-# What actually keeps it a plist is timing, which is a real difference: this uses
-# StartCalendarInterval (21:47 daily, wall-clock), while `[boom] schedule` only renders
-# StartInterval — elapsed-time, which drifts relative to the clock. Collapsing it into the
-# schedule array would trade a fixed daily slot for a drifting one; that is the trade, stated
-# honestly, rather than a capability claim that stopped being true.
-#
-# An audit proposed collapsing it anyway, on the grounds that a hand-rolled plist is what cost
-# this job 28 days. It is not moving, and the paragraph above is why: the reason is a real
-# capability difference, written down before the audit looked. What the audit was right about is
-# the RISK, and that is now addressed at the level it belongs to — boom v0.30.0 checks last exit
-# for BOTH mechanisms, so a hand-authored plist is no longer a blind spot the generated timers
-# are not. The mechanism question is settled by whoever needs wall-clock timing, not by which one
-# is easier to monitor.
-[[section.launchd]]
-src = "launchd/com.alxjrvs.boom-verify.plist"
 
 [[section]]
 name = "capslock-control launchd"

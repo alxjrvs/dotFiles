@@ -49,7 +49,6 @@ dot-claude/skills/butter-stack/SKILL.md
 dot-claude/skills/butter-stack/references/stack.md
 dot-claude/skills/agent-friendly-repo/SKILL.md
 .claude/settings.json
-launchd/com.alxjrvs.boom-verify.plist
 launchd/com.alxjrvs.capslock-control.plist
 hooks/claude_statusline.ts
 CLAUDE.md
