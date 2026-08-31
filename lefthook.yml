@@ -120,11 +120,6 @@ pre-commit:
       # against a 1Password vault that was never theirs.
       run: scripts/identity-drift.sh
 
-    decisions-toc:
-      # Generated, not maintained — a hand-written index is a second copy of the
-      # headings, which is the drift this repo keeps finding elsewhere.
-      glob: "dot-claude/DECISIONS.md"
-      run: scripts/decisions-toc.sh --check
     actionlint:
       # The workflows are the remote gate, and were the only config here with no
       # linter. Declared in mise.toml and checksummed in mise.lock all along —

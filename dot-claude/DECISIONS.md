@@ -32,79 +32,10 @@ Three rules, in the order they bite:
    `DECISIONS-ARCHIVE.md` in one commit that says what went. Age alone is not rot — the oldest
    entry here is still the reason a live guard is shaped the way it is.
 
-The index is generated (`scripts/decisions-toc.sh`) and expands `###` headings only inside
-sections large enough to need it, so growth costs navigability rather than silently removing it.
-
-## Contents
-
-<!-- toc:start -->
-- [Retention](#retention)
-- [Contents](#contents)
-- [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
-- [2026-08-29 — the guard in front of every push was making a network call](#2026-08-29--the-guard-in-front-of-every-push-was-making-a-network-call)
-- [2026-08-29 — the byte ceiling was destroying guidance a free mechanism holds](#2026-08-29--the-byte-ceiling-was-destroying-guidance-a-free-mechanism-holds)
-- [2026-08-29 — `AGENTS.md` considered, and declined](#2026-08-29--agentsmd-considered-and-declined)
-- [2026-08-29 — the protected-branch rule is enforced twice, and both stay](#2026-08-29--the-protected-branch-rule-is-enforced-twice-and-both-stay)
-- [2026-08-28 — the publish-at-idle design is gone, and its log says why](#2026-08-28--the-publish-at-idle-design-is-gone-and-its-log-says-why)
-- [2026-08-28 — one inert key removed, one real floor added, and they are the same key](#2026-08-28--one-inert-key-removed-one-real-floor-added-and-they-are-the-same-key)
-- [2026-08-28 — `op-agent header` deleted, for the second and final time](#2026-08-28--op-agent-header-deleted-for-the-second-and-final-time)
-- [2026-08-28 — the PR reviewer is gone, both halves](#2026-08-28--the-pr-reviewer-is-gone-both-halves)
-- [2026-08-28 — the guard read a program name, and six programs were not it](#2026-08-28--the-guard-read-a-program-name-and-six-programs-were-not-it)
-- [2026-08-28 — the `if:` rules were narrower than the guards they gate](#2026-08-28--the-if-rules-were-narrower-than-the-guards-they-gate)
-- [2026-08-28 — a new suite committed to its own branch, twice, before anyone noticed](#2026-08-28--a-new-suite-committed-to-its-own-branch-twice-before-anyone-noticed)
-- [2026-08-28 — every Bash call forked five guards, and four of them had no opinion](#2026-08-28--every-bash-call-forked-five-guards-and-four-of-them-had-no-opinion)
-- [2026-08-28 — the sandbox block was inert, and `mask` would have broken auth if it were not](#2026-08-28--the-sandbox-block-was-inert-and-mask-would-have-broken-auth-if-it-were-not)
-- [2026-08-28 — `autoMode.allow` was inert, and wrong-shaped](#2026-08-28--automodeallow-was-inert-and-wrong-shaped)
-- [2026-08-28 — the permission-matching rule in `CLAUDE.md` was backwards](#2026-08-28--the-permission-matching-rule-in-claudemd-was-backwards)
-- [2026-08-28 — the three rules that were prose, and the guard that had six ways past it](#2026-08-28--the-three-rules-that-were-prose-and-the-guard-that-had-six-ways-past-it)
-  - [`worktree-remove-guard.sh` — the rule with no reflog behind it](#worktree-remove-guardsh--the-rule-with-no-reflog-behind-it)
-  - [`repo-scope-guard.sh` — and the org list that had already drifted](#repo-scope-guardsh--and-the-org-list-that-had-already-drifted)
-  - [`settings.local.json` — a rule that could only ever be half-enforced](#settingslocaljson--a-rule-that-could-only-ever-be-half-enforced)
-  - [The sandbox, and the `~/.ssh` rule that is mostly theatre](#the-sandbox-and-the-ssh-rule-that-is-mostly-theatre)
-  - [The other half: written three times](#the-other-half-written-three-times)
-- [2026-08-26 — heroku: the Brewfile was the obvious home and the wrong one](#2026-08-26--heroku-the-brewfile-was-the-obvious-home-and-the-wrong-one)
-- [2026-08-26 — the context ceilings were stated twice, and this file's own rule says why that rots](#2026-08-26--the-context-ceilings-were-stated-twice-and-this-files-own-rule-says-why-that-rots)
-- [2026-08-24 — a port block per worktree, and a canary on the workarounds](#2026-08-24--a-port-block-per-worktree-and-a-canary-on-the-workarounds)
-- [2026-08-24 — three worktree gaps: two were already native, one was dead config](#2026-08-24--three-worktree-gaps-two-were-already-native-one-was-dead-config)
-- [2026-08-22 — a `headersHelper` can point at a deleted vault item and still pass `boom verify`](#2026-08-22--a-headershelper-can-point-at-a-deleted-vault-item-and-still-pass-boom-verify)
-- [2026-08-20 — `op item list` and `op item move` are allowed, in one direction](#2026-08-20--op-item-list-and-op-item-move-are-allowed-in-one-direction)
-- [2026-08-20 — the third-party GitHub MCP is gone, on both clients](#2026-08-20--the-third-party-github-mcp-is-gone-on-both-clients)
-- [2026-08-20 — `CLAUDE.md` was cut 97%, and the disease was append-only correction](#2026-08-20--claudemd-was-cut-97-and-the-disease-was-append-only-correction)
-- [2026-08-20 — agents were starting from a base up to 24h stale](#2026-08-20--agents-were-starting-from-a-base-up-to-24h-stale)
-- [2026-08-20 — `skipAutoPermissionPrompt` removed: auto mode that asks](#2026-08-20--skipautopermissionprompt-removed-auto-mode-that-asks)
-- [2026-08-20 — `gh-mcp-stdio` deleted; Desktop launches the GitHub MCP via `op run --env-file`](#2026-08-20--gh-mcp-stdio-deleted-desktop-launches-the-github-mcp-via-op-run---env-file)
-  - [Two things this changes that are easy to miss](#two-things-this-changes-that-are-easy-to-miss)
-  - [Why the PAT is NOT in a 1Password Environment](#why-the-pat-is-not-in-a-1password-environment)
-  - [Corrections this turned up](#corrections-this-turned-up)
-  - [Verified](#verified)
-- [The 2026-08-18 audit](#the-2026-08-18-audit)
-- [Permissions & security](#permissions--security)
-  - [Every Claude Code update re-prompted for macOS file access (2026-08-19)](#every-claude-code-update-re-prompted-for-macos-file-access-2026-08-19)
-  - [No issues on foreign repos without express permission (2026-08-19)](#no-issues-on-foreign-repos-without-express-permission-2026-08-19)
-  - [The GitHub MCP was deleted for looking unused, then restored (2026-07-25)](#the-github-mcp-was-deleted-for-looking-unused-then-restored-2026-07-25)
-  - [The 1Password Environments MCP server was adopted, on a condition (2026-08-18)](#the-1password-environments-mcp-server-was-adopted-on-a-condition-2026-08-18)
-  - [`op` became usable by agents by inverting the list, not by loosening it (2026-08-18)](#op-became-usable-by-agents-by-inverting-the-list-not-by-loosening-it-2026-08-18)
-  - [A diagnostic printed a live PAT into a transcript (2026-07-25)](#a-diagnostic-printed-a-live-pat-into-a-transcript-2026-07-25)
-  - [The sandbox measured: egress works, and `credentials.files` would break op-agent (2026-08-18)](#the-sandbox-measured-egress-works-and-credentialsfiles-would-break-op-agent-2026-08-18)
-  - [What `permissions.deny` actually buys](#what-permissionsdeny-actually-buys)
-  - [The PR-review hook was the best-instrumented exfil path in the setup (2026-08-05)](#the-pr-review-hook-was-the-best-instrumented-exfil-path-in-the-setup-2026-08-05)
-  - [The audit that produced all of the above (2026-08-05)](#the-audit-that-produced-all-of-the-above-2026-08-05)
-- [Settings removed deliberately](#settings-removed-deliberately)
-- [Hooks](#hooks)
-- [Plugins & marketplaces](#plugins--marketplaces)
-- [UI](#ui)
-- [Worktrees & merges](#worktrees--merges)
-  - [Root cause of issue [#53](https://github.com/alxjrvs/dotFiles/issues/53) — `gh pr merge --delete-branch`](#root-cause-of-issue-53httpsgithubcomalxjrvsdotfilesissues53--gh-pr-merge---delete-branch)
-  - [The native fix (applied 2026-07-08)](#the-native-fix-applied-2026-07-08)
-  - [Why auto-merge is a permission rule and not prose](#why-auto-merge-is-a-permission-rule-and-not-prose)
-  - [Why `boom code reap` exists](#why-boom-code-reap-exists)
-  - [Stacked PRs adopted via `github/gh-stack` (2026-07-31)](#stacked-prs-adopted-via-githubgh-stack-2026-07-31)
-  - [Correction: auto-merge does not land a stack, so the merge queue stopped being optional (2026-08-04)](#correction-auto-merge-does-not-land-a-stack-so-the-merge-queue-stopped-being-optional-2026-08-04)
-  - [Closing the stack gaps: permission, reviewer, cascade, drift (2026-08-04)](#closing-the-stack-gaps-permission-reviewer-cascade-drift-2026-08-04)
-  - [Stacks become the default shape, and the merge queue is declined (2026-08-04)](#stacks-become-the-default-shape-and-the-merge-queue-is-declined-2026-08-04)
-- [Branch protection](#branch-protection)
-- [Secrets](#secrets)
-<!-- toc:end -->
+There is no index. One was generated, and generating it created the only problem it had: a
+second copy of every heading, plus a `--check` mode whose entire job was to stop that copy
+drifting from the source. Navigate by search — `grep -n '^#'` lists every entry, always current,
+and is what both readers of this file actually do.
 
 ## How to write a number so it cannot rot
 
