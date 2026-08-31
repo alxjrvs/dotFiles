@@ -69,6 +69,85 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-08-31 — the plaintext token was real, the tool using it was not
+
+The `op plugin` entry above named `~/.railway/config.json` as the machine's one plaintext CLI
+token and pointed at `op run --env-file` as the fix, since 1Password ships no `railway` plugin.
+Both halves were wrong in the same way: **nobody checked whether Railway was still in use.**
+
+It was not. Measured:
+
+- **Zero `railway` references in any repo** — SU-SRD at `origin/main` (fetched; the local checkout
+  was 23 commits behind and would have been the wrong thing to read), OptFall, vellum, Hermuz,
+  and the rest. No `railway.json`, `railway.toml` or `nixpacks.toml` anywhere.
+- **Four of the five project mappings pointed at directories that no longer exist.** All five were
+  `robo` — the Discord bots, which run on **Render**. The fifth mapped `SU-SRD`, which has no
+  railway reference at all.
+- **The CLI was declared nowhere** — absent from `mise.toml`, `Brewfile` and `boomfile.toml`,
+  installed by a stray `bun install -g` on 2025-11-25, which is also the config's last mtime.
+
+The token was live and 308 bytes. The CLI, the config directory and the credential are gone;
+revocation is server-side and belongs to the account owner.
+
+### The general finding: `~/.bun/bin` was an unmanaged package manager
+
+`boom verify` could not see any of it. Six global CLIs were installed there, none declared. Triaged
+each against every local repo:
+
+| CLI | consumers | verdict |
+|---|---|---|
+| `railway` | none | removed |
+| `ccusage` | none | removed |
+| `agent-browser` | not an MCP server, not a skill; one `skillUsage` hit, 2026-03-24 | left pending owner call |
+| `vercel` / `vc` | none — every hit is transitive `@vercel/nft` (pulled in by *Netlify's* bundler), the AI SDK, or docs prose | removed |
+| `bunup` | @RANDSUM — but a repo **devDependency**; `"build": "bunup"` resolves to local `node_modules/.bin` | removed |
+| `eas` | BinfiniteApp, 32 **`bunx eas-cli@21.2.0`** call sites, plus real ad-hoc use (`eas login`, `whoami`, `build:list`) | **declared + pinned** in `mise.toml` |
+
+`bunup` is declared per-repo, so the global copy is never the one that runs — removable.
+
+**`eas` is the exception, and it took two corrections to get right.** It has genuine ad-hoc use
+outside any project (`eas login`, `whoami`, `build:list`), so the answer was never deletion.
+
+**There were TWO undeclared copies, at two versions, and the first measurement read the wrong
+one.** `~/.bun/bin/eas` held 18.4.0 — but it never ran. `command -v eas` resolved to
+`~/.local/share/mise/installs/node/25.9.0/bin/eas` at **20.5.0**, an `npm -g` install into the
+node prefix. Both were stale against the repos' `bunx eas-cli@21.2.0`, and BinfiniteApp's
+`check:bunx-pins` gate cannot catch either: it reads repo files, not what a human types.
+
+**Declaring it in `mise.toml` would have changed nothing on its own**, and this is the part worth
+remembering. `mise activate` puts the node install's `bin` at **PATH position 1**, while the mise
+shims sit at **29** and `~/.bun/bin` at **46**. A pinned `npm:eas-cli` lands in the shims — behind
+the very npm-global copy it was meant to replace. The declaration was inert until both strays were
+uninstalled. *Adding the managed thing does not remove the unmanaged one that outranks it.*
+
+After removing both, `eas` resolves to `~/.local/share/mise/shims/eas` at 21.2.0, matching the
+repos. Explicit `npm:` backend because the registry has no `eas` entry.
+
+**The diagnosis was "undeclared and unpinned", not "global".** Left unowned: nothing checks this
+pin against BinfiniteApp's bunx pin, so they must be bumped together.
+
+`expo-cli` is NOT added, and should not be. It is EOL, and the Expo CLI in use ships inside each
+project's own `expo` dependency (`bunx expo`, `bunx expo-doctor` — 22 call sites). The only
+`expo-cli` string left in that repo is a stale generated `.gitignore` marker, which is exactly the
+kind of evidence that reads as a live consumer and is not.
+
+### The rule this yields
+
+**A credential's blast radius is not a reason to keep the tool that holds it.** The instinct on
+finding a plaintext token was to wrap it — an `op://` reference, an env file, a vault item, an
+`agent-vault.txt` line naming its consumer. That is four new pieces of managed config for a CLI
+last used nine months ago. Ask whether the consumer is alive *before* designing its secret
+handling; deletion is cheaper than every alternative and removes the credential completely rather
+than relocating it.
+
+Also, twice in one session: **`git grep` on a local checkout is not a reading of the repo.** SU-SRD
+was 23 commits behind, and a zsh loop over an unquoted `$repos` string silently ran once against
+one bogus path and returned a clean sweep of zeroes. Both produced confident, wrong "no
+references" answers. zsh does not word-split unquoted parameters; the first result that looks too
+tidy is the one to re-run.
+
+---
+
 ## 2026-08-31 — `op plugin` was denied entirely, and two trampolines into it were not
 
 `op-guard.sh`'s allow-list had no arm for `op plugin`, so all five verbs hit the default deny.
@@ -136,8 +215,10 @@ No, on this machine:
 
 The CLIs that *do* qualify are the ones with a token on disk and no agent consumer. Audited this
 machine for the usual offenders: `~/.netrc`, `~/.cargo/credentials.toml`, `~/.vercel/auth.json`,
-`~/.config/ngrok/ngrok.yml` and `~/.config/heroku` are all **absent**; `~/.railway/config.json`
-exists. So the candidate list today is short, and that is a finding, not a disappointment.
+`~/.config/ngrok/ngrok.yml` and `~/.config/heroku` are all **absent**. `~/.railway/config.json`
+was the sole exception — and it turned out to be dead, not a candidate; it and its CLI were
+removed the same day (see *the plaintext token was real, the tool using it was not*). The
+candidate list today is therefore empty, and that is a finding, not a disappointment.
 
 Two loose ends this surfaced and did not close:
 
