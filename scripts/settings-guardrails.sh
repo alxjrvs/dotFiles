@@ -101,6 +101,34 @@ note() {
   exit 1
 }
 
+# The wired_hooks() list is hand-maintained, and a guard MISSING from it is
+# invisible: this gate would pass while the new guard sat unwired in settings.json.
+# That is the same "scripts on disk, linked, suites passing, enforcing nothing"
+# shape the list itself was added to prevent, one level up — applied to the list
+# rather than to the handlers. Asserted here so the two can never drift.
+#
+# Repo-relative, and SKIPPED when the repo is not adjacent: this script also runs
+# from `boom verify` against the live ~/.claude/settings.json, and a missing
+# checkout there must not fail the gate. The assertion is about repo contents, so
+# it only means anything where the repo is.
+#
+# GUARD_DIR is overridable so scripts/tests/gates.sh can aim this at a fixture
+# and prove the assertion actually fires; it defaults to this repo's own guards.
+_guard_dir=${GUARD_DIR:-$(
+  unset CDPATH
+  cd -- "$(dirname -- "$0")/../dot-claude/hooks" 2> /dev/null && pwd
+)}
+if [ -n "$_guard_dir" ]; then
+  for _g in "$_guard_dir"/*.sh; do
+    [ -f "$_g" ] || continue
+    _n=${_g##*/}
+    # guard-lib.sh is sourced by the others, never wired as a handler itself.
+    if [ "$_n" != "guard-lib.sh" ]; then
+      wired_hooks | grep -qxF "$_n" || note "$_n is in dot-claude/hooks/ but not in wired_hooks() — add it there, or settings.json can drop its handler with every gate still green"
+    fi
+  done
+fi
+
 for f in "$@"; do
   [ -f "$f" ] || {
     note "$f: expected settings file is missing"

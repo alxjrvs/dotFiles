@@ -56,6 +56,14 @@ case_exit skillcap_missing_path 1 ./scripts/description-cap.sh dot-claude/skills
 case_exit guardrails_no_args 1 ./scripts/settings-guardrails.sh
 case_exit plist_no_args 1 ./scripts/plist-validity.sh
 
+# A guard on disk that wired_hooks() does not name must FAIL. Without this, the
+# hand-maintained list silently stops covering a new guard, and settings.json
+# could drop that handler with every gate still green — the same "on disk,
+# linked, suites passing, enforcing nothing" shape as the cases above, one level
+# up. The fixture directory holds a single deliberately-unnamed guard.
+case_exit guardrails_unwired_guard 1 \
+  env GUARD_DIR=scripts/tests/fixtures/hooks ./scripts/settings-guardrails.sh dot-claude/settings.json
+
 # --- positive controls: the real inputs must still PASS ----------------------
 case_exit guardrails_real 0 ./scripts/settings-guardrails.sh dot-claude/settings.json
 # Globbed, not named: a hardcoded plist label is an owner this suite would
