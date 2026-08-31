@@ -155,8 +155,9 @@ Three behaviours hang off the one variable, measured against Claude Code **2.1.2
 1. Strips a **206-name** credential list from the environment of every spawned subprocess, in
    three spellings each (bare, `INPUT_`-prefixed, lowercased for `NPM_CONFIG_*`), plus a
    connection-string name regex, plus rewriting registry URLs down to bare origin.
-2. Blocks reads of the `.env` family. This is the behaviour the egress entry in this file already
-   warned about: it makes Claude Code ignore `filesystem.disabled` from every source.
+2. Blocks reads of the `.env` family. This is the behaviour *The sandbox measured: egress works,
+   and `credentials.files` would break op-agent (2026-08-18)* already warned about: it makes
+   Claude Code ignore `filesystem.disabled` from every source.
 3. **Forces the session's permission mode to `default`** — undocumented, and the reason this
    entry exists.
 
@@ -165,8 +166,8 @@ Three behaviours hang off the one variable, measured against Claude Code **2.1.2
 **It scrubbed nothing.** The 206 names match zero variables in this machine's environment
 (`ANTHROPIC_*`, `AWS_*`, `GOOGLE_*`, `GCP_*`: none set). That is not luck, it is the op-agent
 design — the SA token is read inline inside op-agent's own process and never enters the parent
-env, which the egress entry in this file had already concluded when it said not to set this flag
-alongside an allowlist.
+env, which *The sandbox measured: egress works, and `credentials.files` would break op-agent
+(2026-08-18)* had already concluded when it said not to set this flag alongside an allowlist.
 
 **And it missed the ones that exist.** The BP-3 commit shipped with an explicit open question:
 *"Scrubbed-pattern list is undocumented — may not cover `GITHUB_*` vars."* It does not. The list
@@ -188,7 +189,7 @@ The same command with `=0` prints the identical warning: `settings.env` re-appli
 `process.env` before the mode resolves, so **the shell value loses to the settings value.** While
 this key was in `settings.json` there was no per-invocation opt-out.
 
-The notification above only renders when a mode was supplied explicitly. A mode arriving from
+That warning only renders when a mode was supplied explicitly. A mode arriving from
 `permissions.defaultMode` sets no such flag, so the machine's `defaultMode: auto` was downgraded
 **silently** — which is why this went unnoticed from 2026-06-05 to 2026-08-31.
 
@@ -206,8 +207,10 @@ and the intermittency is the actual signature.
 
 The scrub has a second enable path — `GITHUB_ACTIONS` truthy with this variable *absent* — that
 turns on the scrubbing without the mode check ever reading it. Setting `GITHUB_ACTIONS=1` locally
-would thread the needle and is not worth it: it lies to every other CI branch in the CLI and in
-`gh`, `mise`, and `biome`, to buy a scrub that has nothing to scrub.
+would thread the needle and is not worth it: that variable is read by far more than this flag —
+every CI branch in the CLI, and in whatever the agent shells out to — and it would be set to buy a
+scrub that has nothing to scrub. Which of those branches change was not measured, and the point is
+that nobody should have to know.
 
 Nothing replaces it. `permissions.deny` already blocks the Bash path to the tokens that do exist
 and is evaluated before `auto` and bypass; `sandbox.credentials.envVars` covers the env-at-rest
