@@ -238,6 +238,61 @@ op	nonrepo	op inject -i .env.tpl --out-file=.env	allow
 # `boom verify` runs; an agent debugging the secret path needs it.
 op	nonrepo	op-agent status	allow
 
+# --- op-guard: `op plugin`, the biometric path for HUMAN CLIs ---------------
+# Shell plugins are 1Password's answer to a CLI token sitting in plaintext on
+# disk: the credential lives in the vault and is released per-invocation behind
+# Touch ID. Every discovery verb here was DENIED by the default-deny arm, which
+# is the same failure mode the 2026-08-18 rewrite was written to end — the guard
+# blocked the vendor's recommended pattern, so the advice became "run it from
+# your own terminal". `list`, `inspect` and `clear` print configuration metadata
+# only; `init` is an interactive picker that prints a `source` line. None emits a
+# credential VALUE, which is this guard's actual criterion.
+op	nonrepo	op plugin list	allow
+op	nonrepo	op plugin inspect gh	allow
+op	nonrepo	op plugin init gh	allow
+op	nonrepo	op plugin clear gh	allow
+op	nonrepo	op plugin	allow
+# `op plugin run` is the ONE plugin verb that injects a live credential into a
+# child process, so it gets the identical vetting as `op run --` rather than a
+# pass — same `--`, same env-dumping children, same interpreter payloads, and
+# the same 2026-08-19 trampoline finding: `op run -- op read` was allowed for
+# months because the guard saw an unremarkable child, and `op plugin run -- op
+# read` is that hole re-spelled.
+op	nonrepo	op plugin run -- vercel deploy	allow
+op	nonrepo	op plugin run -- netlify deploy	allow
+# `gh` is DENIED as a plugin-run child, and this is the guard stating a
+# conclusion rather than an omission. `_bad_op_run_child` rejects `git`/`gh`
+# under any injecting invocation because rebase-guard.sh tokenizes for a
+# `git`/`gh` PROGRAM and sees `op` here — so `op plugin run -- gh pr merge`
+# would walk a merge past the push guards. It costs nothing: gh resolves its
+# token from the keychain via `gh auth git-credential`, never from a plugin.
+# A gh shell plugin on this machine would be a THIRD GitHub credential path
+# beside that and `op-agent git-credential`, and its alias lives in an
+# interactive-shell `plugins.sh` an agent never sources — so it would break
+# agent `gh` while adding a credential. The deny is the recommendation.
+op	nonrepo	op plugin run -- gh repo list	deny
+op	nonrepo	op plugin run -- env	deny
+op	nonrepo	op plugin run -- printenv	deny
+op	nonrepo	op plugin run -- sh -c "echo $GITHUB_TOKEN"	deny
+op	nonrepo	op plugin run -- node -e "console.log(process.env)"	deny
+op	nonrepo	op plugin run -- op read op://claude-agent/x/credential	deny
+op	nonrepo	op plugin run -- op-agent secret op://claude-agent/x/credential	deny
+op	nonrepo	op plugin run gh repo list	deny
+op	nonrepo	op plugin run --	deny
+# `op plugin run -- git push` would hide the push from rebase-guard.sh for the
+# same reason `op run -- git push` does: both guards tokenize for a `git` PROGRAM
+# and see `op` here.
+op	nonrepo	op plugin run -- git push origin main	deny
+# The interpreter and `op run --` trampolines must not launder a plugin-run
+# child past the vetting above. This is why `plugin` had to join _OP_VERB_RE.
+op	nonrepo	sh -c "op plugin run -- env"	deny
+op	nonrepo	op run -- op plugin run -- env	deny
+op	nonrepo	echo "op plugin run -- env" | bash	deny
+# An unknown plugin verb fails CLOSED, the same as an unknown `op` or `boom` one.
+op	nonrepo	op plugin frobnicate	deny
+# Prose about plugins is still ordinary work — the false positive this suite exists for.
+op	nonrepo	git commit -m "wire op plugin run for vercel"	allow
+
 # --- op-guard: must NOT fire out of turn ------------------------------------
 # The false positive this suite exists to prevent: prose mentioning the guarded
 # command. A `git` segment is never substring-scanned, so a commit message about

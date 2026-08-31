@@ -69,6 +69,95 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-08-31 — `op plugin` was denied entirely, and two trampolines into it were not
+
+`op-guard.sh`'s allow-list had no arm for `op plugin`, so all five verbs hit the default deny.
+Measured, by adding the cases before the fix: **9 red** — seven allow-cases denied
+(`op plugin list|inspect|init|clear`, bare `op plugin`, `op plugin run -- vercel deploy`,
+`op plugin run -- gh repo list`) and **two genuine holes** where the guard was too permissive:
+
+```
+sh -c "op plugin run -- env"      -> ALLOW
+echo "op plugin run -- env" | bash -> ALLOW
+```
+
+Both are the interpreter trampoline this guard already closes for `op read`, re-spelled. They
+walked past because `_OP_VERB_RE` — the pattern deciding whether an interpreter payload looks
+op-shaped — did not list `plugin`. So the same omission produced an outage on the safe verbs and
+an opening on the injecting one. That pairing is the argument for an allow-list *with an arm per
+verb family*, not for a shorter one.
+
+### Why admit it at all
+
+Shell plugins are the answer to the one class of credential exposure nothing here can reach: a
+plaintext token in a dotfile. `permissions.deny` does not stop it and no PreToolUse hook ever
+could — the file is just a file, and this agent can read it. A plugin moves that credential into
+the vault and releases it per-invocation behind Touch ID. **The biometric prompt is a control an
+agent cannot satisfy, and that is the feature**: plugins are how the human gets a keychain-free
+path to the deploy CLIs, and the prompt is what keeps the agent off them. It is the complement to
+`op-agent`, not a competitor — `op-agent` exists so an *unattended* process can resolve a secret;
+a plugin exists so an *attended* one must be asked.
+
+This is also the same fix as 2026-08-18. `op --version` was denied then for exactly this reason,
+and the note written at the time still applies: a control that blocks the vendor's recommended
+pattern is an outage, not a floor.
+
+### What the fix is
+
+`list`, `inspect`, `init` and `clear` print configuration metadata — plugin names, required
+fields, the mapped item, and from `init` a `source ~/.config/op/plugins.sh` line. No credential
+VALUE, which is this guard's stated criterion. `run` injects one, so it is vetted identically to
+`op run --`.
+
+**Identically, through one function.** The `op run` body was extracted to `_vet_injecting_run`
+rather than copied. A copy is how two spellings drift, and this file already records the proof:
+`op run -- op read` was allowed for months because the guard saw an unremarkable child, and
+`op plugin run -- op read` is that hole with a different verb in front of it. One function, one
+fix, and `--no-masking` is rejected on both — 1Password documents masking only on `op run`, so
+this neither assumes it exists on `plugin run` nor assumes it doesn't. Rejecting the flag costs
+nothing today and fails closed if it appears tomorrow.
+
+### `gh` is denied as a plugin child, and that is a conclusion
+
+`op plugin run -- gh repo list` was written as an allow-case and **the suite was right and the
+case was wrong**. `_bad_op_run_child` rejects `git`/`gh` under any injecting invocation, because
+`rebase-guard.sh` tokenizes for a `git`/`gh` PROGRAM and sees `op` here — so
+`op plugin run -- gh pr merge` would walk a merge past the push guards.
+
+Keeping that deny also settles the obvious next question, *should `gh` move to a shell plugin*.
+No, on this machine:
+
+- `gh` is already keychain-backed and `~/.config/gh/hosts.yml` carries **no `oauth_token`**
+  (checked: only `git_protocol`, `user`, `users`). There is no plaintext token to rescue.
+- The alias `op plugin init` writes lands in `~/.config/op/plugins.sh`, sourced by *interactive*
+  zsh. Agent `Bash` calls are non-interactive and would never source it, so agent `gh` breaks.
+- It would be a **third** GitHub credential path beside `gh auth git-credential` and
+  `op-agent git-credential`. Adding a credential to fix nothing is the wrong direction.
+
+The CLIs that *do* qualify are the ones with a token on disk and no agent consumer. Audited this
+machine for the usual offenders: `~/.netrc`, `~/.cargo/credentials.toml`, `~/.vercel/auth.json`,
+`~/.config/ngrok/ngrok.yml` and `~/.config/heroku` are all **absent**; `~/.railway/config.json`
+exists. So the candidate list today is short, and that is a finding, not a disappointment.
+
+Two loose ends this surfaced and did not close:
+
+- `~/.config/op/plugins/used_items/claude.json` has existed since 2026-06-14 with **no
+  `~/.config/op/plugins.sh`** — a plugin was half-initialized months ago and never wired into a
+  shell. Dangling state, harmless, but it is why `op plugin inspect` needed to be runnable.
+- `.gitconfig:109` declares `credential."https://git.heroku.com".helper = !heroku git:credentials`
+  while `~/.netrc` does not exist, i.e. heroku is not logged in. Dead config, left in place
+  deliberately — deleting it is a separate change with its own argument.
+
+### Not done, on purpose
+
+No `source ~/.config/op/plugins.sh` line was added to `zsh/`, and no boomfile link. `plugins.sh`
+is machine-local, generated by an interactive `op plugin init`, and does not exist yet. Wiring a
+source line for a file no plugin has created is the speculative surface `op-agent.sh`'s own header
+forbids — *"every verb has a live consumer"*. `op plugin init` prints the line to add; it gets
+added when a plugin earns it.
+
+---
+
 ## 2026-08-31 — the vault audit made the vault read-only, so it lost a direction
 
 `op-agent audit` checked membership BOTH ways: an item declared in
