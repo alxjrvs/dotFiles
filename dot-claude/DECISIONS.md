@@ -101,13 +101,26 @@ each against every local repo:
 | `agent-browser` | none | stray |
 | `vercel` / `vc` | none — every hit is transitive `@vercel/nft` (pulled in by *Netlify's* bundler), the AI SDK, or docs prose | stray |
 | `bunup` | @RANDSUM — but a repo **devDependency**; `"build": "bunup"` resolves to local `node_modules/.bin` | global redundant |
-| `eas` | BinfiniteApp — but invoked as **`bunx eas-cli@21.2.0`**, 32 pinned call sites | global is a hazard |
+| `eas` | BinfiniteApp, 32 **`bunx eas-cli@21.2.0`** call sites, plus real ad-hoc use (`eas login`, `whoami`, `build:list`) | **declared + pinned** in `mise.toml` |
 
-**The two that looked load-bearing were the most clearly removable.** `bunup` is declared per-repo,
-so the global copy is never the one that runs. `eas` is deliberately version-pinned through `bunx`,
-and BinfiniteApp runs a `check:bunx-pins` gate to keep it that way — an unpinned global `eas`
-silently undermines a check the repo already enforces. Nothing here earns a `mise.toml` entry,
-because nothing needs to be global.
+`bunup` is declared per-repo, so the global copy is never the one that runs — removable.
+
+**`eas` is the exception, and the measurement is why.** It has genuine ad-hoc use outside any
+project (`eas login`, `whoami`, `build:list`), so the answer is not deletion. The global had
+drifted to **18.4.0 against a repo pinning 21.2.0** — three majors — so a hand-typed `eas build`
+ran a different CLI than every script did, and BinfiniteApp's `check:bunx-pins` gate cannot catch
+that: it reads repo files, not what a human types. So it is now `"npm:eas-cli" = "21.2.0"` in
+`mise.toml` — declared, so `boom verify` sees it, and pinned, so the two agree. The version is an
+explicit `npm:` backend because the registry has no `eas` entry.
+
+**The diagnosis was "undeclared and unpinned", not "global".** Declaring and pinning it fixes the
+finding; deleting it would have removed a tool that is actually used. Left unowned: nothing checks
+this pin against BinfiniteApp's bunx pin, so they must be bumped together.
+
+`expo-cli` is NOT added, and should not be. It is EOL, and the Expo CLI in use ships inside each
+project's own `expo` dependency (`bunx expo`, `bunx expo-doctor` — 22 call sites). The only
+`expo-cli` string left in that repo is a stale generated `.gitignore` marker, which is exactly the
+kind of evidence that reads as a live consumer and is not.
 
 ### The rule this yields
 

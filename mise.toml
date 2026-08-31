@@ -42,6 +42,28 @@ lefthook = "latest"     # repo-local pre-commit/pre-push runner
                         # boom cannot perform, so a fresh machine would stall on it. The
                         # registry resolves `heroku` to npm, per the fallback order above.
 
+# ── Mobile / Expo ─────────────────────────────────────────────────────
+# EAS CLI. NOT `expo-cli`: that package is EOL, and the Expo CLI in use ships
+# inside each project's own `expo` dependency (`bunx expo`, `bunx expo-doctor` —
+# 22 call sites in BinfiniteApp). Nothing global is needed for it, and the only
+# `expo-cli` string left in that repo is a stale generated `.gitignore` marker.
+#
+# `eas` IS worth having globally, for the commands that run outside a project:
+# `eas login`, `eas whoami`, `eas build:list`. Builds never use this copy —
+# every call site is `bunx eas-cli@21.2.0`, behind BinfiniteApp's
+# `check:bunx-pins` gate.
+#
+# PINNED, and that is the point. This arrived as an undeclared `bun install -g`
+# that `boom verify` could not see, and it had drifted to 18.4.0 against a repo
+# pinning 21.2.0 — three majors stale, so a hand-typed `eas build` ran a
+# different CLI than any script did. The pin is what makes the two agree.
+# DRIFT: this version is not checked against BinfiniteApp's bunx pin by
+# anything. Bump them together.
+#
+# Explicit `npm:` backend because the registry has no `eas` entry (`mise
+# registry eas` → tool not found), per the fallback order at the top of this file.
+"npm:eas-cli" = "21.2.0"
+
 # ── File / text / data tools ──────────────────────────────────────────
 bat = "latest"
 fd = "latest"
