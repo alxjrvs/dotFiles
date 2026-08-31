@@ -26,7 +26,8 @@
 # and the two compose instead of racing.
 #
 # Wired agent-side via dot-claude/settings.json `hooks.PreToolUse` (matcher
-# "Bash"), alongside worktree-checkout-guard.sh and rebase-guard.sh.
+# "Bash"), alongside rebase-guard.sh, worktree-remove-guard.sh and
+# repo-scope-guard.sh.
 #
 # It FAILS OPEN (allow) on a missing jq, a bad envelope, or a missing guard-lib —
 # same as its two siblings, and defensible for the same reason they are: the
