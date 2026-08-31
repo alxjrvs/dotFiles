@@ -41,6 +41,7 @@ sections large enough to need it, so growth costs navigability rather than silen
 - [Retention](#retention)
 - [Contents](#contents)
 - [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-31 — the credential scrub was also a permission-mode switch](#2026-08-31--the-credential-scrub-was-also-a-permission-mode-switch)
 - [2026-08-29 — the guard in front of every push was making a network call](#2026-08-29--the-guard-in-front-of-every-push-was-making-a-network-call)
 - [2026-08-29 — the byte ceiling was destroying guidance a free mechanism holds](#2026-08-29--the-byte-ceiling-was-destroying-guidance-a-free-mechanism-holds)
 - [2026-08-29 — `AGENTS.md` considered, and declined](#2026-08-29--agentsmd-considered-and-declined)
@@ -136,6 +137,83 @@ Three corollaries, each mechanical:
 Counts that survive are the ones with an owner: a `jq` assertion, a `wc -c` gate, a test that
 fails. If a number matters enough to write down, make something check it; if it does not, describe
 the invariant and drop the digit.
+
+---
+
+## 2026-08-31 — the credential scrub was also a permission-mode switch
+
+`env.CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"` is removed. It was added 2026-06-05 as finding BP-3
+of the sandbox audit — *"strip cloud creds from sandboxed subprocesses; companion control for the
+gh-token-in-env pattern"* — and it survived the 2026-08-28 cleanup that found the rest of the
+`sandbox.*` block inert, on the grounds that it was the half that worked without
+`sandbox.enabled`. That was true. It was also the wrong question: it worked, on nothing.
+
+### What the flag actually does
+
+Three behaviours hang off the one variable, measured against Claude Code **2.1.251**:
+
+1. Strips a **206-name** credential list from the environment of every spawned subprocess, in
+   three spellings each (bare, `INPUT_`-prefixed, lowercased for `NPM_CONFIG_*`), plus a
+   connection-string name regex, plus rewriting registry URLs down to bare origin.
+2. Blocks reads of the `.env` family. This is the behaviour the egress entry in this file already
+   warned about: it makes Claude Code ignore `filesystem.disabled` from every source.
+3. **Forces the session's permission mode to `default`** — undocumented, and the reason this
+   entry exists.
+
+### Why it went
+
+**It scrubbed nothing.** The 206 names match zero variables in this machine's environment
+(`ANTHROPIC_*`, `AWS_*`, `GOOGLE_*`, `GCP_*`: none set). That is not luck, it is the op-agent
+design — the SA token is read inline inside op-agent's own process and never enters the parent
+env, which the egress entry in this file had already concluded when it said not to set this flag
+alongside an allowlist.
+
+**And it missed the ones that exist.** The BP-3 commit shipped with an explicit open question:
+*"Scrubbed-pattern list is undocumented — may not cover `GITHUB_*` vars."* It does not. The list
+contains `OVERRIDE_GITHUB_TOKEN` and `GH_CONFIG_DIR`, and neither `GITHUB_TOKEN`, `GH_TOKEN`, nor
+`NPM_TOKEN` — precisely the three `sandbox.credentials.envVars` names, and precisely the
+"gh-token-in-env pattern" the flag was adopted to cover. The companion control did not cover its
+companion.
+
+**What it cost instead.** The permission-mode resolver's first statement is a truthiness test on
+this variable; it returns `default` before reading the CLI flag, `permissions.defaultMode`, or
+agent frontmatter. Reproduced live:
+
+```
+$ CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 claude -p "ok" --permission-mode auto
+⚠ Permission mode forced to default — CLAUDE_CODE_SUBPROCESS_ENV_SCRUB is set …
+```
+
+The same command with `=0` prints the identical warning: `settings.env` re-applies `"1"` into
+`process.env` before the mode resolves, so **the shell value loses to the settings value.** While
+this key was in `settings.json` there was no per-invocation opt-out.
+
+The notification above only renders when a mode was supplied explicitly. A mode arriving from
+`permissions.defaultMode` sets no such flag, so the machine's `defaultMode: auto` was downgraded
+**silently** — which is why this went unnoticed from 2026-06-05 to 2026-08-31.
+
+### The size of the effect, and the correction it forced
+
+Across the last 80 session transcripts, 19 carry permission-mode records: 15 reached `auto`, 4 did
+not, and those 4 had one or two records each — they ended before anything re-resolved. Ten of the
+15 were `auto` from their very first record. So this is a **race** between `settings.env` landing
+in `process.env` and the mode resolving, not a permanent lock: agents boot manual, prompt for a
+few turns, and most then flip. A first pass at this read only the head of each transcript and
+concluded three sessions "ran their whole life in manual"; reading the files whole says otherwise,
+and the intermittency is the actual signature.
+
+### Declined
+
+The scrub has a second enable path — `GITHUB_ACTIONS` truthy with this variable *absent* — that
+turns on the scrubbing without the mode check ever reading it. Setting `GITHUB_ACTIONS=1` locally
+would thread the needle and is not worth it: it lies to every other CI branch in the CLI and in
+`gh`, `mise`, and `biome`, to buy a scrub that has nothing to scrub.
+
+Nothing replaces it. `permissions.deny` already blocks the Bash path to the tokens that do exist
+and is evaluated before `auto` and bypass; `sandbox.credentials.envVars` covers the env-at-rest
+case and stays inert until `sandbox.enabled`, which remains a separate decision. This entry pairs
+with the 2026-08-20 removal of `skipAutoPermissionPrompt`: that one restored a prompt that was
+being suppressed, this one restores the mode that was being overridden.
 
 ---
 
@@ -728,6 +806,8 @@ Two claims from the audit were checked and **not** acted on:
 `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is the part that works without any of this: it strips
 Anthropic and cloud-provider credentials from **all** subprocesses regardless of sandboxing. It
 is set now, because it needed nothing else to be true first.
+
+> Superseded by [2026-08-31 — the credential scrub was also a permission-mode switch](#2026-08-31--the-credential-scrub-was-also-a-permission-mode-switch)
 
 Turning `sandbox.enabled` on is deliberately not part of this change. Go-based CLIs — `gh`,
 `gcloud`, `terraform` — are documented to fail TLS verification under macOS Seatbelt and need
