@@ -30,7 +30,10 @@
       "Bash(gh pr merge:*)",
       "Bash(gh stack merge:*)",
       "Bash(git stash:*)",
-      "Bash(op run:*)"
+      "Bash(op --version)",
+      "Bash(op item list:*)",
+      "Bash(op run:*)",
+      "Bash(op whoami)"
     ],
     "deny": [
       "Bash(security find-generic-password:*)",
