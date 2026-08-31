@@ -449,7 +449,7 @@ $SAFE_SHAPES"
 
     # ---- op plugin: the biometric path, for the CLIs an agent must NOT drive -
     # Shell plugins are 1Password's answer to a CLI token sitting in plaintext on
-    # disk (`~/.railway/config.json`, `~/.netrc`, a `credentials.toml`): the
+    # disk (`~/.netrc`, a `credentials.toml`, a CLI's own `config.json`): the
     # credential lives in the vault and is released per-invocation behind Touch
     # ID. Every verb of this was denied by the default-deny arm below, which is
     # the exact failure the 2026-08-18 rewrite exists to end — `op --version` was
