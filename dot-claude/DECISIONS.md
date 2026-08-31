@@ -2393,7 +2393,41 @@ override — see 2.1.207). Hence `permissions.allow: Bash(gh pr merge:*)`. A lit
 > **`boom code reap` was removed 2026-08-31**, with the rest of `boom code`. Kept here
 > rather than archived because the limitation below is still live — a squash-merge still
 > leaves a worktree the client will not close — and nothing re-decides it by content any
-> more. The manual check is in the `worktree-triage` skill.
+> more.
+>
+> The `worktree-triage` skill carried the manual check and was retired the same day: it had
+> never been invoked once across 146 tracked skills. Its table is folded in below, because a
+> pointer to a deleted skill is exactly the rot this file keeps recording.
+
+### Triaging a worktree that will not close
+
+Run from the worktree, or with `-C <path>`:
+
+```sh
+git status --porcelain                             # dirty?
+git rev-list --max-count=1 HEAD --not --remotes    # empty = closeable
+git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null
+git log --oneline origin/main..HEAD
+cat "$(git rev-parse --git-common-dir)/worktrees/<name>/locked" 2>/dev/null
+```
+
+| what you see | what it is | the one command |
+|---|---|---|
+| `rev-list` empty | already closeable | close it; nothing to do |
+| Commits, no upstream, work is real | never published | `git push -u origin HEAD` |
+| Commits, but content is on main | squash-merged; the patch-ids match and the escape still cannot fire | confirm with `git cherry -v origin/main HEAD` (every line `-`), then `git worktree remove --force <path>` |
+| Dirty tree | waivable | commit it, or discard and force |
+| Part of a `gh stack` | do NOT push it bare; that retargets nothing | `gh stack submit` |
+| `locked` names a LIVE pid | another session is working in it | wait, or close that session — `worktree-remove-guard.sh` refuses it |
+| `locked` names a dead pid | abandoned | safe to remove |
+
+Check liveness with `kill -0 <pid>`. A process owned by another user returns EPERM and reads as
+dead; every Claude session here runs as the same user, so it does not arise in practice.
+
+An agent worktree is cut `--no-track`, so it has no upstream at all. Its `%(upstream:track)` is
+empty rather than the literal `gone` the content-based escape requires, which is why **a
+squash-merged branch stays blocked even though its content already landed**. That is the case
+that looks like a bug and is not.
 
 Claude Code's worktree-remove guard keeps any worktree whose HEAD commits exist on no remote, but it
 tests **SHA identity** — and a squash-merge rewrites history, so the content lands on the default
