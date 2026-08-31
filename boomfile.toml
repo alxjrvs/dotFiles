@@ -333,9 +333,10 @@ cmd = "curl -fsSL https://claude.ai/install.sh | bash"
 # (`/Applications/1Password.app/Contents/MacOS/1password-mcp`, a stdio server — verified by
 # speaking a JSON-RPC `initialize` to it directly), so there is nothing to install and, unlike
 # every other server here, nothing to authenticate: it takes no token, no `op://` ref and no
-# `headersHelper`. `boom mcp add` is deliberately NOT used — it wraps its argument in
-# `op run --env-file`, which is exactly wrong for a server whose whole design is that no secret
-# ever passes through it.
+# `headersHelper`. Registered with `claude mcp add` directly. boom had an `mcp add` of its own
+# and it was deliberately NOT used here — it wrapped its argument in `op run --env-file`, exactly
+# wrong for a server whose whole design is that no secret ever passes through it. That verb has
+# since been removed from boom, so the choice no longer exists to make.
 #
 # `unless` keys off the registration, not the binary, so this converges once and stays quiet.
 # Registration lives in `~/.claude.json`, which nothing tracks, so a fresh machine reproduces no
@@ -585,9 +586,10 @@ cmd = "scripts/startup-budget.sh"
 #     to `verify` BY CONSTRUCTION (the lesson recorded above for gh extensions),
 #     so the shell version needed a step per verb and a `--check` flag to tell
 #     them apart. A resource reports on both from one entry.
-#   - ROLLBACK-ABLE removal. The file is displaced into the run's backup tree, so
-#     `boom rollback` restores it — better than the script's own archive
-#     directory, which only a human reading the path would ever have found.
+#   - RECOVERABLE removal. The file is displaced into the run's backup tree rather
+#     than destroyed — better than the script's own archive directory, which only a
+#     human reading the path would ever have found. (`boom rollback` used to replay
+#     that automatically; it is gone, so the restore is by hand from the same tree.)
 #   - The directory guard and the symlink handling (`lstat`, so a link is removed
 #     rather than its target) are the engine's, tested there, not re-derived here.
 [[section.absent]]

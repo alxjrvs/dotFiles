@@ -38,7 +38,7 @@ and reconciles the machine. Preview without touching anything first:
 
 The command surface belongs to boom, not this repo, so it isn't restated here (and
 can't drift out of date). The canonical reference is the [boom docs][boom-docs] —
-or `boom --help` / `boom man` locally. In practice you'll reach for two verbs:
+or `boom --help` locally. In practice you'll reach for two verbs:
 **`boom source`** re-syncs the machine from `boomfile.toml` after you edit config
 (fast on a no-op; `--only="<section>"` scopes it, `--dry-run` previews); **`boom
 verify`** is the read-only drift check (exit `0` clean / `2` warn / `1` fail).
