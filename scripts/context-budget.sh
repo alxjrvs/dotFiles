@@ -1,60 +1,39 @@
 #!/usr/bin/env sh
 # Always-loaded context budget — the single source for the ceilings.
 #
-# Called from two places, deliberately: lefthook's pre-commit (so the ceiling is
-# hit at commit time, not after the push) and .github/workflows/lint.yml (so it
-# holds for anything that arrives without a local hook). Both call sites are one
-# line; the numbers and the reasoning live here, once.
+# Called from lefthook's pre-commit and .github/workflows/lint.yml. Both call
+# sites are one line; the numbers and the reasoning live here, once.
 #
 # Usage: scripts/context-budget.sh [file...]
 #   With no arguments, checks every capped file. With arguments (lefthook passes
-#   staged files), checks only the capped ones among them and ignores the rest.
-#   The link inventory below runs either way — it is a property of boomfile.toml,
-#   not of whatever happens to be staged.
+#   staged files), checks only the capped ones among them. The link inventory
+#   runs either way — it is a property of boomfile.toml, not of what is staged.
 #
 # WHY A CEILING: these files are symlinked into ~/.claude/ and loaded before
-# every task, so every byte is billed to every request of every session —
-# including the unattended ones nobody is watching. dot-claude/CLAUDE.md went
-# 348 -> 848 lines in sixteen days and 1 of 124 commits ever made it smaller, so
-# a ceiling is the only thing that makes a cut permanent: past this, something
-# goes out before anything comes in.
+# every task, so every byte is billed to every request of every session. A
+# ceiling is what makes a cut permanent: past this, something goes out before
+# anything comes in.
 #
-# WHY PER-FILE: the two files have different jobs, and a ceiling set too close to
-# current size stops forcing DISPLACEMENT and starts forcing THRASH — you delete
-# whatever is cheapest to delete, not whatever is least worth loading. Each
-# leaves roughly a fifth free: enough for a legitimate addition, not a section.
+# WHY PER-FILE: a ceiling set too close to current size stops forcing
+# DISPLACEMENT and starts forcing THRASH — you delete whatever is cheapest, not
+# whatever is least worth loading. Each leaves roughly a fifth free.
 #
-# WHY AN EXPLICIT LIST, NEVER A *.md GLOB: DECISIONS.md is
-# deliberately UNCAPPED and unbanned. They are not symlinked
-# into ~/.claude/, so they cost nothing per session. Capping the overflow
-# destination would push content back into the loaded file, inverting the whole
-# mechanism.
+# WHY AN EXPLICIT LIST, NEVER A *.md GLOB: DECISIONS.md is deliberately UNCAPPED.
+# It is not symlinked into ~/.claude/, so capping the overflow destination would
+# push content back into the loaded file, inverting the whole mechanism.
 #
-# WHY THE DATE BAN: it is the cheap proxy for the whole rotting class. A date
-# makes a sentence a record rather than a rule, and every changelog entry,
-# self-correction and "measured against <version>" paragraph in the 18k-token
-# predecessor carried one. No false-positive risk here: a full YYYY-MM-DD has no
-# business in an instruction file.
+# WHY THE DATE BAN: a date makes a sentence a record rather than a rule, so it is
+# the cheap proxy for the whole rotting class. No false-positive risk: a full
+# YYYY-MM-DD has no business in an instruction file.
 #
-# WHY THE COUNT IGNORES HTML COMMENTS: it used to bill them, and that was wrong
-# in the expensive direction. Claude Code strips block-level HTML comments before
-# injecting the file — "Block-level HTML comments (<!-- maintainer notes -->) in
-# CLAUDE.md files are stripped before the content is injected into Claude's
-# context" — so a note to a human maintainer costs ZERO tokens. Counting raw
-# bytes meant those notes competed for the ceiling and got deleted to fit: the
-# gate was forcing out content that was already free. Comments inside fenced code
-# blocks ARE preserved by the client, so the strip below is an approximation that
-# does not model fences; neither capped file contains one, and the loop below
-# fails on a fence rather than quietly under-counting if that ever changes.
+# WHY THE COUNT IGNORES HTML COMMENTS: Claude Code strips block-level HTML
+# comments before injecting the file, so a note to a human maintainer costs ZERO
+# tokens and must not compete for the ceiling. Comments inside fenced code blocks
+# ARE preserved, so the strip below does not model fences; the loop fails on a
+# fence rather than quietly under-counting.
 #
-# WHY THE LINK INVENTORY: the header above used to end with "Adding a file to
-# ~/.claude/ without adding it here is how the budget silently stops applying",
-# and then that happened three times — skills/, agents/ and loop.md all arrived
-# as links with the budget none the wiser, while README and DECISIONS went on
-# saying only two files were linked at all. A comment predicting a failure does
-# not prevent it. Every `dst = "~/.claude/…"` in boomfile.toml must now be
-# classified below or this fails, so the next one is a decision instead of a
-# drift.
+# WHY THE LINK INVENTORY: every `dst = "~/.claude/…"` in boomfile.toml must be
+# classified below or this fails, so a new link is a decision instead of a drift.
 set -eu
 
 BOOMFILE=${BOOMFILE:-boomfile.toml}
@@ -73,9 +52,8 @@ limit_for() {
 classify_link() {
   # The tilde is LITERAL here and must stay literal: these patterns are matched
   # against the raw `dst = "~/.claude/…"` strings read out of boomfile.toml, not
-  # against a resolved path. Expanding to $HOME would make every pattern miss —
-  # which is the bug this had before the quotes went on, when the inventory
-  # reported every link as unknown.
+  # against a resolved path. Expanding to $HOME makes every pattern miss, and the
+  # inventory then reports every link as unknown.
   # shellcheck disable=SC2088
   case "$1" in
     "~/.claude/CLAUDE.md") echo "billed in full — capped above" ;;
@@ -117,10 +95,9 @@ strip_comments() {
 fail=0
 
 # ── link inventory ────────────────────────────────────────────────────
-# A missing boomfile FAILS rather than skipping. scripts/tests/gates.sh exists
-# because three gates here once printed `ok` for an input they never read, and
-# an inventory that silently checks nothing is that same bug: both call sites
-# run from the repo root, where this file always exists.
+# A missing boomfile FAILS rather than skipping: an inventory that silently
+# checks nothing is a gate that prints `ok` for an input it never read. Both call
+# sites run from the repo root, where this file always exists.
 [ -f "$BOOMFILE" ] || {
   echo "context-budget: no $BOOMFILE — the link inventory checked nothing" >&2
   exit 1
@@ -143,26 +120,13 @@ done
 [ "$fail" -ne 0 ] || echo "ok link inventory ($n_links ~/.claude/ links, all classified)"
 
 # ── no prose may restate a count this repo computes ───────────────────
-# WHY. An audit tested every checkable factual claim in this repo's prose and
-# found all of them wrong — including three separate statements of the link
-# count (README, DECISIONS.md, and a comment six lines above the line that
-# PRINTS the correct one), and three different figures for the payload files
-# boomfile.toml names. DECISIONS.md already publishes the rule this enforces:
-# a number "may never describe how the system currently is — name the
-# authority instead of the value".
+# WHY. DECISIONS.md publishes the rule this enforces: a number "may never
+# describe how the system currently is — name the authority instead of the
+# value". Scoped to the two counts that rotted; a general "no digits near nouns"
+# rule would fire on every dated DECISIONS.md measurement, and those are honest.
 #
-# NOT a comment-ratio ceiling. That was considered and is the wrong
-# instrument: a ratio cannot tell a hard-won mechanism explanation from a
-# restated constant, so it forces deletion of whichever comment is cheapest
-# rather than whichever is least worth keeping. This asserts one property
-# instead — if a script here computes it, prose may not also assert it.
-#
-# Scoped deliberately to the two counts that actually rotted. A general
-# "no digits near nouns" rule would fire on every measurement in a dated
-# DECISIONS.md entry, and those are honest: the date is what makes them true.
 # NO `\b`. git grep's ERE does not implement it: the pattern compiles, matches
-# nothing, and the gate passes on everything — verified by injecting "14 links"
-# and watching the first draft of this check report ok. Explicit character-class
+# nothing, and the gate passes on everything. Explicit character-class
 # boundaries, the same idiom `guard-lib.sh` uses for its verb regex.
 _B='([^A-Za-z0-9_-]|$)'
 restated=$(git grep -nEI \

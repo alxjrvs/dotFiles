@@ -2,17 +2,13 @@
 # Claude Code PreToolUse guard — refuses a WRITE to a GitHub repo outside the
 # owned orgs, and refuses the two `gh pr merge` flags that delete a branch.
 #
-# CLAUDE.md has carried both as prose. Neither was enforced, and one was worse
-# than unenforced: `.claude/settings.local.json` pre-approved `Bash(gh api *)`,
-# which is `-X POST` and `-X DELETE` against any repo on GitHub with no prompt,
-# under `defaultMode: auto`. DECISIONS.md names `gh api` as the exact path a deny
-# rule cannot cover, because deny matches a command SPELLING and the owner is an
-# argument, not a spelling.
-#
 # WHY A GUARD AND NOT A DENY ENTRY. `permissions.deny` cannot express "this repo
 # but not that one" (the owner is data), nor "this flag anywhere in argv"
 # (`Bash(gh pr merge:*)` matches every spelling of it). Both need tokenizing,
-# which is what guard-lib.sh is for.
+# which is what guard-lib.sh is for. `gh api` is the sharpest case: it is `-X
+# POST` and `-X DELETE` against any repo on GitHub, pre-approved in
+# `.claude/settings.local.json` under `defaultMode: auto`, and the owner is an
+# argument rather than a spelling.
 #
 # NO NETWORK. The owner is resolved from the local remote, never `gh repo view`:
 # this runs on every Bash tool call, and a network round-trip there is a tax on
@@ -196,9 +192,8 @@ while IFS= read -r seg; do
     # The endpoint carries the owner: repos/OWNER/NAME/...
     #
     # A full URL is the same endpoint with a host glued on, so it is normalized
-    # before matching. `gh api -X DELETE https://api.github.com/repos/o/n/...`
-    # was ALLOWED, because none of the patterns below matched a string starting
-    # with `https:` and the guard then fell back to the cwd's owner.
+    # before matching — otherwise none of the patterns below match a string
+    # starting with `https:` and the guard falls back to the cwd's owner.
     if [ "$gated" = 1 ] && [ -z "$repo_arg" ]; then
       i=1
       while [ "$i" -le "$n" ]; do
@@ -219,9 +214,8 @@ while IFS= read -r seg; do
 
     # GraphQL names its target as a node ID INSIDE the query body, so the owner
     # is invisible to a path-based guard by construction — and the fallback
-    # below then reads the cwd's owner and allows. `gh api graphql` with a
-    # mutation reaches every write on GitHub, and this guard's own header calls
-    # `gh api` "the path that walks past everything".
+    # below would then read the cwd's owner and allow. `gh api graphql` with a
+    # mutation reaches every write on GitHub.
     #
     # An owner this guard cannot resolve on a MUTATING call is the fail-closed
     # case, not the fail-open one. A read-only query is untouched: it is the

@@ -2,29 +2,22 @@
 # launchd plist guardrails — the single source for both assertions.
 #
 # Called from lefthook's pre-commit (staged files) and .github/workflows/lint.yml
-# (every tracked plist). It was written twice, and the two copies had already
-# diverged in implementation: lefthook used `plutil -lint`, CI used Python's
-# plistlib. Same rule, two languages, no way to tell which was authoritative.
+# (every tracked plist).
 #
 # WHY TWO ASSERTIONS AND NOT ONE. launchd does NOT expand `~` or `$HOME` in a
 # plist value. It fails the job with EX_CONFIG (78) BEFORE running it, so the
-# only symptom is a job that silently never runs. `com.alxjrvs.boom-verify.plist`
-# (since deleted with the scheduled verify) reported runs=0 for 28 days for exactly
-# this reason — while the identical bug had already been found and fixed in the
-# capslock plist and not carried across.
-# Structural validity does not catch it: both plists parsed cleanly the whole
-# time. The path-value assertion is the one that would have.
+# only symptom is a job that silently never runs — and structural validity does
+# not catch it, because such a plist parses cleanly. The path-value assertion is
+# the one that would.
 #
 # plutil is macOS-only; plistlib is the portable equivalent, so this prefers
-# plutil when present and falls back. That is the divergence the two copies had,
-# resolved once here rather than differently in each.
+# plutil when present and falls back.
 set -eu
 
 fail=0
 
-# See settings-guardrails.sh for why an empty input list is a failure and not a
-# pass: with no arguments this printed `ok plists ()` and exited 0, so an empty
-# `$(git ls-files …)` expansion in CI reported success for zero files checked.
+# An empty input list is a failure, not a pass: an empty `$(git ls-files …)`
+# expansion in CI must not report success for zero files checked.
 [ "$#" -gt 0 ] || {
   echo "no inputs — the caller's glob matched nothing, so no plist was checked" >&2
   exit 1

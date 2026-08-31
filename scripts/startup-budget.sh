@@ -1,24 +1,15 @@
 #!/usr/bin/env sh
 # Interactive shell startup stays under a ceiling.
 #
-# WHY THIS AND NOT A COMMENT. zsh/30-plugins.zsh carries a careful baseline —
-# per-eval breakdown, what was tried, what was rejected and why — and it is
-# maintained honestly: it was re-measured, the number moved 199 → 250 ms, and the
-# comment says so and names the command to re-run. That is exactly the shape
-# DECISIONS.md's "How to write a number so it cannot rot" asks for.
+# WHY THIS AND NOT A COMMENT. zsh/30-plugins.zsh carries the per-eval baseline
+# and the command to re-measure it, but a comment cannot notice drift — and the
+# drift here is tool growth: six `eval`s of six independently upgrading tools,
+# none of which announces that it got heavier.
 #
-# It still only rots slower. A comment cannot notice; someone has to re-run it,
-# and the drift it is tracking is tool growth — six `eval`s of six independently
-# upgrading tools, none of which announces that it got heavier. The whole reason
-# CLAUDE.md bans measurements against a tool version is that they expire with
-# nobody watching, and the repo's own answer to that is to enforce rather than
-# describe. This is the enforcement half; the comment stays as the explanation.
-#
-# A CEILING, NOT A BASELINE. It fails on "materially worse than measured", not on
-# "different from measured" — a machine under load, a cold cache, or a Rosetta
-# shell all move the number, and a check that fires on those trains you to ignore
-# it. Set well above the ~250 ms baseline so it means "something changed
-# structurally", which is the only signal worth a notification.
+# A CEILING, NOT A BASELINE. It fails on "materially worse than measured", not
+# "different from measured" — load, a cold cache, or a Rosetta shell all move the
+# number, and a check that fires on those trains you to ignore it. Set well above
+# the baseline so it means "something changed structurally".
 #
 # Verify-only, and machine state: CI has no sheldon, no atuin, no mise shims and
 # no plugins, so a runner would measure a shell that does not exist here.
@@ -64,24 +55,12 @@ print(int((time.time() - t) * 1000))
 }
 
 # RETRY THE WHOLE MEASUREMENT, up to ATTEMPTS times, passing on the first one
-# under the ceiling.
-#
-# The median of 5 above already absorbs a single scheduler hiccup. It does not
-# absorb SUSTAINED load, which moves all five together — measured on this
-# machine while it was running several agents: 532/665/693/647/632/650 ms
-# against a 450 ms ceiling, with the same shell measuring 238 ms once the
-# machine was quiet. A structural regression and a busy laptop were
-# indistinguishable, and this check is wired to `boom verify` on a nightly timer
-# with `notify = true`.
-#
-# That is the failure `boomfile.toml` already paid for once with the MCP health
-# check, which was given a three-read retry because "a check that cries wolf is
-# worse than no check". Same remedy, same reason: a check whose notification is
-# wrong more often than right trains you to dismiss the one that matters.
-#
-# It does not weaken the signal. A shell that is genuinely slower is slower on
-# every attempt, so a real regression still fails all three; only a transient
-# spike is forgiven, and forgiving it is the entire point.
+# under the ceiling. The median of 5 absorbs a single scheduler hiccup but not
+# SUSTAINED load, which moves all five together — and this check is wired to
+# `boom verify` on a nightly timer with `notify = true`, where a notification
+# that is wrong more often than right trains you to dismiss the one that matters.
+# A shell that is genuinely slower is slower on every attempt, so a real
+# regression still fails all three.
 ATTEMPTS=${STARTUP_ATTEMPTS:-3}
 attempt=0
 median=''

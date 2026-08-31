@@ -1,16 +1,12 @@
 # boom's own self-wiring, folded into the reconcile it already runs:
 #   - skill_on_sync: regenerate ~/.claude/skills/boom/SKILL.md from the running binary each
-#     sync, so the self-describing skill never lags a `boom upgrade` (replaces the
-#     `boom skill --install` run step).
+#     sync, so the self-describing skill never lags a `boom upgrade`.
 #   - upgrade_on_sync = "check": after a sync, warn (offline-safe, non-fatal) when a newer boom
-#     ships — the exact stale-binary drift that let a 0.9.1 machine propagate renamed-away
-#     command names before anyone noticed. ("auto" would self-upgrade instead of warning.)
+#     ships. ("auto" would self-upgrade instead of warning.)
 [boom]
 skill_on_sync = true
 upgrade_on_sync = "check"
-# Desktop-notify (macOS osascript) when `boom verify` finds drift. Verb-driven, not
-# schedule-gated, so it still surfaces a drift result now that nothing runs verify
-# on a timer.
+# Desktop-notify (macOS osascript) when `boom verify` finds drift.
 notify = true
 
 [[section]]
@@ -40,10 +36,8 @@ dst = "~/.gitconfig"
 src = ".gitmessage"
 dst = "~/.gitmessage"
 
-# Global git excludes → git's XDG default. ONLY universal machine/editor
-# cruft; repo-specific ignores live in each project's own .gitignore. (This
-# used to be a `.gitignore → ~/.gitignore` link doubling as core.excludesfile,
-# which leaked this repo's `.claude/` etc. into every repo on the machine.)
+# Global git excludes → git's XDG default. ONLY universal machine/editor cruft;
+# repo-specific ignores live in each project's own .gitignore.
 [[section.link]]
 src = "git/ignore"
 dst = "~/.config/git/ignore"
@@ -96,14 +90,11 @@ src = "mise-settings.toml"
 dst = "~/.config/mise/conf.d/settings.toml"
 
 # The lockfile, and this link is what makes it count. mise resolves a lockfile against the
-# *config root*, which for the global config is ~/.config/mise/ — not this repo, because
-# ~/.config/mise/config.toml is a symlink INTO the repo rather than the repo itself. Without
-# this link, `lockfile = true` would happily maintain ~/.config/mise/mise.lock outside version
-# control and the pinning would never actually be committed: the feature would look enabled and
-# land nothing.
+# *config root* — for the global config that is ~/.config/mise/, not this repo, because
+# ~/.config/mise/config.toml is only a symlink into it. Without this link, `lockfile = true`
+# would maintain ~/.config/mise/mise.lock outside version control and pin nothing.
 #
-# Linked rather than copied so mise's own updates write through into the repo, keeping the
-# committed lockfile current instead of immediately stale.
+# Linked rather than copied so mise's own updates write through into the repo.
 [[section.link]]
 src = "mise.lock"
 dst = "~/.config/mise/mise.lock"
@@ -147,20 +138,18 @@ dst = "~/.claude/CLAUDE.md"
 src = "dot-claude/settings.json"
 dst = "~/.claude/settings.json"
 
-# Shared parsing for both PreToolUse guards (quote-aware command splitting, token
+# Shared parsing for the PreToolUse guards (quote-aware command splitting, token
 # normalization). LOAD-BEARING: each guard sources it as
-# `$(dirname "$0")/guard-lib.sh`, so if this link is missing they both fail OPEN
-# and every push/checkout sails through. It must sit in the same directory as
-# them. Not executable — it is sourced, never run.
+# `$(dirname "$0")/guard-lib.sh`, so if this link is missing they all fail OPEN and
+# every guarded command sails through. It must sit in the same directory as them.
+# Not executable — it is sourced, never run.
 [[section.link]]
 src = "dot-claude/hooks/guard-lib.sh"
 dst = "~/.claude/hooks/guard-lib.sh"
 
 # PreToolUse guard referenced by settings.json `hooks.PreToolUse`: blocks an
 # agent's `git push` / `gh pr create` when its branch is behind origin/HEAD, so
-# it rebases onto the latest target before publishing. Logic lives in a script
-# (not an inline settings.json string) because it parses stdin, fetches, and
-# emits a deny-JSON verdict — too much for a legible one-liner.
+# it rebases onto the latest target before publishing.
 [[section.link]]
 src = "dot-claude/hooks/rebase-guard.sh"
 dst = "~/.claude/hooks/rebase-guard.sh"
@@ -185,29 +174,25 @@ dst = "~/.claude/hooks/repo-scope-guard.sh"
 mode = "755"
 
 # PreToolUse guard (runs FIRST): the allow-list that makes `op` usable by agents.
-# LOAD-BEARING, and in a way the other two guards are not. `permissions.allow`
-# carries `Bash(op run:*)`, which pre-approves the shape this guard is what keeps
-# safe — it denies `--no-masking`, a `--`-less invocation, and an env-dumping or
-# `git`/`gh` child before the permission system is ever consulted. If this link
-# goes missing, that pre-approval is left standing on its own.
+# LOAD-BEARING, and in a way the other guards are not. `permissions.allow` carries
+# `Bash(op run:*)`, which pre-approves the shape this guard is what keeps safe — it
+# denies `--no-masking`, a `--`-less invocation, and an env-dumping or `git`/`gh`
+# child before the permission system is ever consulted. If this link goes missing,
+# that pre-approval is left standing on its own.
 #
-# That is why it is a LINK and not a copy, and why `boom verify` is the backstop:
-# an absent symlink is drift boom reports, so "the guard is gone" is a detected
-# state rather than a silent one. Do not add `Bash(op run:*)` to `allow` anywhere
-# this guard is not also installed.
+# A LINK and not a copy, so an absent symlink is drift `boom verify` reports. Do not
+# add `Bash(op run:*)` to `allow` anywhere this guard is not also installed.
 [[section.link]]
 src = "dot-claude/hooks/op-guard.sh"
 dst = "~/.claude/hooks/op-guard.sh"
 mode = "755"
 
 # Stop hook: run the repo's OWN commit gate before an agent may call itself done.
-# Every other hook here stops a bad ACTION; this is the only one that asks whether the
-# WORK is correct. It has no opinion of its own — it runs whatever `lefthook.yml` the
-# repo already declares — and it is a no-op unless the tree has uncommitted changes.
-# The link is what makes it real: it landed in `settings.json` without one, so the
-# handler pointed at a path that did not exist and the gate enforced nothing. That is
-# the failure this repo keeps recording, and `settings-guardrails.sh` now names this
-# file so un-wiring it fails lefthook, CI and `boom verify` instead of passing all three.
+# It has no opinion of its own — it runs whatever `lefthook.yml` the repo already
+# declares — and it is a no-op unless the tree has uncommitted changes. The link is what
+# makes it real: without it the `settings.json` handler points at a path that does not
+# exist and the gate enforces nothing, which is why `settings-guardrails.sh` names this
+# file — un-wiring it fails lefthook, CI and `boom verify` instead of passing all three.
 [[section.link]]
 src = "dot-claude/hooks/verify-gate.sh"
 dst = "~/.claude/hooks/verify-gate.sh"
@@ -215,10 +200,9 @@ mode = "755"
 
 # SessionStart/SubagentStart hook: start an agent on CURRENT code. The client's
 # `worktree.baseRef: "fresh"` cuts from the local `origin/<default>` ref and only
-# refreshes it when .git/FETCH_HEAD is more than 24h old, so an agent can silently
-# branch from a day-old base (measured against 2.1.237, both directions). This
-# refreshes the ref in the primary checkout and fast-forwards a virgin worktree
-# onto it. Unlike the PreToolUse guards it decides nothing — it only ever runs
+# refreshes it when .git/FETCH_HEAD is more than 24h old (measured against 2.1.237), so
+# an agent can silently branch from a day-old base. This refreshes the ref in the primary
+# checkout and fast-forwards a virgin worktree onto it; it only ever runs
 # `git merge --ff-only`, so it cannot discard a commit.
 [[section.link]]
 src = "dot-claude/hooks/worktree-freshness.sh"
@@ -227,128 +211,81 @@ mode = "755"
 
 # SessionStart hook: give each agent worktree its own 10-port block, derived from
 # the worktree's name, so two agents told to "run the app" do not race for :3000 —
-# where the loser either reports the feature broken (EADDRINUSE) or, on a framework
-# that auto-increments, silently drives a browser against the OTHER worktree's
-# server and passes a check of code it never loaded. Derived rather than allocated:
-# no registry, no lock, no reaper, and stable across sessions, which is what makes
-# it safe to append `PORT=` to a worktree's own gitignored `.env` — the four
-# conditions gating that write are in the script's header, and the symlink one is
-# what keeps it off the user's real `.env`.
+# where the loser either reports the feature broken (EADDRINUSE) or, on a framework that
+# auto-increments, drives a browser against the OTHER worktree's server. Derived rather
+# than allocated: no registry, no lock, no reaper, and stable across sessions, which is
+# what makes it safe to append `PORT=` to a worktree's own gitignored `.env` — the four
+# conditions gating that write are in the script's header.
 [[section.link]]
 src = "dot-claude/hooks/worktree-port.sh"
 dst = "~/.claude/hooks/worktree-port.sh"
 mode = "755"
 
-# The hook SUITES are deliberately not linked. Five of the eight were — run.sh,
-# cases.tsv, freshness, port, canary — and verifygate, wtremove and reposcope were
-# not, an asymmetry with no stated reason behind it. The runner that replaced
-# their gate declarations discovers its roster from the directory it sits in,
-# which turns a partial link set into the one failure mode a test runner must not
-# have: a green run over a roster missing three suites.
-#
-# Linking all of them instead would buy a convenience `cd ~/Code/DevEnv/dotFiles &&
-# dot-claude/hooks/tests/all.sh` already provides, on a machine that by
-# definition has this repo — boom cloned it to get here. So: none, and the
-# asymmetry cannot come back.
+# The hook SUITES are deliberately not linked, none of them. The runner discovers its
+# roster from the directory it sits in, so a partial link set produces the one failure a
+# test runner must not have: a green run over a roster missing suites. Run them from the
+# repo instead — `dot-claude/hooks/tests/all.sh`, on a machine that by definition has it.
 
-# Standing prompt for a bare `/loop`. `.claude/loop.md` is a real Claude Code
-# config surface (the binary carries `<<loop.md>>` sentinels), so versioning it
-# here beats retyping the condition each session. It is byte-capped — the client
-# warns "loop.md was truncated to N bytes. Keep the task list concise" — so this
-# stays a short task list, never a second CLAUDE.md.
+# Standing prompt for a bare `/loop`. It is byte-capped — the client warns "loop.md was
+# truncated to N bytes. Keep the task list concise" — so this stays a short task list,
+# never a second CLAUDE.md.
 [[section.link]]
 src = "dot-claude/loop.md"
 dst = "~/.claude/loop.md"
 
-# A glob `src` places every match under `dst` (a directory) — the old `glob` resource, now
-# just a `link` whose src carries a wildcard.
+# A glob `src` places every match under `dst` (a directory).
 [[section.link]]
 src = "dot-claude/skills/*"
 dst = "~/.claude/skills/"
 
 # Subagent definitions. Same glob-destination shape as skills above, and the same
 # caveat: boom places the managed symlinks and has no opinion about anything else
-# sharing the directory.
-#
-# Unlike a skill, an agent definition costs nothing per session — only its
-# `description` is read, and only when the Agent tool is offered. That is what
-# makes these worth having for work a main session would otherwise do inline:
-# `guard-tester` runs seven suites whose ~20s of output never enters the parent
-# context, and `drift-triage` is read-only by construction.
+# sharing the directory. Unlike a skill, an agent definition costs nothing per
+# session — only its `description` is read, and only when the Agent tool is offered.
 [[section.link]]
 src = "dot-claude/agents/*"
 dst = "~/.claude/agents/"
 
-# Path-scoped rules. Same glob-destination shape again, but a different cost
-# model from either neighbour above, and it is the reason these exist:
-#
-# A rule carrying `paths:` frontmatter loads ONLY when Claude reads a file
-# matching one of its globs — "path-scoped rules trigger when Claude reads files
-# matching the pattern, not on every tool use". So guidance that is only true
-# while editing one kind of file can be written at any length and still cost a
-# session nothing until that file is opened.
-#
-# That closes the gap `scripts/context-budget.sh` had been paying for. The
-# ceiling on CLAUDE.md is real and stays, but until now the only way under it was
-# DELETION — guidance was destroyed to fit a budget a free mechanism would have
-# absorbed. Two rules moved out of the always-loaded file on the first pass (the
-# Bash-pattern gotcha and the empty-string env vars, both useful only while
-# editing a settings.json) and they now fire exactly when they apply, which is
-# also better targeting than always-on ever was.
-#
-# A rule WITHOUT `paths:` loads at launch with the same priority as CLAUDE.md —
-# i.e. it is billed like the file it was supposed to relieve. That is the failure
-# mode worth gating, so `scripts/rules-scoped.sh` fails on any rule here that
-# omits the key.
+# Path-scoped rules. A rule carrying `paths:` frontmatter loads ONLY when Claude reads a
+# file matching one of its globs, so guidance that is only true while editing one kind of
+# file can be written at any length and still cost a session nothing until that file is
+# opened. A rule WITHOUT `paths:` loads at launch with the same priority as CLAUDE.md —
+# billed like the file it was supposed to relieve — so `scripts/rules-scoped.sh` fails on
+# any rule here that omits the key.
 [[section.link]]
 src = "dot-claude/rules/*"
 dst = "~/.claude/rules/"
 
-# Skill refresh moved to the top-level `[boom] skill_on_sync = true` — boom regenerates its
-# own SKILL.md from the running binary each sync, no `run` step needed.
-
 [[section.run]]
 # Claude Code CLI via the official native installer (self-updating); never
-# brew/npm, whose builds do not auto-update. Only installs when `claude` is
-# missing; the CLI updates itself thereafter.
-#
-# The predicate is `unless` rather than hand-rolled into `cmd`: a skipped step
-# now says so in the report instead of a `||` short-circuit pretending to converge. `timeout`
-# because this is a network fetch piped to a shell — reachable from an unattended sync, where a
-# hang would block the whole reconcile with nobody watching.
+# brew/npm, whose builds do not auto-update. Only installs when `claude` is missing;
+# the CLI updates itself thereafter. `timeout` because this is a network fetch piped
+# to a shell, reachable from an unattended sync where a hang would block the reconcile.
 on = "sync"
 unless = "command -v claude >/dev/null 2>&1"
 timeout = 180
 cmd = "curl -fsSL https://claude.ai/install.sh | bash"
 
 # The 1Password Environments MCP server, user-scoped. It ships INSIDE the desktop app
-# (`/Applications/1Password.app/Contents/MacOS/1password-mcp`, a stdio server — verified by
-# speaking a JSON-RPC `initialize` to it directly), so there is nothing to install and, unlike
-# every other server here, nothing to authenticate: it takes no token, no `op://` ref and no
-# `headersHelper`. Registered with `claude mcp add` directly. boom had an `mcp add` of its own
-# and it was deliberately NOT used here — it wrapped its argument in `op run --env-file`, exactly
-# wrong for a server whose whole design is that no secret ever passes through it. That verb has
-# since been removed from boom, so the choice no longer exists to make.
+# (`/Applications/1Password.app/Contents/MacOS/1password-mcp`, a stdio server), so there is
+# nothing to install and, unlike every other server here, nothing to authenticate: it takes
+# no token, no `op://` ref and no `headersHelper`.
 #
 # `unless` keys off the registration, not the binary, so this converges once and stays quiet.
-# Registration lives in `~/.claude.json`, which nothing tracks, so a fresh machine reproduces no
-# project-scoped server at all. CLAUDE.md used to record that gap and no longer does, so this is
-# now the only place it is written down. This step closes it for this one server.
+# Registration lives in `~/.claude.json`, which nothing tracks, so a fresh machine reproduces
+# no MCP server at all; this step closes that for this one server.
 [[section.run]]
 on = "sync"
 unless = '''test ! -x /Applications/1Password.app/Contents/MacOS/1password-mcp || jq -e '.mcpServers["1password"]' ~/.claude.json >/dev/null 2>&1'''
 cmd = "claude mcp add --scope user 1password -- /Applications/1Password.app/Contents/MacOS/1password-mcp"
 
-# A `run` bound to `on = "sync"` is invisible to `verify` BY CONSTRUCTION — the lesson the
-# `gh extensions` section records after a hand-removed extension went unnoticed until the next
-# sync silently reinstalled it. There is no boom package manager for MCP servers, so the
-# sync step above cannot become a `pkg` entry; this is the verify half, hand-written.
+# A `run` bound to `on = "sync"` is invisible to `verify` BY CONSTRUCTION, and there is no
+# boom package manager for MCP servers, so the sync step above cannot become a `pkg` entry.
+# This is the verify half, hand-written, and it asserts registration only.
 #
-# It asserts registration only. Health is already covered by the existing `claude mcp list`
-# check — and note that server reports `✔ Connected` even with nobody at the keyboard, because
-# its human approval gate is at TOOL-CALL time, per Environment, not at connect. That was
-# measured before adopting it precisely because a server that needed auth to connect would have
-# failed `boom verify` on every scheduled run, back when there was one.
+# Health is covered by the `claude mcp list` check below — note that this server reports
+# `✔ Connected` even with nobody at the keyboard, because its human approval gate is at
+# TOOL-CALL time, per Environment, not at connect.
 [[section.run]]
 on = "verify"
 cmd = '''
@@ -356,34 +293,18 @@ cmd = '''
 jq -e '.mcpServers["1password"]' ~/.claude.json >/dev/null 2>&1 || { echo "1Password Environments MCP not registered (user scope) — boom source, or: claude mcp add --scope user 1password -- /Applications/1Password.app/Contents/MacOS/1password-mcp"; exit 1; }
 '''
 
-# The deny floor and the hook inventory — the Bash path to a *resolved* secret,
-# and the guards that must stay wired for the pre-approved shapes to remain safe.
-# `op-agent secret` and `op-agent git-credential get` each print a live credential
-# to stdout, and stdout is model context. The verb with the confirmed transcript
-# leak was `op-agent header`, deleted 2026-08-28 once an audit found it dispatched
-# but consumed by nothing. That postmortem produced a prose rule and no deny
-# entry, so the one command with an incident stayed reachable while `op-agent
-# secret`, which never leaked, was blocked twice — which is the whole reason the
-# floor below is asserted by a script rather than described here.
+# The deny floor and the hook inventory — the Bash path to a *resolved* secret, and the
+# guards that must stay wired for the pre-approved shapes to remain safe. `op-agent secret`
+# and `op-agent git-credential get` each print a live credential to stdout, and stdout is
+# model context. The assertions live in scripts/settings-guardrails.sh, called here against
+# the LIVE file and from lefthook and lint.yml against the staged and committed ones, and
+# they cover every wired hook, not just op-guard.
 #
-# The assertions now live in scripts/settings-guardrails.sh, called here against
-# the LIVE file and from lefthook and lint.yml against the staged and committed
-# ones. They were written out three times before, hand-synced, each carrying a
-# comment telling a human to keep the inventory aligned — and they had already
-# drifted in form. This is the consolidation scripts/context-budget.sh already
-# argues for, applied a second time.
-#
-# Two things the script keeps that a `[[section.check]]` could not express, and
-# which are why this stays a `run`: `present` matches file CONTENT, so
-# `"Bash(op:*)"` appearing anywhere satisfied it — moving an entry out of `deny`
-# and into `allow` INVERTED the control with every gate green; and it asserted 3
-# of 11 entries, leaving the keychain read, both `Read()` rules and
-# `Bash(~/.local/bin/op-agent:*)` deletable unnoticed. `jq index` asserts
-# membership of the deny ARRAY, and --arg passes each value as data rather than
-# as a pattern. The `[ -f ]` guard preserves the old `missing_file = "skip"`.
-#
-# It also asserts every wired hook, not just op-guard: un-wiring rebase-guard or
-# worktree-checkout-guard used to pass all three gates green.
+# Why a `run` and not a `[[section.check]]`: `present` matches file CONTENT, so
+# `"Bash(op:*)"` appearing anywhere satisfies it, and moving an entry out of `deny` and into
+# `allow` INVERTS the control with every gate green. `jq index` asserts membership of the
+# deny ARRAY, and --arg passes each value as data rather than as a pattern. The `[ -f ]`
+# guard preserves the old `missing_file = "skip"`.
 [[section.run]]
 on = "verify"
 cmd = '''
@@ -392,48 +313,25 @@ f=~/.claude/settings.json
 scripts/settings-guardrails.sh "$f"
 '''
 
-# An MCP server can die silently and stay dead. Two of three configured servers
-# were failing to connect for an unknown period — spacebase (its resolver command
-# word-split an op:// ref containing spaces) and github (same bug, so no auth
-# header, so the client fell back to OAuth discovery and reported a misleading
-# "dynamic client registration" error). Nothing surfaced either one; the only
-# symptom was zero usage, which reads identically to "didn't need it". With
-# `notify = true` this now desktop-notifies instead of dying in a log.
+# An MCP server can die silently and stay dead: nothing surfaces a server that fails to
+# connect, and the only symptom is zero usage, which reads identically to "didn't need it".
+# With `notify = true` this desktop-notifies instead of dying in a log.
 [[section.run]]
 on = "verify"
-# Retry before failing: MCP health is inherently flappy — remote servers 502 and
-# stdio plugin servers cold-start — and back-to-back `boom verify` runs went green,
-# red, green on servers that were all fine. This timer desktop-notifies, so a check
-# that cries wolf is worse than no check: it trains you to ignore the alarm. Exits
-# on the first clean read; only a fault that survives three reads is real.
+# Retry before failing: MCP health is inherently flappy — remote servers 502 and stdio
+# plugin servers cold-start — and this check desktop-notifies, so one that cries wolf is
+# worse than no check: it trains you to ignore the alarm. Exits on the first clean read;
+# only a fault that survives three reads is real.
 #
-# Matches `!` as well as `✘` (fixed 2026-08-08). `claude mcp list` reports a
-# server needing re-auth as "! Needs authentication", not "✘", so a server that
-# cannot answer at all passed this check silently — observed live on Google
-# Calendar. Different symbol, same outcome: the server does not work.
+# Matches `!` as well as `✘`: `claude mcp list` reports a server needing re-auth as
+# "! Needs authentication", not "✘". Different symbol, same outcome: it does not work.
 #
-# SCOPED to the servers THIS machine configures — the ones in ~/.claude.json.
-# `claude mcp list` also reports account-level claude.ai connectors, which it
-# prefixes with "claude.ai ", and those are configured at claude.ai rather than
-# here. Fourteen of them were unauthenticated when this filter was added (Asana,
-# Atlassian, Box, Canva, Figma, HubSpot, Intercom, Linear, monday.com, Notion and
-# more), several of which are unlikely ever to be authenticated deliberately. So
-# the unfiltered check failed on essentially every run, which is exactly the
-# "a check that cries wolf gets bypassed" failure this repo has already paid for
-# twice — and it would have trained the drift notification to be ignored.
-#
-# The filter is on the client's display prefix rather than a jq read of
-# ~/.claude.json, because the failure direction is right: if that prefix ever
-# changes, the check goes NOISY, which is visible, rather than silently green.
-#
-# The note that used to sit here described `github` and `render` as project-scoped
-# servers this check could not see, and its replacement was false in both halves.
-# `github` was NOT gone: it stayed registered for SU-SRD at project AND local scope
-# until 2026-08-31, its helper calling the `op-agent header` verb deleted on 08-28.
-# `render` DID exist and still does, still failing to connect — which the
-# `headersHelper` step below already said in as many words, while this line went on
-# contradicting it. Both `github` registrations are now removed; `render` is not,
-# and this check is the thing that reports it.
+# SCOPED to the servers THIS machine configures — the ones in ~/.claude.json. `claude mcp
+# list` also reports account-level claude.ai connectors, prefixed "claude.ai ", which are
+# configured at claude.ai rather than here and are mostly unauthenticated on purpose;
+# unfiltered, this check fails on essentially every run. The filter is on the client's
+# display prefix rather than a jq read of ~/.claude.json because the failure direction is
+# right: if that prefix ever changes, the check goes NOISY rather than silently green.
 cmd = '''
 for i in 1 2 3; do
   claude mcp list 2>&1 | grep -v '^claude\.ai ' | grep -qE '✘|! Needs authentication' || exit 0
@@ -444,157 +342,87 @@ echo 'a locally-configured MCP server is failing to connect or needs authenticat
 exit 1
 '''
 
-# `~/.claude/settings.json` symlinks into boom's own clone, so an uncommitted edit
-# THERE is live on the machine while being invisible to both CI (which lints the
-# repo's copy) and the checks above (which read the live symlink and so see the
-# edit as normal). That is a local override layer the doctrine says does not
-# exist. Fail while it is dirty.
+# `~/.claude/settings.json` symlinks into boom's own clone, so an uncommitted edit THERE is
+# live on the machine while invisible to both CI (which lints the repo's copy) and the checks
+# above (which read the live symlink and see the edit as normal). That is a local override
+# layer the doctrine says does not exist. Fail while it is dirty.
 [[section.run]]
 on = "verify"
 cmd = "git diff --quiet -- dot-claude/ || { echo 'live Claude config diverges from the committed contract (dirty boom config-repo)'; exit 1; }"
 
-# worktree-freshness.sh is written against a client defect measured against
-# 2.1.237, and the client self-updates — so the version that measurement describes
-# is replaced silently and repeatedly. A workaround whose bug is gone is not inert:
-# it still mutates worktrees. CLAUDE.md already names this failure mode ("a
-# measurement recorded against a tool version expires unnoticed and nothing owns
-# it"); this step owns it.
+# worktree-freshness.sh is written against a client defect measured against 2.1.237, and the
+# client self-updates — so a workaround whose bug is gone is not inert: it still mutates
+# worktrees. This step owns that expiry.
 #
-# INVERTED POLARITY, deliberately: it fails when the workaround looks
-# UNNECESSARY. A failure means "go re-measure", never "the bug is fixed" — the
-# fingerprints are string literals, which is a monotone signal and not a proof.
-# It is also written to fail LOUD when its own method breaks: if the client is
-# ever packaged so its strings cannot be read, every fingerprint vanishes at once,
-# and reporting that as all-clear would be a canary that lies. The anchor check
-# is what separates those two cases, and tests/canary.sh asserts it.
+# INVERTED POLARITY, deliberately: it fails when the workaround looks UNNECESSARY. A failure
+# means "go re-measure", never "the bug is fixed" — the fingerprints are string literals, a
+# monotone signal and not a proof. It also fails LOUD when its own method breaks: if the
+# client is ever packaged so its strings cannot be read, every fingerprint vanishes at once,
+# and reporting that as all-clear would be a canary that lies. The anchor check separates
+# those two cases, and tests/canary.sh asserts it.
 [[section.run]]
 on = "verify"
 cmd = "hooks/claude-canary.sh"
 
-# Is this machine still reproducible from the Brewfile? `brew bundle` installs
-# what the Brewfile names and never removes what it omits, so drift is
-# one-directional and silent: 21 casks were installed against 11 declared, and
-# the Brewfile's own "NOT here, deliberately" block described removals that had
-# never happened. Verify-time because it is a property of the MACHINE, not of
-# the file — lefthook only sees it when the Brewfile itself is edited.
+# Is this machine still reproducible from the Brewfile? `brew bundle` installs what the
+# Brewfile names and never removes what it omits, so drift is one-directional and silent.
+# Verify-time because it is a property of the MACHINE, not of the file — lefthook only
+# sees it when the Brewfile itself is edited.
 [[section.run]]
 on = "verify"
 cmd = "scripts/brew-drift.sh"
 
-# Do the names in the Brewfile still RESOLVE? Different question from the drift
-# check above, and only brew can answer it: a cask retired upstream leaves a
-# perfectly well-formed line that every file-reading gate passes, and then fails
-# `brew bundle` outright on a fresh machine. `zulu17` did exactly that.
-#
-# This lived in a `macos` CI job marked `continue-on-error: true`, whose only
-# step it was. There it could not fail a build, could not block a merge, and did
-# not run on the nightly — it could only paint a job green-with-an-x that
-# auto-merge ignores. The reason it was not a required check is sound (it
-# depends on Homebrew's live API, and a transient upstream outage must not block
-# an unattended agent), but "not required" and "cannot be noticed" are different
-# things, and it was the second.
-#
-# Here it reaches a human: the scheduled verify notifies on drift.
+# Do the names in the Brewfile still RESOLVE? Different question from the drift check
+# above, and only brew can answer it: a cask retired upstream leaves a perfectly
+# well-formed line that every file-reading gate passes, then fails `brew bundle` outright
+# on a fresh machine. Not a required CI check — it depends on Homebrew's live API, and a
+# transient upstream outage must not block an unattended agent — so it lives here, where
+# `notify` reaches a human.
 [[section.run]]
 on = "verify"
 cmd = "scripts/brew-resolves.sh"
 
-# NOTE — scheduled-job liveness is now boom's job, not a script here.
-#
-# This repo has three recorded incidents of one shape: a job registered, firing,
-# failing, and reporting only into a log nobody reads. boom-verify dead 28 days
-# behind an unexpanded `~`; `code reap --push` at 0 successes against 84 failures
-# over 14 sweeps; `git maintenance` pointed at two paths that no longer existed,
-# exiting 1 on every fire. Each was found by hand and fixed individually, so the
-# next was always going to be found the same way: late, and by luck.
-#
-# A `scripts/schedule-health.sh` step lived here briefly and did the job by hand,
-# reading `launchctl print` for `runs` and `last exit code`. Writing it is what
-# surfaced where the gap actually was: `[boom] schedule` timers had checked last
-# exit for a while, and the `launchd` RESOURCE — which owns hand-authored plists —
-# had not. So the fix belonged in the engine, and boom v0.30.0 has it. Between the
-# two, `boom verify` now covers every scheduled job on this machine whichever
-# mechanism installed it, and the script was a second implementation of a check
-# the engine performs.
-#
-# Deleted rather than kept as a backstop: two implementations of one assertion is
-# the duplication this repo keeps finding everywhere else, and the engine's is the
-# one with tests behind it (test/resources-new.test.ts asserts exit 78 specifically
-# — the code the 28-day outage produced).
-#
-# plist-validity.sh stays. It catches one specific CAUSE (a `~` in a path value)
-# before the plist ships, which is upstream of anything launchd can report.
+# NOTE — scheduled-job liveness is boom's job, not a check here. `boom verify` covers every
+# scheduled job on this machine whichever mechanism installed it, so a hand-rolled version
+# would be a second implementation of an assertion the engine already tests.
 
-# Interactive shell startup has not got structurally slower.
+# Interactive shell startup has not got structurally slower. The drift it watches is six
+# `eval`s of six independently upgrading tools, none of which announces getting heavier —
+# a baseline comment in zsh/30-plugins.zsh explains it, but only this fires.
 #
-# zsh/30-plugins.zsh carries the baseline and it is maintained honestly — it was
-# re-measured, the number moved 199 → 250 ms, and the comment says so. But a
-# comment cannot notice: the drift it tracks is six `eval`s of six independently
-# upgrading tools, none of which announces getting heavier. CLAUDE.md bans
-# measurements against a tool version precisely because they expire unwatched,
-# and the answer it gives is to enforce rather than describe. The comment stays
-# as the explanation; this is the part that fires.
-#
-# A ceiling well above the baseline, not a baseline comparison: load, a cold
-# cache and a Rosetta shell all move the number, and a check that fires on those
-# is one you learn to ignore.
+# A ceiling well above the baseline, not a baseline comparison: load, a cold cache and a
+# Rosetta shell all move the number, and a check that fires on those is one you ignore.
 [[section.run]]
 on = "verify"
 timeout = 60
 cmd = "scripts/startup-budget.sh"
 
-# `settings.local.json` must not exist. One `absent` entry covers both verbs:
-# sync removes it, verify fails while it is there.
+# `settings.local.json` must not exist. One `absent` entry covers both verbs: sync removes
+# it, verify fails while it is there.
 #
-# Machine-local override is not a pattern this setup uses — every divergence
-# lives in the committed `settings.json` contract, and .gitignore says so. But
-# .gitignore can only stop the file being COMMITTED. Claude Code writes it
-# itself on an "always allow" click, so the rule was enforceable against the repo
-# and never against the machine.
+# Machine-local override is not a pattern this setup uses — every divergence lives in the
+# committed `settings.json` contract. .gitignore can only stop the file being COMMITTED,
+# and Claude Code writes it itself on an "always allow" click, so that rule is enforceable
+# against the repo and never against the machine. This is the half that reaches the machine.
 #
-# That gap had teeth. The file found on 2026-08-28 carried `Bash(gh api *)` in
-# `permissions.allow`: POST and DELETE against any repo on GitHub, no prompt,
-# under defaultMode auto. Nothing could see it — lefthook and CI read tracked
-# files, and git had been told to ignore this one.
-#
-# This was a pair of `run` steps calling a script in `scripts/`. It is now the
-# `absent` resource, added to boom for this case (alxjrvs/boom#174). Three things
-# came back from moving it:
-#
-#   - ONE declaration instead of two. A `run` bound to `on = "sync"` is invisible
-#     to `verify` BY CONSTRUCTION (the lesson recorded above for gh extensions),
-#     so the shell version needed a step per verb and a `--check` flag to tell
-#     them apart. A resource reports on both from one entry.
-#   - RECOVERABLE removal. The file is displaced into the run's backup tree rather
-#     than destroyed — better than the script's own archive directory, which only a
-#     human reading the path would ever have found. (`boom rollback` used to replay
-#     that automatically; it is gone, so the restore is by hand from the same tree.)
-#   - The directory guard and the symlink handling (`lstat`, so a link is removed
-#     rather than its target) are the engine's, tested there, not re-derived here.
+# Removal is recoverable: the file is displaced into the run's backup tree rather than
+# destroyed, and restoring it is a hand copy from there.
 [[section.absent]]
 path = "~/.claude/settings.local.json"
 message = "machine-local override is not a pattern this setup uses"
 
 # `git maintenance` registers repos in ~/.gitconfig.local and installs three launchd agents
-# (org.git-scm.git.{hourly,daily,weekly}) that run whether or not those paths still exist. Found
-# pointing at /Users/jarvis/dotFiles and /Users/jarvis/Code/dotFiles — neither of which exists,
-# a layout from before boom moved the clone into the state dir — so all three agents had been
-# firing on schedule and exiting 1 every single time, for as long as they had been installed.
-# The real config repo and every ~/Code repo got no maintenance at all.
+# (org.git-scm.git.{hourly,daily,weekly}) that fire whether or not those paths still exist,
+# exiting 1 into a log nobody reads. This asserts the general rule rather than any particular
+# path, so a repo moved or removed surfaces here instead of rotting.
 #
-# Exactly the failure class DECISIONS.md already has an incident for ("the scheduled boom verify
-# has never run — 28 days, runs=0"): a job that is registered, fires, fails, and reports only
-# into a log nobody reads. This asserts the general rule rather than the two paths, so the next
-# time a repo is moved or removed it surfaces here instead of rotting.
+# Verify-only: repointing maintenance is a human call (which repos deserve it), not something
+# to repair automatically.
 #
-# Verify-only: repointing maintenance is a human call (which repos deserve it), not something to
-# repair automatically.
-#
-# Note the deliberate absence of `--global`. The keys live in ~/.gitconfig.local, pulled in by an
-# `[include]` from ~/.gitconfig — and `git config --global --get-all` does NOT follow includes
-# into other files, so it returns nothing here and the check would be permanently, silently
-# green. Full resolution sees them. (Found the hard way: the first version of this check used
-# --global and passed against a machine that was visibly broken.)
+# Note the deliberate absence of `--global`. The keys live in ~/.gitconfig.local, pulled in by
+# an `[include]` from ~/.gitconfig — and `git config --global --get-all` does NOT follow
+# includes into other files, so it would return nothing here and the check would be
+# permanently, silently green. Full resolution sees them.
 [[section.run]]
 on = "verify"
 timeout = 20
@@ -616,8 +444,8 @@ dst = "~/.config/zsh/"
 
 [[section]]
 name = "packages"
-# One `pkg` array per manager, replacing the old scalar `brewfile` +
-# boolean `mise`. `brew` runs `brew bundle` over `file`; `mise` reads the repo's mise config.
+# One `pkg` array per manager: `brew` runs `brew bundle` over `file`; `mise` reads the
+# repo's mise config.
 pkg = [
   { manager = "brew", file = "Brewfile" },
   { manager = "mise" },
@@ -629,14 +457,9 @@ name = "gh extensions"
 # MUST stay after the `packages` section — `gh` itself comes from mise, and sections run in
 # file order, so a fresh machine has no `gh` on PATH until packages has run.
 #
-# Was four hand-rolled `gh extension list | grep -q <owner>/<ext> || gh extension install …`
-# run steps, with a comment explaining that they were "imperative by necessity" because "boom
-# has no `gh` pkg manager". boom gained one, so that is no longer true and they collapse to a
-# declared list.
-#
-# The gain over the run steps is not just brevity: a `run` step bound to `on = "sync"` is
-# invisible to `verify` by construction, so an extension removed by hand went unnoticed until
-# the next sync silently reinstalled it. As a `pkg` entry, verify reports it missing.
+# A `pkg` entry rather than `run` steps: a `run` bound to `on = "sync"` is invisible to
+# `verify` by construction, so an extension removed by hand goes unnoticed until the next
+# sync silently reinstalls it. As a `pkg` entry, verify reports it missing.
 pkg = [{ manager = "gh", file = "gh-extensions.txt" }]
 
 [[section]]
@@ -757,15 +580,13 @@ type = "string"
 value = "$HOME/Screenshots"
 
 # The screencapture `location` default above writes to ~/Screenshots; ensure it exists.
-# Declarative `dir` replaces the mkdir run step.
 [[section.dir]]
 path = "~/Screenshots"
 
 [[section]]
 name = "SSH perms"
 
-# `dir` with a mode replaces the `mkdir -p && chmod 700` run step: ensure ~/.ssh and its
-# control-master dir exist at 0700 (idempotent; verify reports mode drift).
+# Ensure ~/.ssh and its control-master dir exist at 0700 (idempotent; verify reports mode drift).
 [[section.dir]]
 path = "~/.ssh"
 mode = "700"
@@ -777,25 +598,22 @@ mode = "700"
 [[section]]
 name = "lefthook"
 
-# `creates` guards the re-run: lefthook install rewrote .git/hooks on every single sync, which
-# is harmless but dishonest — the report claimed work that was a no-op. The generated pre-commit
-# hook is the artifact, so its existence is the predicate.
+# `creates` guards the re-run: the generated pre-commit hook is the artifact, so its existence
+# is the predicate — without it every sync rewrites .git/hooks and reports a no-op as work.
 [[section.run]]
 on = "sync"
 creates = ".git/hooks/pre-commit"
 timeout = 60
 cmd = "lefthook install"
 
-# The one uninstall binding worth adding. Nothing in this file bound `on = "uninstall"` at all,
-# so a teardown left lefthook's generated .git/hooks behind, pointing at a lefthook that may no
-# longer be installed. Safe and reversible: it removes generated hooks and nothing else.
+# The one uninstall binding worth having: a teardown otherwise leaves lefthook's generated
+# .git/hooks behind, pointing at a lefthook that may no longer be installed. Safe and
+# reversible — it removes generated hooks and nothing else.
 #
 # Deliberately NOT bound for the others, and the reasons are the point:
 #   - `op-agent provision` — teardown would destroy a live 1Password service account. Automating
 #     credential destruction is worse than leaving one behind; that is a human decision.
 #   - the Claude CLI — self-updating and self-managing; boom did not install its updater.
-#   - claude-desktop-mcp.sh — it MERGES a key into a file boom does not own, so a blind reversal
-#     could clobber unrelated edits made since.
 [[section.run]]
 on = "uninstall"
 timeout = 60
@@ -804,13 +622,10 @@ cmd = "lefthook uninstall || true"
 [[section]]
 name = "tldr cache"
 
-# mise installs the `tldr` binary (packages section, earlier → on PATH
-# here), but tealdeer ships no pages — `tldr <cmd>` errors until the archive is
-# fetched once. Do it at sync time so a fresh machine is ready. `|| true` keeps
-# an offline sync from failing on a non-critical cache; re-run with
-# `boom source --only="tldr cache"` once networked.
-# `|| true` stays: an offline sync must not fail on a non-critical cache (see above). Only a
-# timeout is added — this is a network fetch reachable from an unattended sync.
+# mise installs the `tldr` binary (packages section, earlier → on PATH here), but tealdeer
+# ships no pages — `tldr <cmd>` errors until the archive is fetched once. Do it at sync time
+# so a fresh machine is ready. `|| true` keeps an offline sync from failing on a non-critical
+# cache; re-run with `boom source --only="tldr cache"` once networked.
 [[section.run]]
 on = "sync"
 timeout = 120
@@ -836,45 +651,37 @@ on = "verify"
 timeout = 60
 cmd = "op-agent status"
 
-# Vault MEMBERSHIP is the only control that stays live on this setup, so it is
-# asserted rather than described. Two 1Password facts force that:
-#   - SA vault access is IMMUTABLE after creation, so scope can never be
-#     tightened in place; only the vault's contents can change.
-#   - Activity Log and service-account usage reports are Business/Teams only.
-#     This is an Individual/Family account, so no per-item record of what the SA
-#     read exists at all — a gap accepted deliberately on 2026-08-19.
-# An item added to the vault without a commit is exactly the event the missing
-# audit log would have reported; `agent-vault.txt` is how it gets reported.
-# Relative path: boom runs verify steps from the config-repo root (same
-# convention as the `git diff -- dot-claude/` check above).
-# Advisory on tooling gaps, fails closed on real drift.
+# Vault MEMBERSHIP is the only control that stays live on this setup, so it is asserted
+# rather than described. Two 1Password facts force that:
+#   - SA vault access is IMMUTABLE after creation, so scope can never be tightened in
+#     place; only the vault's contents can change.
+#   - Activity Log and service-account usage reports are Business/Teams only, and this is
+#     an Individual/Family account, so no per-item record of what the SA read exists.
+# An item added to the vault without a commit is exactly the event that missing audit log
+# would have reported; `agent-vault.txt` is how it gets reported instead. Relative path:
+# boom runs verify steps from the config-repo root. Advisory on tooling gaps, fails closed
+# on real drift.
 [[section.run]]
 on = "verify"
 timeout = 60
 cmd = "op-agent audit agent-vault.txt"
 
-# The two `headersHelper` MCP servers are declared in NO boomfile step, so a fresh
-# machine reproduces neither, and `boom verify`'s `claude mcp list | grep ✘` check
-# cannot see an ABSENT server — only a configured-and-failing one. They are also
-# project-scoped (to ~/Code/SU-SRD), so they are invisible from any other CWD.
-# Reading ~/.claude.json directly sidesteps both problems. This asserts rather
-# than reproduces: that file is app-owned and rewritten continuously, so a sync
-# step that wrote into it would fight the client (the same reason
-# claude_desktop_config.json is merged, never linked).
-# FIXED: this step used to assert only that a helper STRING mentioning each ref appeared
-# somewhere in the file. That is why it stayed green while the GitHub MCP was dead — the
-# `github` server's helper had been repointed at `~/.local/bin/gh-mcp-auth-header`, a path that
-# exists nowhere and is tracked by no repo, so no Authorization header was sent and the client
-# reported "does not support dynamic client registration": the same misleading error that once
-# got this server deleted instead of fixed. A name match cannot catch that; an executability
-# check can.
-#   `render-api-key` is dropped — but NOT, as this comment once claimed, because "no `render`
-# server exists in any scope". One did, and that false claim is what made the gap below read as
-# already-handled. Corrected in place rather than deleted; the incident is in DECISIONS.md.
-#   THE GAP, named because nothing here closes it: this proves the helper BINARY is executable,
-# never that its `op://` ref RESOLVES. A helper aimed at a deleted vault item is executable, exits
-# 0 and emits `{}` — green here while the server is dead. Closing it means resolving a secret on an
-# unattended run, which is a worse trade than the blind spot. `claude mcp list` is the
+# `headersHelper` MCP servers are declared in NO boomfile step, so a fresh machine reproduces
+# none, and the `claude mcp list` check cannot see an ABSENT server — only a
+# configured-and-failing one. They are also project-scoped (to ~/Code/SU-SRD), so they are
+# invisible from any other CWD. Reading ~/.claude.json directly sidesteps both. This asserts
+# rather than reproduces: that file is app-owned and rewritten continuously, so a sync step
+# writing into it would fight the client.
+#
+# The assertion is that each configured helper is EXECUTABLE, not that its name appears
+# somewhere in the file: a helper repointed at a path that exists nowhere sends no
+# Authorization header, and the client then reports "does not support dynamic client
+# registration" — a misleading auth error that a name match cannot catch.
+#
+# THE GAP, named because nothing here closes it: this proves the helper BINARY is executable,
+# never that its `op://` ref RESOLVES. A helper aimed at a deleted vault item is executable,
+# exits 0 and emits `{}` — green here while the server is dead. Closing that means resolving a
+# secret on an unattended run, a worse trade than the blind spot. `claude mcp list` is the
 # control that catches this class.
 [[section.run]]
 on = "verify"
@@ -903,11 +710,10 @@ done
 
 # Every skill's `description` frontmatter is injected into EVERY session; only the body is
 # on-demand. `~/.claude/skills/` is a glob DESTINATION, so boom places the managed symlinks
-# there and has no opinion about anything else sharing the directory. Thirteen hand-installed
-# real directories accumulated that way — 5,145 B / ~1,286 tokens, 58% of live skill cost, one
-# invocation between them — and nothing could see it: the boomfile globs the SOURCE, and
-# lint.yml has no ~/.claude to inspect, so CI is blind to this BY CONSTRUCTION. That is why the
-# check lives here and not in the workflow. `boom` is exempt: `[boom] skill_on_sync` generates it.
+# there and has no opinion about anything else sharing the directory — hand-installed real
+# directories accumulate there unseen, because the boomfile globs the SOURCE and lint.yml has
+# no ~/.claude to inspect. That is why the check lives here and not in the workflow. `boom`
+# is exempt: `[boom] skill_on_sync` generates it.
 [[section.run]]
 on = "verify"
 cmd = '''
@@ -927,51 +733,23 @@ echo "and no boomfile glob or CI check can see them:$orphans"
 exit 1
 '''
 
-# NO hand-rolled symlink-integrity check here. boom already does this, natively, for EVERY
-# managed link — measured, not assumed: replacing ~/.hushlogin with a real file makes
-# `boom verify` report "~/.hushlogin exists but is not our symlink" and exit 1. A bespoke
-# version was added here and deleted the same day, because it covered two hardcoded paths where
-# boom covers all of them, which is strictly worse and would rot on the next link added.
+# NO hand-rolled symlink-integrity check here. boom already does it natively for EVERY managed
+# link, so a bespoke version would cover a hardcoded subset and rot on the next link added.
 #
-# So the settings.json clobber that made a documented plugin removal a no-op for ~13 days was
-# never undetectable. It was DETECTED and unseen: the boom-verify launchd job silently never ran
-# for 28 days (a `~` in a plist value, which launchd does not expand — EX_CONFIG 78), and even
-# once running, its findings died in a log until `[boom] notify = true` started surfacing them.
-# The gap was notification, not detection — so the fix was the plist and `notify`, both already
-# in place, and the right amount of new machinery here is none.
-#
-# CORRECTED TWICE. The reasoning above is sound about detection and was incomplete about the
-# thing doing the detecting: a scheduled job can be dead, and then every check it carries is
-# silently ABSENT rather than green, which is precisely what those 28 days were. That argued for
-# watching the watcher. The scheduled verify has since been removed outright instead, so there is
-# no watcher to watch: `boom verify` runs when it is run. The checks in this file are only as
-# live as the last time someone invoked it, and that is now the whole story — stated here rather
-# than left implied, because the incidents above are what it costs to forget.
+# And nothing runs `boom verify` on a schedule: it runs when it is run. Every check in this
+# file is only as live as the last time someone invoked it.
 
-# The third-party GitHub MCP is GONE from both clients, in favour of Anthropic's own
-# GitHub integration. What was here: a remote `api.githubcopilot.com/mcp/` server in
-# ~/.claude.json behind a bespoke `headersHelper`, plus a LOCAL stdio
-# `github-mcp-server` for Desktop launched through `op run --env-file`. Two surfaces,
-# two mechanisms, one hand-rolled env file, a mise-managed binary, and a guard whose
-# only job was to stop someone pasting a plaintext PAT into the config that drove it.
-#
-# All of it existed to authenticate someone else's MCP server with our own credential.
-# The native integration is authenticated by Anthropic, needs no PAT here, no local
-# binary, and no plumbing for this repo to reproduce — so the whole surface deletes
-# rather than getting fixed. That is "native over special" applied to the largest
-# bespoke mechanism left in the file.
-#
-# Consequence worth knowing: `claude-git-pat` now has exactly ONE consumer, git's
-# `credential.helper` for agent pushes. It is no longer an MCP credential.
+# The third-party GitHub MCP is GONE from both clients, in favour of Anthropic's own GitHub
+# integration — authenticated by Anthropic, so no PAT here, no local binary, and no plumbing
+# for this repo to reproduce. Consequence worth knowing: `claude-git-pat` now has exactly ONE
+# consumer, git's `credential.helper` for agent pushes. It is no longer an MCP credential.
 
 [[section]]
 name = "capslock-control launchd"
 
-# Caps Lock → Left Control natively via hidutil, replacing the Karabiner kernel extension
-# (deleted — a whole kext for one modifier remap failed the "native over special" bar).
+# Caps Lock → Left Control natively via hidutil, replacing the Karabiner kernel extension.
 # hidutil remaps are lost on reboot/keyboard reconnect, so a RunAtLoad LaunchAgent re-applies
-# it every login. Not boom-specific, so it stays a user plist — but the `launchd` resource
-# collapses the old link + launchctl pair into one stanza.
+# it every login. Not boom-specific, so it stays a user plist.
 [[section.launchd]]
 src = "launchd/com.alxjrvs.capslock-control.plist"
 

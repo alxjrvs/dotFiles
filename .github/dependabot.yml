@@ -4,13 +4,11 @@
 # casks), so the pinned action tags in .github/workflows/ are Dependabot's
 # entire surface here.
 #
-# mise is NOT that surface, and used to be described as if it were. Dependabot
-# has no mise manager, so `mise.lock` — 83 KB pinning ~28 binaries with checksums
-# and provenance, and the only thing pinning them, since most mise.toml entries
-# are "latest" — was refreshed by nothing at all. `renovate.json` at the repo
-# root owns that half; Renovate resolves mise short-names through
-# `mise registry --json`. The Brewfile stays unmanaged by either: it has no
-# datasource, which is what `scripts/brew-resolves.sh` exists to compensate for.
+# mise is NOT that surface: Dependabot has no mise manager, so `mise.lock` —
+# which is the only thing pinning those tools, since most mise.toml entries are
+# "latest" — is owned by `renovate.json` at the repo root instead. The Brewfile
+# stays unmanaged by either: it has no datasource, which is what
+# `scripts/brew-resolves.sh` exists to compensate for.
 #
 # minor+patch land grouped in one weekly PR, which .github/workflows/
 # dependabot-auto-merge.yml auto-merges once `lint` is green. Majors are

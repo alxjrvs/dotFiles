@@ -1,41 +1,28 @@
 #!/usr/bin/env sh
 # Personal identifiers outside the places a forker is told to look.
 #
-# README's "Forking this repo" section lists what has to change on a fork,
-# ordered by what breaks first. A list like that rots the moment a new hardcoded
-# name lands somewhere it does not mention — and the failure is silent and
-# nasty: a forker's agent commits get authored as someone else, or `boom verify`
-# fails against a 1Password vault that was never theirs.
+# README's "Forking this repo" section lists what has to change on a fork. A list
+# like that rots the moment a new hardcoded name lands somewhere it does not
+# mention — and the failure is silent: a forker's agent commits get authored as
+# someone else, or `boom verify` fails against a vault that was never theirs. So
+# a NEW hardcoded name cannot land unnoticed: every file that legitimately names
+# the owner is enumerated below, and anywhere else the name is drift.
 #
-# So a NEW hardcoded name cannot land unnoticed. Every file that legitimately
-# names the owner is enumerated below; anywhere else, the name is drift.
-#
-# What this does NOT do, and used to claim it did: assert that README's forking
-# section lists these files. It checks its own allowlist, which is a superset -
-# most entries here (LICENSE, .gitmessage, Brewfile) have no reason to appear in
-# that section. Keeping README's list correct is still a human job.
-#
-# WHY NOT JUST BAN IT EVERYWHERE. Several of these files must name the owner to
-# work at all — the git identity IS the owner, the vault reference IS the vault.
-# The point is not to remove the name, it is to keep it inside the set the
-# README documents, so "what do I change on a fork" has one answer that cannot
-# quietly stop being true.
+# Not a ban. Several of these files must name the owner to work at all — the git
+# identity IS the owner, the vault reference IS the vault. The point is to keep
+# the name inside the set the README documents. This checks its own allowlist,
+# which is a superset of README's list; keeping README correct is a human job.
 set -eu
 
 OWNER=${OWNER:-alxjrvs}
 
-# Two groups, deliberately kept apart -- the distinction IS the point.
-#
-# GROUP 1: a forker must edit these, and README's "Forking this repo" says so in
-# the order they break. Adding a file here without adding it there is how the
-# list stops being true.
-#
-# GROUP 2: names the owner but is NOT configuration a forker changes -- an
-# upstream URL (`alxjrvs/boom` is the tool, and a forker keeps using it), prose
-# describing a past incident, or a test fixture that needs a concrete owner to
-# assert against. These would be actively wrong to "genericize": a fixture with
-# a fake owner tests nothing, and an incident that happened to a named file did
-# happen to that file.
+# Two kinds of entry, and the distinction IS the point. A forker must edit some
+# of these, and README's "Forking this repo" says so in the order they break;
+# adding such a file here without adding it there is how that list stops being
+# true. The rest name the owner but are NOT configuration a forker changes -- an
+# upstream URL (`alxjrvs/boom` is the tool), prose about a past incident, or a
+# test fixture that needs a concrete owner. Genericizing those would be actively
+# wrong: a fixture with a fake owner tests nothing.
 allowed() {
   cat << 'FILES'
 LICENSE

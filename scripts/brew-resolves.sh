@@ -1,18 +1,12 @@
 #!/usr/bin/env sh
 # Every name the Brewfile declares still resolves to a real formula or cask.
 #
-# WHY, AND WHY IT NEEDS A macOS RUNNER. `zulu17` was RETIRED upstream and stopped
-# resolving — "Cask 'zulu17' is unavailable" — which failed `brew bundle`
-# outright on a fresh machine. The Brewfile now says `zulu@17` and carries a
-# comment explaining the rename, but nothing checks the next one. Homebrew
-# retires and renames casks continuously; the declaration here is a claim about
-# an upstream that moves without telling anyone.
-#
-# This is the class of failure that is INVISIBLE to the rest of the gate by
-# construction: every other check reads files, and a file that names a cask which
-# no longer exists is perfectly well-formed. It only surfaces where brew itself
-# can answer, which is macOS — and both workflows ran ubuntu-latest only, so the
-# entire setup path this repo documents was executed by nothing.
+# WHY, AND WHY IT NEEDS A macOS RUNNER. Homebrew retires and renames casks
+# continuously, so the declaration here is a claim about an upstream that moves
+# without telling anyone — and a retired name fails `brew bundle` outright on a
+# fresh machine. The class is INVISIBLE to the rest of the gate by construction:
+# every other check reads files, and a file naming a cask that no longer exists
+# is perfectly well-formed. It only surfaces where brew itself can answer.
 #
 # ONE `brew info` CALL for everything. Per-name calls are ~35 network round trips
 # and the runner is not free; `--json=v2` takes the whole list at once and reports

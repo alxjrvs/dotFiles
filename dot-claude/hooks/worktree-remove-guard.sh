@@ -3,12 +3,7 @@
 # LIVE process. That is another session's in-flight work, and unlike every other
 # irreversible action this repo guards, there is no PR and no reflog to recover
 # from: the commits may exist nowhere else, and the working tree certainly does
-# not. With N parallel sessions it is the highest-blast-radius command available.
-#
-# CLAUDE.md has carried this as a prose rule ("Never force-remove a worktree whose
-# lock PID is alive — check .git/worktrees/<name>/locked first"), and DECISIONS.md
-# already conceded it should be a guard. Prose is not a control; an unattended
-# session cannot read it.
+# not.
 #
 # SCOPE. Plain `git worktree remove` already refuses a locked worktree — git does
 # that itself, and Claude Code locks every agent worktree while its session runs.
@@ -23,8 +18,8 @@
 #
 # FAILS OPEN, like every guard here: a missing jq, a non-repo cwd, an
 # unresolvable path, a worktree with no lock file, or a lock naming a dead pid
-# all pass through. A guard that wedges the agent is worse than one that misses,
-# and "no lock file" is the normal state of a worktree nobody is working in.
+# all pass through. "No lock file" is the normal state of a worktree nobody is
+# working in.
 set -u
 
 allow() { exit 0; }

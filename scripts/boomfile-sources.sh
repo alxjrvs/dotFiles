@@ -1,19 +1,16 @@
 #!/usr/bin/env sh
 # Every `src` the boomfile links actually exists in this repo.
 #
-# WHY. `boomfile.toml` is the repo — it names the payload files by path, and a
-# path that no longer exists is a `boom source` that fails partway through on a
-# real machine, after it has already changed things. Renaming or deleting a
-# payload file without updating its link is the obvious way in, and nothing
-# checked it: `taplo` proves the file PARSES, which says nothing about whether
-# what it names is there.
+# WHY. `boomfile.toml` names the payload files by path, and a path that no longer
+# exists is a `boom source` that fails partway through on a real machine, after
+# it has already changed things. `taplo` proves the file PARSES, which says
+# nothing about whether what it names is there.
 #
 # Cheap, hermetic, no network, no brew, no boom — so it runs in the ordinary lint
 # job rather than waiting for the macOS one.
 #
 # Glob sources (`dot-claude/skills/*`, `zsh/[0-9]*.zsh`) are checked by expansion:
-# a glob matching nothing is the same failure with a different spelling, and it
-# is the one that arrives silently when a directory is emptied.
+# a glob matching nothing is the same failure with a different spelling.
 #
 # Usage: scripts/boomfile-sources.sh [boomfile.toml]
 set -eu

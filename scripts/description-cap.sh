@@ -1,42 +1,25 @@
 #!/usr/bin/env sh
-# Frontmatter description cap for SKILLS AND SUBAGENTS — the single source, and
-# enforced in both gates rather than only in CI.
+# Frontmatter description cap for SKILLS AND SUBAGENTS — the single source, run
+# by both lefthook and CI.
 #
 # WHY IT EXISTS. A skill's or subagent's `description:` is loaded into every
-# session so the model can decide whether it is relevant. The body is not. A
+# session so the model can decide whether it is relevant; the body is not. A
 # description that grows into a summary is a permanent tax on every request, paid
-# to explain something that may never be invoked — the same argument
-# scripts/context-budget.sh makes for the two symlinked CLAUDE.md files.
+# to explain something that may never be invoked.
 #
-# WHY AGENTS TOO, AND WHY THE RENAME. This was `skill-description-cap.sh` and
-# read only dot-claude/skills/. But boomfile.toml links dot-claude/agents/ into
-# ~/.claude/ as well, and a subagent's description is billed on exactly the same
-# terms — so two of the seven always-loaded surfaces sat outside the only cap
-# that governs them. context-budget.sh's link inventory now asserts that this
-# script covers both, which is what makes that classification true rather than
-# aspirational.
-#
-# WHY THIS FILE EXISTS. The check lived only in .github/workflows/lint.yml, with
-# no lefthook twin — the inverse of every other gate here, and the one asymmetry
-# that lets a commit pass locally and fail after the push. Editing a SKILL.md
-# description was the one edit whose feedback arrived a minute late instead of
-# immediately.
+# WHY AGENTS TOO. boomfile.toml links dot-claude/agents/ into ~/.claude/ as well,
+# and a subagent's description is billed on the same terms. context-budget.sh's
+# link inventory asserts that this script covers both.
 set -eu
 
 CAP=60
 
-# A skill BODY is not always-loaded — but it does load in full the moment the
-# skill fires, so an oversized one taxes every invocation to carry branches most
-# of them never touch. Two skills were 22,675 and 21,897 bytes as single files
-# with no references/, about 5,600 tokens each on any trigger, and most of that
-# was inventory: what the stack IS rather than what to do, the whole ruleset JSON
-# rather than the branch in hand.
-#
-# This is a ceiling on the BODY only, and only for skills — an agent file has no
-# body worth capping. Progressive disclosure is the escape: move the inventory to
-# references/ and link it, which costs nothing until the procedure says to read
-# it. Set well above the two correctly-sized skills (5,256 and 4,095) so it
-# forces a split rather than nagging.
+# A skill BODY is not always-loaded, but it loads in full the moment the skill
+# fires, so an oversized one taxes every invocation to carry branches most of
+# them never touch. A ceiling on the BODY only, and only for skills — an agent
+# file has no body worth capping. Progressive disclosure is the escape: move the
+# inventory to references/ and link it. Set well above the correctly-sized skills
+# so it forces a split rather than nagging.
 BODY_CAP=${BODY_CAP:-12000}
 
 fail=0
@@ -45,9 +28,8 @@ if [ "$#" -eq 0 ]; then
   set -- dot-claude/skills/*/SKILL.md dot-claude/agents/*.md
 fi
 
-# See settings-guardrails.sh. This one already defaults to a glob when called
-# with no arguments, but the glob itself can match nothing — and an explicit
-# path that does not exist was silently skipped rather than reported.
+# A glob that matches nothing, or an explicit path that does not exist, is a
+# gate that checked nothing — it must fail, not be skipped.
 [ "$#" -gt 0 ] || {
   echo "no inputs — the skill/agent globs matched nothing, so no description was checked" >&2
   exit 1
@@ -69,15 +51,10 @@ for f in "$@"; do
     *) continue ;;
   esac
 
-  # YAML lets a scalar span lines, and the previous one-line `awk` scored only
-  # the FIRST line. For a folded block the first line is the indicator itself:
-  #
-  #     description: >-
-  #       …four hundred words…
-  #
-  # scored as the single word `>-`, so ANY skill could carry an unbounded
-  # description past a gate that reported `ok (1 words)`. The cap is the whole
-  # point of this script, and that spelling removed it entirely.
+  # YAML lets a scalar span lines. A one-line parser scores a folded block
+  # (`description: >-`) as the single word `>-`, which lets any skill carry an
+  # unbounded description past a gate reporting `ok (1 words)`. Read the whole
+  # scalar.
   #
   # Only the frontmatter block is read, so a `description:` line in the body
   # cannot be mistaken for the real one.
