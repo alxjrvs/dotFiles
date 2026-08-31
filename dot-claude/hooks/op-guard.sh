@@ -85,6 +85,8 @@ SAFE_SHAPES='Non-printing shapes an agent may use:
   op whoami / op --version        identity and version, no values
   op item list [--vault V]        titles and metadata, no values
   op item move ITEM --destination-vault V   OUT of the agent vault only
+  op plugin list|inspect|init|clear         shell-plugin config, no values
+  op plugin run -- CMD                      inject a plugin credential into CMD
 Everything else is denied because it can put a secret VALUE on stdout, and stdout
 is model context. To USE a secret, never read it — pass it with "op run --".'
 
@@ -171,6 +173,60 @@ _bad_op_run_child() { # $1 = basename of the command after `--`, $2.. = its argv
   esac
 }
 
+# The vetting shared by `op run --` and `op plugin run --`. Both hand a live
+# credential to a child process, so both are safe exactly to the extent that the
+# child cannot print its own environment — the criterion, and therefore the code,
+# is identical. Factored out rather than copied when `op plugin` was admitted:
+# a copy is how the two spellings drift, and the 2026-08-19 finding is the proof
+# that matters — `op run -- op read` was allowed for months because the guard saw
+# an unremarkable child, and `op plugin run -- op read` is that same hole with a
+# different verb in front of it. One function, one fix.
+#
+# `--no-masking` is checked for BOTH although 1Password documents it only on `op
+# run`. Masking on `op plugin run` is not documented either way, so this neither
+# assumes it exists nor assumes it doesn't: rejecting the flag costs nothing today
+# and fails closed if the flag is added tomorrow. That is the direction this guard
+# always takes on an unknown.
+#
+# $1 = label for the deny messages, $2.. = argv AFTER the verb.
+_vet_injecting_run() {
+  local _label=$1 _child _seen_ddash=0
+  shift
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --no-masking)
+        deny "\`$_label --no-masking\` is denied. Masking is the property that makes an injecting invocation safe in an agent session: with it on, a secret that reaches the child's stdout is replaced with \`<concealed by 1Password>\`; with it off, the raw value lands in model context. Drop the flag.
+
+$SAFE_SHAPES"
+        ;;
+      --)
+        _seen_ddash=1
+        shift
+        break
+        ;;
+      *) shift ;;
+    esac
+  done
+  if [ "$_seen_ddash" = 0 ]; then
+    deny "\`$_label\` needs an explicit \`--\` before the command it runs (\`op run --env-file=.env -- npm publish\`, \`op plugin run -- gh repo list\`). Without it this guard cannot tell which words are the child command, and it will not guess about a secret-bearing invocation.
+
+$SAFE_SHAPES"
+  fi
+  _child=${1:-}
+  _child=$(_unquote "$_child")
+  _child=${_child##*/}
+  if [ -z "$_child" ]; then
+    deny "\`$_label --\` has no command after the \`--\`.
+
+$SAFE_SHAPES"
+  fi
+  if _bad_op_run_child "$_child" "$@"; then
+    deny "\`$_label -- $_child\` is denied. Either it exists to print the environment (which defeats masking and dumps every injected secret into model context), or it is an interpreter/VCS command whose payload this guard cannot see through — \`$_label -- git push\` in particular would hide the push from rebase-guard.sh. Run \`$_label --\` against the actual program that needs the secret.
+
+$SAFE_SHAPES"
+  fi
+}
+
 # The op-subcommand pattern, named once because two scans now share it and must
 # never drift apart. Anchored on a real SUBCOMMAND, so the bare word `op` in a
 # commit message is not a match.
@@ -182,7 +238,16 @@ _bad_op_run_child() { # $1 = basename of the command after `--`, $2.. = its argv
 # link, can pair this guard with an op-agent that still has the verb. Keeping a
 # retired spelling costs a branch in a regex; dropping one costs a credential.
 # The deny MESSAGE below is where a dead verb must not appear, and does not.
-_OP_VERB_RE='(^|[^A-Za-z0-9_-])op(-agent)?[[:space:]]+(read|inject|run|item|document|vault|account|user|group|service-account|whoami|signin|secret|header|git-credential)([^A-Za-z0-9_-]|$)'
+#
+# `plugin` is here for ONE of its verbs. `op plugin run -- CMD` injects a live
+# credential into a child exactly as `op run --` does, so `sh -c "op plugin run
+# -- env"` is the interpreter trampoline re-spelled — and it was measured ALLOWED
+# before this verb joined the list, because the pattern's job is to decide
+# whether a payload looks op-shaped and `plugin` did not appear in it. The
+# discovery verbs pay a small price for that: `sh -c "op plugin list"` is denied
+# although it prints nothing. That is the same trade `item` already makes, and it
+# is the correct direction — run the discovery verb directly.
+_OP_VERB_RE='(^|[^A-Za-z0-9_-])op(-agent)?[[:space:]]+(read|inject|run|item|document|vault|account|user|group|service-account|whoami|signin|secret|header|git-credential|plugin)([^A-Za-z0-9_-]|$)'
 
 # A payload piped INTO an interpreter is never an argv token of the interpreter's
 # own segment: in `echo "op read op://…" | bash`, the `echo` segment carries the
@@ -378,43 +443,47 @@ $SAFE_SHAPES"
     # child's output. This is the whole point of the change.
     run)
       shift
-      seen_ddash=0
-      while [ $# -gt 0 ]; do
-        case "$1" in
-          # Masking is what makes this shape safe to allow. Turning it off is
-          # the one flag that converts `op run` back into a printing command.
-          --no-masking)
-            deny "\`op run --no-masking\` is denied. Masking is the property that makes \`op run\` safe in an agent session: with it on, a secret that reaches the child's stdout is replaced with \`<concealed by 1Password>\`; with it off, the raw value lands in model context. Drop the flag.
-
-$SAFE_SHAPES"
-            ;;
-          --)
-            seen_ddash=1
-            shift
-            break
-            ;;
-          *) shift ;;
-        esac
-      done
-      if [ "$seen_ddash" = 0 ]; then
-        deny "\`op run\` needs an explicit \`--\` before the command it runs (\`op run --env-file=.env -- npm publish\`). Without it this guard cannot tell which words are the child command, and it will not guess about a secret-bearing invocation.
-
-$SAFE_SHAPES"
-      fi
-      child=${1:-}
-      child=$(_unquote "$child")
-      child=${child##*/}
-      if [ -z "$child" ]; then
-        deny "\`op run --\` has no command after the \`--\`.
-
-$SAFE_SHAPES"
-      fi
-      if _bad_op_run_child "$child" "$@"; then
-        deny "\`op run -- $child\` is denied. Either it exists to print the environment (which defeats masking and dumps every injected secret into model context), or it is an interpreter/VCS command whose payload this guard cannot see through — \`op run -- git push\` in particular would hide the push from rebase-guard.sh. Run \`op run --\` against the actual program that needs the secret.
-
-$SAFE_SHAPES"
-      fi
+      _vet_injecting_run "op run" "$@"
       continue
+      ;;
+
+    # ---- op plugin: the biometric path, for the CLIs an agent must NOT drive -
+    # Shell plugins are 1Password's answer to a CLI token sitting in plaintext on
+    # disk (`~/.railway/config.json`, `~/.netrc`, a `credentials.toml`): the
+    # credential lives in the vault and is released per-invocation behind Touch
+    # ID. Every verb of this was denied by the default-deny arm below, which is
+    # the exact failure the 2026-08-18 rewrite exists to end — `op --version` was
+    # denied then for the same reason, and a control that blocks the vendor's
+    # recommended pattern is an outage, not a floor.
+    #
+    # The security argument for admitting them is not that they are harmless; it
+    # is that they move a credential OUT of a file this agent can already read.
+    # `permissions.deny` does not stop a plaintext token in a dotfile, and no
+    # guard here ever could. A plugin does, and a biometric prompt is a control
+    # an agent cannot satisfy — which is the point: these verbs are how the HUMAN
+    # gets a keychain-free path to the deploy CLIs, and the prompt is what keeps
+    # the agent off them.
+    #
+    # `list`, `inspect`, `clear` and `init` print configuration metadata — plugin
+    # names, required fields, which vault item is mapped, and (from `init`) a
+    # `source ~/.config/op/plugins.sh` line. No credential VALUE, which is this
+    # guard's actual criterion. `run` is the one verb that injects, so it takes
+    # the same vetting as `op run --`, above, through the same function.
+    plugin)
+      shift
+      case "${1:-}" in
+        list | inspect | init | clear | --help | -h | '')
+          continue
+          ;;
+        run)
+          shift
+          _vet_injecting_run "op plugin run" "$@"
+          continue
+          ;;
+      esac
+      deny "\`op plugin ${1:-}\` is not a verb this guard recognizes, so it is denied rather than assumed safe — \`op plugin run\` hands a live credential to a child process, and a deny-list of verbs is exactly what missed \`op-agent header\` on 2026-07-25. If this verb cannot print or inject a secret, add it to the allow-list in \`dot-claude/hooks/op-guard.sh\` and a case to \`dot-claude/hooks/tests/cases.tsv\`.
+
+$SAFE_SHAPES"
       ;;
 
     # ---- op inject: safe ONLY with an out-file -----------------------------
