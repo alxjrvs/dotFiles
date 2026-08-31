@@ -26,7 +26,6 @@ It states the number; don't restate it here. Nothing goes in this file that fits
 | it only matters for some files | a path-scoped rule in `dot-claude/rules/` — free until one is read |
 | it must hold | a hook, `permissions.deny`, or a `boom verify` check |
 | a reason, an incident, a measurement | `dot-claude/DECISIONS.md` |
-| a `settings.json` key | `dot-claude/SETTINGS.md` |
 | already enforced | nowhere. Describing a control is not the control. |
 
 Never record a measurement against a tool version here: it expires unnoticed and nothing owns it.
