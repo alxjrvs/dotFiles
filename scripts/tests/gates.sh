@@ -18,8 +18,12 @@
 # prevent" — and wrote a suite to stop it recurring there. This is that suite
 # for the other three.
 #
-# The positive controls matter as much as the negative ones: a gate that fails
-# on everything is no more useful than one that passes on everything.
+# A positive control matters as much as a negative one — a gate that fails on
+# everything is no more useful than one that passes on everything — but only
+# where nothing else exercises the happy path. On the REAL inputs, CI and
+# lefthook both do, so those positives lived here as a second copy of a check
+# that was already running. The ones kept below are fixture-based, or the
+# positive half of a fixture-paired block.
 set -uo pipefail
 
 cd "$(dirname "$0")/../.." || exit 1
@@ -56,13 +60,25 @@ case_exit skillcap_missing_path 1 ./scripts/description-cap.sh dot-claude/skills
 case_exit guardrails_no_args 1 ./scripts/settings-guardrails.sh
 case_exit plist_no_args 1 ./scripts/plist-validity.sh
 
-# --- positive controls: the real inputs must still PASS ----------------------
-case_exit guardrails_real 0 ./scripts/settings-guardrails.sh dot-claude/settings.json
-# Globbed, not named: a hardcoded plist label is an owner this suite would
-# carry into every fork, and identity-drift.sh is right to reject one.
-case_exit plist_real 0 ./scripts/plist-validity.sh launchd/*.plist
-case_exit skillcap_default_glob 0 ./scripts/description-cap.sh
-case_exit context_budget_real 0 ./scripts/context-budget.sh
+# --- no STANDALONE positive controls on real inputs --------------------------
+# Six are gone. Each ran a script on the same real input that lint.yml already
+# runs as its own dedicated step — settings-guardrails on settings.json (:108),
+# plist-validity on launchd/*.plist (:120), context-budget (:134),
+# boomfile-sources (:161), description-cap over the real skills and agents
+# (:167) — and two of them were byte-identical to each other. A failure on real
+# input surfaced twice in one job and never once alone; this suite runs INSIDE
+# that same job, so it could not even fail earlier.
+#
+# A positive control earns its place when nothing else exercises the happy path.
+# Here everything does: CI on the committed tree, lefthook on the staged one.
+#
+# What stays, and why it is not the same thing:
+#   - FIXTURE positives (`skillcap_folded_under`, `all_passing_suite`). Nothing
+#     outside this file ever runs those inputs.
+#   - The positive HALF of a fixture-paired block (`rules_real`,
+#     `descriptioncap_agent_real`). Deleting those leaves a block that only ever
+#     asserts failure, and a gate that fails on everything is no more useful
+#     than one that passes on everything — which is this file's opening claim.
 
 # --- the restated-count check must not be written with `\b` -----------------
 # git grep's ERE does not implement the word-boundary escape: the pattern
@@ -114,7 +130,6 @@ case_exit rules_missing_dir 1 env DIR=dot-claude/does-not-exist ./scripts/rules-
 # taplo proves the file parses, which says nothing about whether the paths it
 # names are there. A missing src fails `boom source` partway through, on a real
 # machine, after it has already changed things.
-case_exit boomsrc_real 0 ./scripts/boomfile-sources.sh
 case_exit boomsrc_missing_file 1 ./scripts/boomfile-sources.sh boomfile-does-not-exist.toml
 case_exit boomsrc_dangling 1 ./scripts/boomfile-sources.sh scripts/tests/fixtures/dangling-src-boomfile.toml
 
@@ -122,7 +137,6 @@ case_exit boomsrc_dangling 1 ./scripts/boomfile-sources.sh scripts/tests/fixture
 # Two skills were ~22 KB single files with no references/, about 5,600 tokens
 # each on any trigger, mostly inventory the invocation never needed. The body cap
 # is what keeps the split from silently growing back.
-case_exit skillbody_real 0 ./scripts/description-cap.sh
 case_exit skillbody_over 1 \
   env BODY_CAP=5000 ./scripts/description-cap.sh dot-claude/skills/butter-stack/SKILL.md
 
