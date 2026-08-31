@@ -29,6 +29,7 @@
     "allow": [
       "Bash(gh pr merge:*)",
       "Bash(gh stack merge:*)",
+      "Bash(git stash:*)",
       "Bash(op run:*)"
     ],
     "deny": [
