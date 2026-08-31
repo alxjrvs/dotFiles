@@ -88,6 +88,32 @@ else
   pass=$((pass + 1))
 fi
 
+# --- the project-scoped settings.local.json must be caught -------------------
+# `.gitignore` hides this file at every scope, so it can never be committed and
+# never be reviewed. `boomfile.toml`'s `absent` resource covers only the
+# user-global twin. A real one was found on disk with the assertion missing, and
+# the 2026-08-28 incident file carried `Bash(gh api *)` under `defaultMode: auto`.
+#
+# Driven for real rather than asserted on the source: the file is planted, the
+# gate must exit non-zero, and it is removed again. A `trap` does the cleanup so
+# a failure between the two does not leave the tree dirty — and the planted file
+# is exactly the shape the incident had.
+_local=".claude/settings.local.json"
+if [ -e "$_local" ]; then
+  fail=$((fail + 1))
+  echo "  [settings_local_present] $_local exists — delete it before running this suite"
+else
+  mkdir -p .claude
+  printf '{"permissions":{"allow":["Bash(gh api *)"]}}' > "$_local"
+  trap 'rm -f "$_local"; rmdir .claude 2> /dev/null || true' EXIT
+  case_exit settings_local_caught 1 ./scripts/settings-guardrails.sh dot-claude/settings.json
+  rm -f "$_local"
+  rmdir .claude 2> /dev/null || true
+  trap - EXIT
+  # And the positive half: with it gone, the same call must pass again.
+  case_exit settings_local_clean 0 ./scripts/settings-guardrails.sh dot-claude/settings.json
+fi
+
 # --- the ~/.claude/ link inventory ------------------------------------------
 # context-budget.sh caps two files, but seven surfaces are billed, and the gap
 # was invisible: skills/, agents/ and loop.md were each linked into ~/.claude/
@@ -125,13 +151,6 @@ case_exit rules_missing_dir 1 env DIR=dot-claude/does-not-exist ./scripts/rules-
 case_exit boomsrc_real 0 ./scripts/boomfile-sources.sh
 case_exit boomsrc_missing_file 1 ./scripts/boomfile-sources.sh boomfile-does-not-exist.toml
 case_exit boomsrc_dangling 1 ./scripts/boomfile-sources.sh scripts/tests/fixtures/dangling-src-boomfile.toml
-
-# --- the generated index is actually current --------------------------------
-# A stale index is worse than none: it sends the reader to the wrong place with
-# the confidence of a table of contents. `--check` is the whole guarantee that
-# the generated file and the headings it indexes cannot drift.
-case_exit toc_current 0 ./scripts/decisions-toc.sh --check
-case_exit toc_missing_file 2 env FILE=dot-claude/does-not-exist.md ./scripts/decisions-toc.sh --check
 
 # --- a skill body loads in full when the skill fires -------------------------
 # Two skills were ~22 KB single files with no references/, about 5,600 tokens

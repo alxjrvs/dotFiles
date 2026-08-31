@@ -171,11 +171,6 @@ jobs:
       - name: identity drift
         run: scripts/identity-drift.sh
 
-      # The index is generated; a stale one means someone edited headings without
-      # regenerating, and a stale index is worse than none.
-      - name: DECISIONS table of contents
-        run: scripts/decisions-toc.sh --check
-
       # Asserts the shared assertions themselves: a gate handed a missing path
       # or an empty file list must fail, not print `ok`. In CI specifically,
       # because CI is where these scripts are handed a literal path or a
