@@ -1,9 +1,7 @@
 name: lint
 
-# Mirrors the local lefthook pre-commit gate (shellcheck + shfmt + biome +
-# gitleaks + settings.json validity) on every push to main and every PR. Lint
-# only — never runs `boom source` or mutates anything. (The engine and its tests
-# live in the boom repo; this repo is just boom's config.)
+# Mirrors the local lefthook pre-commit gate on every push to main and every PR.
+# Lint only — never runs `boom source` or mutates anything.
 
 on:
   push:
@@ -17,26 +15,14 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     # Job-wide, not just on the install step: mise installs on DEMAND through its
-    # shims, so the first `jq` a guard runs during the test step triggers a fresh
-    # install-and-verify of its own. Setting this only where tools are installed
-    # explicitly left that path still hitting the quota, which is how the failure
-    # survived the first fix.
+    # shims, so the first `jq` a guard runs later triggers an install of its own.
     env:
       # Honour mise.lock on the runner. `lockfile = true` lives in
-      # mise-settings.toml, which is global config symlinked on the machine and
-      # never reaches CI — so every `mise install` here resolved "latest" by
-      # asking the GitHub API for each tool's release list, which is what ran the
-      # quota to 0/5000 and took this gate down. The lockfile pins ~28 tools with
-      # checksums, so CI asks for far less and installs what the machine runs.
-      #
-      # Attestation verification stays ON, and the first attempt to turn it off
-      # is why this comment exists. Disabling it looked like the obvious way to
-      # dodge the rate limit; mise refused, correctly: "Lockfile requires
-      # github-attestations provenance for aqua:jqlang/jq@1.8.1 but no
-      # verification was used. This may indicate a downgrade attack." The lock
-      # records HOW each tool was verified, so silently verifying less is exactly
-      # what it exists to prevent. The rate limit is transient; the weakening
-      # would not have been.
+      # mise-settings.toml, which is symlinked on the machine and never reaches
+      # CI — so every `mise install` here resolved "latest" through the GitHub
+      # API and ran the rate limit to zero. Do not disable attestation
+      # verification to dodge that: the lock records HOW each tool was verified,
+      # so verifying less is exactly what it exists to prevent.
       MISE_LOCKFILE: "1"
     steps:
       - uses: actions/checkout@v7
@@ -46,29 +32,18 @@ jobs:
       - uses: jdx/mise-action@v4
         with:
           install: false
-      # This step took the gate down with "API rate limit exceeded for
-      # installation" -- a 403 while mise installed jq -- and the fallout was far
-      # worse than a missing tool. Every guard here fails OPEN without jq, by
-      # design, so five suites reported ALLOW where they assert DENY and the run
-      # read as a guard regression. Someone else's exhausted quota must not look
-      # like broken security code, which is why the tool check below is not
-      # optional.
-      #
-      # GITHUB_TOKEN is passed so these calls bill this repo rather than a shared
-      # anonymous pool. It is not a complete answer on its own -- the observed
-      # limit was on the installation -- but combined with MISE_LOCKFILE above
-      # (no version resolution) the API traffic drops to the attestation checks
-      # alone.
+      # Every guard here fails OPEN without jq, by design, so a tool that failed
+      # to install reads as a guard regression rather than a missing tool. That
+      # is why the check below is not optional. GITHUB_TOKEN bills these calls to
+      # this repo rather than a shared anonymous pool.
       - name: Install lint tools
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mise install shellcheck shfmt gitleaks jq taplo biome actionlint \
             || { sleep 20; mise install shellcheck shfmt gitleaks jq taplo biome actionlint; }
-          # RUN each tool, never `command -v`. mise puts a SHIM on PATH whether or
-          # not the tool behind it installed, so `command -v jq` passed while jq
-          # was absent -- the install step went green and the failure surfaced
-          # forty log lines later as a fake DENY-to-ALLOW guard regression.
+          # RUN each tool, never `command -v`: mise puts a SHIM on PATH whether or
+          # not the tool behind it installed, so `command -v` passes on absence.
           for t in shellcheck shfmt gitleaks jq taplo biome actionlint; do
             "$t" --version > /dev/null 2>&1 || { echo "::error::$t did not install"; exit 1; }
           done
@@ -79,43 +54,34 @@ jobs:
       - name: shfmt
         run: git ls-files -z '*.sh' 'git-template/hooks/*' | xargs -0 shfmt -d -i 2 -ci -sr
 
-      # JS/TS/JSON lint + format gate (the boom hooks + settings.json). Mirrors
-      # lefthook's biome-check; bare `biome check` uses biome.json and respects
-      # .gitignore, so it never touches node_modules / worktrees.
+      # Mirrors lefthook's biome-check; bare `biome check` uses biome.json and
+      # respects .gitignore, so it never touches node_modules / worktrees.
       - name: biome
         run: biome check
 
-      # Scan the current tree (not full history) — mirrors the pre-commit secret
-      # gate without risking flaky failures on old history.
+      # The current tree, not full history — mirrors the pre-commit secret gate
+      # without risking flaky failures on old history.
       - name: gitleaks
         run: gitleaks detect --no-git --redact --no-banner
 
-      # The workflow files are the entire remote gate, and until now they were
-      # the only config in this repo with no linter — a typo in an `if:`, a bad
-      # `needs:`, a malformed `permissions:` block all landed silently. This
-      # tool was already declared in mise.toml, checksummed in mise.lock, and
-      # excluded from brew-drift BECAUSE mise owns it; it was simply never run.
-      # It also covers the embedded shell in every `run:` by shelling out to
-      # shellcheck, which the `*.sh` glob above cannot reach.
+      # The workflow files are the rest of the remote gate. actionlint also
+      # covers the embedded shell in every `run:` by shelling out to shellcheck,
+      # which the `*.sh` glob above cannot reach.
       - name: actionlint
         run: actionlint
 
-      # Same script lefthook and `boom verify` run. Previously this block
-      # transcribed lefthook's checks line for line, including the deny-floor
-      # loop and its comments; the word "Mirrors" appearing in a CI file is a
-      # standing invitation for the two to diverge.
+      # Same script lefthook and `boom verify` run — one copy of the assertions,
+      # so the three call sites cannot drift.
       - name: settings.json guardrails
         run: scripts/settings-guardrails.sh dot-claude/settings.json
 
-      # The boomfile.toml IS the repo — gate that every tracked TOML parses, so a
-      # syntax error is caught here, not at `boom source` time on a real machine.
-      # --no-schema = pure syntax (hermetic, offline). Mirrors lefthook's toml-validity.
+      # A TOML syntax error is caught here, not at `boom source` time on a real
+      # machine. --no-schema = pure syntax (hermetic, offline).
       - name: TOML validity
         run: git ls-files -z '*.toml' | xargs -0 taplo check --no-schema
 
       # Same script lefthook runs. Two assertions, not one: structural validity
-      # does not catch a `~` in a path value, and that is the bug that cost 28
-      # days of un-run `boom verify`.
+      # does not catch a `~` in a path value, which launchd never expands.
       - name: plist validity
         run: git ls-files -z 'launchd/*.plist' | xargs -0 scripts/plist-validity.sh
 
@@ -126,43 +92,31 @@ jobs:
             zsh -n "$f" || { echo "zsh syntax error in $f"; exit 1; }
           done
 
-      # Same script lefthook's pre-commit runs, so a green commit is a green build
-      # by construction. The ceilings, the capped set, and the reasoning for all
-      # three (why a ceiling, why per-file, why an explicit list, why the date ban)
-      # live in the script — one copy, so they cannot drift apart.
+      # Same script lefthook's pre-commit runs. The ceilings, the capped set and
+      # the reasoning for each live in the script — one copy, so they cannot
+      # drift apart.
       - name: always-loaded context budget
         run: scripts/context-budget.sh
 
-      # A skill's `description` frontmatter is injected into EVERY session; only the
-      # body is on-demand. So a description is always-loaded context and gets a cap,
-      # while the body it belongs to stays free. All four house skills exceeded this
-      # before the rewrite (108/83/79/73 words) — `agent-friendly-repo` was
-      # enumerating ruleset internals and naming which CLAUDE.md sections it
-      # implements, both body material. The trigger phrases are the load-bearing
-      # half: they are what a session matches on, so they stay and prose goes.
-      #
-      # This cannot cover ~/.claude/skills — a runner has no home dir to inspect, so
-      # unmanaged skill dirs are invisible here BY CONSTRUCTION. That check lives in
-      # boomfile.toml as a `verify` step; see the Claude section.
-      # Same script lefthook now runs. This check used to live here alone,
-      # which made it the one gate that failed only after a push.
-      # The rules directory is exempt from the byte ceiling on exactly one
-      # condition: every rule is path-scoped, so it costs nothing until a
-      # matching file is read. This is that condition.
-      # The one gate that ran locally and nowhere else, so `--no-verify` landed a
-      # stale reference to the retired verb with a green build. That is the exact
-      # asymmetry the skill-description-cap step below was moved here to fix, in
-      # the other direction. Same `git grep` lefthook runs.
-      # boomfile.toml IS the repo: it names the payload files by path, and taplo
-      # proving the file parses says nothing about whether what it names is
-      # there. A missing src fails `boom source` partway through, on a real
-      # machine, after it has already changed things.
+      # taplo proving boomfile.toml parses says nothing about whether the payload
+      # paths it names are there. A missing src fails `boom source` partway
+      # through, on a real machine, after it has already changed things.
       - name: boomfile sources exist
         run: scripts/boomfile-sources.sh
 
+      # The rules directory is exempt from the byte ceiling on exactly one
+      # condition: every rule is path-scoped, so it costs nothing until a
+      # matching file is read. This is that condition.
       - name: rules are path-scoped
         run: scripts/rules-scoped.sh
 
+      # A skill's or agent's `description` frontmatter is injected into EVERY
+      # session; only the body is on-demand. So the description gets a cap while
+      # the body it belongs to stays free.
+      #
+      # This cannot cover ~/.claude/skills — a runner has no home dir to inspect,
+      # so unmanaged skill dirs are invisible here BY CONSTRUCTION. That check is
+      # a `verify` step in boomfile.toml.
       - name: skill + agent description cap
         run: git ls-files -z 'dot-claude/skills/*/SKILL.md' 'dot-claude/agents/*.md' | xargs -0 scripts/description-cap.sh
 
@@ -179,16 +133,8 @@ jobs:
         run: scripts/tests/gates.sh
 
 
-      # Every suite under dot-claude/hooks/tests/, one step. This was eight steps
-      # here and eight commands in lefthook.yml — sixteen declarations of nine
-      # scripts. all.sh discovers the roster from the directory, so a new suite is
-      # covered by both gates the moment it is added, with no edit here: the
-      # hardcoded roster had already rotted once (agents/guard-tester.md promised
-      # "seven suites" against a directory holding nine).
-      #
-      # One step in THIS job, not a job of its own, for the reason the eight it
-      # replaces each stated: the required context is ["lint"], so a separate job
-      # would not be a required check.
+      # One step in THIS job, not a job of its own: the required context is
+      # ["lint"], so a separate job would not be a required check.
       - name: hook regression tests
         run: dot-claude/hooks/tests/all.sh
 

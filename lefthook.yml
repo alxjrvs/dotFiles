@@ -1,7 +1,5 @@
 # Lefthook config for this repo (a boom config / dotfiles repo).
 #
-# pre-commit: lint staged shell + JS/TS/JSON, guard secrets and settings.json.
-#
 # no_auto_install: boom owns hook installation (the `lefthook` hook runs
 # `lefthook install` when it converges). After a lefthook.yml change, re-run
 # `boom source --only=lefthook` (or `lefthook install`) to refresh the checksum.
@@ -15,133 +13,100 @@ pre-commit:
       glob: "{*.sh,git-template/hooks/*}"
       run: shellcheck -x {staged_files}
     shfmt-check:
-      # boomfile is DSL config (an aligned link table by design) — validated by
-      # `boom source --dry-run`, not shfmt, so it's deliberately not formatted here.
+      # boomfile.toml is DSL config (an aligned link table by design) — validated
+      # by `boom source --dry-run`, not shfmt, so it is deliberately not in scope.
       glob: "{*.sh,git-template/hooks/*}"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}
     biome-check:
-      # JS/TS/JSON lint + format gate (the only JS/TS here is the boom hooks;
-      # JSON includes dot-claude/settings.json). `check` reports without
-      # rewriting — like shfmt-check, it won't auto-fix on commit; run
-      # `biome check --write` to fix. Config: biome.json (2-space, gitignore-aware).
+      # `check` reports without rewriting — like shfmt-check it won't auto-fix on
+      # commit; run `biome check --write` to fix. Config: biome.json.
       glob: "{*.ts,*.tsx,*.js,*.jsx,*.json,*.jsonc}"
       run: biome check {staged_files}
     gitleaks:
       run: gitleaks protect --staged --redact -v --no-banner
     settings-json-validity:
-      # Runs the same script CI and `boom verify` run, against the STAGED file,
-      # so a bad commit is caught immediately rather than at the nightly verify.
-      # The assertions and their reasoning live in the script, once — this was
-      # sixty lines here and sixty more in lint.yml, hand-synced, each carrying a
-      # comment telling a human to keep the inventory aligned by hand.
+      # Same script CI and `boom verify` run, against the STAGED file, so a bad
+      # commit is caught immediately rather than at the nightly verify. The
+      # assertions and their reasoning live in the script, once.
       glob: "dot-claude/settings*.json"
       run: scripts/settings-guardrails.sh {staged_files}
 
     context-budget:
-      # Runs the same script CI runs, so the ceiling is hit at commit time rather
-      # than after the push, and a green commit is a green build by construction —
-      # the numbers cannot drift apart because there is only one copy of them.
-      # Reasoning, ceilings, and the capped set: scripts/context-budget.sh.
+      # Same script CI runs, so the ceiling is hit at commit time rather than
+      # after the push. Ceilings, capped set, reasoning: the script.
       glob: "{CLAUDE.md,dot-claude/CLAUDE.md}"
       run: scripts/context-budget.sh {staged_files}
 
     plist-validity:
-      # Runs the same script CI runs. Two assertions, not one: structural
-      # validity does not catch a `~` in a path value, and that is the bug that
-      # cost 28 days of un-run `boom verify`. See the script header.
+      # Same script CI runs. Two assertions, not one: structural validity does
+      # not catch a `~` in a path value. See the script header.
       glob: "launchd/*.plist"
       run: scripts/plist-validity.sh {staged_files}
     zsh-syntax:
-      # The interactive shell payload runs on EVERY shell startup and was linted
-      # by nothing: shellcheck's glob is `*.sh`, and shellcheck cannot parse zsh
-      # at all ("Unknown shell: zsh"), so excluding these was correct — but
-      # nothing replaced it. `zsh -n` is the native no-exec syntax check.
+      # shellcheck cannot parse zsh at all ("Unknown shell: zsh"), so the
+      # interactive shell payload is out of its scope. `zsh -n` is the native
+      # no-exec syntax check.
       glob: "{*.zsh,.zshrc,.zprofile,.zshenv}"
       run: |
         for f in {staged_files}; do
           zsh -n "$f" || { echo "zsh syntax error in $f"; exit 1; }
         done
     toml-validity:
-      # The boomfile.toml IS the repo — a parse error only surfaces at `boom
-      # apply` time on a real machine otherwise. --no-schema = pure syntax check
-      # (hermetic, offline); won't reformat the hand-aligned link tables.
+      # A parse error otherwise surfaces at `boom source` time on a real machine.
+      # --no-schema = pure syntax check (hermetic, offline); won't reformat the
+      # hand-aligned link tables.
       glob: "*.toml"
       run: taplo check --no-schema {staged_files}
     hook-tests:
-      # Every suite under dot-claude/hooks/tests/, one command. This was eight
-      # commands here and eight steps in lint.yml — sixteen declarations of nine
-      # scripts, each with its own glob and its own paragraph. Four of those globs
-      # were byte-identical and three more were strict subsets, so one guard edit
-      # forked five suites off a single trigger while the wiring implied they were
-      # separately scoped.
+      # The glob is the union of what these suites cover: a change to a guard, to
+      # the repo's own hooks/, to a suite, or to cases.tsv runs them. Hermetic,
+      # no network.
       #
-      # The glob is the union of what the eight covered, so nothing narrowed: a
-      # change to a guard, to the repo's own hooks/, to a suite, or to cases.tsv
-      # runs all of them. The roster lives in the directory, not here — all.sh
-      # discovers it, which is why adding a suite needs no edit to this file or to
-      # lint.yml. Hermetic, no network.
-      #
-      # `--changed` runs only the suites that cover the staged files. Measured,
-      # the full sweep is ~18s and run.sh alone is 10s of it, paid on every
-      # commit touching any guard — the most frequently edited code here.
-      # Editing worktree-port.sh now costs 1.6s. CI still runs all seven, so
-      # the merge gate is unchanged and a wrong `covers:` line cannot let a
-      # regression through; it only costs local latency.
+      # `--changed` runs only the suites that cover the staged files — a local
+      # latency optimisation. CI passes no argument and runs all of them, so the
+      # merge gate is unchanged and a wrong `covers:` line cannot let a
+      # regression through.
       glob: "{hooks/*.sh,dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
       run: dot-claude/hooks/tests/all.sh --changed {staged_files}
     rules-scoped:
       # A rule carrying `paths:` is free — it loads only when Claude reads a
       # matching file. One that omits it is billed at launch like CLAUDE.md
-      # itself, which is the entire thing the rules directory exists to avoid,
-      # and nothing about the omission looks wrong. See scripts/rules-scoped.sh.
+      # itself, and nothing about the omission looks wrong.
       glob: "dot-claude/rules/*.md"
       run: scripts/rules-scoped.sh {staged_files}
 
     description-cap:
-      # This existed ONLY in CI — the one asymmetry in the whole setup, and the
-      # inverse of every other gate here: editing a SKILL.md description
-      # committed clean locally and failed after the push.
       glob: "{dot-claude/skills/*/SKILL.md,dot-claude/agents/*.md}"
       run: scripts/description-cap.sh {staged_files}
 
     brew-drift:
       # Machine state, not file state: `brew bundle` installs what the Brewfile
-      # names but never uninstalls what it omits, so a hand-installed package
-      # stays forever and a fresh machine silently does not get it. Runs only
-      # when the Brewfile is touched; no-ops where brew is absent.
+      # names but never uninstalls what it omits. Runs only when the Brewfile is
+      # touched; no-ops where brew is absent.
       glob: "Brewfile"
       run: scripts/brew-drift.sh
 
     identity-drift:
-      # Keeps README's "Forking this repo" list honest. A new hardcoded owner
-      # somewhere the list does not mention breaks a fork silently — the forker's
-      # agent commits get authored as someone else, or `boom verify` fails
-      # against a 1Password vault that was never theirs.
+      # Keeps README's "Forking this repo" list honest. A hardcoded owner the
+      # list does not mention breaks a fork silently.
       run: scripts/identity-drift.sh
 
     actionlint:
-      # The workflows are the remote gate, and were the only config here with no
-      # linter. Declared in mise.toml and checksummed in mise.lock all along —
-      # `brew-drift.sh` even excludes it BECAUSE mise owns it — but wired into
-      # neither gate. It also reaches the embedded shell in every `run:`, which
-      # the shellcheck glob above cannot.
+      # Also reaches the embedded shell in every `run:`, which the shellcheck
+      # glob above cannot.
       glob: ".github/workflows/*.yml"
       run: actionlint
 
     gate-tests:
-      # The same property the canary suite above asserts, for the three shared
-      # assertions in scripts/: a gate that checked nothing must not print `ok`.
-      # All three used to — `settings-guardrails.sh` handed a nonexistent path
-      # printed `ok` and exited 0, so renaming the settings file would have left
-      # this very gate green with the deny floor unchecked.
+      # The property the hook suites assert, for the shared assertions in
+      # scripts/: a gate that checked nothing must not print `ok`.
       glob: "scripts/*.sh"
       run: scripts/tests/gates.sh
 
-# commit-msg: forward-only hygiene guard. Rejects throwaway subjects (bare
-# "WIP"/"wip" or a single character) so they don't land in permanent history.
-# Existing history is untouched. Convention: `scope: summary` or
-# `type(scope): summary` (see CLAUDE.md). Bypass once with: git commit --no-verify
+# Forward-only: rejects throwaway subjects (bare "WIP" or a single character) so
+# they don't land in permanent history. Convention: `scope: summary` or
+# `type(scope): summary`. Bypass once with: git commit --no-verify
 commit-msg:
   commands:
     no-wip:

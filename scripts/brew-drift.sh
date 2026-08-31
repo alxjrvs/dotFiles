@@ -4,24 +4,16 @@
 # `brew bundle` INSTALLS what the Brewfile names. It never uninstalls what the
 # Brewfile omits, so a package installed by hand stays forever, invisible, and a
 # fresh machine silently does not get it. That is one-directional drift with no
-# alarm, and it had run for months: 21 casks installed against 11 declared, and
-# five top-level formulae undeclared.
-#
-# Worse than the count, the Brewfile CLAIMED otherwise. A block headed "NOT here,
-# deliberately, though brew had installed them" described removals that never
-# happened — the packages were still installed the whole time. A file that
-# describes a state it does not enforce eventually describes a state that is not
-# true, and this one did.
+# alarm.
 #
 # WHAT THIS CHECKS. Only `brew leaves` (top-level formulae, not the dependency
 # closure) and casks. A dependency is the business of whatever pulled it in.
 #
 # THE EXCLUSION LIST IS PART OF THE CONTRACT. Some packages are installed and
-# deliberately NOT declared, each for a reason the Brewfile states: they are
-# owned by mise, or they pull in a second copy of a runtime, or a native macOS
-# path replaced them. Those must not fail this check, and they must not be
-# silently forgotten either — naming them here is what makes "deliberately
-# excluded" different from "nobody noticed".
+# deliberately NOT declared, each for a reason: they are owned by mise, they pull
+# in a second copy of a runtime, or a native macOS path replaced them. Naming
+# them here is what makes "deliberately excluded" different from "nobody
+# noticed".
 set -eu
 
 BREWFILE=${1:-Brewfile}
@@ -35,11 +27,10 @@ command -v brew > /dev/null 2>&1 || {
   exit 0
 }
 
-# Installed but deliberately undeclared. Each name's full reason is in the
-# Brewfile's own exclusion block; the short form:
-#   gh, actionlint, osv-scanner, shellcheck  — declared in mise.toml. A brew copy
-#     wins on PATH in some shells, which makes mise's pin inert. Uninstall by
-#     hand: `brew uninstall <name>`.
+# Installed but deliberately undeclared. Full reasons: the Brewfile's own
+# exclusion block. The short form:
+#   gh, actionlint, osv-scanner, shellcheck — declared in mise.toml; a brew copy
+#                   wins on PATH in some shells, making mise's pin inert.
 #   node          — arrives only as a netlify-cli dependency; a second node is
 #                   the exact hazard the mise pin exists to prevent.
 #   netlify-cli   — deploys use a version-pinned `bunx netlify-cli@<ver>`.
@@ -60,10 +51,9 @@ X
 }
 
 #   karabiner-elements — replaced by the hidutil LaunchAgent for the single
-#     Caps Lock remap; no kernel extension needed. Uninstall by hand.
-#   zulu17 — the RETIRED upstream name for the declared `zulu@17`. It no longer
-#     resolves as a cask at all, so it can only ever be a leftover install, never
-#     a declaration. Uninstall by hand: `brew uninstall --cask zulu17`.
+#                   Caps Lock remap; no kernel extension needed.
+#   zulu17        — the RETIRED upstream name for the declared `zulu@17`. It no
+#                   longer resolves as a cask, so it can only be a leftover.
 excluded_casks() {
   cat << 'X'
 karabiner-elements
