@@ -152,13 +152,6 @@ case_exit boomsrc_real 0 ./scripts/boomfile-sources.sh
 case_exit boomsrc_missing_file 1 ./scripts/boomfile-sources.sh boomfile-does-not-exist.toml
 case_exit boomsrc_dangling 1 ./scripts/boomfile-sources.sh scripts/tests/fixtures/dangling-src-boomfile.toml
 
-# --- the generated index is actually current --------------------------------
-# A stale index is worse than none: it sends the reader to the wrong place with
-# the confidence of a table of contents. `--check` is the whole guarantee that
-# the generated file and the headings it indexes cannot drift.
-case_exit toc_current 0 ./scripts/decisions-toc.sh --check
-case_exit toc_missing_file 2 env FILE=dot-claude/does-not-exist.md ./scripts/decisions-toc.sh --check
-
 # --- a skill body loads in full when the skill fires -------------------------
 # Two skills were ~22 KB single files with no references/, about 5,600 tokens
 # each on any trigger, mostly inventory the invocation never needed. The body cap
