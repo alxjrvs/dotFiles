@@ -32,7 +32,6 @@
 	# global excludes via a ~/.gitignore symlink, leaking .claude/ etc. into
 	# every repo on the machine).
 	pager = delta
-	fsmonitor = false
 	untrackedCache = true
 
 # New repos copy template/hooks/pre-commit into their own .git/hooks/ at

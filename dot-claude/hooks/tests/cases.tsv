@@ -164,26 +164,6 @@ rebase	wt-a	git commit -m "run cd . && git push origin main to ship"	allow
 rebase	primary	git commit -m "wip; git push"	allow
 rebase	wt-a	git commit -m "see 'git push origin main' in the docs"	allow
 
-# --- worktree-checkout-guard ------------------------------------------------
-# feature-b is held by another worktree in every fixture below.
-# REGRESSION: only the *default* branch name was matched, so 34 of 43 measured
-# real collisions (non-default branches) walked straight past the guard.
-# REGRESSION: a flag between the verb and the name defeated the old regex.
-# REGRESSION: a trailing pipe defeated the old terminator.
-# REGRESSION: quoting defeated the old regex (documented as an accepted miss).
-# main is held by the primary worktree, so this is the classic case.
-# Already on it — no collision, so it must pass.
-# Branch nobody holds.
-# Not a checkout of a branch at all.
-
-# --- 2026-08-08 audit: worktree-guard -----------------------------------------
-# FALSE POSITIVE: `git checkout <branch> -- <path>` restores a file FROM a branch.
-# It does not check the branch out, succeeds against a branch held elsewhere
-# (verified against real git), and is a working recovery move the guard denied.
-# Same prog-token blind spot as the rebase guard.
-# TRUE NEGATIVE, pinned deliberately: this detaches HEAD rather than colliding,
-# so allowing it is correct behaviour and not an accident.
-
 # --- op-guard: the shapes an agent MUST be able to use ----------------------
 # This whole block is the point of the 2026-08-18 change. Every one of these was
 # DENIED by the old binary-scoped `Bash(op:*)` rule, including `op --version`,

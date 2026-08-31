@@ -38,6 +38,3 @@ eval "$(zoxide init zsh)"
 
 # mise (tool version manager)
 eval "$(mise activate zsh)"
-
-# bun completions
-[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"

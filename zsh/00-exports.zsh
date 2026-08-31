@@ -14,21 +14,10 @@ export TERMINAL=ghostty
 # resolves it on demand via `gh auth token` (the github MCP server reads its PAT
 # from 1Password through op-agent). See .zprofile for the rationale.
 
-# maestro (mobile UI testing) CLI on PATH. Harmless on machines without it —
-# a non-existent dir on PATH is a no-op.
-export PATH="$PATH:$HOME/.maestro/bin"
-
-# sharp (transitive dep of many JS projects via image tooling / miniflare)
-# detects a global libvips via pkg-config, and the `vips` FORMULA is present on
-# this machine (8.18.3) — it arrives as another formula's dependency rather than
-# being declared, which is why it is not in the Brewfile and not a `brew leaves`
-# entry. (It was described here as a cask; it is not one.) sharp then tries to
-# build its native addon
-# against that global libvips instead of using its own bundled prebuilt
-# binary, and that from-source build fails on a missing node-addon-api.
-# This forces sharp to always use its bundled prebuilt binary. Sharp reads
-# this as a real env var (not an npm config key), so it must live here, not
-# in ~/.npmrc.
+# sharp builds its native addon against a global libvips when pkg-config finds
+# one, and that build fails on a missing node-addon-api. `vips` is present here
+# as another formula's undeclared dependency. This forces the bundled prebuilt.
+# A real env var, not an npm config key — so it belongs here, not in ~/.npmrc.
 export SHARP_IGNORE_GLOBAL_LIBVIPS=1
 
 # Colored man pages (CMYK)

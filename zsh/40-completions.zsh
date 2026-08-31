@@ -23,7 +23,6 @@ unset _zcompdump _zcompdump_fresh
 # fzf-tab requires menu off (or no-select) — it owns the rendering.
 zstyle ':completion:*' menu no
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
-zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle ':completion:*:descriptions' format '[%d]'
 zstyle ':completion:*:git-checkout:*' sort false
 
