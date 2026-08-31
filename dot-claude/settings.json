@@ -99,15 +99,6 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "command -v caffeinate >/dev/null 2>&1 && (caffeinate -i -w $PPID >/dev/null 2>&1 &) || true"
-          }
-        ]
-      },
-      {
         "matcher": "startup|resume",
         "hooks": [
           {

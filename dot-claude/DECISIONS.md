@@ -41,6 +41,7 @@ sections large enough to need it, so growth costs navigability rather than silen
 - [Retention](#retention)
 - [Contents](#contents)
 - [How to write a number so it cannot rot](#how-to-write-a-number-so-it-cannot-rot)
+- [2026-08-31 — the keep-awake hook was keeping the wrong thing awake](#2026-08-31--the-keep-awake-hook-was-keeping-the-wrong-thing-awake)
 - [2026-08-31 — the credential scrub was also a permission-mode switch](#2026-08-31--the-credential-scrub-was-also-a-permission-mode-switch)
 - [2026-08-29 — the guard in front of every push was making a network call](#2026-08-29--the-guard-in-front-of-every-push-was-making-a-network-call)
 - [2026-08-29 — the byte ceiling was destroying guidance a free mechanism holds](#2026-08-29--the-byte-ceiling-was-destroying-guidance-a-free-mechanism-holds)
@@ -135,6 +136,43 @@ Three corollaries, each mechanical:
 Counts that survive are the ones with an owner: a `jq` assertion, a `wc -c` gate, a test that
 fails. If a number matters enough to write down, make something check it; if it does not, describe
 the invariant and drop the digit.
+
+---
+
+## 2026-08-31 — the keep-awake hook was keeping the wrong thing awake
+
+The `SessionStart` hook `caffeinate -i -w $PPID` is deleted. It was meant to hold off
+idle sleep for the life of a session. It did not do that, and it had not been doing it.
+
+### The measurement
+
+Taken live, mid-session:
+
+```
+93353  caffeinate -i -w 32910   ppid 1   up 1:08:50   -> 32910 = claude bg-spare
+60599  caffeinate -i -w 96477   ppid 1   up   36:16   -> 96477 = claude bg-spare
+```
+
+`$PPID` inside the hook resolves to a pooled **`claude bg-spare` daemon**, not to the
+session. Those spares are long-lived and shared, so each assertion outlives the session
+that created it, and instances accumulate: two were live at once, both orphaned to PID 1,
+the older past an hour. `pmset -g assertions` confirmed both holding
+`PreventUserIdleSystemSleep` on behalf of a process the user had never seen.
+
+The bounded `caffeinate -i -t 300` assertions visible alongside them are the client's own
+and self-expire. Only the `-w <pid>` form leaked, and only because of what `$PPID` is.
+
+### Why it is not worth fixing rather than deleting
+
+There is no stable handle for "this session" available to a `SessionStart` command hook —
+`$PPID` is the shell's parent, which is whatever the client happened to fork from. And the
+need is disappearing: Claude Desktop already holds its own `NoIdleSleepAssertion`
+(measured: `pid 96660(Claude): NoIdleSleepAssertion named: "Electron"`), so on the surface
+this machine is moving to, the hook would be a second, longer-lived assertion stacked on an
+Electron helper that lives for days.
+
+A control that fires on the wrong target, accumulates, and is redundant where it is headed
+is not a control. Deleted rather than repaired.
 
 ---
 
