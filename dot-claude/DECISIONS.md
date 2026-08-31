@@ -98,24 +98,33 @@ each against every local repo:
 |---|---|---|
 | `railway` | none | removed |
 | `ccusage` | none | removed |
-| `agent-browser` | none | stray |
-| `vercel` / `vc` | none — every hit is transitive `@vercel/nft` (pulled in by *Netlify's* bundler), the AI SDK, or docs prose | stray |
-| `bunup` | @RANDSUM — but a repo **devDependency**; `"build": "bunup"` resolves to local `node_modules/.bin` | global redundant |
+| `agent-browser` | not an MCP server, not a skill; one `skillUsage` hit, 2026-03-24 | left pending owner call |
+| `vercel` / `vc` | none — every hit is transitive `@vercel/nft` (pulled in by *Netlify's* bundler), the AI SDK, or docs prose | removed |
+| `bunup` | @RANDSUM — but a repo **devDependency**; `"build": "bunup"` resolves to local `node_modules/.bin` | removed |
 | `eas` | BinfiniteApp, 32 **`bunx eas-cli@21.2.0`** call sites, plus real ad-hoc use (`eas login`, `whoami`, `build:list`) | **declared + pinned** in `mise.toml` |
 
 `bunup` is declared per-repo, so the global copy is never the one that runs — removable.
 
-**`eas` is the exception, and the measurement is why.** It has genuine ad-hoc use outside any
-project (`eas login`, `whoami`, `build:list`), so the answer is not deletion. The global had
-drifted to **18.4.0 against a repo pinning 21.2.0** — three majors — so a hand-typed `eas build`
-ran a different CLI than every script did, and BinfiniteApp's `check:bunx-pins` gate cannot catch
-that: it reads repo files, not what a human types. So it is now `"npm:eas-cli" = "21.2.0"` in
-`mise.toml` — declared, so `boom verify` sees it, and pinned, so the two agree. The version is an
-explicit `npm:` backend because the registry has no `eas` entry.
+**`eas` is the exception, and it took two corrections to get right.** It has genuine ad-hoc use
+outside any project (`eas login`, `whoami`, `build:list`), so the answer was never deletion.
 
-**The diagnosis was "undeclared and unpinned", not "global".** Declaring and pinning it fixes the
-finding; deleting it would have removed a tool that is actually used. Left unowned: nothing checks
-this pin against BinfiniteApp's bunx pin, so they must be bumped together.
+**There were TWO undeclared copies, at two versions, and the first measurement read the wrong
+one.** `~/.bun/bin/eas` held 18.4.0 — but it never ran. `command -v eas` resolved to
+`~/.local/share/mise/installs/node/25.9.0/bin/eas` at **20.5.0**, an `npm -g` install into the
+node prefix. Both were stale against the repos' `bunx eas-cli@21.2.0`, and BinfiniteApp's
+`check:bunx-pins` gate cannot catch either: it reads repo files, not what a human types.
+
+**Declaring it in `mise.toml` would have changed nothing on its own**, and this is the part worth
+remembering. `mise activate` puts the node install's `bin` at **PATH position 1**, while the mise
+shims sit at **29** and `~/.bun/bin` at **46**. A pinned `npm:eas-cli` lands in the shims — behind
+the very npm-global copy it was meant to replace. The declaration was inert until both strays were
+uninstalled. *Adding the managed thing does not remove the unmanaged one that outranks it.*
+
+After removing both, `eas` resolves to `~/.local/share/mise/shims/eas` at 21.2.0, matching the
+repos. Explicit `npm:` backend because the registry has no `eas` entry.
+
+**The diagnosis was "undeclared and unpinned", not "global".** Left unowned: nothing checks this
+pin against BinfiniteApp's bunx pin, so they must be bumped together.
 
 `expo-cli` is NOT added, and should not be. It is EOL, and the Expo CLI in use ships inside each
 project's own `expo` dependency (`bunx expo`, `bunx expo-doctor` — 22 call sites). The only
