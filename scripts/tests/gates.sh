@@ -134,7 +134,7 @@ case_exit boomsrc_dangling 1 ./scripts/boomfile-sources.sh scripts/tests/fixture
 # oversized file billed in full on any trigger.
 case_exit skillbody_real 0 ./scripts/description-cap.sh
 case_exit skillbody_over 1 \
-  env BODY_CAP=5000 ./scripts/description-cap.sh dot-claude/skills/butter-stack/SKILL.md
+  env BODY_CAP=500 ./scripts/description-cap.sh dot-claude/skills/agent-friendly-repo/SKILL.md
 
 # --- the cap must be able to SEE a multi-line description --------------------
 # A YAML folded block puts the indicator (`>-`) on the `description:` line, and a
