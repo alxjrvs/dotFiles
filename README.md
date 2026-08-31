@@ -96,7 +96,7 @@ in `.claude/settings.json`, the statusline source repo in
 | `starship.toml` | Prompt |
 | `ghostty/config` | Terminal (Ghostty, sole terminal) |
 | `nvim/init.lua` | Plugin-free neovim (native LSP, ≥0.11) |
-| `dot-claude/` | User-global Claude config. Symlinked into `~/.claude/`: `CLAUDE.md`, `settings.json`, `loop.md`, every `hooks/*.sh`, `skills/`, `agents/`, `rules/`. What is *billed to every session* is a smaller set than what is linked — the two `CLAUDE.md` files plus each skill's and agent's `description:` frontmatter, ~1,550 tokens; hook scripts and skill *bodies* cost nothing until used. `DECISIONS.md`, `SETTINGS.md`, `REFERENCE.md` are not linked at all. `scripts/context-budget.sh` owns the numbers and fails on an unbudgeted link |
+| `dot-claude/` | User-global Claude config. Symlinked into `~/.claude/`: `CLAUDE.md`, `settings.json`, `loop.md`, every `hooks/*.sh`, `skills/`, `agents/`, `rules/`. What is *billed to every session* is a smaller set than what is linked — the two `CLAUDE.md` files plus each skill's and agent's `description:` frontmatter, ~1,550 tokens; hook scripts and skill *bodies* cost nothing until used. `DECISIONS.md` and `SETTINGS.md` are not linked at all. `scripts/context-budget.sh` owns the numbers and fails on an unbudgeted link |
 | `Brewfile` / `mise.toml` | Packages (Lean A: brew = casks, mise = dev CLIs) |
 | `sheldon/`, `atuin/`, `bat/`, `ssh/`, `gh/config.yml` | Payload configs |
 | `lefthook.yml`, `.github/workflows/lint.yml` | Commit + CI gate: shellcheck, shfmt, biome, gitleaks, the hook suites, and the assertions in `scripts/` |

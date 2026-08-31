@@ -56,7 +56,6 @@ CLAUDE.md
 Brewfile
 dot-claude/DECISIONS.md
 dot-claude/SETTINGS.md
-dot-claude/REFERENCE.md
 dot-claude/hooks/repo-scope-guard.sh
 dot-claude/hooks/tests/cases.tsv
 dot-claude/hooks/tests/reposcope.sh
