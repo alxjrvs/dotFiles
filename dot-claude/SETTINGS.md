@@ -82,28 +82,27 @@ If you want a setting, it goes in the committed `settings.json` where it can be
 reviewed. If you want it on one machine only, that is the case this setup has
 decided not to support.
 
-## Sandbox
+## Subprocess credential scrubbing
 
 | key | what it is for |
 |---|---|
-| `sandbox.credentials.envVars` | The reason this block exists. `permissions.deny` and `op-guard.sh` both gate the *command* that resolves a secret; neither can do anything once the value is in the environment of a process that then prints it. An OS-enforced boundary is the only layer that reaches there, and it is the countermeasure for the transcript leak in `DECISIONS.md`. `mode: "deny"` unsets the variable before each sandboxed command. |
-| `sandbox.filesystem.denyRead` | The OS-level path to a credential FILE. The reason recorded here until 2026-08-28 — that `Read()` deny rules gate the Read tool only and never covered `cat` — is no longer true: deny rules now *"apply to Claude's built-in file tools and to file commands Claude Code recognizes in Bash, such as `cat`, `head`, `tail`, and `sed`."* The block still earns its place on the half that remains uncovered: those rules *"don't apply to arbitrary subprocesses that read or write files indirectly, like a Python or Node script that opens files itself."* That is what an OS boundary reaches and a permission rule cannot. |
-| `env.CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` | The half of the above that works **today**. It strips Anthropic and cloud-provider credentials from *all* subprocesses regardless of sandboxing, so it does not wait on `sandbox.enabled`. It does not cover the other variables above — that is what the block is for. |
+| `env.CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` | Strips Anthropic and cloud-provider credentials from *all* subprocesses, unconditionally. This is the layer that reaches past `permissions.deny` and `op-guard.sh`: both of those gate the *command* that resolves a secret, and neither can do anything once the value is already in the environment of a process that then prints it. |
 
-**None of the `sandbox.*` block does anything until `sandbox.enabled` is `true`,
-and it is not set here.** The sandbox is opt-in, and both sub-blocks affect
-sandboxed Bash commands only. Enabling it is deliberately a separate change from
-getting its contents right, because it is the one setting here that can break a
-working machine. See `DECISIONS.md` for why the modes read `deny` rather than
-`mask`.
+**There is no `sandbox` block, deliberately.** One was written and carried six
+`credentials.envVars` entries and four `filesystem.denyRead` paths — none of
+which ever ran, because `sandbox.enabled` was never set and the sandbox is
+opt-in. It sat in that state from the commit that added it (titled *DO NOT
+MERGE UNTIL VERIFIED*) until it was removed; two commits in between found it
+inert and left it. Describing a control is not the control.
 
-Two more things worth knowing before editing this block.
+If it is ever reinstated, the reinstating change must set `sandbox.enabled`
+in the same commit, and two things are worth knowing first.
 
 **It is not the `~/.ssh` rule it looks like.** `~/.ssh/` on this machine holds
 `id_ed25519.pub`, `known_hosts` and `allowed_signers` — no private key. Signing
-goes through 1Password's agent socket (`ssh/config` `IdentityAgent`). The
+goes through 1Password's agent socket (`ssh/config` `IdentityAgent`). A
 `~/.ssh/id_*` entry is cheap insurance against a key appearing there later, not
-the thing this block is for. The env-var masking is.
+the thing such a block would be for. The env-var masking is.
 
 **It can break `git push` silently.** `.gitconfig` sets `helper = osxkeychain`
 globally and `!gh auth git-credential` for GitHub, and `op-agent` runs as a
