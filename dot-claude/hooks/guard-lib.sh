@@ -278,6 +278,37 @@ _blank_quoted() { # $1 = command -> same string with quoted runs blanked
     }'
 }
 
+# As `_blank_quoted`, but quote state CARRIES ACROSS LINES.
+#
+# `_blank_quoted` resets `sq`/`dq` per record, which is right for its callers:
+# they ask a per-line question. The program-position tests ask a whole-command
+# question, and there a newline inside a quoted argument is not a command
+# boundary at all — the shell is still inside the quote.
+#
+# The bug this closes: those tests anchor on `^`, and grep is line-oriented, so
+# the start of EVERY line of a multi-line argument read as program position. A
+# markdown code fence inside a `gh pr create --body '…'` — a line beginning with
+# a backtick — was therefore denied as "a program name from a command
+# substitution". Measured: three such denials during one session, none of which
+# invoked 1Password at all.
+#
+# Line structure is preserved, so a genuine multi-line command still presents a
+# real line start per command; only the CONTENT inside an open quote is blanked.
+_blank_quoted_ml() { # $1 = command -> quoted runs blanked, state kept across lines
+  printf '%s' "$1" | awk '
+    BEGIN { sq = 0; dq = 0 }
+    {
+      out = ""; n = length($0)
+      for (i = 1; i <= n; i++) {
+        c = substr($0, i, 1)
+        if (!dq && c == "\047") { sq = !sq; out = out " "; continue }
+        if (!sq && c == "\"")   { dq = !dq; out = out " "; continue }
+        out = out ((sq || dq) ? " " : c)
+      }
+      print out
+    }'
+}
+
 # Strip QUOTES ONLY, keeping parens. `_unquote` deletes parens too, which would
 # destroy the `'('*` arm in `_norm` (a segment can legitimately open with one).
 # The program token is the one place a stray quote is fatal rather than

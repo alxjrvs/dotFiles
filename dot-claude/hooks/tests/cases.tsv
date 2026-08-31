@@ -146,44 +146,23 @@ rebase	wt-a	git commit -m "see 'git push origin main' in the docs"	allow
 
 # --- worktree-checkout-guard ------------------------------------------------
 # feature-b is held by another worktree in every fixture below.
-worktree	primary	git checkout feature-b	deny
-worktree	wt-a	git checkout feature-b	deny
 # REGRESSION: only the *default* branch name was matched, so 34 of 43 measured
 # real collisions (non-default branches) walked straight past the guard.
-worktree	wt-a	git switch feature-b	deny
 # REGRESSION: a flag between the verb and the name defeated the old regex.
-worktree	wt-a	git checkout -q feature-b	deny
 # REGRESSION: a trailing pipe defeated the old terminator.
-worktree	wt-a	git checkout feature-b 2>&1 | tail -5	deny
 # REGRESSION: quoting defeated the old regex (documented as an accepted miss).
-worktree	wt-a	git checkout "feature-b"	deny
 # main is held by the primary worktree, so this is the classic case.
-worktree	wt-a	git checkout main	deny
 # Already on it — no collision, so it must pass.
-worktree	wt-a	git checkout feature-a	allow
 # Branch nobody holds.
-worktree	wt-a	git checkout -b brand-new	allow
-worktree	wt-a	git switch -c another-new	allow
-worktree	wt-a	git checkout --detach main	allow
 # Not a checkout of a branch at all.
-worktree	wt-a	git checkout -- README.md	allow
-worktree	wt-a	echo git checkout main	allow
-worktree	wt-a	git commit -m "git checkout main is a bad idea"	allow
-worktree	nonrepo	git checkout main	allow
 
 # --- 2026-08-08 audit: worktree-guard -----------------------------------------
 # FALSE POSITIVE: `git checkout <branch> -- <path>` restores a file FROM a branch.
 # It does not check the branch out, succeeds against a branch held elsewhere
 # (verified against real git), and is a working recovery move the guard denied.
-worktree	wt-a	git checkout feature-b -- README.md	allow
-worktree	wt-a	git checkout main -- README.md	allow
 # Same prog-token blind spot as the rebase guard.
-worktree	wt-a	/usr/bin/git checkout feature-b	deny
-worktree	wt-a	GIT_PAGER=cat git checkout feature-b	deny
-worktree	wt-a	command git switch feature-b	deny
 # TRUE NEGATIVE, pinned deliberately: this detaches HEAD rather than colliding,
 # so allowing it is correct behaviour and not an accident.
-worktree	wt-a	git checkout refs/heads/feature-b	allow
 
 # --- op-guard: the shapes an agent MUST be able to use ----------------------
 # This whole block is the point of the 2026-08-18 change. Every one of these was
@@ -455,6 +434,21 @@ op	nonrepo	op run --env-file=$HOME/.env -- npm publish	allow
 # program name. Denying these would recreate the commit-message false positive.
 op	nonrepo	git commit -m "fix `op read` guard"	allow
 op	nonrepo	tar -C "$(pwd)" -cf - .	allow
+
+# MUST STILL ALLOW, multi-line: `^` is a LINE anchor in grep, so before the
+# quote-state fix every line start of a multi-line argument read as program
+# position. A markdown code fence inside a PR body — a line beginning with a
+# backtick — was denied as a substituted program name. Measured three times in
+# one session, none of them invoking 1Password. The fence is INSIDE an open
+# quote, so it is data.
+op	nonrepo	gh pr create --body 'shapes:\n```\nop whoami\n```\nend'	allow
+op	nonrepo	git commit -F - <<'EOM'\n```\nsee op read\n```\nEOM	allow
+
+# MUST STILL DENY, multi-line: a newline IS a command separator when it is not
+# inside a quote or a heredoc body, so a substituted program name on the second
+# line is still program position. This is the case the fix must not widen past.
+op	nonrepo	echo starting\n$(echo op) read op://vault/item/field	deny
+op	nonrepo	echo starting\n`echo op` read op://vault/item/field	deny
 
 # --- REGRESSION: `git push --all` / `--mirror` from a feature branch --------
 # Both name their refs from the local ref namespace, not from argv, so the

@@ -26,7 +26,8 @@
 # and the two compose instead of racing.
 #
 # Wired agent-side via dot-claude/settings.json `hooks.PreToolUse` (matcher
-# "Bash"), alongside worktree-checkout-guard.sh and rebase-guard.sh.
+# "Bash"), alongside rebase-guard.sh, worktree-remove-guard.sh and
+# repo-scope-guard.sh.
 #
 # It FAILS OPEN (allow) on a missing jq, a bad envelope, or a missing guard-lib —
 # same as its two siblings, and defensible for the same reason they are: the
@@ -223,7 +224,12 @@ fi
 # guard"` and `tar -C "$(pwd)" -cf -` are both prose or paths, not a program
 # name, and denying those would recreate the false positive this suite exists
 # to prevent.
-if printf '%s' "$cmd" | grep -qE '(^|[;&|]|&&|\|\|)[[:space:]]*(\$\(|`)'; then
+# Heredoc bodies and quoted runs are blanked first, with quote state carried
+# across lines: `^` is a LINE anchor in grep, so without this the start of every
+# line of a multi-line argument read as program position, and a markdown code
+# fence in a `gh pr create --body` was denied as a substituted program name.
+if printf '%s' "$(_blank_quoted_ml "$(_strip_heredocs "$cmd")")" |
+  grep -qE '(^|[;&|]|&&|\|\|)[[:space:]]*(\$\(|`)'; then
   deny "This command's program name comes from a command substitution, so what actually runs is decided by the shell after this guard has already allowed it — and an unreadable program name is the case this guard closes rather than waves through. Spell the program out literally.
 
 $SAFE_SHAPES"

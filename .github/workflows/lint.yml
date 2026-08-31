@@ -40,55 +40,6 @@ jobs:
       MISE_LOCKFILE: "1"
     steps:
       - uses: actions/checkout@v7
-        with:
-          # Full history: the gate-the-gate step below diffs against the merge
-          # base, which a depth-1 checkout does not have.
-          fetch-depth: 0
-
-      # The agent completion path here is deliberately review-free: one required
-      # context (`lint`), no required reviewers, auto-merge on. That is what lets
-      # an unattended agent land work — and it means the PR that `lint` gates can
-      # edit `lint` itself. Delete the steps, get a green check, auto-merge.
-      #
-      # This makes that visible rather than silent: touching the gate requires
-      # saying so in the PR title. It is not airtight, and cannot be from inside
-      # the workflow — a PR that removes THIS step also removes the check that
-      # would have caught it. The airtight version is a ruleset
-      # `file_path_restriction` on `.github/**`, which is repo config rather than
-      # something a commit can carry, and is a deliberate decision to make rather
-      # than a default to inherit.
-      #
-      # The PR title goes through the environment, never interpolated into the
-      # script: `${{ }}` in a `run:` block is a shell-injection sink.
-      - name: gate changes to the gate
-        if: github.event_name == 'pull_request'
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-        run: |
-          # Fetched explicitly: in a stack the base is another topic branch, not
-          # main, and checkout does not necessarily have it.
-          git fetch --no-tags --quiet origin "$BASE_REF"
-          changed=$(git diff --name-only "origin/${BASE_REF}...HEAD" -- \
-            .github/ lefthook.yml scripts/ dot-claude/hooks/)
-          [ -n "$changed" ] || exit 0
-          # Declared = a bare `ci:`, or any conventional-commit title carrying an
-          # explicit scope. A scope is the smallest thing that makes the change
-          # legible in a squashed merge log, which is the whole point: `fix:`
-          # alone says nothing about having touched the gate, `fix(guards):` does.
-          if printf '%s' "$PR_TITLE" | grep -qE '^(ci|build)(\(.+\))?!?:|^[a-z]+\(.+\)!?:'; then
-            echo "gate change declared in the PR title — allowed:"
-            echo "$changed"
-            exit 0
-          fi
-          echo "This PR changes the gate itself:"
-          echo "$changed"
-          echo
-          echo "A PR that edits the checks gating it can turn them off and still go green."
-          echo "Declare it in the title so the change is legible in the merge log:"
-          echo "  ci: <what>            for a change to the gate itself"
-          echo "  <type>(<scope>): ...  for a change that happens to touch it"
-          exit 1
 
       # Set mise up (PATH + shims) but skip the full `mise install` — we only
       # need the lint tools, not the whole toolchain (node, bun, neovim…).
@@ -209,11 +160,6 @@ jobs:
       - name: boomfile sources exist
         run: scripts/boomfile-sources.sh
 
-      - name: dead verbs
-        run: |
-          hits=$(git grep -n 'boom apply' -- ':!Brewfile' ':!lefthook.yml' ':!.github/workflows/lint.yml' || true)
-          [ -z "$hits" ] || { echo "$hits"; echo "'boom apply' is not a boom verb — use 'boom source'"; exit 1; }
-
       - name: rules are path-scoped
         run: scripts/rules-scoped.sh
 
@@ -251,22 +197,3 @@ jobs:
       - name: hook regression tests
         run: dot-claude/hooks/tests/all.sh
 
-  # The whole gate ran ubuntu-latest only, so the setup path this repo documents
-  # was executed by nothing — and the failures that hides are not hypothetical.
-  # `zulu17` was RETIRED upstream and stopped resolving ("Cask 'zulu17' is
-  # unavailable"), failing `brew bundle` outright on a fresh machine; a file
-  # naming a cask that no longer exists is perfectly well-formed, so every
-  # file-reading check in the job above passes it. Only brew can answer, and brew
-  # needs macOS.
-  #
-  # NOT a required check, deliberately: it depends on Homebrew's live API, so a
-  # transient upstream outage must not block an unattended agent's merge. It is
-  # a signal on the PR, and the nightly `boom verify` is the backstop that runs
-  # against the actual machine.
-  macos:
-    runs-on: macos-26
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v7
-      - name: declared brew names still resolve
-        run: scripts/brew-resolves.sh

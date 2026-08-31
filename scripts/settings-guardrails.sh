@@ -35,7 +35,6 @@ wired_hooks() {
   cat << 'HOOKS'
 op-guard.sh
 rebase-guard.sh
-worktree-checkout-guard.sh
 worktree-remove-guard.sh
 repo-scope-guard.sh
 worktree-freshness.sh
@@ -176,7 +175,7 @@ for f in "$@"; do
   # under-firing costs the default branch. See DECISIONS.md.
   bad_if=$(jq -r '
     [ .hooks.PreToolUse[]?.hooks[]?
-      | select(.command | test("hooks/(rebase|worktree-checkout|worktree-remove|repo-scope)-guard\\.sh"))
+      | select(.command | test("hooks/(rebase|worktree-remove|repo-scope)-guard\\.sh"))
       | select(has("if"))
       | select(.["if"] | test("^Bash\\(\\*.*\\*\\)$") | not)
       | "\(.command) -> \(.["if"])"

@@ -1,33 +1,29 @@
-# General
-alias c="clear"
-alias q="exit"
+# Only what is actually typed. Measured against atuin's history (the source of
+# truth per zsh/60-tools.zsh), and 15 of the 23 aliases here had never been
+# typed once. The zeros are real rather than a recording gap: `ls` at 141 and
+# `..` at 143 prove short commands are captured.
+#
+# The deleted ones were all the same shape — a two-letter contraction of a git
+# subcommand (`ga`, `gaa`, `gb`, `gc`, `gds`, `gl`), an eza flag set (`la`,
+# `ll`, `lt`, `tree`), or a single letter (`b`, `c`, `q`, `vi`). Each looks
+# useful and none survived contact: the full command is short enough, or a tool
+# with its own interface won.
+#
+# Counts are stated here as a dated observation, not as a live claim — nothing
+# checks them, so they describe 2026-08-31 and nothing else.
 
-# Git
+# Git — gpr 157, gco 82, gs 79, gp 40, gd 2
 alias gs="git status"
 alias gp="git push"
 alias gpr='git pull --rebase'
 alias gco='git checkout'
 alias gd="git diff"
-alias gds="git diff --staged"
-alias gc="git commit"
-alias ga="git add"
-alias gaa="git add --all"
-alias gb="git branch"
-alias gl="git log --oneline -10"
 
-# Navigation
+# Navigation — `..` 143
 alias ..="cd .."
-alias ...="cd ../.."
-alias dots='cd "$DOTFILES_DIR"'
 
-# Enhanced tools (eza + bat). NB: `cat` left as POSIX cat; use `b` for bat.
+# Enhanced tools — ls 141. `cat` stays POSIX cat.
 alias ls="eza --icons --group-directories-first"
-alias la="eza --icons --group-directories-first -la --git"
-alias ll="eza --icons --group-directories-first -lh --git"
-alias lt="eza --icons --group-directories-first -T --level=2"
-alias tree="eza --icons --group-directories-first -T"
-alias b="bat --style=plain"
 
-# Editor
-alias vi="nvim"
+# Editor — vim 11
 alias vim="nvim"
