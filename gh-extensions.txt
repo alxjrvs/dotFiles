@@ -8,8 +8,8 @@
 # behavior, which "will check for new versions once every 24 hours and display an upgrade
 # notice" rather than installing. So this pins nothing: `gh stack` stays on whatever version
 # first landed until someone runs `gh extension upgrade gh-stack`. That remains a live trap for
-# a v0.1.0 preview tool, and `boom lock` does not cover gh extensions either (it is brew + mise
-# only). Don't read this file as keeping anything current, because it doesn't.
+# a v0.1.0 preview tool, and nothing pins it: `boom lock` covered brew + mise only, and has
+# since been removed. Don't read this file as keeping anything current, because it doesn't.
 
 # The official GitHub stacked-PR extension (public preview since 2026-07-30). Stacked PRs are
 # the standing shape for agent work, and this owns the cascading rebase across N branches.

@@ -19,15 +19,20 @@ the split is deliberate: you find and explain, a human runs the fix. Never run
 
 ```
 boom verify --verbose
-boom status
 scripts/brew-drift.sh
 scripts/identity-drift.sh
-git -C "$(boom where config)" status --porcelain
+git -C ~/.local/state/boom/config-repo status --porcelain
 ```
 
 The last one matters more than it looks: a dirty config repo means the live
 `~/.claude/` config has diverged from the committed contract, and `boom verify`
 has a step that fails on exactly that.
+
+That path is written out rather than resolved, because `boom where` and `boom
+status` were both removed. It is boom's managed clone — the tree every managed
+symlink actually points into, and the one `boom verify` asserts against. It is
+NOT this working checkout: an edit here is not live until it is committed,
+pushed, and synced.
 
 ## What to report
 
