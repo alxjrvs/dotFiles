@@ -24,9 +24,9 @@
 # it reports all-clear forever. Both negative controls were run, and these are
 # their measured results:
 #
-#   - stub that always exits 0: 6 of 7 fail. Every must-fail case, plus
+#   - stub that always exits 0: 4 of 5 fail. Every must-fail case, plus
 #     missing_client, which wants the skip LINE and not merely exit 0.
-#   - stub that always exits 1: 7 of 7 fail.
+#   - stub that always exits 1: 5 of 5 fail.
 #
 # The reason both numbers are that high is deliberate: no case asserts on the
 # exit code alone. Each one also requires the message to name the hook that just
@@ -62,7 +62,6 @@ ok() { pass=$((pass + 1)); }
 ANCHOR='refs/remotes/origin/'
 FRESH1='FETCH_HEAD'
 FRESH2='86400000'
-PUBLISH='has commits that are not pushed anywhere'
 
 # A synthetic client: an executable that answers --version, with the requested
 # literals embedded as data. Executable because the canary asks it for a version
@@ -83,7 +82,7 @@ mk_bundle() {
 }
 
 # --- 1. a client carrying every fingerprint → silent, exit 0 ---------------
-b=$(mk_bundle intact "$ANCHOR" "$FRESH1" "$FRESH2" "$PUBLISH")
+b=$(mk_bundle intact "$ANCHOR" "$FRESH1" "$FRESH2")
 out=$("$CANARY" "$b" 2>&1)
 st=$?
 if [ "$st" -eq 0 ] && [ -z "$out" ]; then ok; else
@@ -91,36 +90,14 @@ if [ "$st" -eq 0 ] && [ -z "$out" ]; then ok; else
 fi
 
 # --- 2. LOAD-BEARING: the freshness bug's literals are gone ---------------
-b=$(mk_bundle nofresh "$ANCHOR" "$PUBLISH")
+b=$(mk_bundle nofresh "$ANCHOR")
 out=$("$CANARY" "$b" 2>&1)
 st=$?
 if [ "$st" -ne 0 ] && printf '%s' "$out" | grep -q 'worktree-freshness'; then ok; else
   note freshness_gone "expected a non-zero exit naming worktree-freshness, got exit $st: $out"
 fi
 
-# --- 3. LOAD-BEARING: the unpushed refusal string is gone -----------------
-# Greps for `code reap` now. The hook this used to name was deleted 2026-08-28,
-# and this assertion was the thing keeping that name alive in a shipped message.
-b=$(mk_bundle nopublish "$ANCHOR" "$FRESH1" "$FRESH2")
-out=$("$CANARY" "$b" 2>&1)
-st=$?
-if [ "$st" -ne 0 ] && printf '%s' "$out" | grep -q 'code reap'; then ok; else
-  note publish_gone "expected a non-zero exit naming code reap, got exit $st: $out"
-fi
-
-# --- 4. LOAD-BEARING: both gone → both named in one run ------------------
-# Not redundant with 2 and 3: an early `exit 1` on the first miss would hide the
-# second, and a re-measure needs to know the full extent.
-b=$(mk_bundle noneither "$ANCHOR")
-out=$("$CANARY" "$b" 2>&1)
-st=$?
-if [ "$st" -ne 0 ] &&
-  printf '%s' "$out" | grep -q 'worktree-freshness' &&
-  printf '%s' "$out" | grep -q 'code reap'; then ok; else
-  note both_gone "expected one non-zero run naming BOTH hooks, got exit $st: $out"
-fi
-
-# --- 5. LOAD-BEARING: the anchor is gone → BROKEN CHECK, not good news ----
+# --- 3. LOAD-BEARING: the anchor is gone → BROKEN CHECK, not good news ----
 # This is the case that makes the rest trustworthy. It must not read as
 # all-clear, and it must not read as "the bugs are fixed" either.
 b=$(mk_bundle noanchor 'something else entirely')
@@ -130,7 +107,7 @@ if [ "$st" -ne 0 ] && printf '%s' "$out" | grep -qi 'no longer valid\|BROKEN CHE
   note anchor_gone "expected a non-zero exit reporting a broken check, got exit $st: $out"
 fi
 
-# --- 6. LOAD-BEARING: no strings at all → same, reported as broken -------
+# --- 4. LOAD-BEARING: no strings at all → same, reported as broken -------
 # An empty file is the degenerate form of "packaged so its strings cannot be
 # read", which is the scenario that would otherwise make this canary lie.
 printf '' > "$ROOT/empty"
@@ -141,7 +118,7 @@ if [ "$st" -ne 0 ] && printf '%s' "$out" | grep -q 'fingerprint method is broken
   note unreadable_strings "expected a non-zero exit reporting a broken method, got exit $st: $out"
 fi
 
-# --- 7. no client installed → skip, never a nightly false alarm ----------
+# --- 5. no client installed → skip, never a nightly false alarm ----------
 out=$("$CANARY" "$ROOT/does-not-exist" 2>&1)
 st=$?
 if [ "$st" -eq 0 ] && printf '%s' "$out" | grep -q 'skipping'; then ok; else

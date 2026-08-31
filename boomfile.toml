@@ -1,36 +1,16 @@
-# boom's own self-wiring, folded into the reconcile it already runs —
-# so these stop being hand-rolled `run`/plist steps below:
+# boom's own self-wiring, folded into the reconcile it already runs:
 #   - skill_on_sync: regenerate ~/.claude/skills/boom/SKILL.md from the running binary each
 #     sync, so the self-describing skill never lags a `boom upgrade` (replaces the
 #     `boom skill --install` run step).
 #   - upgrade_on_sync = "check": after a sync, warn (offline-safe, non-fatal) when a newer boom
 #     ships — the exact stale-binary drift that let a 0.9.1 machine propagate renamed-away
 #     command names before anyone noticed. ("auto" would self-upgrade instead of warning.)
-#   - schedule: launchd timers running `boom <cmd>` on an interval. `code fetch` every 15m
-#     `git fetch`es every ~/Code repo to keep origin/HEAD warm for agent worktree cuts
-#     (replaces the agent-fetch plist + section). One array — any boom command can be scheduled.
 [boom]
 skill_on_sync = true
 upgrade_on_sync = "check"
 # Desktop-notify (macOS osascript) when a scheduled `boom verify` finds drift, so the
 # boom-verify launchd timer's signal surfaces instead of dying in its log.
 notify = true
-# `code reap` daily. Claude Code refuses to remove an agent worktree holding a commit on no
-# remote-tracking ref ("has commits that are not pushed anywhere"), which is what leaves a
-# finished subagent un-closeable; `code reap` re-decides that by content (git patch-id) and
-# removes only clean, unlocked, already-merged-or-pushed worktrees, always leaving the branch ref.
-# `--push` was removed after 14 sweeps recorded 0 successes and 84 failures.
-#
-# The measurement, the client-internals reasoning behind it, and why `force` cannot help:
-# DECISIONS.md, "Why `boom code reap` exists". Kept there rather than here — the routing rule in
-# CLAUDE.md sends a reason and a measurement to that file, and this block was a second copy of it,
-# 24 lines long, in a file nobody reads to answer "why does this timer exist".
-schedule = [
-  { cmd = "code fetch", every = "15m" },
-  # NOT "1d" — boom's schema accepts only s/m/h or a bare seconds count, so "1d" failed
-  # validation and this timer never ran at all from the day it was added.
-  { cmd = "code reap", every = "24h" },
-]
 
 [[section]]
 name = "Shell + git"
@@ -505,17 +485,12 @@ exit 1
 on = "verify"
 cmd = "git diff --quiet -- dot-claude/ || { echo 'live Claude config diverges from the committed contract (dirty boom config-repo)'; exit 1; }"
 
-# The remaining worktree workarounds are written against client defects measured
-# against 2.1.237, and the client self-updates — so the version those
-# measurements describe is replaced silently and repeatedly. A workaround whose
-# bug is gone is not inert: worktree-freshness.sh still mutates worktrees, and
-# boom's `code reap` still re-decides a removal the client refused. CLAUDE.md
-# already names this failure mode ("a measurement recorded against a tool version
-# expires unnoticed and nothing owns it"); this step owns it.
-#
-# The `unpushed` literal below is still load-bearing after worktree-publish.sh was
-# deleted on 2026-08-28: `code reap` exists to falsify exactly that refusal, so the
-# day the client stops emitting it is the day the reap timer can go too.
+# worktree-freshness.sh is written against a client defect measured against
+# 2.1.237, and the client self-updates — so the version that measurement describes
+# is replaced silently and repeatedly. A workaround whose bug is gone is not inert:
+# it still mutates worktrees. CLAUDE.md already names this failure mode ("a
+# measurement recorded against a tool version expires unnoticed and nothing owns
+# it"); this step owns it.
 #
 # INVERTED POLARITY, deliberately: it fails when the workaround looks
 # UNNECESSARY. A failure means "go re-measure", never "the bug is fixed" — the
