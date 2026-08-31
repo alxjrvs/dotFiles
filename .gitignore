@@ -39,9 +39,6 @@ yarn-error.log*
 # Transient/generated
 Brewfile.lock.json
 
-# Generated audit reports (gnar audit plugin) — regenerate on demand, not tracked.
-audit/
-
 # Machine-local override — NOT a pattern this setup uses (every divergence lives
 # in the committed settings.json contract). Claude Code auto-writes one on
 # "always allow"/project-trust flows, so this line stops it being COMMITTED; it

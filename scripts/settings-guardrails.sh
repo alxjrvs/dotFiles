@@ -191,6 +191,34 @@ for f in "$@"; do
   done || fail=1
 done
 
+# THE SAME RULE, ONE SCOPE OVER. `boomfile.toml`'s `absent` resource asserts that
+# `~/.claude/settings.local.json` does not exist. `.gitignore` ignores
+# `**/.claude/settings.local.json` — EVERY scope. Between those two sits this
+# repo's own project-scoped `.claude/settings.local.json`: ignored by git, so it
+# can never be committed or reviewed, and asserted by nothing, so `boom verify`
+# was silent while one sat on disk.
+#
+# It cannot be closed where its sibling is. boom's `absent` resource runs
+# `expandTilde` and nothing else, so a repo-relative path would resolve against
+# whatever directory boom happened to run in; and a `~`-anchored path to a
+# development clone is host detection, which CLAUDE.md rules out. The assertion
+# belongs where the repo root is unambiguous — here, in the script lefthook, CI
+# and `boom verify` all already call.
+#
+# The file found on 2026-08-31 was harmless (`permissions.allow: ["Artifact"]`).
+# The one found on 2026-08-28 carried `Bash(gh api *)` under `defaultMode: auto`
+# — POST and DELETE against any repo on GitHub, no prompt. The difference between
+# those two is luck, not control.
+#
+# Deliberately not `[ -f ]` on a hardcoded path from `$PWD`: resolved from this
+# script's own location, so it means the same thing from any working directory.
+_repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+_local_settings="$_repo_root/.claude/settings.local.json"
+if [ -e "$_local_settings" ]; then
+  note "$_local_settings: machine-local override is not a pattern this setup uses (project scope) — delete it; every divergence lives in the committed settings.json"
+  fail=1
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo ""
   echo "settings.json is the only thing standing between an unattended session"

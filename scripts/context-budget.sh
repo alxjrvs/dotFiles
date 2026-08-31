@@ -24,8 +24,8 @@
 # whatever is cheapest to delete, not whatever is least worth loading. Each
 # leaves roughly a fifth free: enough for a legitimate addition, not a section.
 #
-# WHY AN EXPLICIT LIST, NEVER A *.md GLOB: DECISIONS.md, SETTINGS.md and
-# REFERENCE.md are deliberately UNCAPPED and unbanned. They are not symlinked
+# WHY AN EXPLICIT LIST, NEVER A *.md GLOB: DECISIONS.md and SETTINGS.md are
+# deliberately UNCAPPED and unbanned. They are not symlinked
 # into ~/.claude/, so they cost nothing per session. Capping the overflow
 # destination would push content back into the loaded file, inverting the whole
 # mechanism.
