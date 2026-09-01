@@ -15,13 +15,17 @@
 #   brew upgrade --formula   # every outdated formula. Cannot touch a cask.
 #   mise upgrade             # what actually moves the CLIs (rewrites mise.lock — commit it)
 #
-# `--update`'s whole effect is dropping `--no-upgrade` from `brew bundle`, and that flag
-# governs CASKS as well as formulae: boom measured Bundle running `brew upgrade --cask` on an
+# `--update` is REMOVED in boom 0.38 — `brew bundle` now runs `--no-upgrade` on every verb, so
+# no boom verb can upgrade anything. Until this machine's boom crosses that version the flag is
+# still there and still does what follows, which is why it is written down rather than deleted.
+#
+# Its whole effect was dropping `--no-upgrade` from `brew bundle`, and that flag governs CASKS
+# as well as formulae: boom measured Bundle running `brew upgrade --cask` on an
 # `auto_updates: true` cask that set no `greedy: true`, so `greedy` is not an opt-out (the
-# measurement is in boom's `src/engine/resources/packages.ts`, beside the flag). A cask upgrade
+# measurement is in boom's `src/engine/resources/packages.ts`, beside the gate). A cask upgrade
 # replaces the `.app`, so Homebrew quits the running app — Chrome, Slack, Ghostty, 1Password —
-# to deliver formulae that `brew upgrade --formula` delivers without closing anything. The flag
-# does not even reach mise: boom's sync runs `mise install` either way, never `mise upgrade`.
+# to deliver formulae that `brew upgrade --formula` delivers without closing anything. It did
+# not even reach mise: boom's sync runs `mise install` either way, never `mise upgrade`.
 #
 # `--formula` is also what disambiguates `boom`, which is a cask name too — see the tap block
 # below for what a bare `brew upgrade boom` resolves to.
