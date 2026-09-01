@@ -2,8 +2,8 @@
 # Always-loaded context budget — the single source for the ceilings, and the
 # inventory of what else gets billed.
 #
-# Called from lefthook's pre-commit and .github/workflows/lint.yml. Both call
-# sites are one line; the numbers and the reasoning live here, once.
+# Called from lefthook's pre-commit; CI runs the same roster with `--all-files`.
+# The call site is one line; the numbers and the reasoning live here, once.
 #
 # Usage: scripts/context-budget.sh [file...]
 #   With no arguments, checks every capped file. With arguments (lefthook passes
@@ -40,11 +40,8 @@
 # WHY THE LINK INVENTORY: every `dst = "~/.claude/…"` in boomfile.toml must be
 # classified below or this fails, so a new link is a decision instead of a drift.
 #
-# WHAT WENT, 2026-09-01: a 22-line awk HTML-comment stripper (the client strips
-# them, so they are free — but neither capped file has ever contained one, so it
-# stripped nothing), its fenced-block bail-out, and a git-grep pass forbidding
-# prose from restating two counts this repo computes. `wc -c` is the measurement
-# now. See DECISIONS.md.
+# `wc -c` is the measurement: the client strips block-level HTML comments before
+# billing, but neither capped file has ever contained one, so nothing is subtracted.
 set -eu
 
 BOOMFILE=${BOOMFILE:-boomfile.toml}

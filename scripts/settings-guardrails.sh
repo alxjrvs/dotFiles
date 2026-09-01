@@ -1,10 +1,10 @@
 #!/usr/bin/env sh
 # settings.json content guardrails — the single source for the assertions.
 #
-# Called from lefthook's pre-commit (the staged file), lint.yml (anything
-# arriving without a local hook), and boomfile.toml's `boom verify` (the LIVE
-# ~/.claude/settings.json, the only copy that governs a session). Three call
-# sites, one copy of the rules.
+# Called from lefthook's pre-commit (the staged file; CI runs the same roster
+# with `--all-files`) and from boomfile.toml's `boom verify` (the LIVE
+# ~/.claude/settings.json, the only copy that governs a session). Two call
+# paths, one copy of the rules.
 #
 # Usage: scripts/settings-guardrails.sh <file>...
 #
@@ -66,9 +66,8 @@ note() {
   fail=1
 }
 
-# A gate that asserts nothing must never print `ok`. CI hands this a literal
-# path, so renaming the settings file must not leave the required `lint` check
-# green with the deny floor unchecked.
+# A gate that asserts nothing must never print `ok`: renaming the settings file
+# must not leave the required `lint` check green with the deny floor unchecked.
 [ "$#" -gt 0 ] || {
   echo "no inputs — the caller's glob matched nothing, so nothing was checked" >&2
   exit 1

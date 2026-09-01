@@ -57,7 +57,7 @@ print(int((time.time() - t) * 1000))
 # RETRY THE WHOLE MEASUREMENT, up to ATTEMPTS times, passing on the first one
 # under the ceiling. The median of 5 absorbs a single scheduler hiccup but not
 # SUSTAINED load, which moves all five together — and this check is wired to
-# `boom verify` on a nightly timer with `notify = true`, where a notification
+# `boom verify` with `notify = true`, where a notification
 # that is wrong more often than right trains you to dismiss the one that matters.
 # A shell that is genuinely slower is slower on every attempt, so a real
 # regression still fails all three.

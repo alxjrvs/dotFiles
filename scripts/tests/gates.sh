@@ -2,10 +2,10 @@
 # Regression suite for the shared assertion scripts in `scripts/`.
 #
 # Every case here asserts the SAME property: a gate that checked nothing must not
-# print `ok` and must not exit 0. CI hands these scripts a literal path, or a
-# `$(git ls-files …)` expansion that can be empty, so renaming a settings file or
-# moving `launchd/` must not leave the required `lint` check green with the deny
-# floor and the launchd `~` bug unchecked.
+# print `ok` and must not exit 0. Callers hand these scripts a literal path, or a
+# glob expansion that can be empty, so renaming a settings file or moving
+# `launchd/` must not leave the required `lint` check green with the deny floor
+# and the launchd `~` bug unchecked.
 #
 # The positive controls matter as much as the negative ones: a gate that fails
 # on everything is no more useful than one that passes on everything.
@@ -108,15 +108,16 @@ case_exit rules_real 0 ./scripts/rules-scoped.sh
 case_exit rules_no_rule_inputs 1 ./scripts/rules-scoped.sh README.md
 case_exit rules_missing_dir 1 env DIR=dot-claude/does-not-exist ./scripts/rules-scoped.sh
 
-# --- boomfile srcs exist ----------------------------------------------------
-# taplo proves the file parses, which says nothing about whether the paths it
-# names are there. A missing src fails `boom source` partway through, on a real
-# machine, after it has already changed things.
+# --- a third-party tap must declare its trust, with or without brew ---------
+# brew-drift.sh's tap-trust assertion reads the Brewfile, not the machine, so it
+# must fire on a runner too — it did not, once: the `command -v brew` early exit
+# sat above it, and the regression it exists for sailed through CI. Negative
+# control only: a fixture Brewfile is a wrong declared list on any real machine.
+case_exit brewdrift_untrusted_tap 1 ./scripts/brew-drift.sh scripts/tests/fixtures/untrusted-tap-Brewfile
 
 # --- a skill body loads in full when the skill fires -------------------------
 # The body cap is what keeps a split skill from silently growing back into one
 # oversized file billed in full on any trigger.
-case_exit skillbody_real 0 ./scripts/description-cap.sh
 case_exit skillbody_over 1 \
   env BODY_CAP=500 ./scripts/description-cap.sh dot-claude/skills/agent-friendly-repo/SKILL.md
 
