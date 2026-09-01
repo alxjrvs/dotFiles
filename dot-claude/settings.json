@@ -203,6 +203,13 @@
         "repo": "TheGnarCo/agent-skills"
       },
       "autoUpdate": false
+    },
+    "oberon": {
+      "source": {
+        "source": "github",
+        "repo": "alxjrvs/oberon"
+      },
+      "autoUpdate": false
     }
   },
   "tui": "fullscreen",
