@@ -2,7 +2,8 @@ name: lint
 
 # RUNS the local lefthook pre-commit gate on every push to main and every PR — the
 # same roster, not a second copy of it — plus the two checks that are genuinely
-# remote-only. Read-only: `boom source` appears once, under `--dry-run`.
+# remote-only and one deliberate re-run (bare `all.sh`, explained at its step).
+# Read-only: `boom source` appears once, under `--dry-run`.
 
 on:
   push:
@@ -53,12 +54,10 @@ jobs:
           # a missing package fails at setup with a clear message.
           command -v zsh > /dev/null 2>&1 || sudo apt-get install -y -qq zsh
 
-      # ONE ROSTER. Every check below used to be spelled twice — once in
-      # lefthook.yml against `{staged_files}`, once here against a
-      # `git ls-files` expansion — with nothing asserting the two agreed. They
-      # had already drifted in both directions: `brew-drift` existed only in
-      # lefthook, `boomfile-sources` only here. Running lefthook's own roster is
-      # what makes that class impossible rather than merely unlikely.
+      # ONE ROSTER. A check spelled here and in lefthook.yml is two rosters
+      # that nothing asserts agree, and they drift in both directions. Running
+      # lefthook's own roster is what makes that class impossible rather than
+      # merely unlikely.
       #
       # `--all-files` because there is no index on a runner: bare
       # `lefthook run pre-commit` would hand every `glob:`-scoped command an
@@ -72,23 +71,18 @@ jobs:
         run: lefthook run pre-commit --all-files
 
       # NOT part of that roster, deliberately: lefthook runs
-      # `gitleaks protect --staged`, which reads the index. A runner has no
+      # `gitleaks git --staged`, which reads the index. A runner has no
       # index, and the useful remote question is different anyway — does the
       # CURRENT TREE contain a secret, rather than does this commit add one.
       # Same tool, different verb, so it stays its own step.
       - name: gitleaks
-        run: gitleaks detect --no-git --redact --no-banner
+        run: gitleaks dir . --redact --no-banner
 
       # THE ARTIFACT, not the assertions about it. Everything above lints files;
       # this is the only step that asks the engine whether `boomfile.toml` still
       # APPLIES — every declared source, the glob fan-outs, link and dir modes,
       # the `absent` path, hook resolution and the package manifests, all
       # resolved by the thing that will resolve them on a real machine.
-      #
-      # It replaced scripts/boomfile-sources.sh, which hand-reimplemented one slice of
-      # this (src-path existence, including its own glob-expansion branch) while
-      # lefthook.yml claimed in a comment that `boom source --dry-run` was already the
-      # validator for this file. Nothing ran it. Now something does.
       #
       # Safe on a runner, by construction and not by hope: `--dry-run` makes run steps
       # no-ops (run.ts refuses to spawn a shell under it), and `osx_default` and

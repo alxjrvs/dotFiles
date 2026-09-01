@@ -23,7 +23,7 @@ if ! command -v gitleaks > /dev/null 2>&1; then
   exit 1
 fi
 
-gitleaks protect --staged --redact -v --no-banner
+gitleaks git --staged --redact -v --no-banner
 
 # MCP secret doctrine — staged .mcp.json / .env must carry op:// references,
 # never values. gitleaks catches known token formats; this also catches the

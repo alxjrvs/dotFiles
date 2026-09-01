@@ -1,7 +1,7 @@
 # Lefthook config for this repo (a boom config / dotfiles repo).
 #
-# no_auto_install: boom owns hook installation (the `lefthook` hook runs
-# `lefthook install` when it converges). After a lefthook.yml change, re-run
+# no_auto_install: boom owns hook installation (the `lefthook` section's sync step
+# runs `lefthook install`). After a lefthook.yml change, re-run
 # `boom source --only=lefthook` (or `lefthook install`) to refresh the checksum.
 no_auto_install: true
 
@@ -15,8 +15,7 @@ pre-commit:
     shfmt-check:
       # boomfile.toml is DSL config (an aligned link table by design) — validated
       # by `boom source --dry-run` in CI ("boomfile applies"), not shfmt, so it is
-      # deliberately not in scope here. That claim sat in this comment for months
-      # while nothing ran the command; the CI step now does.
+      # deliberately not in scope here.
       glob: "{*.sh,git-template/hooks/*}"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}
@@ -26,10 +25,10 @@ pre-commit:
       glob: "{*.ts,*.tsx,*.js,*.jsx,*.json,*.jsonc}"
       run: biome check {staged_files}
     gitleaks:
-      run: gitleaks protect --staged --redact -v --no-banner
+      run: gitleaks git --staged --redact -v --no-banner
     settings-json-validity:
       # Same script CI and `boom verify` run, against the STAGED file, so a bad
-      # commit is caught immediately rather than at the nightly verify. The
+      # commit is caught immediately rather than at the next `boom verify`. The
       # assertions and their reasoning live in the script, once.
       glob: "dot-claude/settings*.json"
       run: scripts/settings-guardrails.sh {staged_files}
@@ -97,8 +96,9 @@ pre-commit:
 
     gate-tests:
       # The property the hook suites assert, for the shared assertions in
-      # scripts/: a gate that checked nothing must not print `ok`.
-      glob: "scripts/*.sh"
+      # scripts/: a gate that checked nothing must not print `ok`. The glob
+      # reaches the fixtures too, so editing one re-runs the suite locally.
+      glob: "{scripts/*.sh,scripts/tests/**}"
       run: scripts/tests/gates.sh
 
 # Forward-only: rejects throwaway subjects (bare "WIP" or a single character) so
