@@ -74,6 +74,25 @@ brew list --cask 2> /dev/null | sort -u > "$tmp/installed-casks"
 
 fail=0
 
+# ── a third-party tap must declare its trust, in the file ─────────────
+# This file already said so in prose, about heroku: "a Brewfile line that needs an
+# interactive step is a fresh machine that stops halfway." Prose did not hold — a
+# `tap` + bare `brew` for a non-official tap shipped anyway, and `brew bundle` failed
+# on a real machine with "Run `brew trust …` to trust it". Homebrew refuses to load a
+# formula from a non-official tap until it is trusted, and `trusted:` is how a Brewfile
+# says so declaratively instead of sending you to the shell.
+#
+# A `tap` line carrying an explicit clone URL is the tell: homebrew-core and the other
+# official taps need no URL, so a URL means third-party, which means `trusted:` or a
+# fresh machine stops.
+untrusted=$(grep -nE '^tap "[^"]+", *"https?://' "$BREWFILE" | grep -v 'trusted:' || true)
+if [ -n "$untrusted" ]; then
+  echo "third-party tap without \`trusted:\` — \`brew bundle\` will stop and ask:"
+  echo "$untrusted" | sed 's/^/  /'
+  echo "  -> add trusted: { formula: \"NAME\" }, or trusted: true for the whole tap"
+  fail=1
+fi
+
 # ── the check the exclusion list was standing in for ──────────────────
 # A tool declared in mise.toml AND installed by brew is not "excluded", it is a
 # DOUBLE INSTALL — two copies, and whichever sits earlier on PATH wins. The
