@@ -1,9 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(git fetch:*)",
-      "Bash(shellcheck *)",
-      "Bash(shfmt -d *)"
-    ]
+    "allow": ["Bash(git fetch:*)", "Bash(shellcheck *)", "Bash(shfmt -d *)"]
   }
 }
