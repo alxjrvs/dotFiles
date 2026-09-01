@@ -26,6 +26,7 @@ scripts/context-budget.sh
 scripts/settings-guardrails.sh dot-claude/settings.json
 scripts/plist-validity.sh $(git ls-files 'launchd/*.plist')
 scripts/description-cap.sh
+scripts/rules-scoped.sh
 scripts/tests/gates.sh
 dot-claude/hooks/tests/all.sh
 ```

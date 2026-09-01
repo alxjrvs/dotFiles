@@ -194,6 +194,20 @@ rather than in a file symlinked nowhere:
 field, no pre-expiry alert — so decoding the JWT `exp` locally is the only way to know, and it is
 the best bespoke code in this repo.
 
+### The gate roster rotted again, in the file that warns about it
+
+`dot-claude/agents/guard-tester.md` listed seven gates and omitted `scripts/rules-scoped.sh`,
+which has been a lefthook and CI check since 2026-08-29. Its own note records the previous
+instance — *"an earlier version… promised 'seven', and was wrong by two before anyone read it
+again."*
+
+The roster exists in three places (this agent, `lefthook.yml`, `.github/workflows/lint.yml`) and
+nothing asserts they agree, which is the same two-roster class that let `brew-drift` live only in
+lefthook and `boomfile-sources` only in CI. Adding the missing line is the fix that was available
+today; a single `scripts/check.sh` that all three call is the fix that would stop it recurring,
+and it is not taken here because it is machinery added during a pass that is removing machinery.
+Recorded so the next person weighing it has the count: three copies, two recorded rots.
+
 ### Also in this pass: the tests that tested the test runner
 
 `scripts/tests/gates.sh` loses its last section — four cases and a `mk_all` helper, 51 lines,
