@@ -2,7 +2,11 @@
 #   - skill_on_sync: regenerate ~/.claude/skills/boom/SKILL.md from the running binary each
 #     sync, so the self-describing skill never lags a `boom upgrade`.
 #   - upgrade_on_sync = "check": after a sync, warn (offline-safe, non-fatal) when a newer boom
-#     ships. ("auto" would self-upgrade instead of warning.)
+#     ships. NOT "auto": brew owns this binary now (see `brew "boom"` in the Brewfile), so the
+#     remedy is `brew upgrade boom`. "auto" runs `boom upgrade`, which rewrites the binary in
+#     place — under a brew-managed prefix that desynchronises brew's manifest from what is
+#     actually on disk, and the next `brew upgrade` silently reverts it. Warn, then let the
+#     package manager do the swap.
 [boom]
 skill_on_sync = true
 upgrade_on_sync = "check"
@@ -597,6 +601,49 @@ mode = "700"
 
 [[section]]
 name = "lefthook"
+
+# ── boom hands itself over to Homebrew ────────────────────────────────────────────────
+# `install.sh` drops boom at ~/.local/bin/boom to bootstrap a fresh machine — you need a
+# boom to run this file at all. Once the Brewfile's `brew "boom"` has landed, that copy is
+# not a fallback, it is a SHADOW: `.zprofile` puts ~/.local/bin ahead of brew's prefix, so
+# the bootstrap binary keeps winning `command -v boom` and every `brew upgrade boom` is
+# inert. Exactly the double-install shape the Brewfile documents for gh, node and six
+# others — closed here instead of described.
+#
+# Guarded inside the command rather than with `unless`, so the predicate and the action
+# read as one statement: remove the bootstrap copy ONLY when brew's boom is actually in
+# place. If the formula failed to install, this is a no-op and the machine keeps the only
+# boom it has. Removing a running executable is safe — the kernel holds the inode until
+# this process exits, and the next run resolves brew's.
+[[section.run]]
+on = "sync"
+timeout = 30
+cmd = '''
+command -v brew >/dev/null 2>&1 || exit 0
+[ -x "$(brew --prefix)/bin/boom" ] || exit 0
+[ -e "$HOME/.local/bin/boom" ] || exit 0
+rm -f "$HOME/.local/bin/boom"
+echo "removed the install.sh bootstrap copy — brew owns boom now"
+'''
+
+# The assertion, because arranging it is not the same as it being true. `command -v boom`
+# must resolve inside brew's prefix: that is the whole point of declaring the formula, and
+# it is invisible to every file-reading gate because it is a property of PATH on a real
+# machine. Skips cleanly where brew or boom is absent (a Linux checkout, a CI runner) so
+# this stays a drift check rather than a portability failure.
+[[section.run]]
+on = "verify"
+timeout = 30
+cmd = '''
+command -v brew >/dev/null 2>&1 || exit 0
+command -v boom >/dev/null 2>&1 || exit 0
+resolved=$(command -v boom)
+case "$resolved" in
+  "$(brew --prefix)"/*) exit 0 ;;
+esac
+echo "boom resolves to $resolved, not $(brew --prefix)/bin/boom — the Brewfile declares it, so something ahead of brew on PATH is shadowing it (\`install.sh\` drops one at ~/.local/bin/boom)"
+exit 1
+'''
 
 # `creates` guards the re-run: the generated pre-commit hook is the artifact, so its existence
 # is the predicate — without it every sync rewrites .git/hooks and reports a no-op as work.

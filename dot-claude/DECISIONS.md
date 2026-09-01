@@ -59,6 +59,71 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-01 — boom is installed by Homebrew, and PATH order is why that needed more than a Brewfile line
+
+`brew "boom"` is declared, from the repo that doubles as its own tap. Adding the line alone would
+have changed nothing: `install.sh` drops a boom at `~/.local/bin/boom`, and `.zprofile` puts
+`~/.local/bin` **ahead of** brew's prefix, so the bootstrap copy keeps winning `command -v boom`
+and every `brew upgrade boom` is inert. That is the same double-install shape the Brewfile already
+documents for `gh`, `node`, `shellcheck` and five others — the difference is that this one is
+closed rather than described.
+
+Three parts, because arranging a property is not the same as it holding:
+
+1. **The Brewfile declares it**, with the tap.
+2. **A sync `run` step removes the bootstrap copy** once brew's binary is in place — guarded
+   inside the command, so a failed formula install leaves the machine with the only boom it has.
+   Removing a running executable is safe: the kernel holds the inode until the process exits.
+3. **A verify `run` step asserts `command -v boom` resolves inside `$(brew --prefix)`.** This is
+   invisible to every file-reading gate, because it is a property of PATH on a real machine. It
+   skips cleanly where brew or boom is absent, so it stays a drift check rather than a
+   portability failure.
+
+`install.sh` stays, and stays in the README: you need a boom to apply `boomfile.toml` at all, so
+the curl-pipe is a **bootstrap, not a second delivery path**. An audit had proposed deleting it as
+one of "three delivery mechanisms for one artifact"; that recommendation is withdrawn. It is now
+load-bearing in two places — the fresh-machine bootstrap, and the CI step that installs boom to
+validate the boomfile on a runner with no Homebrew.
+
+### What this does retire: `upgrade_on_sync = "auto"`
+
+`"check"` stays and the comment now says why "auto" must not be used. `boom upgrade` rewrites the
+binary in place; under a brew-managed prefix that desynchronises brew's manifest from what is on
+disk, and the next `brew upgrade` silently reverts it. **The self-upgrade verb and Homebrew
+ownership are mutually exclusive, and this repo has now chosen Homebrew.** That is a concrete
+argument for deleting `boom upgrade` upstream — 217 lines whose only remaining consumer would be
+a boom installed some other way — where before it was only an argument from redundancy.
+
+### Brewfile entries removed
+
+`bash`, `coreutils`, `moreutils`, `mysql`, `cocoapods`, `zulu@17`, `wave` and `cmux` are
+undeclared. They were added after drift detection found them installed-but-undeclared; the owner
+confirmed none is in use. **Declaring drift was never the same as justifying it** — the earlier
+comment "each is here for a reason that mise does not serve" was reasoning about categories, not
+about use. `wave` additionally contradicted `ghostty/config`'s claim to be "the sole terminal".
+
+`brew bundle` never uninstalls, so all eight remain on the machine until `brew uninstall` runs by
+hand; `brew bundle cleanup` lists them.
+
+An audit had proposed this cut and then retracted it, on the grounds that "unreferenced in this
+repo" is not evidence for a profile shared with work. The retraction was right and the answer
+still came out the same way — but it came from the owner, not from a grep.
+
+## 2026-09-01 — the agent commits as `alxjrvs+claude@gmail.com` in work orgs, deliberately
+
+`_owned_orgs()` grants write reach into five organisations the owner does not solely own, and
+`GIT_AUTHOR_EMAIL` is one global value, so every agent commit in those orgs carries a personal
+address. Raised as an open question (CLA/DCO exposure, corp expectations) and **answered: keep
+it.** The `+claude` alias is the point — it is identifiably an agent and identifiably him.
+
+Recorded because the alternative had a real cost worth knowing was declined: a per-org address
+cannot be one global env var, and the git-native way to do it —
+`[includeIf "hasconfig:remote.*.url:**/TheGnarCo/**"]` — is context detection, which is the
+nearest thing this config has to a genuine counterexample to "one config, every machine, no host
+detection." It stays a counterexample nobody had to take.
+
+---
+
 ## 2026-09-01 — a plugin was considered and declined; boom is the delivery mechanism
 
 An audit proposed publishing this config as a Claude Code plugin, on the documented trigger
