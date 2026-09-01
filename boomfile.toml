@@ -1,12 +1,10 @@
 # boom's own self-wiring, folded into the reconcile it already runs:
 #   - skill_on_sync: regenerate ~/.claude/skills/boom/SKILL.md from the running binary each
-#     sync, so the self-describing skill never lags a `boom upgrade`.
+#     sync, so the self-describing skill never lags an upgrade.
 #   - upgrade_on_sync = "check": after a sync, warn (offline-safe, non-fatal) when a newer boom
-#     ships. NOT "auto": brew owns this binary now (see `brew "boom"` in the Brewfile), so the
-#     remedy is `brew upgrade boom`. "auto" runs `boom upgrade`, which rewrites the binary in
-#     place — under a brew-managed prefix that desynchronises brew's manifest from what is
-#     actually on disk, and the next `brew upgrade` silently reverts it. Warn, then let the
-#     package manager do the swap.
+#     ships. brew owns this binary (`brew "alxjrvs/boom/boom"` in the Brewfile), so the remedy
+#     is `brew upgrade alxjrvs/boom/boom` — fully qualified, because `boom` is also a cask name.
+#     "auto" is retired upstream since 0.36 and behaves as "check".
 [boom]
 skill_on_sync = true
 upgrade_on_sync = "check"
@@ -169,9 +167,9 @@ mode = "755"
 
 # PreToolUse guard: refuses a WRITE to a repo outside the owned orgs, and the
 # two `gh pr merge` flags that delete a branch. `permissions.deny` can express
-# neither — the owner is data, not a spelling, and a deny rule cannot match a
-# flag anywhere in argv. Resolves the owner from the local remote, never the
-# network: this runs on every Bash call.
+# neither — the owner is data, not a spelling, and the flag has four spellings a
+# rule would have to enumerate. Resolves the owner from the local remote, never
+# the network: this runs on every Bash call.
 [[section.link]]
 src = "dot-claude/hooks/repo-scope-guard.sh"
 dst = "~/.claude/hooks/repo-scope-guard.sh"
@@ -304,11 +302,10 @@ jq -e '.mcpServers["1password"]' ~/.claude.json >/dev/null 2>&1 || { echo "1Pass
 # the LIVE file and from lefthook and lint.yml against the staged and committed ones, and
 # they cover every wired hook, not just op-guard.
 #
-# Why a `run` and not a `[[section.check]]`: `present` matches file CONTENT, so
-# `"Bash(op:*)"` appearing anywhere satisfies it, and moving an entry out of `deny` and into
-# `allow` INVERTS the control with every gate green. `jq index` asserts membership of the
-# deny ARRAY, and --arg passes each value as data rather than as a pattern. The `[ -f ]`
-# guard preserves the old `missing_file = "skip"`.
+# Why a script and not a content match: `"Bash(op:*)"` appearing anywhere in the file would
+# satisfy a grep, and moving an entry out of `deny` and into `allow` INVERTS the control with
+# every gate green. `jq index` asserts membership of the deny ARRAY, and --arg passes each
+# value as data rather than as a pattern. `[ -f ]` skips a machine with no settings file.
 [[section.run]]
 on = "verify"
 cmd = '''
@@ -499,9 +496,12 @@ key = "AppleShowAllExtensions"
 type = "bool"
 value = true
 
+# `_FXShowPosixPathInTitle` is the key Finder reads. This was spelled
+# `_FXShowPosixPathInWindowTitle` for years, and boom verify compared the same misspelling
+# back, so it read as converged while doing nothing.
 [[section.osx_default]]
 domain = "com.apple.finder"
-key = "_FXShowPosixPathInWindowTitle"
+key = "_FXShowPosixPathInTitle"
 type = "bool"
 value = true
 
@@ -528,12 +528,6 @@ domain = "com.apple.dock"
 key = "autohide-time-modifier"
 type = "float"
 value = 0.3
-
-[[section.osx_default]]
-domain = "com.apple.dock"
-key = "tilesize"
-type = "int"
-value = 48
 
 [[section.osx_default]]
 domain = "NSGlobalDomain"
@@ -599,8 +593,10 @@ mode = "700"
 path = "~/.ssh/cm"
 mode = "700"
 
+# MUST stay after the `packages` section, like `gh extensions`: the Brewfile's boom formula has
+# to have landed before the bootstrap copy is removed.
 [[section]]
-name = "lefthook"
+name = "boom"
 
 # ── boom hands itself over to Homebrew ────────────────────────────────────────────────
 # `install.sh` drops boom at ~/.local/bin/boom to bootstrap a fresh machine — you need a
@@ -644,6 +640,9 @@ esac
 echo "boom resolves to $resolved, not $(brew --prefix)/bin/boom — the Brewfile declares it, so something ahead of brew on PATH is shadowing it (\`install.sh\` drops one at ~/.local/bin/boom). Note \`boom\` is also a homebrew-cask name: upgrade with \`brew upgrade alxjrvs/boom/boom\`, never a bare \`brew upgrade boom\`, which resolves to the cask."
 exit 1
 '''
+
+[[section]]
+name = "lefthook"
 
 # `creates` guards the re-run: the generated pre-commit hook is the artifact, so its existence
 # is the predicate — without it every sync rewrites .git/hooks and reports a no-op as work.
@@ -721,11 +720,10 @@ cmd = '''
 f=~/.claude.json
 [ -f "$f" ] || exit 0
 command -v jq >/dev/null 2>&1 || exit 0
-# NO positive assertion that any particular helper EXISTS. There used to be one, requiring a
-# `claude-git-pat` helper for the third-party GitHub MCP — and it is gone with that server:
-# asserting the presence of plumbing we deliberately deleted is how a check starts failing for
-# the opposite of its purpose. What remains is the negative assertion below, which is the part
-# that caught a real outage: any helper that IS configured must actually be runnable.
+# NO positive assertion that any particular helper EXISTS: asserting the presence of plumbing
+# this repo deliberately deleted is how a check starts failing for the opposite of its purpose.
+# What remains is the negative assertion below, which is the part that caught a real outage:
+# any helper that IS configured must actually be runnable.
 # A `for` over command substitution, NOT `jq | while read`: the right side of a pipe runs in a
 # subshell, so an `exit 1` in there only fails the step while the pipeline happens to be the last
 # command in this cmd. Appending any line below would have silently turned this assertion into a
@@ -770,11 +768,6 @@ exit 1
 #
 # And nothing runs `boom verify` on a schedule: it runs when it is run. Every check in this
 # file is only as live as the last time someone invoked it.
-
-# The third-party GitHub MCP is GONE from both clients, in favour of Anthropic's own GitHub
-# integration — authenticated by Anthropic, so no PAT here, no local binary, and no plumbing
-# for this repo to reproduce. Consequence worth knowing: `claude-git-pat` now has exactly ONE
-# consumer, git's `credential.helper` for agent pushes. It is no longer an MCP credential.
 
 [[section]]
 name = "capslock-control launchd"

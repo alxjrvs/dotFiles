@@ -1,12 +1,13 @@
-# Brewfile — casks + mise bootstrap only.
+# Brewfile — casks, system libs, and the two bootstrap formulae (mise, boom).
 #
 # Policy (Lean A): every dev CLI lives in mise.toml — single update path
-# via `mise upgrade`. The only formula here is `mise` itself, which would
-# otherwise be a chicken-and-egg bootstrap problem. Casks (GUI apps,
+# via `mise upgrade`. The formulae here are the bootstraps — `mise`, which would
+# otherwise be a chicken-and-egg problem, and `boom`, which applies this file —
+# plus the system libraries mise-built CLIs link against. Casks (GUI apps,
 # fonts) stay because mise doesn't manage them.
 #
 # Rule: if you're about to add a `brew "..."` line here, stop. Put it in
-# mise.toml. The exceptions are mise itself, casks, and system libraries
+# mise.toml. The exceptions are the two bootstraps, casks, and system libraries
 # (no mise equivalent) that pre-built CLIs link against at runtime.
 #
 # ── Upgrading is three commands, and none of them is `boom source --update` ──
@@ -76,11 +77,11 @@ brew "openssl@3"
 # declared, so a fresh machine reproduced none of them. Declaring them is the point of this
 # file; leaving them undeclared is the drift.
 #
-# Nothing currently qualifies. `bash`, `coreutils`, `moreutils`, `mysql` and `cocoapods`
-# were declared here after drift detection found them installed-but-undeclared; the owner
-# confirmed on 2026-09-01 that none is used, so declaring drift was never the same as
-# justifying it. `brew bundle` never uninstalls, so they stay on this machine until
-# `brew uninstall` runs by hand — `brew bundle cleanup` now lists them.
+# Nothing currently qualifies. `bash`, `coreutils`, `moreutils`, `mysql`, `cocoapods`,
+# `zulu@17`, `wave` and `cmux` were declared here after drift detection found them
+# installed-but-undeclared; the owner confirmed on 2026-09-01 that none is used, so declaring
+# drift was never the same as justifying it. `brew bundle` never uninstalls, so they stay on
+# this machine until `brew uninstall` runs by hand — `brew bundle cleanup` lists them.
 
 # NOT here, deliberately. Enforced by scripts/brew-drift.sh, which fails if any of these
 # is installed AND undeclared AND unlisted — the three-way state that let this block
@@ -121,9 +122,8 @@ cask "discord"
 cask "font-fira-code-nerd-font"
 
 # ── Terminal ──────────────────────────────────────────────────────────
-# Ghostty is the canonical daily-driver terminal (TERMINAL=ghostty, set in
-# zsh/00-exports.zsh): a fast Metal-GPU emulator, configured by ghostty/config
-# (symlinked by `boom source` — there is no `boom apply` verb).
+# Ghostty is the sole terminal: a fast Metal-GPU emulator, configured by
+# ghostty/config (symlinked by `boom source`).
 cask "ghostty"
 
 cask "google-chrome"
