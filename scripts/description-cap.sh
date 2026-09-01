@@ -12,14 +12,33 @@
 # link inventory asserts that this script covers both.
 set -eu
 
+# THE VENDOR NUMBER, AND HOW MUCH STRICTER THIS IS. Claude Code truncates a
+# skill's `description` + `when_to_use` at `skillListingMaxDescChars`, default
+# **1536 characters**, and the whole listing is budgeted at
+# `skillListingBudgetFraction` of the context window, default **1%** — on
+# overflow it drops descriptions starting with the skills you invoke least.
+# Subagents get a startup warning once their combined descriptions pass
+# **15,000 tokens**.
+#
+# 60 words is roughly 400 characters: about 4x stricter than the truncation
+# point, and nowhere near either budget with one skill and two agents. That is
+# deliberate and it stays — the vendor limits TRUNCATE SILENTLY, which loses the
+# keywords the model matches on, while this fails the build. But the number is a
+# choice, not a discovered limit, and it was previously written down with no
+# source at all. Cite the thing you are stricter than, or the next reader cannot
+# tell discipline from invention.
 CAP=60
 
 # A skill BODY is not always-loaded, but it loads in full the moment the skill
 # fires, so an oversized one taxes every invocation to carry branches most of
 # them never touch. A ceiling on the BODY only, and only for skills — an agent
 # file has no body worth capping. Progressive disclosure is the escape: move the
-# inventory to references/ and link it. Set well above the correctly-sized skills
-# so it forces a split rather than nagging.
+# inventory to references/ and link it.
+#
+# Unlike CAP there is no vendor number to be stricter than: nothing documents a
+# body limit, because a body is not billed until the skill fires. 12000 was
+# reverse-engineered from the correctly-sized skills so it forces a split rather
+# than nagging, which makes it an invented ceiling and is worth saying plainly.
 BODY_CAP=${BODY_CAP:-12000}
 
 fail=0

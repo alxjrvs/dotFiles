@@ -18,6 +18,16 @@
 # DISPLACEMENT and starts forcing THRASH — you delete whatever is cheapest, not
 # whatever is least worth loading. Each leaves roughly a fifth free.
 #
+# THE VENDOR NUMBER, AND HOW MUCH STRICTER THIS IS. Anthropic's published
+# guidance is "keep CLAUDE.md under 200 lines", and warns that a bloated one
+# makes Claude ignore the instructions inside it. 3000 and 2500 bytes are both
+# around 40 lines: roughly 5x stricter, and nothing in the client enforces
+# either. Keeping the stricter number is a choice and it stays; writing it down
+# WITHOUT the number it is stricter than is what makes an invented ceiling
+# indistinguishable from a measured one. It also has a recorded cost — see
+# DECISIONS.md, "the byte ceiling was destroying guidance a free mechanism
+# holds", which is why dot-claude/rules/ exists.
+#
 # WHY AN EXPLICIT LIST, NEVER A *.md GLOB: DECISIONS.md is deliberately UNCAPPED.
 # It is not symlinked into ~/.claude/, so capping the overflow destination would
 # push content back into the loaded file, inverting the whole mechanism.
