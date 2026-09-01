@@ -59,6 +59,27 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-01 — `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is removed, and it had no entry here
+
+`env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"` is gone. alxjrvs asked for agent teams to stop
+being the default mode; this was the one key that made them one.
+
+**It is recorded here for the reason it was cut, which is that nothing recorded it.** A grep of
+this file, `CLAUDE.md` and `dot-claude/CLAUDE.md` for the flag, for "agent teams" and for
+"FleetView" returned nothing — an experimental, undocumented vendor flag turning on a whole
+interaction mode, with no measurement of what it bought and no note of who added it or why.
+That is precisely the class this repo's *guilty until proven load-bearing* rule exists for, and
+the local rule about not tidying a key away without reading why it is there is what turned the
+removal into a two-minute check rather than a guess: the check came back empty, which IS the
+finding.
+
+Nothing else went with it. The `SubagentStart` hook, `subagentStatusLine`, and the two subagents
+in `dot-claude/agents/` all serve the ordinary `Task` tool rather than teams, and all three are
+live — `guard-tester` runs the gate suites and `drift-triage` reads `boom verify`. An
+experimental mode flag and the subagent surface are separate things that share a word.
+
+---
+
 ## 2026-09-01 — Oberon publishes by reference, and this machine deliberately does not install it
 
 [`alxjrvs/oberon`](https://github.com/alxjrvs/oberon) is a Claude Code plugin marketplace holding
