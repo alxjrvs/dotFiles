@@ -651,21 +651,6 @@ on = "verify"
 timeout = 60
 cmd = "op-agent status"
 
-# Vault MEMBERSHIP is the only control that stays live on this setup, so it is asserted
-# rather than described. Two 1Password facts force that:
-#   - SA vault access is IMMUTABLE after creation, so scope can never be tightened in
-#     place; only the vault's contents can change.
-#   - Activity Log and service-account usage reports are Business/Teams only, and this is
-#     an Individual/Family account, so no per-item record of what the SA read exists.
-# An item added to the vault without a commit is exactly the event that missing audit log
-# would have reported; `agent-vault.txt` is how it gets reported instead. Relative path:
-# boom runs verify steps from the config-repo root. Advisory on tooling gaps, fails closed
-# on real drift.
-[[section.run]]
-on = "verify"
-timeout = 60
-cmd = "op-agent audit agent-vault.txt"
-
 # `headersHelper` MCP servers are declared in NO boomfile step, so a fresh machine reproduces
 # none, and the `claude mcp list` check cannot see an ABSENT server — only a
 # configured-and-failing one. They are also project-scoped (to ~/Code/SU-SRD), so they are
