@@ -57,11 +57,12 @@ own least-privilege recommendation.
 `dot-claude/hooks/guard-lib.sh` is the single source deciding which repos an agent may write
 to. On a fork it protects the wrong orgs until you change it.
 
-**4 — Cosmetic.** The launchd labels in `launchd/`, the OTEL attribution in
-`.claude/settings.json`, and the statusline source in `hooks/claude_statusline.ts`.
+**4 — Cosmetic.** The launchd labels in `launchd/` and the statusline source in
+`hooks/claude_statusline.ts`.
 
-`scripts/identity-drift.sh` fails the build when the owner's name appears outside the set of
-files that legitimately carry it.
+Nothing enforces this list. A gate used to, and it had quietly stopped: six of its twenty-four
+allowlist entries named files that no longer carried the owner, so those files could re-acquire
+one and still pass. `git grep -il alxjrvs` is the check, and forking is a once-ever event.
 
 ## Where the reasoning lives
 

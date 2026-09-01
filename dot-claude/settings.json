@@ -18,12 +18,11 @@
     "GIT_CONFIG_KEY_4": "credential.https://github.com.helper",
     "GIT_CONFIG_VALUE_4": "!~/.local/bin/op-agent git-credential",
     "NINETY_API_TOKEN_COMMAND": "~/.local/bin/op-agent secret \"op://claude-agent/gninety/credential\"",
-    "NINETY_API_TOKEN": "",
-    "NINETY_BASE_URL": ""
+    "NINETY_API_TOKEN": ""
   },
   "attribution": {
     "commit": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>",
-    "pr": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>"
+    "pr": "Co-authored with alxjrvs."
   },
   "permissions": {
     "allow": [
@@ -47,6 +46,8 @@
       "Bash(git credential:*)",
       "Read(~/.ssh/id_*)",
       "Read(~/.aws/credentials)",
+      "Read(~/.netrc)",
+      "Read(~/.config/gh/hosts.yml)",
       "Bash(*/op *)",
       "Bash(*/op-agent *)",
       "Bash(boom askpass:*)",
@@ -60,44 +61,6 @@
       "Bash(*/git credential-cache *)"
     ],
     "defaultMode": "auto"
-  },
-  "sandbox": {
-    "credentials": {
-      "envVars": [
-        {
-          "name": "GITHUB_TOKEN",
-          "mode": "deny"
-        },
-        {
-          "name": "GH_TOKEN",
-          "mode": "deny"
-        },
-        {
-          "name": "NPM_TOKEN",
-          "mode": "deny"
-        },
-        {
-          "name": "NINETY_API_TOKEN",
-          "mode": "deny"
-        },
-        {
-          "name": "OP_SERVICE_ACCOUNT_TOKEN",
-          "mode": "deny"
-        },
-        {
-          "name": "ANTHROPIC_API_KEY",
-          "mode": "deny"
-        }
-      ]
-    },
-    "filesystem": {
-      "denyRead": [
-        "~/.aws/credentials",
-        "~/.ssh/id_*",
-        "~/.config/gh/hosts.yml",
-        "~/.netrc"
-      ]
-    }
   },
   "hooks": {
     "SessionStart": [

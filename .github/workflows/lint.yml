@@ -120,11 +120,6 @@ jobs:
       - name: skill + agent description cap
         run: git ls-files -z 'dot-claude/skills/*/SKILL.md' 'dot-claude/agents/*.md' | xargs -0 scripts/description-cap.sh
 
-      # README's forking list, enforced rather than maintained. CI runs it too
-      # because a fork's first commit is exactly where this matters.
-      - name: identity drift
-        run: scripts/identity-drift.sh
-
       # Asserts the shared assertions themselves: a gate handed a missing path
       # or an empty file list must fail, not print `ok`. In CI specifically,
       # because CI is where these scripts are handed a literal path or a
