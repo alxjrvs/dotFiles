@@ -59,6 +59,65 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-01 — a plugin was considered and declined; boom is the delivery mechanism
+
+An audit proposed publishing this config as a Claude Code plugin, on the documented trigger
+*"a second repository needs the same setup"* and on this repo's own North Star word
+**shareable**. It is declined, and the reasoning is recorded so it is not reopened every audit.
+
+**boom already delivers all of it, and the two paths are mutually exclusive rather than
+additive.** `boomfile.toml` links `dot-claude/{hooks,skills,agents,rules}` into `~/.claude/`, and
+all ten hook handlers in `settings.json` are absolute `~/.claude/hooks/*.sh` paths. A plugin
+supplies hooks through its own manifest instead — so adopting one locally means deleting those
+ten handlers, at which point `settings-guardrails.sh` fails, correctly, because `wired_hooks()`
+greps `settings.json` for each guard filename and can no longer see them. That is a migration
+paid for by the owner to re-solve a solved problem, while breaking the one gate worth keeping.
+
+It is also the exact pattern this audit condemned elsewhere — boom's three delivery mechanisms
+for one binary, and the two hand-maintained CI/lefthook rosters that had already drifted.
+
+**If it ever becomes worth doing, the shape is a standalone marketplace repo**, consumed the way
+`extraKnownMarketplaces.gnar` → `TheGnarCo/agent-skills` already is, and never inside dotFiles.
+The trigger should be a person asking for a specific guard, not a packaging exercise: building it
+speculatively is the same move as `ssh/config`'s "so future per-org keys have a place to land",
+which this pass deleted for being speculative.
+
+**And only three of the seven guards are publishable at all**, which is worth knowing before
+committing to a repo for them. `worktree-remove-guard.sh` and `worktree-port.sh` are pure git and
+worktree semantics with nothing personal in them; `rebase-guard.sh` mostly is. The other four
+encode this machine: `repo-scope-guard.sh` hardcodes `_owned_orgs()`, `op-guard.sh` assumes
+op-agent and the `claude-agent` vault, `verify-gate.sh` assumes lefthook is the repo's gate, and
+`worktree-freshness.sh` is a version-pinned workaround that would spread past its expiry. The
+shareable surface is smaller, and less interesting, than the guard count suggests.
+
+---
+
+## 2026-09-01 — the retention rule cuts the other way on a removed setting, and this file proved it
+
+This file's Retention section says an entry about code that no longer exists can go. An audit
+applied that rule and proposed deleting *the credential scrub was also a permission-mode switch
+(2026-08-31)*, 77 lines about a settings key that had been removed the day before.
+
+**Then the same audit recommended re-adding that key**, from vendor documentation, in the very
+next pass. The entry is what stopped it: it had already measured that
+`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` scrubs zero of this machine's variables, misses
+`GITHUB_TOKEN`, `GH_TOKEN` and `NPM_TOKEN`, and silently forces the session's permission mode to
+`default`. The key was added during implementation and reverted within the hour.
+
+So the rule needs the qualifier it was missing: **an entry about removed code is dead only if
+nothing would plausibly re-add it.** An entry recording why something was removed is a control
+against re-adoption, and the more reasonable the thing looks in vendor docs, the more that entry
+is worth. A recommendation drawn from documentation is not evidence about this machine.
+
+What was cut instead, in the same pass, is the class that genuinely rots: **procedure duplicated
+from the `agent-friendly-repo` skill** — the stacks/merge-queue mechanics, the classic
+branch-protection payload, the Dependabot workflow steps — where the skill is the copy that gets
+used and this one silently diverged (it still carried a claim the skill had withdrawn, and a
+strikethrough-plus-correction this file's own rule forbids). Plus one entry restating
+`rules/guards.md`. About 100 lines, none of it a measurement, none of it an incident.
+
+---
+
 ## 2026-09-01 — three payload settings that had never done anything
 
 Found by reading each config against its tool's own source rather than its comment.
@@ -757,16 +816,6 @@ documented mechanism — content-scoped ask rules are evaluated before the class
 prompt even in auto mode. Not adopted here: this machine pushes constantly and the prompt fatigue
 would be the greater cost. Noted so the option is a choice rather than a rediscovery.
 
-### Why the guards have a regression suite
-
-`dot-claude/hooks/tests/` — cases against throwaway git fixtures in `$TMPDIR`; hermetic, no
-network, seconds. Every case came from a real transcript or a reproduction, and the suite is
-written so that a meaningful subset fails against the pre-fix guards — which is what makes a green
-run evidence rather than decoration. `cases.tsv` is the count; this file is not.
-
-200+ lines of load-bearing, security-relevant shell had no tests, which is exactly how the
-`--dry-run` hole shipped and survived. Add a case before changing a guard.
-
 ## UI
 
 ### `outputStyle: "Proactive"` was pinned because `/config` does not persist it (2026-08-19)
@@ -838,121 +887,33 @@ override — see 2.1.207). Hence `permissions.allow: Bash(gh pr merge:*)`. A lit
 
 ### Stacks become the default shape, and the merge queue is declined (2026-08-04)
 
-Owner's call, and it reverses the conclusion of the entry above. That entry argued the queue
-"stopped being optional" because `--auto` cannot land a stack and `gh stack merge` doesn't wait
-for green — so without a queue there was no fire-and-forget path. The facts are unchanged; the
-**decision** is that fire-and-forget was never worth its price here.
+Stacks, because a queue serialises what a stack parallelises and this repo's PRs build on each
+other. The merge queue is declined: `gh pr merge` calls the legacy endpoint and cannot merge a
+stack at all, and enabling a queue before every layer is green hangs every PR permanently.
 
-What the queue actually costs on these repos:
-
-- ~~**It is mutually exclusive with Dependabot auto-merge.** `GITHUB_TOKEN` cannot add a PR to a
-  merge queue, so enabling one silently breaks the workflow adopted in #97.~~
-  **Withdrawn 2026-08-18 — unsupported, and it was the leg this entry led with.** No GitHub doc
-  carves `GITHUB_TOKEN` out of enqueueing; the merge-queue docs say plainly that `gh pr merge`
-  "automatically adds the pull request to the queue if required checks have passed". The one
-  primary source found reports the *inverse* and is still open — [cli/cli#8352](https://github.com/cli/cli/issues/8352):
-  "running the same command in Github Actions with a `GITHUB_TOKEN`, the command succeeds as
-  expected and the PR gets added to the merge queue" — it is the **PAT** that fails there. The
-  likely origin of the belief is a different mechanism entirely: a `GITHUB_TOKEN` *push* does not
-  re-trigger workflows, so automerge stalls. Same error shape this file already catalogues for
-  `gh stack unstack`: inferring a capability from adjacent behavior instead of reading the
-  feature's contract.
-  **The decision does not change** — the two legs below are untouched and still carry it. But it
-  now rests on two verified reasons rather than three, one of which was wrong.
-- **It carries the `merge_group:` sequencing hazard.** Enable it before CI reports on the queue's
-  temp branches and every PR hangs forever. That is a real foot-gun standing between the repo and
-  a merge, permanently, in exchange for convenience on multi-layer changes.
-- **It weakens the guarantee stacks exist for.** Behind a queue a stack may be split across
-  consecutive merge groups, so the all-or-nothing property degrades to per-group.
-
-What "no queue" costs instead: the agent has to watch every layer to green before running
-`gh stack merge`. The earlier entry called that "a babysitting loop, not a completion path" —
-that framing was wrong, or at least overstated. `gh pr checks --watch` is a supported, bounded
-wait; the loop only becomes pathological if `main` moves faster than the stack can settle, which
-is a two-repo-contributor problem this repo does not have. The rule is therefore: sync, retry
-once, then report — never loop indefinitely.
-
-So the doctrine now reads: **stacks are the default shape for multi-part work; they land by
-watching green and merging directly; no queue.** `agent-friendly-repo` still knows how to build a
-queue, gated behind an explicit ask *and* a repo with no Dependabot auto-merge to lose.
-
-The other half of "lean in" is the part tooling can't do: **deciding the layers before writing
-the code.** Once work is one large commit, splitting it is archaeology, so `CLAUDE.md` now carries
-the decomposition test — a layer is something that could be reviewed and reverted on its own
-(an enabling refactor, a schema change ahead of its consumers, a mechanical rename, docs) and
-explicitly *not* a split by file, by commit count, or to hit a size target. With the honest
-counterweight attached: don't stack a single reviewable change, and don't manufacture layers to
-satisfy the rule. A one-layer stack is a PR with extra ceremony.
-
-Worth recording as evidence rather than principle: this doctrine was written across PRs #102 and
-#103, which were *themselves* stack-shaped — #103 built directly on #102's conclusions — and were
-shipped serially anyway, each waiting for the other to merge. The tooling wasn't live yet, which
-is a reason but not a good one. It is the clearest available measure of the gap between having
-the preference written down and actually reaching for it.
-
-Deliberately **not** adopted in the same change: `gh skill install github/gh-stack --agent
-claude-code`, which drops a GitHub-authored skill into `~/.claude/skills/` — the same directory
-boom glob-links into. It is a new agent-context surface from outside the repo, and the doctrine is
-that those get enumerated before adoption, not installed as a side effect. Our own
-`agent-friendly-repo` skill now carries the repo-side guidance; if the CLI ergonomics turn out to
-need more, adopt it explicitly then.
-
----
+The mechanics — required checks, the aggregate job, `merge_group:` sequencing, why a per-path
+required check strands a PR pending forever — are in the `agent-friendly-repo` skill, which is
+where a procedure goes. They were duplicated here in full, including a claim the skill had since
+withdrawn, and a strikethrough-plus-correction that this file's own rule forbids.
 
 ## Branch protection
 
 ### Classic protection — legacy fallback only
 
-For a repo that cannot use rulesets, the equivalent classic form is `enforce_admins: true` (CI green
-for everyone), with a one-off emergency bypass via
-`gh api -X DELETE .../branches/main/protection/enforce_admins` to disable and `-X POST` to re-enable:
-
-```
-gh api -X PUT repos/<owner>/<repo>/branches/main/protection --input - <<'EOF'
-{
-  "required_status_checks": { "strict": true, "contexts": ["<aggregate-check>"] },
-  "enforce_admins": true,
-  "required_pull_request_reviews": null,
-  "restrictions": null,
-  "required_linear_history": true,
-  "allow_force_pushes": false,
-  "allow_deletions": false
-}
-EOF
-```
-
-Prefer a ruleset. GitHub takes the *union* of classic protection and rulesets, so running both is a
-footgun: you edit one and the other silently still applies.
+Rulesets are the mechanism; classic branch protection stays only as the fallback for a repo that
+has none. The JSON payload for configuring either lives in the `agent-friendly-repo` skill with
+the rest of the setup procedure, not here.
 
 ### Dependabot auto-merge: a workflow, because there is no switch (2026-08-03)
 
-The agent-friendly checklist already unblocks it — **no required human review** means a Dependabot
-PR needs only a green aggregate check — but nothing fires `--auto` on the bot's behalf:
-`dependabot.yml` has no automerge key (Renovate does; Dependabot doesn't), and the per-PR
-auto-merge button needs a human click. So the mechanism is a one-job workflow calling
-`gh pr merge --auto --squash`, gated on `github.actor == 'dependabot[bot]'`. It merges nothing
-itself; branch protection stays the gate.
+GitHub has no setting for "auto-merge Dependabot minor/patch", so it is a workflow. Two
+properties matter and are asserted by the workflow itself: `on: pull_request` rather than
+`pull_request_target` (which would run untrusted code with a writable token), and an explicit
+minor/patch ALLOWLIST rather than `!= major`, so a metadata failure falls back to a manual PR
+instead of merging something unreviewed. The step-by-step is in the `agent-friendly-repo` skill.
 
-Four constraints, each of which quietly breaks it if ignored:
-
-- **`on: pull_request`, never `pull_request_target`.** Dependabot-triggered runs get a read-only
-  `GITHUB_TOKEN` by default but have respected the `permissions:` key since Oct 2021, so
-  `pull_request` suffices. `pull_request_target` would hand a write token to a base-branch-context
-  run for no benefit — this job never checks out PR code.
-- **Actions secrets are unavailable to Dependabot runs** (only *Dependabot* secrets are). A CI job
-  that needs a secret fails on every Dependabot PR, and auto-merge silently never fires. `lint.yml`
-  here is hermetic, which is why this works on this repo.
-- **`GITHUB_TOKEN` cannot add a PR to a merge queue** — so this and the optional merge-queue step
-  are mutually exclusive unless the token is swapped for a PAT/App token.
-- **Allowlist, not denylist.** The gate is `update-type == minor || == patch`, not `!= major`: if
-  `update-type` ever returns empty, a denylist auto-merges the thing it was meant to catch.
-
-Scoped to `github-actions` only — this repo has no npm/bun manifest, so pinned action tags are the
-whole dependency surface. Majors are excluded from the group and stay manual: an action major
-changes what code runs against a write-scoped token, which is the same supply-chain surface the
-*Standing threats* section keeps small.
-
----
+**Branch protection is the gate this rests on, and nothing in this repo asserts it exists.** If
+the required check is ever dropped, `gh pr merge --auto` merges immediately.
 
 ## Secrets
 
