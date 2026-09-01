@@ -29,8 +29,13 @@ brew "mise"
 # Scoped to the one formula rather than `trusted: true` for the whole tap: the tap is a repo
 # that could grow a cask or a command later, and trusting it wholesale would adopt those
 # silently. Same least-privilege shape as ssh/1password-agent.toml scoping per ITEM.
+#
+# FULLY QUALIFIED, and that is not style. `boom` is also a CASK name in homebrew-cask, so a
+# bare `boom` is ambiguous: `brew upgrade boom` on the machine resolved to the cask and
+# reported "Not upgrading boom, the latest version is already installed" while the formula
+# sat at an old version. `owner/tap/formula` names exactly one thing.
 tap "alxjrvs/boom", "https://github.com/alxjrvs/boom", trusted: { formula: "boom" }
-brew "boom"
+brew "alxjrvs/boom/boom"
 
 # openssl@3 is a system library, not a CLI — `aqua:rossmacarthur/sheldon`
 # dyld-links against /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib and
