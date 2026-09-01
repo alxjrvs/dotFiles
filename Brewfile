@@ -11,6 +11,18 @@
 
 brew "mise"
 
+# boom itself, from the repo that doubles as its own tap. This machine used to run the
+# copy `install.sh` drops at ~/.local/bin/boom, and .zprofile puts ~/.local/bin AHEAD of
+# brew's prefix — so a brew-installed boom would have been shadowed by the bootstrap copy
+# rather than replacing it. The `run` step in boomfile.toml removes that copy once this
+# formula has landed, and a verify step asserts which boom actually resolves. Same
+# double-install shape as the eight entries listed below; declared and closed instead.
+#
+# curl-pipe install.sh stays the FRESH-MACHINE bootstrap (you need a boom to run this
+# file at all) — it is a bootstrap, not a second delivery path, and it hands over here.
+tap "alxjrvs/boom", "https://github.com/alxjrvs/boom"
+brew "boom"
+
 # openssl@3 is a system library, not a CLI — `aqua:rossmacarthur/sheldon`
 # dyld-links against /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib and
 # segfaults without it. Cargo-built sheldon also needs openssl-sys
@@ -24,12 +36,11 @@ brew "openssl@3"
 # declared, so a fresh machine reproduced none of them. Declaring them is the point of this
 # file; leaving them undeclared is the drift.
 #
-# Each is here for a reason that mise does not serve:
-brew "bash"        # modern bash for scripts that need >3.2 (macOS ships 3.2 for licensing)
-brew "coreutils"   # GNU coreutils (g-prefixed) — not a versioned toolchain
-brew "moreutils"   # sponge/ts/vipe — same
-brew "mysql"       # a database + brew service, not a CLI toolchain
-brew "cocoapods"   # iOS dependency manager, tied to the system Ruby/Xcode toolchain
+# Nothing currently qualifies. `bash`, `coreutils`, `moreutils`, `mysql` and `cocoapods`
+# were declared here after drift detection found them installed-but-undeclared; the owner
+# confirmed on 2026-09-01 that none is used, so declaring drift was never the same as
+# justifying it. `brew bundle` never uninstalls, so they stay on this machine until
+# `brew uninstall` runs by hand — `brew bundle cleanup` now lists them.
 
 # NOT here, deliberately. Enforced by scripts/brew-drift.sh, which fails if any of these
 # is installed AND undeclared AND unlisted — the three-way state that let this block
@@ -93,17 +104,11 @@ cask "notunes"
 # A fresh machine reproduced none of these. Each was installed by hand at some
 # point and never written down, which is precisely the drift the check now
 # fails on.
-cask "cmux"          # terminal multiplexer for parallel agent sessions
 cask "devutils"      # offline developer toolbox (JSON/JWT/regex/diff)
 cask "gcloud-cli"    # Google Cloud SDK
 cask "ngrok"         # public tunnel to a local port
 cask "obs"           # screen recording
 cask "orbstack"      # Docker/Linux VMs, the lighter Docker Desktop
-cask "wave"          # terminal
-cask "zulu@17"       # JDK 17. NOT `zulu17` — that name was RETIRED upstream and no
-                     # longer resolves ("Cask 'zulu17' is unavailable"), so declaring it
-                     # failed `brew bundle` outright. The local zulu17 Caskroom entry is
-                     # the leftover install under the old name. See brew-drift.sh.
 
 # Window mgmt + launcher + clipboard (replaces Rectangle + Spotlight).
 cask "raycast"

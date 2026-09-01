@@ -90,10 +90,14 @@ fi
 
 if [ "$fail" -ne 0 ]; then
   echo ""
-  echo "Either declare it in $BREWFILE (a fresh machine should get it) or add it"
-  echo "to the exclusion list in this script WITH its reason (it is owned by mise,"
-  echo "duplicates a runtime, or a native path replaced it). A third option —"
-  echo "leaving it undeclared and unlisted — is how this drifted in the first place."
+  echo "Three remedies, and the right one depends on whether you still use it:"
+  echo "  * still use it     -> declare it in $BREWFILE, so a fresh machine gets it"
+  echo "  * do not use it    -> brew uninstall it. \`brew bundle\` NEVER removes what the"
+  echo "                        Brewfile omits, so undeclaring is only half of deleting."
+  echo "  * owned elsewhere  -> add it to the exclusion list in this script WITH its reason"
+  echo "                        (owned by mise, duplicates a runtime, replaced by a native path)."
+  echo "A fourth option — leaving it undeclared and unlisted — is how this drifted in the"
+  echo "first place."
   exit 1
 fi
 
