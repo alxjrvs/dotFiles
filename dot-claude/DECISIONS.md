@@ -59,6 +59,43 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-01 — CI runs lefthook's roster instead of re-spelling it
+
+`.github/workflows/lint.yml` had fourteen steps, each a re-spelling of a `lefthook.yml` command
+with a `git ls-files` expansion swapped in for `{staged_files}`. Nothing asserted the two lists
+agreed, and **they had already drifted in both directions**: `brew-drift` existed only in lefthook,
+`boomfile-sources` only in CI. A `boomfile.toml` edit that dangled a `src` passed `git commit`
+clean and failed only after the push.
+
+CI now runs `lefthook run pre-commit --all-files`. One roster, and the drift class is impossible
+rather than merely unlikely.
+
+**`--all-files` is load-bearing, for the same reason it is in `verify-gate.sh`.** A runner has no
+index, so bare `lefthook run pre-commit` would hand every `glob:`-scoped command an empty file
+list and report success for inspecting nothing. That is the identical vacuous pass this repo had
+in its Stop hook, in a different place.
+
+### Three things stay outside the roster, each for a reason
+
+- **gitleaks.** Lefthook runs `protect --staged`, which reads the index; a runner has none, and
+  the useful remote question is different anyway — does the CURRENT TREE contain a secret, rather
+  than does this commit add one. Same tool, different verb.
+- **`boom source --dry-run`.** Not a lint check and not a lefthook command: it is the engine
+  asking whether the artifact still applies.
+- **`dot-claude/hooks/tests/all.sh`, bare.** This one is the deliberate duplication, and it is
+  worth naming because it looks like an oversight. Lefthook's `hook-tests` runs
+  `all.sh --changed <files>`, which selects suites by reading each one's `covers:` lines — a
+  latency optimisation that TRUSTS those lines. A wrong or missing `covers:` silently narrows what
+  ran, and the failure mode is a regression through a green gate. Bare `all.sh` discovers the whole
+  roster from the directory and is immune to that. Roughly 16 seconds to stop the selective run's
+  one assumption from being load-bearing.
+
+`zsh` moves to the setup step: lefthook's roster runs `zsh -n` over the shell payload and a runner
+has no zsh, so installing it inside that command would fail mid-roster with a confusing message
+instead of at setup with a clear one.
+
+---
+
 ## 2026-09-01 — four of six "replace with native" cuts would have been regressions
 
 An audit costed six `scripts/` gates at roughly −430 lines, on the reading that each was a native
