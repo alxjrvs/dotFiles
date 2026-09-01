@@ -54,7 +54,7 @@ case_exit guardrails_unwired_guard 1 \
 # --- positive controls: the real inputs must still PASS ----------------------
 case_exit guardrails_real 0 ./scripts/settings-guardrails.sh dot-claude/settings.json
 # Globbed, not named: a hardcoded plist label is an owner this suite would
-# carry into every fork, and identity-drift.sh is right to reject one.
+# carry into every fork.
 case_exit plist_real 0 ./scripts/plist-validity.sh launchd/*.plist
 case_exit skillcap_default_glob 0 ./scripts/description-cap.sh
 case_exit context_budget_real 0 ./scripts/context-budget.sh

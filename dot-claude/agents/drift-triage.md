@@ -20,7 +20,6 @@ the split is deliberate: you find and explain, a human runs the fix. Never run
 ```
 boom verify --verbose
 scripts/brew-drift.sh
-scripts/identity-drift.sh
 git -C ~/.local/state/boom/config-repo status --porcelain
 ```
 

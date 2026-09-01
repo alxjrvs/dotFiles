@@ -59,6 +59,83 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-01 — three controls that were describing themselves, and one that was passing on work it never read
+
+An external audit went looking for what this config could delete. The three findings that
+mattered were not size at all: they were controls that read as enforcement and enforced nothing.
+Each was confirmed by running it, not by reading it.
+
+### The `sandbox` block is deleted, and two of its paths promoted
+
+`sandbox.enabled` was never set, and it defaults to `false`. *The sandbox measured: egress works,
+and `credentials.files` would break op-agent (2026-08-18)* already established that
+`sandbox.credentials` and `sandbox.filesystem` bind only to sandboxed Bash, and the 2026-08-28
+pass changed `mask` to `deny` and left the block standing anyway. So six credential denials and
+four `denyRead` paths sat in the file, looked like a posture, and bound to nothing — in the config
+whose own `CLAUDE.md` says *already enforced → nowhere; describing a control is not the control.*
+
+Deleting an inert block would have silently dropped the intent behind it, so the two `denyRead`
+paths with no live equivalent — `~/.config/gh/hosts.yml` and `~/.netrc` — are now `Read()` entries
+in `permissions.deny`, where they are evaluated before `auto` and before bypass. The other two
+already were.
+
+**Enabling the sandbox instead remains available and is a separate, larger decision**: it confines
+writes and needs a network allowlist, and the 2026-08-18 entry measured that `credentials.files`
+breaks op-agent. That is a day of work on a machine shared with employer repositories, and it
+should be taken deliberately rather than as a side effect of an audit.
+
+### `verify-gate.sh` was passing vacuously, in its most common case
+
+The Stop hook ran `lefthook run pre-commit`, which inspects the **index**. At the end of an agent
+turn the index is empty — the work is written and unstaged. Fourteen of this repo's sixteen
+pre-commit commands are `glob:`-scoped against `{staged_files}`, so fourteen received no files and
+skipped, and the gate reported success on work it had never opened. Its header claimed *"a pass
+here means the commit will pass too."*
+
+Its suite could not see this: the stub `lefthook` returned a canned exit code for any argument
+list, so every case passed while the hook was vacuous. The stub now **refuses an invocation
+without `--all-files`**, which is the assertion that would have caught it.
+
+Two further corrections in the same file. `stop_hook_active` **is** documented on Stop input, and
+the client ends the turn after 8 consecutive blocks; the header said no such field existed and
+hand-rolled a session-keyed marker to stand in for it. And that marker armed only *after* a
+failure, so a passing session re-ran the full gate every dirty turn while a failing one went quiet
+for good. The marker is now keyed by tree state — `status --porcelain` **and** `diff HEAD`, because
+porcelain alone prints ` M f.txt` whatever the file now contains, which the suite caught.
+
+### `identity-drift.sh` is deleted, because it had already failed open
+
+Six of its twenty-four allowlist entries named files that still exist and no longer carry the
+owner. It compares one way (`comm -23`), so the allowlist rots **permissive** and nothing notices:
+those six could re-acquire a hardcoded owner and the gate would still print
+`ok identity-drift (18 files name 'alxjrvs', all documented)`. Fixing it means a second comparison
+and more machinery, to protect a `git grep -il alxjrvs` that a forker runs once, ever. README now
+says the list is unenforced rather than implying a gate stands behind it.
+
+### Also removed
+
+`.claude/settings.json`'s `OTEL_RESOURCE_ATTRIBUTES` labelled metrics that are never emitted —
+telemetry needs `CLAUDE_CODE_ENABLE_TELEMETRY` and an exporter, and neither exists anywhere here.
+`attribution.pr` carried a `Co-Authored-By:` trailer, but pull request descriptions get **plain
+text**; only commits get trailers, so it was prose pretending to be a co-author record.
+`env.NINETY_BASE_URL` had no `_COMMAND` sibling and no consumer. And the project-scope
+`Bash(git fetch *)` never matched a bare `git fetch` — the trailing space needs text after it,
+which is the exact gotcha `rules/claude-settings.md` documents.
+
+### Declined, again: `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`
+
+The audit recommended adopting it from the vendor documentation. It was added to
+`dot-claude/settings.json` during this work and then reverted, because *the credential scrub was
+also a permission-mode switch (2026-08-31)* — directly above — had already measured that it
+scrubs **zero** of this machine's variables, misses `GITHUB_TOKEN`, `GH_TOKEN` and `NPM_TOKEN`,
+and silently forces the session's permission mode to `default`.
+
+Worth recording as a pattern rather than a one-off: a recommendation drawn from vendor docs is not
+evidence about **this** machine, and this file is what stands between a good general suggestion and
+a measured local regression. It earned its keep here.
+
+---
+
 ## 2026-08-31 — the credential scrub was also a permission-mode switch
 
 `env.CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"` is removed. It was added 2026-06-05 as finding BP-3

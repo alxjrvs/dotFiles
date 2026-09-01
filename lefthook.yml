@@ -87,11 +87,6 @@ pre-commit:
       glob: "Brewfile"
       run: scripts/brew-drift.sh
 
-    identity-drift:
-      # Keeps README's "Forking this repo" list honest. A hardcoded owner the
-      # list does not mention breaks a fork silently.
-      run: scripts/identity-drift.sh
-
     actionlint:
       # Also reaches the embedded shell in every `run:`, which the shellcheck
       # glob above cannot.

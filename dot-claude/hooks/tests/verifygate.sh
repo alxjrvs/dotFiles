@@ -11,11 +11,19 @@
 # Its load-bearing cases are the ones where it must NOT block. A Stop hook is the most
 # dangerous shape in this directory: it runs on every turn, and one that blocks when it should
 # not strands a session with no way out. So the no-op paths (clean tree, no gate declared, not
-# a repo, unreadable payload) and the once-per-session loop-breaker are asserted first, and the
-# single blocking case last.
+# a repo, unreadable payload), `stop_hook_active`, and the once-per-tree-state loop-breaker are
+# asserted first, and the blocking cases last.
 #
 # No network, no lefthook on the real PATH: a stub `lefthook` is placed in a temp bin whose
 # exit code each case chooses.
+#
+# THE STUB ASSERTS `--all-files`, and that is the point of this suite rather than a detail of
+# it. The hook used to run bare `lefthook run pre-commit`, which inspects the INDEX; at the end
+# of an agent turn the index is empty, so the fourteen `glob:`-scoped commands in lefthook.yml
+# received no files and skipped, and the gate reported success on work it had never opened. A
+# stub that returns a canned exit code for any argument list cannot see that -- the previous
+# version of this suite passed every case while the hook was vacuous. So the stub now refuses
+# an invocation without `--all-files`, and `gate_passes` below is what fails if it regresses.
 set -uo pipefail
 
 HOOK="$(cd "$(dirname "$0")/.." && pwd)/verify-gate.sh"
@@ -63,16 +71,26 @@ mkdir -p "$BIN"
 cat > "$BIN/lefthook" << 'STUB'
 #!/usr/bin/env bash
 echo "stub lefthook: $*"
+# The whole reason this suite exists. Without --all-files the real lefthook inspects an empty
+# index and every glob-scoped command skips, so the gate passes on work it never read.
+case " $* " in
+  *" --all-files "*) : ;;
+  *)
+    echo "stub lefthook: refusing — verify-gate must pass --all-files or it inspects an empty index" >&2
+    exit 99
+    ;;
+esac
 exit "$(cat "$LEFTHOOK_STUB_EXIT" 2> /dev/null || echo 0)"
 STUB
 chmod +x "$BIN/lefthook"
 printf '0' > "$TMPROOT/exit"
 export LEFTHOOK_STUB_EXIT="$TMPROOT/exit"
 
-# $1 = label, $2 = expected exit, $3 = cwd, $4 = session id
+# $1 = label, $2 = expected exit, $3 = cwd, $4 = session id, $5 = stop_hook_active (default false)
 run_case() {
-  local label=$1 want=$2 cwd=$3 session=$4 out rc
-  out=$(printf '{"session_id":"%s","cwd":"%s","hook_event_name":"Stop"}' "$session" "$cwd" |
+  local label=$1 want=$2 cwd=$3 session=$4 active=${5:-false} out rc
+  out=$(printf '{"session_id":"%s","cwd":"%s","hook_event_name":"Stop","stop_hook_active":%s}' \
+    "$session" "$cwd" "$active" |
     PATH="$BIN:$PATH" XDG_STATE_HOME="$TMPROOT/state" "$HOOK" 2>&1)
   rc=$?
   if [ "$rc" = "$want" ]; then
@@ -139,19 +157,32 @@ dirty "$STAGED"
 gitf "$STAGED" add -A 2> /dev/null
 run_case staged_gate_passes 0 "$STAGED" s6
 
-# --- must block, exactly once ------------------------------------------------
+# Already continuing because of a stop hook: the client sets this, and blocking on top of it
+# is how a session loops. Claude Code also ends the turn after 8 consecutive blocks on its own,
+# which is why the hand-rolled session marker this hook used to carry is gone.
+ACTIVE=$(newrepo active gate)
+dirty "$ACTIVE"
+printf '1' > "$TMPROOT/exit"
+run_case stop_hook_active_allows 0 "$ACTIVE" s10 true
+printf '0' > "$TMPROOT/exit"
+
+# --- must block, once per tree state -----------------------------------------
 
 FAILING=$(newrepo failing gate)
 dirty "$FAILING"
 printf '1' > "$TMPROOT/exit"
 run_case gate_fails_blocks 2 "$FAILING" s7
 
-# The loop-breaker: the SAME session must not be blocked twice, or a failure the agent cannot
-# fix strands the session forever.
-run_case same_session_allows 0 "$FAILING" s7
+# The loop-breaker, keyed by TREE STATE: the same unchanged tree must not be blocked twice, or
+# a failure the agent cannot fix strands the session forever. A different session id makes no
+# difference — the tree is what was already judged.
+run_case same_tree_allows 0 "$FAILING" s7
+run_case same_tree_other_session_allows 0 "$FAILING" s8
 
-# A different session still gets its one block.
-run_case other_session_blocks 2 "$FAILING" s8
+# Change the work and the gate gets to speak again. The old session-keyed marker could not do
+# this: it went quiet for the rest of the session after one failure, however much changed.
+dirty "$FAILING"
+run_case changed_tree_blocks_again 2 "$FAILING" s7
 
 # --- fail open --------------------------------------------------------------
 
