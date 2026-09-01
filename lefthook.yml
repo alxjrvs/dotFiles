@@ -14,7 +14,9 @@ pre-commit:
       run: shellcheck -x {staged_files}
     shfmt-check:
       # boomfile.toml is DSL config (an aligned link table by design) — validated
-      # by `boom source --dry-run`, not shfmt, so it is deliberately not in scope.
+      # by `boom source --dry-run` in CI ("boomfile applies"), not shfmt, so it is
+      # deliberately not in scope here. That claim sat in this comment for months
+      # while nothing ran the command; the CI step now does.
       glob: "{*.sh,git-template/hooks/*}"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}

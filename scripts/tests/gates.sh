@@ -125,9 +125,6 @@ case_exit rules_missing_dir 1 env DIR=dot-claude/does-not-exist ./scripts/rules-
 # taplo proves the file parses, which says nothing about whether the paths it
 # names are there. A missing src fails `boom source` partway through, on a real
 # machine, after it has already changed things.
-case_exit boomsrc_real 0 ./scripts/boomfile-sources.sh
-case_exit boomsrc_missing_file 1 ./scripts/boomfile-sources.sh boomfile-does-not-exist.toml
-case_exit boomsrc_dangling 1 ./scripts/boomfile-sources.sh scripts/tests/fixtures/dangling-src-boomfile.toml
 
 # --- a skill body loads in full when the skill fires -------------------------
 # The body cap is what keeps a split skill from silently growing back into one
