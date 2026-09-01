@@ -145,6 +145,31 @@ for f in "$@"; do
     ] | .[]' "$f" 2> /dev/null)
   [ -z "$bad_if" ] || note "$f: guard \`if\` rule is not the substring form (Bash(*…*)): $bad_if"
 
+  # THE SANDBOX'S TWO MEASURED INVARIANTS. Both are re-adoption guards: each
+  # names a change that looks correct in the vendor documentation and is wrong
+  # HERE, which is exactly the class DECISIONS.md records and nothing else
+  # catches.
+  #
+  # 1. `credentials.files` is measured to break op-agent (2026-08-18): with
+  #    keychain file reads denied, `login.keychain-db` leaves the search list
+  #    and the securityd IPC never resolves. The published example for this key
+  #    lists `~/.ssh` and `~/.aws/credentials` — both already covered here by
+  #    `Read()` denials, which the client merges into the sandbox anyway — so
+  #    the tempting copy-paste buys nothing and costs the credential helper.
+  ! jq -e '.sandbox.credentials.files' "$f" > /dev/null 2>&1 ||
+    note "$f: sandbox.credentials.files is set — measured 2026-08-18 to break op-agent by removing login.keychain-db from the search list. The Read() denials already reach the sandbox."
+
+  # 2. A `sandbox` block whose `enabled` is anything but `true` is the exact
+  #    defect that shipped once already: six credential denials and four
+  #    denyRead paths sat in this file reading as a posture while
+  #    `sandbox.enabled` was null, so the whole block bound to nothing. A block
+  #    present and off is worse than no block — it is a control that describes
+  #    itself. Delete it or turn it on.
+  if jq -e 'has("sandbox")' "$f" > /dev/null 2>&1; then
+    [ "$(jq -r '.sandbox.enabled' "$f" 2> /dev/null)" = "true" ] ||
+      note "$f: a sandbox block is present but sandbox.enabled is not true — it binds to nothing. Delete the block or enable it."
+  fi
+
   deny_floor | while IFS= read -r d; do
     [ -n "$d" ] || continue
     jq -e --arg d "$d" '.permissions.deny | index($d)' "$f" > /dev/null || {

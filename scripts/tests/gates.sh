@@ -129,6 +129,40 @@ case_exit skillcap_folded_over 1 ./scripts/description-cap.sh scripts/tests/fixt
 # replaced one broken gate with another.
 case_exit skillcap_folded_under 0 ./scripts/description-cap.sh scripts/tests/fixtures/folded-under-cap-SKILL.md
 
+# --- the sandbox's two measured invariants ----------------------------------
+# DERIVED FROM THE REAL FILE, never a checked-in fixture: a fixture copy of
+# settings.json drifts from the original the moment either changes, and then
+# these cases prove something about a file nobody ships. `jq` mutates the live
+# one into each defect, so the input is always current.
+_sbox=$(mktemp -d)
+trap 'rm -rf "$_sbox"' EXIT
+
+# `credentials.files` is measured (2026-08-18) to break op-agent — it removes
+# login.keychain-db from the search list, so the securityd IPC never resolves.
+# It is also the first thing the vendor example shows, which is why it needs a
+# gate and not a paragraph.
+jq '.sandbox.credentials.files = [{"path":"~/.ssh","mode":"deny"}]' \
+  dot-claude/settings.json > "$_sbox/credfiles.json"
+case_exit sandbox_credfiles_caught 1 ./scripts/settings-guardrails.sh "$_sbox/credfiles.json"
+
+# A `sandbox` block present with `enabled` anything but `true` binds to nothing.
+# This exact shape shipped once: a null `enabled` under ten credential and path
+# rules that read as a posture and enforced nothing. Both spellings of the
+# defect — explicitly null, and the key absent — must be caught.
+jq '.sandbox.enabled = null' dot-claude/settings.json > "$_sbox/null.json"
+case_exit sandbox_enabled_null_caught 1 ./scripts/settings-guardrails.sh "$_sbox/null.json"
+jq 'del(.sandbox.enabled)' dot-claude/settings.json > "$_sbox/missing.json"
+case_exit sandbox_enabled_absent_caught 1 ./scripts/settings-guardrails.sh "$_sbox/missing.json"
+
+# Positive control: NO sandbox block at all is a legitimate state (it is what
+# this file held yesterday), so the `enabled` assertion must not fire on it.
+# Without this the gate would forbid ever turning the sandbox back off.
+jq 'del(.sandbox)' dot-claude/settings.json > "$_sbox/none.json"
+case_exit sandbox_absent_ok 0 ./scripts/settings-guardrails.sh "$_sbox/none.json"
+
+rm -rf "$_sbox"
+trap - EXIT
+
 if [ "$fail" -gt 0 ]; then
   echo "gate-tests: $pass passed, $fail FAILED"
   exit 1
