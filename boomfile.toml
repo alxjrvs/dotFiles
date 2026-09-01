@@ -802,3 +802,8 @@ name = "claude_statusline"
 
 [section.hook.with]
 repo = "github.com/TheGnarCo/claude-statusline"
+# PINNED. The hook used to `git pull --ff-only` the default branch and then execute the
+# upstream `install.sh` — an unpinned dependency, auto-updated and auto-executed on every
+# sync, for a cosmetic prompt widget. It now checks out this tag and makes the two symlinks
+# itself. Bump deliberately, after reading what changed between tags.
+ref = "v1.1.1"

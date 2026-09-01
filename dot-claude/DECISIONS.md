@@ -59,6 +59,81 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-01 — `cases.tsv`'s comments are not war stories, and the cut is declined
+
+An audit costed `dot-claude/hooks/tests/cases.tsv` at −230 lines: 347 of its 664 lines are
+comments, characterised as *"war stories that DECISIONS.md already holds"*. Both halves of that
+are wrong, and the second is checkable.
+
+**They are not held here.** Grepping this file for what those comment blocks explain:
+
+| what the comment explains | in `cases.tsv` | in `DECISIONS.md` |
+|---|---|---|
+| `git -C <path>` names the target repo | 13 | **0** |
+| `boom askpass` prints a resolved ref | 3 | **0** |
+| `npm exec` / `docker exec` had no arm | 5 | **0** |
+| `caffeinate`/`arch`/`setsid`/`chroot` flag grammars | 5 | **0** |
+
+Deleting them does not deduplicate anything. It destroys the only record of why 276 assertions
+assert what they do — and a fixture row is `op<TAB>nonrepo<TAB>…<TAB>deny`, which carries no
+reason on its own. This repo's whole guard doctrine is "add the regression case before changing
+one"; a case nobody can evaluate is a case nobody can safely change.
+
+**And they cost nothing.** `cases.tsv` is not in `boomfile.toml`, so it is never symlinked to a
+machine, never loaded into a session, never shipped. It is a fixture read by `run.sh`. Its comment
+mass costs one reader's attention, once — which is the thing it is buying.
+
+The general form, now the fourth time this pass has hit it: **a line count is not a measure of
+whether a line earns its place.** "52% comments" is a fact about a file and an argument about
+nothing. The question is what the comment is doing, and here it is doing the only thing that makes
+the assertion below it auditable.
+
+What would be worth doing, and is not this: several blocks narrate the incident *and* state the
+mechanism (*"Found bootstrapping a brand-new empty repo: `git -C ~/Code/butter push` was denied
+with…"*). The mechanism is the part a future reader needs. Compressing those is a line-by-line
+judgement over 347 lines with real risk of removing something load-bearing, in a file that costs
+nothing to keep — so it is not worth doing now, and it is worth saying so rather than leaving the
+audit's number standing.
+
+---
+
+## 2026-09-01 — the statusline stopped tracking a branch and stopped running a stranger's installer
+
+`hooks/claude_statusline.ts` did two things on every `boom source`: `git pull --ff-only` on the
+upstream's default branch, then execute that repo's `install.sh`. An **unpinned dependency,
+auto-updated and auto-executed**, for a cosmetic prompt widget — in a repo whose README files the
+statusline under "4 — Cosmetic" and whose CLAUDE.md says every dependency earns its weight.
+
+Both are closed:
+
+- **Pinned.** `with.ref = "v1.1.1"` in `boomfile.toml`; the hook fetches tags and checks that
+  object out detached. Bumping it is a commit here, after reading what changed.
+- **The installer is not executed.** It did exactly two things — `chmod +x` on two scripts and two
+  symlinks into `~/.local/bin` — so running it bought nothing that could not be done in a file
+  that gets reviewed, while handing the upstream arbitrary code execution. The two links are made
+  by name in the hook.
+
+**Not a `mise` entry, though that was the audit's proposal.** mise's `github`/`ubi` backends
+install RELEASE ASSETS; this upstream publishes tags with no releases attached, and ships shell
+scripts rather than a binary. There is nothing for mise to download. Checked before designing
+around it.
+
+### And git signing lost three constants it was writing every sync
+
+`commit.gpgSign`, `tag.gpgSign` and `gpg.ssh.program` move into the tracked `.gitconfig`, beside
+the `[gpg "ssh"]` block that was already there. `hooks/git-signing.ts` keeps only the value it has
+to DISCOVER — `user.signingkey`, looked up by key name from the 1Password agent, so a rotated key
+converges without anyone editing a file — plus the `allowed_signers` append.
+
+They were machine-local on the reasoning that "a box without 1Password shouldn't fail commits."
+That is **host detection wearing another name**, and it guards a machine this config does not
+support anyway: the README ranks 1Password second in what breaks on a fork, and `boom verify`
+fails on day one without it. Agent sessions still disable signing explicitly, via
+`GIT_CONFIG_KEY_0` in `dot-claude/settings.json`, which is a deliberate override rather than an
+absence.
+
+---
+
 ## 2026-09-01 — CI runs lefthook's roster instead of re-spelling it
 
 `.github/workflows/lint.yml` had fourteen steps, each a re-spelling of a `lefthook.yml` command
