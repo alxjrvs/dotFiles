@@ -68,8 +68,8 @@ and so quits the running app. What the header does not carry is the fix that was
 
 The flag was also not doing the job it was assumed to do. It never reached mise — a sync runs
 `mise install` with or without it and `mise upgrade` on neither path — and every dev CLI lives in
-`mise.toml` by policy. So the CLI surface sat frozen at its locked versions the entire time the flag was
-closing the browser, and what it bought at that price was the Brewfile's formulae, which
+`mise.toml` by policy. So the CLI surface sat frozen at its locked versions the entire time the
+flag was closing the browser, and what it bought at that price was the Brewfile's formulae, which
 `brew upgrade --formula` moves without touching an app.
 
 **Rejected: teach the flag better manners.** Have `--update` run `brew bundle --no-upgrade` then
