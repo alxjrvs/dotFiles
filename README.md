@@ -36,9 +36,9 @@ Preview without touching anything: `boom source --dry-run`.
 
 ```
 boomfile.toml         the manifest — symlinks, packages, macOS defaults, verify steps
-hooks/                boom lifecycle hooks (the directory name is boom's contract)
+hooks/                boom hooks and verify-step scripts (the directory name is boom's contract)
 dot-claude/           user-global Claude config, symlinked into ~/.claude/
-dot-claude/hooks/     Claude Code PreToolUse guards + their regression suites
+dot-claude/hooks/     Claude Code hooks (guards, session start, stop) + their regression suites
 git-template/hooks/   copied into every new repo via init.templateDir
 scripts/              the assertions lefthook, CI and `boom verify` all share
 zsh/ nvim/ ghostty/ ssh/ starship.toml …   payload
@@ -66,12 +66,11 @@ own least-privilege recommendation.
 `dot-claude/hooks/guard-lib.sh` is the single source deciding which repos an agent may write
 to. On a fork it protects the wrong orgs until you change it.
 
-**4 — Cosmetic.** The launchd labels in `launchd/` and the statusline source in
-`hooks/claude_statusline.ts`.
+**4 — Cosmetic.** The launchd label in `launchd/` and the `# alxjrvs` heading in
+`dot-claude/CLAUDE.md`.
 
-Nothing enforces this list. A gate used to, and it had quietly stopped: six of its twenty-four
-allowlist entries named files that no longer carried the owner, so those files could re-acquire
-one and still pass. `git grep -il alxjrvs` is the check, and forking is a once-ever event.
+Nothing enforces this list — a gate did, and had silently rotted permissive.
+`git grep -il alxjrvs` is the check, and forking is a once-ever event.
 
 ## Where the reasoning lives
 
