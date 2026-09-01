@@ -102,10 +102,32 @@ this look like a day of work.
 It is not, because the non-strict sandbox builds the allowlist for you. With `strictAllowlist`
 unset, the first connection to a new domain prompts (or in `auto` goes to the classifier), and
 answering "yes, and don't ask again" writes a `WebFetch(domain:…)` rule into local settings that
-the sandbox honors from then on. So the six domains here are a **seed against a day-one prompt
-storm, not a policy**: the ones this repo's own tooling provably hits on every task. The rest
-accumulates by use, which is the empirical measurement the entry asked for, taken as a byproduct
-of working instead of as a project.
+the sandbox honors from then on. So the entries here are a **seed against a day-one prompt storm,
+not a policy**. The rest accumulates by use, which is the empirical measurement the entry asked
+for, taken as a byproduct of working instead of as a project.
+
+### The seed has two halves, and only one of them is evidence
+
+**Derived, and re-derivable.** `formulae.brew.sh`, `ghcr.io` and
+`pkg-containers.githubusercontent.com` are Homebrew's metadata API and its bottle host;
+`mise-versions.jdx.dev` and `nodejs.org` are mise's version index and the one core toolchain
+`mise.toml` declares; the GitHub hosts carry the payload, the tap, and every `aqua:`/release
+binary mise resolves. These are what `boom source` itself touches, which is the single command
+run most often here — leaving them out would have meant a prompt storm on the one operation the
+sandbox must not make annoying.
+
+**Declared, and NOT observed — this is the part a later audit will get wrong.** `pypi.org`,
+`files.pythonhosted.org`, `crates.io`, `static.crates.io` and `rubygems.org` are in because
+alxjrvs said he builds in those languages, not because anything in this repo references them:
+`mise.toml` declares no Python, Rust or Ruby toolchain, by design — it says situational
+toolchains are installed per-project with `mise use`. So a future pass that greps this repo for
+evidence will find none and conclude they are dead weight.
+
+**They are not.** The evidence for them is per-project and lives outside this repo, and an
+allowlist entry that is never exercised costs nothing but a line. Cutting one costs a prompt in
+the middle of unrelated work, months later, with nothing left to explain why it went. Recorded
+here precisely because the discipline that keeps this repo small is the thing most likely to
+delete them.
 
 `strictAllowlist: true` — the flag that turns a miss into a denial instead of a prompt — is
 therefore **the deliberate next step, not part of this change.** Setting it before the allowlist

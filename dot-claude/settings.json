@@ -71,7 +71,17 @@
         "github.com",
         "objects.githubusercontent.com",
         "raw.githubusercontent.com",
-        "registry.npmjs.org"
+        "formulae.brew.sh",
+        "ghcr.io",
+        "pkg-containers.githubusercontent.com",
+        "mise-versions.jdx.dev",
+        "nodejs.org",
+        "registry.npmjs.org",
+        "pypi.org",
+        "files.pythonhosted.org",
+        "crates.io",
+        "static.crates.io",
+        "rubygems.org"
       ],
       "allowUnixSockets": [
         "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
