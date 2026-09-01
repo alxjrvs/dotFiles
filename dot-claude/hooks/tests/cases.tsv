@@ -561,7 +561,7 @@ op	nonrepo	"boom" askpass op://claude-agent/claude-git-pat/credential	deny
 # binary-scoped `Bash(op:*)` deny reverted once already.
 op	nonrepo	boom verify	allow
 op	nonrepo	boom source sync	allow
-op	nonrepo	boom status --json	allow
+op	nonrepo	boom doctor --json	allow
 # The runners. `--` present and absent, since neither form is required.
 op	nonrepo	mise exec -- op read op://claude-agent/claude-git-pat/credential	deny
 op	nonrepo	mise x -- op read op://claude-agent/claude-git-pat/credential	deny
