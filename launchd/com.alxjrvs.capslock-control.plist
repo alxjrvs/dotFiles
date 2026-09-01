@@ -18,12 +18,14 @@
 	</array>
 	<key>RunAtLoad</key>
 	<true/>
-	<!-- Absolute paths only: launchd does NOT expand ~ or $HOME in plist values.
-	     A ~-prefixed log path made launchd fail this job with EX_CONFIG (exit 78)
-	     before it could run hidutil, silently breaking the Caps→Control remap. -->
-	<key>StandardOutPath</key>
-	<string>/tmp/capslock-control.log</string>
-	<key>StandardErrorPath</key>
-	<string>/tmp/capslock-control.log</string>
+	<!-- No StandardOutPath/StandardErrorPath. They pointed at a predictable
+	     filename in /tmp, which is world-writable and a symlink-plant surface —
+	     the same hazard ssh/config avoids by putting ControlPath sockets under
+	     ~/.ssh/cm. They could not simply move: launchd does NOT expand ~ or
+	     $HOME in plist values, and a ~-prefixed log path failed this job with
+	     EX_CONFIG (78) before it could run hidutil, silently breaking the
+	     Caps→Control remap. The right answer was not to log: hidutil prints the
+	     resulting dict on success, which is noise, and launchd already records
+	     the exit status of a failure. -->
 </dict>
 </plist>

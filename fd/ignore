@@ -1,0 +1,19 @@
+# fd's GLOBAL ignore file. The location is the whole point: fd's README documents
+# `~/.config/fd/ignore` as the global one, while `~/.fdignore` (where this lived)
+# is parent-walked like `.gitignore` and stops at the enclosing repo root — so
+# inside any project it was not applying at all.
+#
+# `.git/` is here on fd's own advice: "You may wish to include `.git/` in your
+# fd/ignore file so that `.git` directories, and their contents are not included
+# in output if you use the --hidden option." Both fzf commands in
+# zsh/60-tools.zsh pass --hidden, and they used to carry a duplicated
+# `--exclude .git` each instead.
+#
+# ripgrep has no equivalent auto-loaded global file, so its half of this is
+# `--glob=!.git/` in `.ripgreprc`, which is prepended to every invocation.
+.git/
+node_modules
+.pytest_cache
+__pycache__
+venv
+.venv

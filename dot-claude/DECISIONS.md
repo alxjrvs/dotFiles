@@ -59,6 +59,48 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-01 — three payload settings that had never done anything
+
+Found by reading each config against its tool's own source rather than its comment.
+
+**`starship.toml` — the ahead/behind counters have never rendered.** The `git_status` format
+string named `$ahead$behind$diverged`. Starship's `git_status` module exposes **`ahead_behind`**
+as the format variable (`src/modules/git_status.rs`); `ahead`, `behind` and `diverged` are
+*options* consumed through it, not variables. An unmapped name renders as the empty string with no
+warning, so the carefully-reasoned ASCII `^`/`v` markers below the format line fed nothing. Same
+shape as the fzf-tab widget that existed and was never reachable, already recorded in
+`zsh/60-tools.zsh`.
+
+**fd's global ignore was never global.** The file lived at `~/.fdignore`. fd's README documents
+the global ignore file as **`~/.config/fd/ignore`**; `.fdignore` is parent-walked like
+`.gitignore` and stops at the enclosing repo root, so inside any project it was not applying. It
+moves to the documented path, and `.git/` is now in it on fd's own advice — *"You may wish to
+include `.git/` in your fd/ignore file so that `.git` directories … are not included in output if
+you use the --hidden option"* — which both fzf commands do. That deletes the duplicated
+`--exclude .git` each of them carried.
+
+**ripgrep was walking the object store on every search.** `.ripgreprc` sets `--hidden` with
+nothing excluding `.git`, and ripgrep's own flag docs say `--hidden` *"will include files and
+folders like .git … you must explicitly ignore them using another flag or ignore file."*
+`.fdignore` is fd-only and there was no `~/.ignore`. ripgrep has no auto-loaded global ignore file
+— its config is only read via `RIPGREP_CONFIG_PATH`, which `zsh/00-exports.zsh` does set — so the
+fix is `--glob=!.git/` in `.ripgreprc` rather than a second shared ignore file.
+
+A shared `~/.ignore` was tried first and reverted: both fd and rg read `.ignore`, but both walk it
+from the search directory upward and stop at the repo root, so it is not a global mechanism for
+either. Two tools, two documented mechanisms, and neither is the one that looked obvious.
+
+### And the launchd job stopped logging to /tmp
+
+`StandardOutPath` and `StandardErrorPath` both pointed at a predictable filename in
+world-writable `/tmp` — a symlink-plant surface, and the same hazard `ssh/config` already avoids
+by putting ControlPath sockets under `~/.ssh/cm`. They could not simply move: launchd does not
+expand `~` or `$HOME` in plist values, and a `~`-prefixed log path failed this job with
+`EX_CONFIG` (78) before it could run hidutil. The answer was not to log at all — `hidutil` prints
+its result dict on success, which is noise, and launchd already records the exit status.
+
+---
+
 ## 2026-09-01 — the vault audit governed three items, and its one firing was wrong
 
 `op-agent audit` is deleted: 137 lines (plus `_prefixed`) asserting that three declared vault

@@ -45,7 +45,7 @@ format = '[\[](bright-black)[$state]($style)[\]](bright-black)'
 # magenta, conflict bold red, ahead green / behind red). No surrounding space —
 # it sits flush against the branch chip. The whole chip vanishes on a clean tree.
 [git_status]
-format = '([\[](bright-black)$conflicted$staged$modified$deleted$renamed$untracked$stashed$ahead$behind$diverged[\]](bright-black))'
+format = '([\[](bright-black)$conflicted$staged$modified$deleted$renamed$untracked$stashed$ahead_behind[\]](bright-black))'
 conflicted = '[~$count](bold red)'
 staged     = '[+$count](green)'
 modified   = '[!$count](yellow)'
@@ -56,6 +56,12 @@ stashed    = '[*$count](purple)'
 # ASCII, so ahead/behind survive a terminal without arrow glyphs. Every other
 # counter here already carries a distinct sigil (+ ! - ? *); these two were the
 # only ones whose marker was their only channel.
+#
+# These three are OPTIONS, consumed through the `$ahead_behind` VARIABLE above --
+# there is no `$ahead`, `$behind` or `$diverged` in git_status's format map
+# (src/modules/git_status.rs), and an unmapped name renders as the empty string
+# with no warning. The format string named all three directly, so none of this
+# had ever displayed.
 ahead      = '[^$count](green)'
 behind     = '[v$count](red)'
 diverged   = '[^$ahead_count](green)[v$behind_count](red)'

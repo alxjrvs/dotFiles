@@ -51,8 +51,8 @@ src = ".ripgreprc"
 dst = "~/.ripgreprc"
 
 [[section.link]]
-src = ".fdignore"
-dst = "~/.fdignore"
+src = "fd/ignore"
+dst = "~/.config/fd/ignore"
 
 # npm userconfig → its canonical native location (`npm config get userconfig` is
 # ~/.npmrc; npm does NOT use XDG ~/.config/npm for the userconfig). Preferences
