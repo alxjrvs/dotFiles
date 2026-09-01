@@ -25,8 +25,7 @@ read_only = " "
 # Branch chip: muted [ ] around a blue name. ASCII throughout, for the same
 # glyph-safety reason the statusline uses an '@' sigil — a nerd-font glyph is
 # tofu over SSH and in any terminal without FiraCode. `symbol` is deliberately a
-# bare space, NOT starship's default branch glyph. (This comment used to claim
-# the opposite while the value below said otherwise; the value was right.)
+# bare space, NOT starship's default branch glyph.
 # No leading space — the `directory` module already trails one after the title;
 # no trailing space either, so the status chip butts up flush.
 [git_branch]

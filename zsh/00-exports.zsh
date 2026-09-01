@@ -5,14 +5,8 @@ export LANG=en_US.UTF-8
 export LESS='-RFX'
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 
-# Preferred terminal emulator. macOS has no system "default terminal" role,
-# so this is the XDG-convention declaration of intent (not TERM_PROGRAM,
-# which terminals set themselves). Ghostty is the sole terminal.
-export TERMINAL=ghostty
-
 # GitHub tokens are never exported into the shell env; anything that needs one
-# resolves it on demand via `gh auth token` (the github MCP server reads its PAT
-# from 1Password through op-agent). See .zprofile for the rationale.
+# resolves it on demand via `gh auth token`. See .zprofile for the rationale.
 
 # sharp builds its native addon against a global libvips when pkg-config finds
 # one, and that build fails on a missing node-addon-api. `vips` is present here
