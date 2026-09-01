@@ -8,6 +8,28 @@
 # Rule: if you're about to add a `brew "..."` line here, stop. Put it in
 # mise.toml. The exceptions are mise itself, casks, and system libraries
 # (no mise equivalent) that pre-built CLIs link against at runtime.
+#
+# ── Upgrading is three commands, and none of them is `boom source --update` ──
+#
+#   boom source              # reconcile only — this is `brew bundle --no-upgrade`
+#   brew upgrade --formula   # every outdated formula. Cannot touch a cask.
+#   mise upgrade             # what actually moves the CLIs (rewrites mise.lock — commit it)
+#
+# `--update`'s whole effect is dropping `--no-upgrade` from `brew bundle`, and that flag
+# governs CASKS as well as formulae: boom measured Bundle running `brew upgrade --cask` on an
+# `auto_updates: true` cask that set no `greedy: true`, so `greedy` is not an opt-out (the
+# measurement is in boom's `src/engine/resources/packages.ts`, beside the flag). A cask upgrade
+# replaces the `.app`, so Homebrew quits the running app — Chrome, Slack, Ghostty, 1Password —
+# to deliver formulae that `brew upgrade --formula` delivers without closing anything. The flag
+# does not even reach mise: boom's sync runs `mise install` either way, never `mise upgrade`.
+#
+# `--formula` is also what disambiguates `boom`, which is a cask name too — see the tap block
+# below for what a bare `brew upgrade boom` resolves to.
+#
+# Casks are left to their own updaters, which Chrome, Slack, Discord, 1Password, Raycast and
+# OrbStack all ship. Pushing brew's copy over an app that has already self-updated is the
+# heroku shape in DECISIONS.md — brew's version record was fiction — with a forced restart
+# attached. When a cask genuinely needs moving: `brew upgrade --cask <name>`, deliberately.
 
 brew "mise"
 
