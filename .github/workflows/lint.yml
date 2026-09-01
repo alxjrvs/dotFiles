@@ -98,11 +98,6 @@ jobs:
       - name: always-loaded context budget
         run: scripts/context-budget.sh
 
-      # taplo proving boomfile.toml parses says nothing about whether the payload
-      # paths it names are there. A missing src fails `boom source` partway
-      # through, on a real machine, after it has already changed things.
-      - name: boomfile sources exist
-        run: scripts/boomfile-sources.sh
 
       # The rules directory is exempt from the byte ceiling on exactly one
       # condition: every rule is path-scoped, so it costs nothing until a
@@ -120,16 +115,26 @@ jobs:
       - name: skill + agent description cap
         run: git ls-files -z 'dot-claude/skills/*/SKILL.md' 'dot-claude/agents/*.md' | xargs -0 scripts/description-cap.sh
 
-      # Asserts the shared assertions themselves: a gate handed a missing path
-      # or an empty file list must fail, not print `ok`. In CI specifically,
-      # because CI is where these scripts are handed a literal path or a
-      # `$(git ls-files …)` expansion that can be empty.
-      - name: gate regression tests
-        run: scripts/tests/gates.sh
+      # this (src-path existence, including its own glob-expansion branch) while
+      # lefthook.yml claimed in a comment that `boom source --dry-run` was already the
+      # validator for this file. Nothing ran it. Now something does.
+      #
+      # Safe on a runner, by construction and not by hope: `--dry-run` makes run steps
+      # no-ops (run.ts refuses to spawn a shell under it), and `osx_default` and
+      # `launchd` are OS-gated to darwin, so on ubuntu they report and change nothing.
+      # Both repo hooks honour `api.dryRun` too.
+      #
+      # Installed through boom's own published bootstrap, pinned to the same tag
+      # README documents — so this step also proves the documented fresh-machine
+      # install path still works. install.sh verifies the binary against the release's
+      # SHA256SUMS and refuses to install unverified.
+      - name: boomfile applies
+        env:
+          BOOM_CONFIG: ${{ github.workspace }}
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/alxjrvs/boom/v0.30.0/install.sh | sh
+          "$HOME/.local/bin/boom" source --dry-run
 
-
-      # One step in THIS job, not a job of its own: the required context is
-      # ["lint"], so a separate job would not be a required check.
       - name: hook regression tests
         run: dot-claude/hooks/tests/all.sh
 

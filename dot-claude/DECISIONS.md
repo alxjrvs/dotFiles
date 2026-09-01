@@ -59,6 +59,32 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-01 — the engine now validates the artifact, because nothing did
+
+`lefthook.yml` stated that `boomfile.toml` was *"validated by `boom source --dry-run`"*. Grepping
+CI, lefthook and `scripts/` for that command returned only prose — two comments and an error
+string. **Nothing in this repo had ever run it.** `taplo check --no-schema` proved 772 lines of
+TOML parse; nothing proved they apply.
+
+Meanwhile `scripts/boomfile-sources.sh` was 63 lines hand-reimplementing one slice of the engine's
+own planning pass — src-path existence, with its own glob-expansion branch — which is the exact
+shape `CLAUDE.md` calls out: *native over special; deleting custom code for a built-in is the
+highest-value change.* It is deleted, along with its fixture and three `gates.sh` cases.
+
+CI now runs `boom source --dry-run` against the checkout. That covers what the shell script did
+and everything it could not: link modes, dir modes, the `absent` path, glob fan-outs, hook
+resolution, package manifests, and schema validity as the engine actually reads them.
+
+**Why it is safe on a runner**, by construction rather than by hope: `--dry-run` makes `run` steps
+no-ops (`run.ts` refuses to spawn a shell under it), `osx_default` and `launchd` are OS-gated to
+darwin so they report and change nothing on ubuntu, and both repo hooks honour `api.dryRun`.
+
+It installs boom through the published bootstrap pinned to the tag README documents, so the step
+doubles as a check that the documented fresh-machine install path still works — and `install.sh`
+verifies the binary against the release's `SHA256SUMS` and refuses to install unverified.
+
+---
+
 ## 2026-09-01 — three controls that were describing themselves, and one that was passing on work it never read
 
 An external audit went looking for what this config could delete. The three findings that
