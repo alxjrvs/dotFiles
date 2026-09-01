@@ -641,7 +641,7 @@ resolved=$(command -v boom)
 case "$resolved" in
   "$(brew --prefix)"/*) exit 0 ;;
 esac
-echo "boom resolves to $resolved, not $(brew --prefix)/bin/boom — the Brewfile declares it, so something ahead of brew on PATH is shadowing it (\`install.sh\` drops one at ~/.local/bin/boom)"
+echo "boom resolves to $resolved, not $(brew --prefix)/bin/boom — the Brewfile declares it, so something ahead of brew on PATH is shadowing it (\`install.sh\` drops one at ~/.local/bin/boom). Note \`boom\` is also a homebrew-cask name: upgrade with \`brew upgrade alxjrvs/boom/boom\`, never a bare \`brew upgrade boom\`, which resolves to the cask."
 exit 1
 '''
 

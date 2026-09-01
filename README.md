@@ -22,9 +22,10 @@ branch, it could have been rewritten to drop those checks. A tag is immutable. B
 `install.sh` itself changes; it still bootstraps the latest boom release.
 
 That curl is a **bootstrap, not boom's home**: you need a boom to apply `boomfile.toml` at
-all. The first sync installs `brew "boom"` from [its own tap](https://github.com/alxjrvs/boom),
-removes the bootstrap copy from `~/.local/bin`, and from then on `brew upgrade boom` is the
-update path. `boom verify` asserts that `command -v boom` resolves inside brew's prefix —
+all. The first sync installs `alxjrvs/boom/boom` from [its own tap](https://github.com/alxjrvs/boom),
+removes the bootstrap copy from `~/.local/bin`, and from then on
+`brew upgrade alxjrvs/boom/boom` is the update path — **fully qualified**, because `boom` is
+also a homebrew-cask name and a bare `brew upgrade boom` silently resolves to the cask. `boom verify` asserts that `command -v boom` resolves inside brew's prefix —
 `.zprofile` puts `~/.local/bin` ahead of brew, so a leftover bootstrap binary would silently
 shadow the managed one.
 

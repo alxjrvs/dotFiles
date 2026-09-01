@@ -20,8 +20,22 @@ brew "mise"
 #
 # curl-pipe install.sh stays the FRESH-MACHINE bootstrap (you need a boom to run this
 # file at all) — it is a bootstrap, not a second delivery path, and it hands over here.
-tap "alxjrvs/boom", "https://github.com/alxjrvs/boom"
-brew "boom"
+# `trusted:` is not optional here, and omitting it is what broke the first attempt at this.
+# Homebrew refuses to load a formula from a non-official tap until it is trusted, so a bare
+# `brew "boom"` failed `brew bundle` outright with "Run `brew trust …` to trust it" — which is
+# the EXACT hazard this file already documents two blocks down, for heroku: "a Brewfile line
+# that needs an interactive step is a fresh machine that stops halfway."
+#
+# Scoped to the one formula rather than `trusted: true` for the whole tap: the tap is a repo
+# that could grow a cask or a command later, and trusting it wholesale would adopt those
+# silently. Same least-privilege shape as ssh/1password-agent.toml scoping per ITEM.
+#
+# FULLY QUALIFIED, and that is not style. `boom` is also a CASK name in homebrew-cask, so a
+# bare `boom` is ambiguous: `brew upgrade boom` on the machine resolved to the cask and
+# reported "Not upgrading boom, the latest version is already installed" while the formula
+# sat at an old version. `owner/tap/formula` names exactly one thing.
+tap "alxjrvs/boom", "https://github.com/alxjrvs/boom", trusted: { formula: "boom" }
+brew "alxjrvs/boom/boom"
 
 # openssl@3 is a system library, not a CLI — `aqua:rossmacarthur/sheldon`
 # dyld-links against /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib and
