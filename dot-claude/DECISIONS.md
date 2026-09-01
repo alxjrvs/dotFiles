@@ -59,6 +59,38 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-01 — upgrading split into three commands, and boom lost the flag that fought them
+
+`boom source --update` was the upgrade habit, and it kept closing Chrome. The mechanism is in the
+`Brewfile` header, where the rule now lives: the flag's whole effect was dropping `--no-upgrade`
+from `brew bundle`, that governs casks as well as formulae, and a cask upgrade replaces the `.app`
+and so quits the running app. What the header does not carry is the fix that was rejected.
+
+The flag was also not doing the job it was assumed to do. It never reached mise — a sync runs
+`mise install` with or without it and `mise upgrade` on neither path — and every dev CLI lives in
+`mise.toml` by policy. So the CLI surface sat frozen at its locked versions the entire time the
+flag was closing the browser, and what it bought at that price was the Brewfile's formulae, which
+`brew upgrade --formula` moves without touching an app.
+
+**Rejected: teach the flag better manners.** Have `--update` run `brew bundle --no-upgrade` then
+`brew upgrade --formula`, and add `mise upgrade` beside it. One command, everything upgraded,
+nothing to remember. The price is an engine carrying an opinion about what "upgrade" means per
+manager — Homebrew's semantics and mise's, restated in a third place and free to drift from both —
+to save typing two commands that already exist and already mean exactly that. A flag that means a
+different blast radius to each manager behind it is a wrapper wearing a flag, and the principle
+against those is already in `CLAUDE.md`.
+
+**Taken: three commands, and the flag deleted upstream.** `boom source` reconciles,
+`brew upgrade --formula` moves the formulae, `mise upgrade` moves the CLIs — each one tool's own
+verb, none of them boom's to keep in sync. boom 0.38 removes `--update` outright and makes
+`--no-upgrade` unconditional, so a reconcile can no longer close an application even by request,
+and this repo's convention is backed by the engine rather than by remembering. Casks are left to
+their own updaters, and to a deliberate `brew upgrade --cask <name>` where an app has none.
+
+Writing the cadence down was the first fix, and on its own it was not enough: a convention that
+lives only in a comment is one `--update` away from closed browsers. Deleting the flag is what
+makes it hold on a machine where nobody read the comment.
+
 ## 2026-09-01 — `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is removed, and it had no entry here
 
 `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"` is gone. alxjrvs asked for agent teams to stop
