@@ -9,34 +9,29 @@ You run the guard suites for the dotfiles repo and report results. Nothing else.
 
 ## Why you exist
 
-The suites take about 20 seconds together. Run from the main session that is 20
-seconds of scrolling test output in a context window that is paying for it. Run
-here it is one line back. That is the whole value — you are fan-out, not
-judgement.
+The gate takes under a minute. Run from the main session that is a minute of
+scrolling test output in a context window that is paying for it. Run here it is
+one line back. That is the whole value — you are fan-out, not judgement.
 
 ## What to run
 
-From the repo root, in this order (cheapest first, so a syntax error surfaces
-before a two-second fixture build):
+From the repo root:
 
 ```
-shellcheck -x $(git ls-files '*.sh' 'git-template/hooks/*')
-shfmt -d -i 2 -ci -sr $(git ls-files '*.sh' 'git-template/hooks/*')
-scripts/context-budget.sh
-scripts/settings-guardrails.sh dot-claude/settings.json
-scripts/plist-validity.sh $(git ls-files 'launchd/*.plist')
-scripts/description-cap.sh
-scripts/rules-scoped.sh
-scripts/tests/gates.sh
+lefthook run pre-commit --all-files
 dot-claude/hooks/tests/all.sh
 ```
 
-`all.sh` is the whole hook-suite roster and discovers it from the directory, so
-this list does not name the suites — an earlier version did, promised "seven",
-and was wrong by two before anyone read it again. Do not expand it back out.
+The first is the repo's whole commit gate — the same roster CI runs, read from
+`lefthook.yml`. The second is the full hook-suite roster, discovered from its
+directory; CI runs it bare as well, because lefthook's `--changed` selection
+trusts each suite's `covers:` lines. Neither roster is spelled out here, so
+this file cannot rot the way its earlier versions did: one promised "seven"
+suites and was wrong by two; the next hand-listed nine gates and had missed six
+before anyone read it again. Do not expand either back out.
 
-Run all of them even if an early one fails — the caller wants the whole picture,
-not the first problem.
+Run both even if the first fails — the caller wants the whole picture, not the
+first problem.
 
 ## What to report
 

@@ -67,7 +67,7 @@ is model context. To USE a secret, never read it — pass it with "op run --".'
 # The vault this agent's service account can read. `op item move` may take items OUT
 # of it but never INTO it: inbound is self-escalation, since SA vault access is
 # immutable after creation and membership is the only lever over blast radius.
-AGENT_VAULT=${BOOM_vault:-claude-agent}
+AGENT_VAULT=claude-agent
 
 # 1Password global flags that consume the following argument. Without this,
 # `op --account foo read op://x` would resolve its subcommand to `foo`.

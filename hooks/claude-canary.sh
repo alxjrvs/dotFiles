@@ -3,7 +3,8 @@
 # become obsolete.
 #
 # WHY THIS EXISTS. worktree-freshness.sh is not a feature, it is a workaround for a
-# client defect measured against 2.1.237 and recorded in dot-claude/DECISIONS.md:
+# client defect measured against 2.1.237 (the version sits beside the workaround, in
+# worktree-freshness.sh's header and the boomfile link comment):
 # the `worktree.baseRef: "fresh"` path cuts from the LOCAL `origin/<default>` ref
 # and only refreshes it when .git/FETCH_HEAD is older than 24h (86400000 ms) — a
 # cache with no invalidation.
@@ -45,7 +46,7 @@
 #
 # The version is printed, never compared. Pinning a baseline here would recreate
 # exactly the rot this exists to catch: the constant goes stale, someone bumps it
-# to silence the check, and the assertion is gone. DECISIONS.md holds the version
+# to silence the check, and the assertion is gone. worktree-freshness.sh's header holds the version
 # the measurements were taken against; this reports what is installed now so a
 # re-measure has a target.
 set -u
@@ -91,7 +92,7 @@ fi
 
 text=$(extract "$target")
 [ -n "$text" ] || {
-  echo "claude-canary: read $target ($version) but extracted no printable strings — the fingerprint method is broken, NOT a fixed client. Re-measure per dot-claude/DECISIONS.md before trusting any worktree hook."
+  echo "claude-canary: read $target ($version) but extracted no printable strings — the fingerprint method is broken, NOT a fixed client. Re-measure against worktree-freshness.sh's header before trusting any worktree hook."
   exit 1
 }
 
@@ -99,7 +100,7 @@ has() { printf '%s' "$text" | grep -qF -- "$1"; }
 
 # --- the anchor: present in any version that manages worktrees at all -------
 has 'refs/remotes/origin/' || {
-  echo "claude-canary: $target ($version) yielded strings but not even 'refs/remotes/origin/' — fingerprinting is no longer valid for this packaging. This is a BROKEN CHECK, not a fixed client; re-measure per dot-claude/DECISIONS.md."
+  echo "claude-canary: $target ($version) yielded strings but not even 'refs/remotes/origin/' — fingerprinting is no longer valid for this packaging. This is a BROKEN CHECK, not a fixed client; re-measure against worktree-freshness.sh's header."
   exit 1
 }
 
@@ -110,7 +111,7 @@ missing=''
 has 'FETCH_HEAD' || missing="$missing FETCH_HEAD"
 has '86400000' || missing="$missing 86400000"
 [ -z "$missing" ] || {
-  echo "claude-canary: $version no longer contains$missing — the 24h FETCH_HEAD cache that worktree-freshness.sh exists for may be gone. Re-measure (dot-claude/DECISIONS.md, '2026-08-20 — agents were starting from a base up to 24h stale'); if the client now fetches honestly, that hook is deletable."
+  echo "claude-canary: $version no longer contains$missing — the 24h FETCH_HEAD cache that worktree-freshness.sh exists for may be gone. Re-measure against the header of dot-claude/hooks/worktree-freshness.sh; if the client now fetches honestly, that hook is deletable."
   rc=1
 }
 

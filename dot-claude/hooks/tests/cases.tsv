@@ -4,7 +4,7 @@
 # reproduction during the 2026-07-25 audit. Cases marked REGRESSION failed on the
 # pre-fix guards; they are the reason this suite exists.
 #
-# guard:    rebase | worktree
+# guard:    rebase | op
 # fixture:  primary (on main) | wt-a (up to date w/ main) | wt-c (stacked on feature-b) | nonrepo
 # expected: allow | deny
 

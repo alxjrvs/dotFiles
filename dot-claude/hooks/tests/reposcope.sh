@@ -12,15 +12,16 @@
 # real origin remote. No network — the guard resolves the owner from the local
 # remote precisely so it never makes one. ~1s.
 #
-# READ THIS BEFORE TRUSTING A GREEN RUN. Twelve of the twenty-four cases assert
-# the guard did NOT fire, and a hook that does nothing at all passes all twelve.
-# Both negative controls were run, and these are their MEASURED results — the
-# first draft of this block guessed 10 and 8, and both were wrong, which is the
-# whole reason the convention is to run them rather than reason about them:
+# READ THIS BEFORE TRUSTING A GREEN RUN. Most cases here assert the guard did
+# NOT fire, and a hook that does nothing at all passes every one of them. Both
+# negative controls were run, and these are their MEASURED results (2026-09-01,
+# 30 cases) — the first draft of this block guessed 10 and 8, and both were
+# wrong, which is the whole reason the convention is to run them rather than
+# reason about them:
 #
-#   - stub hook (`exit 0` and nothing else): 12 failures, exactly the DENY cases.
-#   - `_is_owned` forced to always return false (every owner foreign): 7
-#     failures — the six owned-org ALLOW cases plus `merge_plain`, which is
+#   - stub hook (`exit 0` and nothing else): 16 failures, exactly the DENY cases.
+#   - `_is_owned` forced to always return false (every owner foreign): 9
+#     failures — the eight owned-org ALLOW cases plus `merge_plain`, which is
 #     denied as a foreign write once no owner is owned. That control proves the
 #     guard reads the owner rather than refusing every write, which would make
 #     `gh` unusable.
