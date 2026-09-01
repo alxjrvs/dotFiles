@@ -59,6 +59,53 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-01 — the vault audit governed three items, and its one firing was wrong
+
+`op-agent audit` is deleted: 137 lines (plus `_prefixed`) asserting that three declared vault
+items exist, in one direction, plus a kebab-case regex over three hand-written strings. The
+`boom verify` step that called it goes with it, and `agent-vault.txt` drops from 61 lines to 20 —
+three data lines under 57 lines of essay, in a repo whose own routing table sends reasons and
+incidents *here*.
+
+The half worth having was already gone. Its own comments recorded why: the reverse check — an
+item in the vault that the manifest does not name — *"made the vault effectively read-only,
+because adding or retiring a credential failed `boom verify` until this file was edited in the
+same breath,"* so it was removed. What remained asserts that three declared items exist, which
+every consumer reports on first resolve anyway.
+
+And the orphan-consumer half had exactly one recorded firing, on 2026-08-29, and it was a **false
+positive**: it reported `claude-git-pat` unconsumed while git was resolving it on every push.
+
+Three facts the deleted prose carried, kept because they are still load-bearing and are now here
+rather than in a file symlinked nowhere:
+
+1. **SA vault access is immutable after creation.** Scope cannot be tightened in place; only the
+   vault's contents can change. Membership is therefore the only lever over blast radius, which
+   is why keeping the vault small still matters — as a judgement when adding, not a machine gate.
+2. **No activity log exists.** Individual/Family accounts get no Activity Log and no
+   service-account usage report, so there is no per-item record of what the SA read. Accepted
+   deliberately (2026-08-19).
+3. **Kebab-case is a real constraint, not tidiness.** Every `op://` ref is re-parsed by `sh -c`,
+   so a space word-splits and the resolve fails silently — the bug that took down two MCP servers
+   on 2026-07-25.
+
+`_sa_expiry_epoch` is untouched. 1Password exposes no service-account token expiry — no API, no UI
+field, no pre-expiry alert — so decoding the JWT `exp` locally is the only way to know, and it is
+the best bespoke code in this repo.
+
+### Also in this pass: the tests that tested the test runner
+
+`scripts/tests/gates.sh` loses its last section — four cases and a `mk_all` helper, 51 lines,
+asserting that `dot-claude/hooks/tests/all.sh` fails when pointed at an empty directory, reports a
+failing suite, and refuses a non-executable one. Tests, for a test runner, for the suites that
+test the guards: three levels of indirection from any file that reaches a machine.
+
+The cases that stay are the ones encoding bugs that actually shipped — the folded-scalar
+description parser, the unclassified `~/.claude/` link, the `\b` that git grep silently ignores,
+the unwired-guard assertion — plus the cheap negative controls for an empty CI glob.
+
+---
+
 ## 2026-09-01 — the engine now validates the artifact, because nothing did
 
 `lefthook.yml` stated that `boomfile.toml` was *"validated by `boom source --dry-run`"*. Grepping
