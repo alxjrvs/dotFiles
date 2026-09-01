@@ -184,14 +184,46 @@ This is **not** measured. Claude's own commits are unsigned here (`settings.json
 is cheap and the failure it prevents is opaque, so it goes in ahead of the evidence, recorded here
 so it can be removed if it turns out to be dead.
 
-### What is untested and could bite
+### MEASURED, same day: the protection DOES follow the symlinks, and that is a feature
 
-`~/.claude` and its contents are write-protected inside the sandbox, and every file in it is a
-symlink into this repo. Whether that protection follows the symlink to `dot-claude/…` — blocking
-a Bash-driven edit of the payload from inside the repo the payload lives in — is not established;
-the documented rule is about a symlink that *appears during* a session, and these pre-exist. The
-`Edit`/`Write` tools are not sandboxed either way. If a Bash edit of `dot-claude/…` starts failing
-with a permission error, that is this, and the revert is one key: `"enabled": false`.
+This section previously said the symlink behaviour was untested. It is now measured, and the
+answer is the one the risk note guessed at.
+
+`~/.claude` is write-protected inside the sandbox and every file in it is a symlink into this
+repo. The question was whether the protection follows the link back to `dot-claude/…`. **It
+does.** Reading the resolved policy out of `/sandbox`'s Config tab:
+
+| Surface | Result |
+|---|---|
+| write allowlist | `.` (the repo), `$TMPDIR`, `~/.claude/debug`, a few device nodes |
+| `~/.claude/` at large | denied — `touch` returns `Operation not permitted` |
+| **denied WITHIN the allowed repo** | `settings.json`, `dot-claude/hooks`, `dot-claude/skills`, `.credentials.json` |
+| `dot-claude/CLAUDE.md` | allowed |
+
+The split is exactly what the published protected-paths list predicts: it names the `.claude`
+settings files and the `skills`/`agents`/`commands`/`hooks` **directories**, and does not name
+`CLAUDE.md`. So the sandbox resolved each `~/.claude/…` symlink to its target in this repo and
+carried the protection across.
+
+**This is worth having, not working around.** The files a sandboxed command cannot rewrite are
+precisely the ones that decide what the next command is allowed to do — the guards, the skills,
+and `settings.json` itself. A shell command that could edit them could grant itself permission
+on the following turn. `Edit` and `Write` are not sandboxed, so the payload stays fully
+maintainable by an agent; only the blast radius of a runaway *shell* command is cut. Nothing to
+revert.
+
+### The method error, recorded because it nearly buried the result
+
+The first probe, and then the control written to validate it, were both run with Claude Code's
+`!` prefix — which executes in the user's own shell. **The sandbox governs the Bash tool, not
+that shell.** Both therefore returned "allowed" for reasons having nothing to do with the
+policy, and the control's inversion led to the conclusion that the sandbox was not enforcing at
+all. It was.
+
+The general form is the one the 2026-08-18 entry already hit with `--bare` stripping auth: *a
+control run on the wrong surface is not a control.* It produces a confident answer to a question
+it never asked. Worth pairing with that entry, because between them the mechanism has now
+produced two false negatives and both were caught only by someone re-running it deliberately.
 
 ---
 
