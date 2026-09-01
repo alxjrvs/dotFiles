@@ -1,21 +1,10 @@
 // hook: claude_statusline — check out a PINNED tag of the statusline repo beside the
 // dotfiles repo and symlink its two scripts onto PATH. Input: with.repo, with.ref.
 //
-// TWO THINGS THIS DELIBERATELY DOES NOT DO, both of which it used to.
-//
-// It does not track a moving branch. `git pull --ff-only` on the default branch meant
-// every `boom source` fetched whatever was on main and ran it — an unpinned dependency,
-// auto-updated, for a cosmetic prompt widget. `with.ref` names a tag; changing it is a
-// commit in this repo.
-//
-// It does not execute the upstream `install.sh`. That script does exactly two things —
-// chmod +x on two files, and two symlinks into ~/.local/bin — so running it bought
-// nothing that could not be done here, in a file that gets reviewed, while handing the
-// upstream arbitrary code execution on every sync. The symlinks are made below by name.
-//
-// Not a `mise` entry, though that was proposed: mise's github/ubi backends install
-// RELEASE ASSETS, and this repo publishes tags with no releases attached. There is
-// nothing for mise to download.
+// Never a moving branch, never the upstream `install.sh`: `with.ref` names a tag, so bumping
+// the widget is a commit here, and the two symlinks are made below by name rather than by
+// handing the upstream code execution on every sync. Not a `mise` entry: mise's github/ubi
+// backends install RELEASE ASSETS, and this repo publishes tags with no releases attached.
 
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
