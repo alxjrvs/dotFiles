@@ -59,6 +59,44 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-01 — Oberon publishes by reference, and this machine deliberately does not install it
+
+[`alxjrvs/oberon`](https://github.com/alxjrvs/oberon) is a Claude Code plugin marketplace holding
+**one registry file and a README, and no plugin code at all.**
+
+### Why a marketplace that contains nothing
+
+The obvious build copies each skill into the marketplace repo and maintains it there. That
+creates two copies of one file with no mechanism keeping them equal — and the copy that gets
+*used* is never the copy that gets *edited*. It drifts silently, and the published version is
+always the stale one. The failure is invisible until a stranger installs it and gets last
+month's advice.
+
+Sourcing in place makes that drift **impossible rather than unlikely**. `agent-friendly-repo`
+is declared with a `github` source pointing at this repo, so the version people install is the
+version being exercised here. `strict: false` is what buys it: the marketplace entry carries
+all the metadata, so this repo needs no `plugin.json` and no plugin-shaped layout. It stays a
+dotfiles repo that happens to be installable.
+
+### What is NOT published, and why that is the point
+
+`drift-triage` and `guard-tester` stay here. One reads `boom verify` output; the other runs
+this repo's own guard suites. Both are written against this machine and would be noise in
+anyone else's session. A marketplace earns trust by what it declines to publish.
+
+### `extraKnownMarketplaces` yes, `enabledPlugins` NO — and this is not an oversight
+
+Oberon is registered as *known* so it is discoverable without a manual `/plugin marketplace
+add`. The plugin is deliberately **not enabled on this machine.**
+
+Installing it here would put `agent-friendly-repo` on disk twice: once under `~/.claude/skills/`
+where `boomfile.toml` already links `dot-claude/skills/`, and again under the plugin's own
+directory. Two copies of one skill, both loaded, their descriptions both billed to the
+description cap — **the exact duplication Oberon was built to avoid, reintroduced one scope
+down.** The machine that authors the skill is the one machine that must not install it.
+
+---
+
 ## 2026-09-01 — the sandbox is on, shaped as egress, and the allowlist is deliberately incomplete
 
 `sandbox.enabled: true`. *The sandbox block is deleted, and two of its paths promoted
