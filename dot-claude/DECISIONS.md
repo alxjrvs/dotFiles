@@ -59,6 +59,82 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-01 — the sandbox is on, shaped as egress, and the allowlist is deliberately incomplete
+
+`sandbox.enabled: true`. *The sandbox block is deleted, and two of its paths promoted
+(2026-09-01)* left this open as "a separate, larger decision"; it was taken deliberately, and the
+shape comes from the measurements already in this file rather than from the vendor page.
+
+### What the record already decided, and what this change obeys
+
+*The sandbox measured: egress works, and `credentials.files` would break op-agent (2026-08-18)*
+established three things that fully determine the design:
+
+1. **Egress enforcement is real, and it is the half `permissions.deny` structurally cannot do.**
+   Deny matches command *spelling*; the allowlist blocks the destination. So `network` is where
+   the value is.
+2. **`credentials.files: deny` is measured to break op-agent.** With keychain file reads denied,
+   `login.keychain-db` leaves the search list and the securityd IPC never resolves. So there is
+   **no `credentials.files` block here**, and there must not be one.
+3. **`credentials.envVars` is the other thing nothing else does.** The 2026-08-31 entry measured
+   that `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` — the control adopted to cover exactly this — misses
+   `GITHUB_TOKEN`, `GH_TOKEN` and `NPM_TOKEN`, while forcing the permission mode to `default`.
+   The four `envVars` denials do that job with none of the cost.
+
+`ANTHROPIC_API_KEY` is **not** in the list, though it is the obvious entry to add. The 2026-08-31
+measurement found `ANTHROPIC_*`, `AWS_*`, `GOOGLE_*` and `GCP_*` all unset on this machine, and
+denying an unset variable is this repo's own *already enforced → nowhere*. `NINETY_API_TOKEN` is
+in the list and is the one unmeasured entry: it is empty in `env`, but Claude Code resolves
+`NINETY_API_TOKEN_COMMAND` into it in-process, and whether the resolved value reaches a Bash
+subprocess has not been tested. Denying it costs nothing if the answer is no.
+
+Nothing is restated. `Read` and `Edit` deny rules are merged into the sandbox configuration by the
+client, so the four `Read()` denials in `permissions.deny` already become sandbox read blocks; a
+`credentials.files` copy of them would be duplication on top of a measured hazard.
+
+### Why the allowlist is short, and why that is the point
+
+The 2026-08-18 entry named the actual blocker: what remains unmeasured is not whether the sandbox
+works but **what the allowlist must contain** for this machine to keep functioning — brew, mise,
+GitHub, npm, 1Password — and that "is empirical over days rather than one run." That is what made
+this look like a day of work.
+
+It is not, because the non-strict sandbox builds the allowlist for you. With `strictAllowlist`
+unset, the first connection to a new domain prompts (or in `auto` goes to the classifier), and
+answering "yes, and don't ask again" writes a `WebFetch(domain:…)` rule into local settings that
+the sandbox honors from then on. So the six domains here are a **seed against a day-one prompt
+storm, not a policy**: the ones this repo's own tooling provably hits on every task. The rest
+accumulates by use, which is the empirical measurement the entry asked for, taken as a byproduct
+of working instead of as a project.
+
+`strictAllowlist: true` — the flag that turns a miss into a denial instead of a prompt — is
+therefore **the deliberate next step, not part of this change.** Setting it before the allowlist
+has converged converts every unmeasured domain into a broken command. Set it once the prompts stop
+arriving; that silence is the signal, and it is the measurement.
+
+`allowUnsandboxedCommands: false` is likewise not set. The 2026-08-18 entry is right that the
+retry path re-opens everything and that it matters if the sandbox is adopted — but it is the same
+class of change as `strictAllowlist` and belongs after convergence, for the same reason.
+
+### The precautionary entry, named as such
+
+`network.allowUnixSockets` lists the 1Password agent socket from `ssh/config`'s `IdentityAgent`.
+This is **not** measured. Claude's own commits are unsigned here (`settings.json` sets
+`commit.gpgsign=false`), so signing is not the consumer; git-over-SSH is. Listing one socket path
+is cheap and the failure it prevents is opaque, so it goes in ahead of the evidence, recorded here
+so it can be removed if it turns out to be dead.
+
+### What is untested and could bite
+
+`~/.claude` and its contents are write-protected inside the sandbox, and every file in it is a
+symlink into this repo. Whether that protection follows the symlink to `dot-claude/…` — blocking
+a Bash-driven edit of the payload from inside the repo the payload lives in — is not established;
+the documented rule is about a symlink that *appears during* a session, and these pre-exist. The
+`Edit`/`Write` tools are not sandboxed either way. If a Bash edit of `dot-claude/…` starts failing
+with a permission error, that is this, and the revert is one key: `"enabled": false`.
+
+---
+
 ## 2026-09-01 — `cases.tsv`'s comments are not war stories, and the cut is declined
 
 An audit costed `dot-claude/hooks/tests/cases.tsv` at −230 lines: 347 of its 664 lines are
@@ -496,10 +572,10 @@ paths with no live equivalent — `~/.config/gh/hosts.yml` and `~/.netrc` — ar
 in `permissions.deny`, where they are evaluated before `auto` and before bypass. The other two
 already were.
 
-**Enabling the sandbox instead remains available and is a separate, larger decision**: it confines
-writes and needs a network allowlist, and the 2026-08-18 entry measured that `credentials.files`
-breaks op-agent. That is a day of work on a machine shared with employer repositories, and it
-should be taken deliberately rather than as a side effect of an audit.
+**Superseded the same day**: enabling the sandbox was taken as its own decision — see *the
+sandbox is on, shaped as egress, and the allowlist is deliberately incomplete (2026-09-01)*. The
+"day of work" this paragraph priced was building the network allowlist up front; the non-strict
+sandbox accumulates it by use instead, so the cost was in the sequencing, not the change.
 
 ### `verify-gate.sh` was passing vacuously, in its most common case
 
