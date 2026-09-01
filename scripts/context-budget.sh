@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
-# Always-loaded context budget — the single source for the ceilings.
+# Always-loaded context budget — the single source for the ceilings, and the
+# inventory of what else gets billed.
 #
 # Called from lefthook's pre-commit and .github/workflows/lint.yml. Both call
 # sites are one line; the numbers and the reasoning live here, once.
@@ -36,19 +37,18 @@
 # the cheap proxy for the whole rotting class. No false-positive risk: a full
 # YYYY-MM-DD has no business in an instruction file.
 #
-# WHY THE COUNT IGNORES HTML COMMENTS: Claude Code strips block-level HTML
-# comments before injecting the file, so a note to a human maintainer costs ZERO
-# tokens and must not compete for the ceiling. Comments inside fenced code blocks
-# ARE preserved, so the strip below does not model fences; the loop fails on a
-# fence rather than quietly under-counting.
-#
 # WHY THE LINK INVENTORY: every `dst = "~/.claude/…"` in boomfile.toml must be
 # classified below or this fails, so a new link is a decision instead of a drift.
+#
+# WHAT WENT, 2026-09-01: a 22-line awk HTML-comment stripper (the client strips
+# them, so they are free — but neither capped file has ever contained one, so it
+# stripped nothing), its fenced-block bail-out, and a git-grep pass forbidding
+# prose from restating two counts this repo computes. `wc -c` is the measurement
+# now. See DECISIONS.md.
 set -eu
 
 BOOMFILE=${BOOMFILE:-boomfile.toml}
 
-# ── the capped set ────────────────────────────────────────────────────
 limit_for() {
   case "$1" in
     dot-claude/CLAUDE.md) echo 2500 ;;
@@ -75,31 +75,6 @@ classify_link() {
     "~/.claude/rules/") echo "path-scoped — free until a matching file is read; gated by rules-scoped.sh" ;;
     *) echo "" ;;
   esac
-}
-
-# Strip block-level HTML comments. See the header: the client does this before
-# billing, so the ceiling must too.
-strip_comments() {
-  awk '
-    {
-      line = $0
-      while (1) {
-        if (incmt) {
-          i = index(line, "-->")
-          if (i == 0) { line = ""; break }
-          line = substr(line, i + 3); incmt = 0
-        } else {
-          i = index(line, "<!--")
-          if (i == 0) break
-          rest = substr(line, i + 4)
-          j = index(rest, "-->")
-          if (j == 0) { line = substr(line, 1, i - 1); incmt = 1; break }
-          line = substr(line, 1, i - 1) substr(rest, j + 3)
-        }
-      }
-      print line
-    }
-  ' "$1"
 }
 
 fail=0
@@ -129,29 +104,6 @@ for l in $links; do
 done
 [ "$fail" -ne 0 ] || echo "ok link inventory ($n_links ~/.claude/ links, all classified)"
 
-# ── no prose may restate a count this repo computes ───────────────────
-# WHY. DECISIONS.md publishes the rule this enforces: a number "may never
-# describe how the system currently is — name the authority instead of the
-# value". Scoped to the two counts that rotted; a general "no digits near nouns"
-# rule would fire on every dated DECISIONS.md measurement, and those are honest.
-#
-# NO `\b`. git grep's ERE does not implement it: the pattern compiles, matches
-# nothing, and the gate passes on everything. Explicit character-class
-# boundaries, the same idiom `guard-lib.sh` uses for its verb regex.
-_B='([^A-Za-z0-9_-]|$)'
-restated=$(git grep -nEI \
-  "(^|[^A-Za-z0-9_-])([0-9]+|ten|eleven|twelve|(thir|four|fif|six|seven|eigh|nine)teen|twenty) (~/\.claude/ )?(links|payload files)$_B" \
-  -- . ':(exclude)scripts/context-budget.sh' 2> /dev/null || true)
-if [ -n "$restated" ]; then
-  echo "$restated" | while IFS= read -r hit; do
-    echo "context-budget: $hit"
-  done
-  echo "context-budget: prose restates a count a script computes — name the authority, not the value (see DECISIONS.md, \"How to write a number so it cannot rot\")"
-  fail=1
-else
-  echo "ok no restated counts"
-fi
-
 # ── per-file ceilings ─────────────────────────────────────────────────
 if [ "$#" -eq 0 ]; then
   set -- dot-claude/CLAUDE.md CLAUDE.md
@@ -161,27 +113,15 @@ for f in "$@"; do
   limit=$(limit_for "$f")
   [ -n "$limit" ] || continue
 
-  # A fenced block would make the comment strip below under-count, because the
-  # client preserves comments inside fences. Fail loudly rather than silently.
-  if grep -q '```' "$f"; then
-    echo "$f: contains a fenced code block — the HTML-comment strip does not model fences"
-    fail=1
-  fi
-
-  raw=$(wc -c < "$f" | tr -d ' ')
-  n=$(strip_comments "$f" | wc -c | tr -d ' ')
-  free=$((raw - n))
-
+  n=$(wc -c < "$f" | tr -d ' ')
   if [ "$n" -gt "$limit" ]; then
-    echo "$f: $n billed bytes, ceiling $limit (~$(((n - limit) / 4)) tokens over)"
+    echo "$f: $n bytes, ceiling $limit (~$(((n - limit) / 4)) tokens over)"
     fail=1
-  elif [ "$free" -gt 0 ]; then
-    echo "ok $f ($n billed bytes of $raw, ceiling $limit; $free in HTML comments, free)"
   else
     echo "ok $f ($n bytes, ceiling $limit)"
   fi
 
-  if strip_comments "$f" | grep -nE '[0-9]{4}-[0-9]{2}-[0-9]{2}'; then
+  if grep -nE '[0-9]{4}-[0-9]{2}-[0-9]{2}' "$f"; then
     echo "$f: dated claim(s) above — a date makes it a record, not a rule"
     fail=1
   fi
@@ -194,7 +134,6 @@ if [ "$fail" -ne 0 ]; then
   echo "  a procedure           -> a skill in dot-claude/skills/"
   echo "  it must actually hold -> a hook, permissions.deny, or a boom verify check"
   echo "  a reason or history   -> dot-claude/DECISIONS.md"
-  echo "  a note to a human     -> an HTML comment; the client strips it, so it is free"
   echo "  already enforced      -> nowhere. Describing a control is not the control."
   exit 1
 fi
