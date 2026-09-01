@@ -1,7 +1,8 @@
 name: lint
 
-# Mirrors the local lefthook pre-commit gate on every push to main and every PR.
-# Lint only — never runs `boom source` or mutates anything.
+# RUNS the local lefthook pre-commit gate on every push to main and every PR — the
+# same roster, not a second copy of it — plus the two checks that are genuinely
+# remote-only. Read-only: `boom source` appears once, under `--dry-run`.
 
 on:
   push:
@@ -40,81 +41,51 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mise install shellcheck shfmt gitleaks jq taplo biome actionlint \
-            || { sleep 20; mise install shellcheck shfmt gitleaks jq taplo biome actionlint; }
+          mise install shellcheck shfmt gitleaks jq taplo biome actionlint lefthook \
+            || { sleep 20; mise install shellcheck shfmt gitleaks jq taplo biome actionlint lefthook; }
           # RUN each tool, never `command -v`: mise puts a SHIM on PATH whether or
           # not the tool behind it installed, so `command -v` passes on absence.
-          for t in shellcheck shfmt gitleaks jq taplo biome actionlint; do
+          for t in shellcheck shfmt gitleaks jq taplo biome actionlint lefthook; do
             "$t" --version > /dev/null 2>&1 || { echo "::error::$t did not install"; exit 1; }
           done
+          # lefthook's own roster runs `zsh -n` over the shell payload, and a
+          # runner has no zsh. Installed here rather than inside that command so
+          # a missing package fails at setup with a clear message.
+          command -v zsh > /dev/null 2>&1 || sudo apt-get install -y -qq zsh
 
-      # Same file set as lefthook.yml's shell globs, resolved via git.
-      - name: shellcheck
-        run: git ls-files -z '*.sh' 'git-template/hooks/*' | xargs -0 shellcheck -x
-      - name: shfmt
-        run: git ls-files -z '*.sh' 'git-template/hooks/*' | xargs -0 shfmt -d -i 2 -ci -sr
+      # ONE ROSTER. Every check below used to be spelled twice — once in
+      # lefthook.yml against `{staged_files}`, once here against a
+      # `git ls-files` expansion — with nothing asserting the two agreed. They
+      # had already drifted in both directions: `brew-drift` existed only in
+      # lefthook, `boomfile-sources` only here. Running lefthook's own roster is
+      # what makes that class impossible rather than merely unlikely.
+      #
+      # `--all-files` because there is no index on a runner: bare
+      # `lefthook run pre-commit` would hand every `glob:`-scoped command an
+      # empty file list and report success for inspecting nothing — the same
+      # vacuous pass that `dot-claude/hooks/verify-gate.sh` was fixed for.
+      #
+      # `brew-drift` no-ops here by design (no brew on a runner, and it says so
+      # rather than passing silently). The `commit-msg` stage is not part of
+      # `run pre-commit` and is only meaningful on a real commit.
+      - name: lefthook pre-commit (the whole local gate)
+        run: lefthook run pre-commit --all-files
 
-      # Mirrors lefthook's biome-check; bare `biome check` uses biome.json and
-      # respects .gitignore, so it never touches node_modules / worktrees.
-      - name: biome
-        run: biome check
-
-      # The current tree, not full history — mirrors the pre-commit secret gate
-      # without risking flaky failures on old history.
+      # NOT part of that roster, deliberately: lefthook runs
+      # `gitleaks protect --staged`, which reads the index. A runner has no
+      # index, and the useful remote question is different anyway — does the
+      # CURRENT TREE contain a secret, rather than does this commit add one.
+      # Same tool, different verb, so it stays its own step.
       - name: gitleaks
         run: gitleaks detect --no-git --redact --no-banner
 
-      # The workflow files are the rest of the remote gate. actionlint also
-      # covers the embedded shell in every `run:` by shelling out to shellcheck,
-      # which the `*.sh` glob above cannot reach.
-      - name: actionlint
-        run: actionlint
-
-      # Same script lefthook and `boom verify` run — one copy of the assertions,
-      # so the three call sites cannot drift.
-      - name: settings.json guardrails
-        run: scripts/settings-guardrails.sh dot-claude/settings.json
-
-      # A TOML syntax error is caught here, not at `boom source` time on a real
-      # machine. --no-schema = pure syntax (hermetic, offline).
-      - name: TOML validity
-        run: git ls-files -z '*.toml' | xargs -0 taplo check --no-schema
-
-      # Same script lefthook runs. Two assertions, not one: structural validity
-      # does not catch a `~` in a path value, which launchd never expands.
-      - name: plist validity
-        run: git ls-files -z 'launchd/*.plist' | xargs -0 scripts/plist-validity.sh
-
-      - name: zsh syntax
-        run: |
-          command -v zsh > /dev/null 2>&1 || sudo apt-get install -y -qq zsh
-          for f in $(git ls-files '*.zsh' '.zshrc' '.zprofile' '.zshenv'); do
-            zsh -n "$f" || { echo "zsh syntax error in $f"; exit 1; }
-          done
-
-      # Same script lefthook's pre-commit runs. The ceilings, the capped set and
-      # the reasoning for each live in the script — one copy, so they cannot
-      # drift apart.
-      - name: always-loaded context budget
-        run: scripts/context-budget.sh
-
-
-      # The rules directory is exempt from the byte ceiling on exactly one
-      # condition: every rule is path-scoped, so it costs nothing until a
-      # matching file is read. This is that condition.
-      - name: rules are path-scoped
-        run: scripts/rules-scoped.sh
-
-      # A skill's or agent's `description` frontmatter is injected into EVERY
-      # session; only the body is on-demand. So the description gets a cap while
-      # the body it belongs to stays free.
+      # THE ARTIFACT, not the assertions about it. Everything above lints files;
+      # this is the only step that asks the engine whether `boomfile.toml` still
+      # APPLIES — every declared source, the glob fan-outs, link and dir modes,
+      # the `absent` path, hook resolution and the package manifests, all
+      # resolved by the thing that will resolve them on a real machine.
       #
-      # This cannot cover ~/.claude/skills — a runner has no home dir to inspect,
-      # so unmanaged skill dirs are invisible here BY CONSTRUCTION. That check is
-      # a `verify` step in boomfile.toml.
-      - name: skill + agent description cap
-        run: git ls-files -z 'dot-claude/skills/*/SKILL.md' 'dot-claude/agents/*.md' | xargs -0 scripts/description-cap.sh
-
+      # It replaced scripts/boomfile-sources.sh, which hand-reimplemented one slice of
       # this (src-path existence, including its own glob-expansion branch) while
       # lefthook.yml claimed in a comment that `boom source --dry-run` was already the
       # validator for this file. Nothing ran it. Now something does.
@@ -135,6 +106,17 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/alxjrvs/boom/v0.30.0/install.sh | sh
           "$HOME/.local/bin/boom" source --dry-run
 
-      - name: hook regression tests
+      # NOT redundant with the lefthook roster above, and this is the one place
+      # the duplication is deliberate. Lefthook's `hook-tests` command runs
+      # `all.sh --changed <files>`, which selects suites by reading each one's
+      # `covers:` lines — a latency optimisation that TRUSTS those lines. A wrong
+      # or missing `covers:` silently narrows what ran, and the failure mode is a
+      # regression sailing through a green gate.
+      #
+      # Bare `all.sh` takes no argument and runs the whole roster, discovered
+      # from the directory. That is the merge gate, and it is immune to a
+      # `covers:` line being wrong. ~16s to make the selective run's one
+      # assumption non-load-bearing.
+      - name: hook regression tests (full roster, no `covers:` selection)
         run: dot-claude/hooks/tests/all.sh
 
