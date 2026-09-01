@@ -59,19 +59,6 @@ case_exit plist_real 0 ./scripts/plist-validity.sh launchd/*.plist
 case_exit skillcap_default_glob 0 ./scripts/description-cap.sh
 case_exit context_budget_real 0 ./scripts/context-budget.sh
 
-# --- the restated-count check must not be written with `\b` -----------------
-# git grep's ERE does not implement the word-boundary escape: the pattern
-# compiles, matches nothing, and the check reports ok on a file that plainly
-# violates it. Asserted on the SHAPE rather than the behaviour, because the check
-# greps the whole repo and has no fixture form. Comment lines are excluded: this
-# file and that one both have to be able to NAME the escape to explain it.
-if grep -v '^[[:space:]]*#' scripts/context-budget.sh | grep -q '\\b'; then
-  fail=$((fail + 1))
-  echo "  [context_budget_no_word_boundary] scripts/context-budget.sh uses the word-boundary escape, which git grep silently ignores"
-else
-  pass=$((pass + 1))
-fi
-
 # --- the project-scoped settings.local.json must be caught -------------------
 # `.gitignore` hides this file at every scope, so it can never be committed and
 # never be reviewed, and `boomfile.toml`'s `absent` resource covers only the

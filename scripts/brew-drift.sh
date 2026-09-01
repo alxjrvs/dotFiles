@@ -74,6 +74,40 @@ brew list --cask 2> /dev/null | sort -u > "$tmp/installed-casks"
 
 fail=0
 
+# ── the check the exclusion list was standing in for ──────────────────
+# A tool declared in mise.toml AND installed by brew is not "excluded", it is a
+# DOUBLE INSTALL — two copies, and whichever sits earlier on PATH wins. The
+# Brewfile documents eight of these ("brew's wins on PATH in some shells, so
+# mise's pin is inert there") and every one of them is in excluded_formulae()
+# below, so this script could never fail on the exact state it describes. That
+# made the exclusion list a permanent amnesty rather than a scope note.
+#
+# So the overlap is now its own assertion, ahead of the drift check and NOT
+# subject to the exclusions: mise owns these names, and brew having them too is
+# the finding. `brew leaves` (not `brew list`) so a formula pulled in only as
+# somebody else's dependency does not read as a deliberate install.
+if [ -f mise.toml ] && command -v brew > /dev/null 2>&1; then
+  # Both spellings mise accepts: a bare `gh = "latest"`, and a quoted, backend-
+  # prefixed `"npm:heroku" = "latest"` / `"aqua:dbrgn/tealdeer" = "latest"`. The
+  # brew name to compare against is the LAST path segment after the backend
+  # prefix, which is what lands on PATH — reading only the bare form missed
+  # heroku, netlify-cli and usage, three of the eight the Brewfile documents.
+  mise_tools=$(sed -n '/^\[tools\]/,/^\[/p' mise.toml |
+    sed -n 's/^"\{0,1\}\([a-zA-Z0-9_.:/-]*\)"\{0,1\}[[:space:]]*=.*/\1/p' |
+    sed 's/.*[:/]//' | grep -v '^$' | sort -u)
+  if [ -n "$mise_tools" ]; then
+    both=$(printf '%s\n' "$mise_tools" | sort -u > "$tmp/mise-tools" && brew leaves | sort -u > "$tmp/leaves-for-mise" && comm -12 "$tmp/mise-tools" "$tmp/leaves-for-mise")
+    if [ -n "$both" ]; then
+      echo "declared in mise.toml AND installed by brew — two copies, PATH order decides which runs:"
+      echo "$both" | sed 's/^/  /'
+      echo "  -> brew uninstall $(echo "$both" | tr '\n' ' ')"
+      fail=1
+    else
+      echo "ok no mise/brew double installs"
+    fi
+  fi
+fi
+
 extra_f=$(comm -23 "$tmp/installed-formulae" "$tmp/ok-formulae")
 if [ -n "$extra_f" ]; then
   echo "installed, but neither declared nor listed as a deliberate exclusion:"

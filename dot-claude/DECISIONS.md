@@ -59,6 +59,58 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-01 — four of six "replace with native" cuts would have been regressions
+
+An audit costed six `scripts/` gates at roughly −430 lines, on the reading that each was a native
+call wrapped in 40–150 lines of framing. Working through them, **only one was.** The line counts
+were right; what the lines were doing was not asked.
+
+**Cut, and it was real — `context-budget.sh`, 200 → 139.** Two things went. `strip_comments`, 22
+lines of awk plus a fenced-block bail-out, existed because the client strips block-level HTML
+comments before billing, so they should not count against the ceiling. True — and neither capped
+file has ever contained one, so it stripped nothing. And a `git grep` pass forbidding prose from
+restating two counts this repo computes: a real rule, but enforced by a hand-built ERE with a
+word-boundary workaround, which then needed its own case in `gates.sh` asserting the regex was not
+written with `\b`. Three artifacts to stop a sentence containing a number. `wc -c` is the
+measurement now.
+
+**Kept, with the reason, because cutting would have cost more than it saved:**
+
+- **`description-cap.sh`** — the audit called its 28-line awk "hand-rolled YAML for three files".
+  Those 28 lines ARE the fix for a shipped bug: a one-line parser scores a folded block
+  (`description: >-`) as the single word `>-`, so any skill could carry an unbounded description
+  past a gate reporting `ok (1 words)`. Replacing it with a one-liner reintroduces the defect the
+  suite has a regression case for.
+- **`rules-scoped.sh`** — "83 lines to check that two files contain `paths:`". Six of those lines
+  are an awk frontmatter reader that will not mistake a `paths:` in the body for the real one; the
+  rest is the empty-input doctrine this repo requires everywhere else (a gate that checked nothing
+  must not print `ok`). `grep -c '^paths:'` drops both properties.
+- **`brew-resolves.sh`** — already IS the native call. `brew info --json=v2` is the check; the
+  other lines are argument extraction and the error prose that tells you a cask was renamed.
+- **`plist-validity.sh`** — proposed as "two lines in lefthook.yml, two in lint.yml". It is two
+  assertions with a plutil/plistlib fallback, because CI runs on ubuntu where `plutil` does not
+  exist. Inlining duplicates that fallback and its rationale across two YAML files — recreating
+  the two-roster drift this same pass is closing elsewhere.
+
+The general lesson, worth more than the lines: **a line count is not a measure of whether a line
+earns its place.** Four of these six are long because something went wrong once and the fix is
+still there. That is what a comment-dense codebase looks like when it is working.
+
+### The one improvement in the bucket that mattered was not a cut
+
+`brew-drift.sh` gains an assertion it was missing: a tool declared in `mise.toml` **and** installed
+by brew is not "excluded", it is a double install, and whichever copy sits earlier on PATH wins.
+The Brewfile documents eight of these — *"brew's wins on PATH in some shells, so mise's pin is inert
+there"* — and every one of them sits in `excluded_formulae()`, so the script could never fail on the
+exact state it describes. The exclusion list was a permanent amnesty, not a scope note.
+
+The new check runs ahead of the drift comparison and is **not** subject to the exclusions, because
+mise owning the name is the whole point. It reads both spellings mise accepts, bare and quoted
+backend-prefixed (`"npm:heroku"`), taking the last path segment — reading only the bare form missed
+three of the eight.
+
+---
+
 ## 2026-09-01 — boom is installed by Homebrew, and PATH order is why that needed more than a Brewfile line
 
 `brew "boom"` is declared, from the repo that doubles as its own tap. Adding the line alone would
