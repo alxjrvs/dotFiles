@@ -1,5 +1,21 @@
-// hook: claude_statusline — clone the statusline repo beside the dotfiles repo and
-// run its installer. Input: with.repo (git url). Ported from claude_statusline.sh.
+// hook: claude_statusline — check out a PINNED tag of the statusline repo beside the
+// dotfiles repo and symlink its two scripts onto PATH. Input: with.repo, with.ref.
+//
+// TWO THINGS THIS DELIBERATELY DOES NOT DO, both of which it used to.
+//
+// It does not track a moving branch. `git pull --ff-only` on the default branch meant
+// every `boom source` fetched whatever was on main and ran it — an unpinned dependency,
+// auto-updated, for a cosmetic prompt widget. `with.ref` names a tag; changing it is a
+// commit in this repo.
+//
+// It does not execute the upstream `install.sh`. That script does exactly two things —
+// chmod +x on two files, and two symlinks into ~/.local/bin — so running it bought
+// nothing that could not be done here, in a file that gets reviewed, while handing the
+// upstream arbitrary code execution on every sync. The symlinks are made below by name.
+//
+// Not a `mise` entry, though that was proposed: mise's github/ubi backends install
+// RELEASE ASSETS, and this repo publishes tags with no releases attached. There is
+// nothing for mise to download.
 
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -18,6 +34,13 @@ interface Api {
 // statusline checkout sits beside the dotfiles repo (was $BOOM_CONFIG/..).
 const TARGET = join(import.meta.dir, "..", "..", "claude-statusline");
 const DEFAULT_REPO = "github.com/TheGnarCo/claude-statusline";
+// Pinned. Bump deliberately, in a commit, after reading what changed.
+const DEFAULT_REF = "v1.1.1";
+// The two scripts install.sh used to symlink, named here so the hook never has to run it.
+const LINKS: ReadonlyArray<readonly [string, string]> = [
+  ["statusline.sh", "claude-statusline"],
+  ["subagent-statusline.sh", "claude-subagent-statusline"],
+];
 
 // True when TARGET is a checkout of some *other* remote than `url`. Reads
 // .git/config rather than shelling out, so verify() can stay sync.
@@ -32,9 +55,12 @@ function pointsElsewhere(url: string): boolean {
 
 export async function sync(api: Api): Promise<void> {
   const repo = api.with.repo ?? DEFAULT_REPO;
+  const ref = api.with.ref ?? DEFAULT_REF;
   const url = `https://${repo}.git`;
   if (api.dryRun) {
-    api.note(`would clone ${url} → ${TARGET} and run install.sh`);
+    api.note(
+      `would check out ${url} at ${ref} → ${TARGET} and symlink 2 scripts`,
+    );
     return;
   }
   // The boomfile declares the upstream, so honor a change to it. Re-clone
@@ -46,17 +72,39 @@ export async function sync(api: Api): Promise<void> {
     await $`rm -rf ${TARGET}`.nothrow().quiet();
     api.note(`upstream is now ${repo} — re-cloning`);
   }
-  if (existsSync(join(TARGET, ".git"))) {
-    await $`git -C ${TARGET} pull --ff-only -q`.nothrow().quiet();
-    api.ok("statusline updated");
-  } else {
+  if (!existsSync(join(TARGET, ".git"))) {
     await $`git clone -q ${url} ${TARGET}`.nothrow().quiet();
     api.ok(`statusline cloned → ${TARGET}`);
   }
-  if (existsSync(join(TARGET, "install.sh"))) {
-    await $`./install.sh`.cwd(TARGET).nothrow().quiet();
-    api.ok("statusline installed");
+  // Fetch the tag by name and check out that object. Detached HEAD is the point:
+  // this checkout is derived state, and nothing here should ever track a branch.
+  await $`git -C ${TARGET} fetch -q --tags origin`.nothrow().quiet();
+  const at =
+    await $`git -C ${TARGET} rev-parse --verify -q ${`${ref}^{commit}`}`
+      .nothrow()
+      .quiet();
+  if (at.exitCode !== 0) {
+    api.warn(
+      `statusline: ${repo} has no ref ${ref} — leaving the checkout alone`,
+    );
+    return;
   }
+  await $`git -C ${TARGET} checkout -q --detach ${ref}`.nothrow().quiet();
+  api.ok(`statusline at ${ref}`);
+
+  // What install.sh did, by name, in a file that gets reviewed.
+  const bin = join(api.env.HOME ?? "", ".local", "bin");
+  await $`mkdir -p ${bin}`.nothrow().quiet();
+  for (const [src, name] of LINKS) {
+    const from = join(TARGET, src);
+    if (!existsSync(from)) {
+      api.warn(`statusline: ${repo}@${ref} has no ${src}`);
+      continue;
+    }
+    await $`chmod +x ${from}`.nothrow().quiet();
+    await $`ln -sfn ${from} ${join(bin, name)}`.nothrow().quiet();
+  }
+  api.ok("statusline linked onto PATH");
 }
 
 export function verify(api: Api): void {

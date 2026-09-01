@@ -59,6 +59,43 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-01 — the statusline stopped tracking a branch and stopped running a stranger's installer
+
+`hooks/claude_statusline.ts` did two things on every `boom source`: `git pull --ff-only` on the
+upstream's default branch, then execute that repo's `install.sh`. An **unpinned dependency,
+auto-updated and auto-executed**, for a cosmetic prompt widget — in a repo whose README files the
+statusline under "4 — Cosmetic" and whose CLAUDE.md says every dependency earns its weight.
+
+Both are closed:
+
+- **Pinned.** `with.ref = "v1.1.1"` in `boomfile.toml`; the hook fetches tags and checks that
+  object out detached. Bumping it is a commit here, after reading what changed.
+- **The installer is not executed.** It did exactly two things — `chmod +x` on two scripts and two
+  symlinks into `~/.local/bin` — so running it bought nothing that could not be done in a file
+  that gets reviewed, while handing the upstream arbitrary code execution. The two links are made
+  by name in the hook.
+
+**Not a `mise` entry, though that was the audit's proposal.** mise's `github`/`ubi` backends
+install RELEASE ASSETS; this upstream publishes tags with no releases attached, and ships shell
+scripts rather than a binary. There is nothing for mise to download. Checked before designing
+around it.
+
+### And git signing lost three constants it was writing every sync
+
+`commit.gpgSign`, `tag.gpgSign` and `gpg.ssh.program` move into the tracked `.gitconfig`, beside
+the `[gpg "ssh"]` block that was already there. `hooks/git-signing.ts` keeps only the value it has
+to DISCOVER — `user.signingkey`, looked up by key name from the 1Password agent, so a rotated key
+converges without anyone editing a file — plus the `allowed_signers` append.
+
+They were machine-local on the reasoning that "a box without 1Password shouldn't fail commits."
+That is **host detection wearing another name**, and it guards a machine this config does not
+support anyway: the README ranks 1Password second in what breaks on a fork, and `boom verify`
+fails on day one without it. Agent sessions still disable signing explicitly, via
+`GIT_CONFIG_KEY_0` in `dot-claude/settings.json`, which is a deliberate override rather than an
+absence.
+
+---
+
 ## 2026-09-01 — CI runs lefthook's roster instead of re-spelling it
 
 `.github/workflows/lint.yml` had fourteen steps, each a re-spelling of a `lefthook.yml` command

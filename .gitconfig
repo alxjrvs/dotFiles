@@ -45,10 +45,9 @@
 [commit]
 	template = ~/.gitmessage
 	verbose = true
+	gpgSign = true
 	# Anything below the scissors line in the commit message is stripped.
 	cleanup = scissors
-	# gpgSign lives in ~/.gitconfig.local (machine-local) so fresh boxes don't
-	# fail commits before SSH keys are set up. See `boom source`.
 [push]
 	autoSetupRemote = true
 	followTags = true
@@ -103,11 +102,23 @@
 	updateRefs = true
 [tag]
 	sort = version:refname
-	# gpgSign lives in ~/.gitconfig.local
+	gpgSign = true
 [gpg]
 	format = ssh
 [gpg "ssh"]
 	allowedSignersFile = ~/.ssh/allowed_signers
+	# Constants, so they live here rather than being written into
+	# ~/.gitconfig.local by hooks/git-signing.ts on every sync. That hook keeps
+	# only the one value it has to DISCOVER — user.signingkey, looked up by key
+	# name from the 1Password agent, so a rotated key converges without an edit.
+	#
+	# They were machine-local on the reasoning that "a box without 1Password
+	# shouldn't fail commits". That is host detection wearing another name, and
+	# it guards a machine this config does not support anyway: README ranks
+	# 1Password second in what breaks on a fork, and `boom verify` fails on day
+	# one without it. Agent sessions still turn signing off explicitly, via
+	# GIT_CONFIG_KEY_0 in dot-claude/settings.json.
+	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
 [help]
 	autocorrect = prompt
 [include]

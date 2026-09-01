@@ -1,8 +1,16 @@
-// hook: git-signing — converge git commit/tag signing via 1Password op-ssh-sign.
-// Writes machine-local ~/.gitconfig.local + appends ~/.ssh/allowed_signers, using the
-// 1Password-agent key named by with.key (default GitHubSSH). gpgSign stays
-// machine-local so a box without 1Password doesn't fail commits. Ported from
-// git-signing.sh.
+// hook: git-signing — resolve the ONE signing value that has to be discovered, and
+// record it. Everything constant about signing (`commit.gpgSign`, `tag.gpgSign`,
+// `gpg.format`, `gpg.ssh.program`, `gpg.ssh.allowedSignersFile`) is in the tracked
+// `.gitconfig`, where it is reviewable and identical on every machine.
+//
+// What is left here is genuinely dynamic: `user.signingkey` is looked up BY NAME from
+// the 1Password agent (with.key, default GitHubSSH), so a rotated key converges without
+// anyone editing a file; and the public key is appended to ~/.ssh/allowed_signers so
+// `git log --show-signature` verifies locally.
+//
+// The three constants used to be written into machine-local ~/.gitconfig.local on the
+// reasoning that "a box without 1Password shouldn't fail commits" — host detection
+// wearing another name, guarding a machine this config does not support anyway.
 
 import {
   appendFileSync,
@@ -80,9 +88,6 @@ export async function sync(api: Api): Promise<void> {
       cfg,
       "# Machine-local git overrides — NOT in dotfiles. Written by boom.\n",
     );
-  await $`git config --file ${cfg} commit.gpgSign true`.nothrow().quiet();
-  await $`git config --file ${cfg} tag.gpgSign true`.nothrow().quiet();
-  await $`git config --file ${cfg} gpg.ssh.program ${PROG}`.nothrow().quiet();
   const want = `key::${pub}`;
   const cur = (
     await $`git config --file ${cfg} user.signingkey`
