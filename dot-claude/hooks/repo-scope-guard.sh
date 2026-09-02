@@ -3,12 +3,13 @@
 # owned orgs, and refuses the two `gh pr merge` flags that delete a branch.
 #
 # WHY A GUARD AND NOT A DENY ENTRY. `permissions.deny` cannot express "this repo
-# but not that one" (the owner is data), nor "this flag anywhere in argv"
-# (`Bash(gh pr merge:*)` matches every spelling of it). Both need tokenizing,
-# which is what guard-lib.sh is for. `gh api` is the sharpest case: it is `-X
-# POST` and `-X DELETE` against any repo on GitHub, pre-approved in
-# `.claude/settings.local.json` under `defaultMode: auto`, and the owner is an
-# argument rather than a spelling.
+# but not that one" (the owner is data), and a deny rule matches a spelling while
+# the branch-deleting flag has at least four (`-d`, a bundled `-dX`,
+# `--delete-branch`, `--delete-branch=true`). Both need tokenizing, which is
+# what guard-lib.sh is for. `gh api` is the sharpest case: it is `-X POST` and
+# `-X DELETE` against any repo on GitHub, pre-approved by the classifier under
+# `defaultMode: auto` (dot-claude/settings.json), and the owner is an argument
+# rather than a spelling.
 #
 # NO NETWORK. The owner is resolved from the local remote, never `gh repo view`:
 # this runs on every Bash tool call, and a network round-trip there is a tax on
@@ -157,7 +158,7 @@ while IFS= read -r seg; do
 
   # --- the branch-deleting merge, wherever it points ------------------------
   if [ "$sub" = pr ] && [ "$verb" = merge ] && [ "$merge_deletes" = 1 ]; then
-    deny "\`gh pr merge\` with a branch-deleting flag is refused: land work through GitHub's own gate and let \`delete_branch_on_merge\` handle the branch. A local flag deletes the branch before the stack above it has been retargeted, which is how a stacked PR loses its base. \`permissions.deny\` cannot express this — it matches a command spelling, and the flag is an argument."
+    deny "\`gh pr merge\` with a branch-deleting flag is refused: land work through GitHub's own gate and let \`delete_branch_on_merge\` handle the branch. A local flag deletes the branch before the stack above it has been retargeted, which is how a stacked PR loses its base. \`permissions.deny\` matches a spelling, and this flag has four."
   fi
 
   # --- writes outside the owned orgs ----------------------------------------

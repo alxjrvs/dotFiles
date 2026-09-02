@@ -8,9 +8,7 @@
 // anyone editing a file; and the public key is appended to ~/.ssh/allowed_signers so
 // `git log --show-signature` verifies locally.
 //
-// The three constants used to be written into machine-local ~/.gitconfig.local on the
-// reasoning that "a box without 1Password shouldn't fail commits" — host detection
-// wearing another name, guarding a machine this config does not support anyway.
+// Why the constants are not written here as well: `.gitconfig`'s `[gpg "ssh"]` comment.
 
 import {
   appendFileSync,
@@ -124,18 +122,19 @@ export async function sync(api: Api): Promise<void> {
   api.ok("signing converged (op-ssh-sign)");
 }
 
+// Asserts the one value sync() writes. It used to read `commit.gpgSign` from the same file —
+// a constant that moved into the tracked `.gitconfig` — so a machine first synced after that
+// move warned forever, and the remedy it printed could not clear it.
 export function verify(api: Api): void {
   const cfg = join(home(api), ".gitconfig.local");
-  const r = Bun.spawnSync(["git", "config", "--file", cfg, "commit.gpgSign"], {
+  const r = Bun.spawnSync(["git", "config", "--file", cfg, "user.signingkey"], {
     stdout: "pipe",
     stderr: "ignore",
   });
-  if (
-    r.exitCode === 0 &&
-    new TextDecoder().decode(r.stdout).trim() === "true"
-  ) {
-    api.ok("commit signing enabled (~/.gitconfig.local)");
+  const key = new TextDecoder().decode(r.stdout).trim();
+  if (r.exitCode === 0 && key.startsWith("key::")) {
+    api.ok("signingkey set from the 1Password agent (~/.gitconfig.local)");
   } else {
-    api.warn("signing not configured — run: boom source --only=git-signing");
+    api.warn("signingkey not set — run: boom source --only=git-signing");
   }
 }

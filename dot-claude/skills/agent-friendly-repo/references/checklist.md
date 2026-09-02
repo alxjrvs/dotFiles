@@ -13,7 +13,7 @@ The procedure in SKILL.md says when to read this.
 **Repo merge settings** — `gh api repos/{o}/{r}`:
 - `allow_squash_merge=true`, `allow_merge_commit=false`, `allow_rebase_merge=false` — squash-only.
 - `allow_auto_merge=true` — **required** for `gh pr merge --auto`, the agent completion path. Without it, `--auto` errors.
-- `delete_branch_on_merge=true` — GitHub deletes the remote branch server-side on merge, so agent worktree branches don't pile up (this is also the native fix for the #53 `--delete-branch` worktree-`main` collision — see CLAUDE.md).
+- `delete_branch_on_merge=true` — GitHub deletes the remote branch server-side on merge, so agent worktree branches don't pile up (this is also the native fix for the `--delete-branch` worktree-`main` collision: a local flag deletes the branch before the stack above it is retargeted).
 - `allow_update_branch=true` — surfaces the "Update branch" button.
 - `squash_merge_commit_title=PR_TITLE`, `squash_merge_commit_message=BLANK` (or `COMMIT_MESSAGES`) — clean squash subjects.
 
@@ -43,7 +43,7 @@ config/secrets.json
 
 - **Never hand-roll this as a SessionStart hook.** The built-in covers every worktree Claude Code
   creates; a hook cannot. `SubagentStart` carries the parent process's cwd rather than the
-  subagent's worktree (see DECISIONS.md), so `isolation: worktree` subagents — the ones that churn
+  subagent's worktree, so `isolation: worktree` subagents — the ones that churn
   most — would keep starting without their env files.
 - **It copies, it does not link** — a plaintext secret in `.env` becomes one more copy on disk per
   worktree. A repo whose `.env` holds `op://` references costs nothing here; one holding live
@@ -81,7 +81,7 @@ for stacks rather than merely preferred:
   `merge_group:` sequencing hazard below. The accepted cost is that `gh stack merge` does **not**
   wait: it checks only that each PR is open and non-draft, then asks GitHub to merge *now*, and a
   red or pending check fails the entire all-or-nothing batch. So the supported flow is
-  **watch every layer green (`gh pr checks <pr> --watch`), then merge** — see `ship`. Do not
+  **watch every layer green (`gh pr checks <pr> --watch`), then `gh stack merge`**. Do not
   recommend a queue as the remedy for that wait; recommend it only if a repo has no Dependabot
   auto-merge to lose *and* the user asks.
 - Squash-only is fine — `gh stack merge --squash` gives one squashed commit per layer, which is

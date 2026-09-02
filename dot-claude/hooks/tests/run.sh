@@ -8,7 +8,8 @@
 # covers: dot-claude/hooks/op-guard.sh
 # covers: dot-claude/hooks/rebase-guard.sh
 # covers: dot-claude/hooks/tests/cases.tsv
-# Regression suite for the three PreToolUse guards.
+# Regression suite for op-guard.sh and rebase-guard.sh — the two guards whose verdict a
+# fixture table can express.
 #
 # The guards are 200+ lines of load-bearing, security-relevant shell — they are
 # the only deterministic enforcement in the setup, and they had no tests. Two
@@ -53,7 +54,6 @@ q() { "$@" > /dev/null 2>&1; }
 # origin.git ── main
 #   primary   on main, up to date
 #   wt-a      feature-a, contains main  (ordinary in-flight branch)
-#   wt-b      feature-b, held so others collide with it
 #   wt-c      feature-c, stacked on feature-b and BEHIND main — so a bare
 #             `gh pr create` is correctly denied while `--base feature-b` passes.
 #             That pair is what distinguishes the fix from the bug.
@@ -86,7 +86,6 @@ build_fixtures() {
   q git push origin feature-a
 
   q git worktree add "$ROOT/wt-a" feature-a || return 1
-  q git worktree add "$ROOT/wt-b" feature-b || return 1
   q git worktree add "$ROOT/wt-c" feature-c || return 1
 
   mkdir -p "$ROOT/nonrepo" || return 1
@@ -97,7 +96,6 @@ fixture_dir() {
   case "$1" in
     primary) printf '%s' "$ROOT/primary" ;;
     wt-a) printf '%s' "$ROOT/wt-a" ;;
-    wt-b) printf '%s' "$ROOT/wt-b" ;;
     wt-c) printf '%s' "$ROOT/wt-c" ;;
     nonrepo) printf '%s' "$ROOT/nonrepo" ;;
     *) return 1 ;;

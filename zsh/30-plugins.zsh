@@ -12,7 +12,7 @@
 #
 # The number above is now also ENFORCED, not only recorded: scripts/startup-budget.sh
 # runs as a `boom verify` step against a ceiling set well above this baseline, so
-# structural drift surfaces on the nightly rather than whenever someone thinks to
+# structural drift surfaces on the next `boom verify` rather than whenever someone thinks to
 # re-time it. Move the ceiling deliberately if the baseline is re-measured upward.
 
 # Sheldon plugins (adds zsh-completions to fpath, loads FSH last)

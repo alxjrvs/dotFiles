@@ -15,24 +15,23 @@
 #     gate gets no opinion from this hook.
 #   - `--all-files`, and that is the whole correctness of this hook. Running bare
 #     `lefthook run pre-commit` asks it to inspect the INDEX, and at the end of an agent turn
-#     the index is empty -- the work is written but not staged. Fourteen of this repo's sixteen
-#     pre-commit commands are `glob:`-scoped against `{staged_files}`, so all fourteen received
+#     the index is empty -- the work is written but not staged. Nearly every pre-commit command
+#     in this repo's lefthook.yml is `glob:`-scoped against `{staged_files}`, so they received
 #     no files, skipped, and the gate reported success on work it had never opened. It passed
 #     vacuously in the single most common case it exists for. `--all-files` makes the
 #     `{staged_files}` templates resolve to real files, which is the only spelling that keeps
 #     the promise below.
 #   - Once per TREE STATE, not once per session, so a turn that changes nothing does not pay
-#     for the gate twice and a turn that changes something is always re-checked. The old
-#     session-keyed marker armed only after a failure, so a passing session re-ran the gate on
-#     every dirty turn and a failing one stopped checking for good. See the marker block below
-#     for why the key needs both `status --porcelain` and `diff HEAD`.
-#   - Under a timeout. A hung gate must not hang the session. `--all-files` is slower than the
-#     index-scoped run it replaces; that is the price of the gate meaning anything.
+#     for the gate twice and a turn that changes something is always re-checked. See the marker
+#     block below for why the key needs both `status --porcelain` and `diff HEAD`.
+#   - Under a timeout where one exists. A hung gate must not hang the session. `--all-files` is
+#     slower than the index-scoped run it replaces; that is the price of the gate meaning
+#     anything. `timeout` is not in the macOS base system, so the bound is optional and the gate
+#     is not -- see the run block below.
 #
 # The loop-breaker is the client's, not ours: `stop_hook_active` is set on the payload when
 # Claude Code is already continuing because of a stop hook, and the client ends the turn after
-# 8 consecutive blocks regardless. An earlier version of this file said no such field was
-# documented and hand-rolled a session-keyed marker under the state dir to stand in for it.
+# 8 consecutive blocks regardless.
 #
 # Fails OPEN on every error path, like every other guard here: no jq, no git, no lefthook, an
 # unreadable payload, a timeout -- all exit 0. A verification gate that breaks a session because
@@ -85,8 +84,18 @@ marker="$state/$tree_id"
 
 # Run the repo's own commit gate over the WORKING TREE. See the `--all-files` note in the
 # header: without it this inspects an empty index and passes on work it never opened.
-out=$(cd "$root" && timeout 120 lefthook run pre-commit --all-files 2>&1)
-rc=$?
+#
+# `timeout` is guarded, not assumed. A missing binary is rc 127, and the fail-open arm below
+# reads 127 as "lefthook could not run" -- so an unguarded `timeout` made this gate pass
+# vacuously on every machine without GNU coreutils, which is the OS it is written for. The
+# suite has a case for it.
+if command -v timeout > /dev/null 2>&1; then
+  out=$(cd "$root" && timeout 120 lefthook run pre-commit --all-files 2>&1)
+  rc=$?
+else
+  out=$(cd "$root" && lefthook run pre-commit --all-files 2>&1)
+  rc=$?
+fi
 
 # Timeout (124) or a lefthook that could not run at all: fail open rather than strand the turn.
 [ "$rc" -eq 124 ] && exit 0

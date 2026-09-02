@@ -67,7 +67,7 @@ is model context. To USE a secret, never read it — pass it with "op run --".'
 # The vault this agent's service account can read. `op item move` may take items OUT
 # of it but never INTO it: inbound is self-escalation, since SA vault access is
 # immutable after creation and membership is the only lever over blast radius.
-AGENT_VAULT=${BOOM_vault:-claude-agent}
+AGENT_VAULT=claude-agent
 
 # 1Password global flags that consume the following argument. Without this,
 # `op --account foo read op://x` would resolve its subcommand to `foo`.
@@ -331,13 +331,12 @@ $SAFE_SHAPES"
   # on every sync.
   #
   # Allow-listed, not deny-listed: an unknown verb fails CLOSED, which stays safe
-  # when boom adds a command. Extending it is one word plus a case in cases.tsv.
+  # when boom adds a command. The list is what `boom --help` prints (0.38.1);
+  # extending it is one word plus a case in cases.tsv.
   if [ "$prog" = "boom" ]; then
     shift
     case "${1:-}" in
-      verify | status | plan | source | where | edit | rollback | checkpoint | \
-        upgrade | doctor | lock | adopt | init | fleet | module | code | mcp | \
-        completions | man | skill | uninstall | --help | -h | --version | -v | '')
+      verify | source | doctor | skill | uninstall | --help | -h | --version | -v | '')
         continue
         ;;
       askpass)

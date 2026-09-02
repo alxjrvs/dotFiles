@@ -11,9 +11,9 @@
 #   op-agent provision           ensure SA vault + keychain token; check git PAT
 #   op-agent status              report keychain token presence (exit 0/1)
 #
-# Stays a standalone script because Claude Code's MCP `headersHelper` and plugin
-# `*_COMMAND` resolvers (spacebase, gninety) exec it by path, and git execs it as
-# a credential helper; the boomfile drives provision/status via `on apply|verify`.
+# Stays a standalone script because Claude Code's plugin `*_COMMAND` resolver
+# (gninety) execs it by path, and git execs it as a credential helper; the
+# boomfile drives provision/status via `on = "sync"` / `on = "verify"`.
 #
 # `header` is deleted. It emitted a bearer token for an HTTP MCP `headersHelper`; nothing in
 # the repo declares an HTTP MCP server, and it is the verb that printed a live PAT into a
@@ -28,7 +28,7 @@ set -euo pipefail
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 KEYCHAIN="op-claude-agent"
-VAULT="${BOOM_vault:-claude-agent}"
+VAULT="claude-agent"
 # Item titles in this vault are kept space-free on purpose. Every consumer of an
 # op:// ref runs it through `sh -c` (MCP `headersHelper`, plugin `*_COMMAND`), so
 # a title with spaces word-splits into separate arguments unless every call site
@@ -41,8 +41,8 @@ PAT_REF="op://$VAULT/claude-git-pat/credential"
 # busywork on a machine that reprovisions rarely, short enough that a leaked token
 # has a horizon. Rotation is manual (web UI only), so the warning window has to be
 # wide enough to act on.
-SA_EXPIRY="${BOOM_sa_expiry:-90d}"
-SA_WARN_DAYS="${BOOM_sa_warn_days:-14}"
+SA_EXPIRY="90d"
+SA_WARN_DAYS=14
 
 # Load the SA token from the login keychain into THIS process only (no biometric,
 # headless-safe). Empty/missing → op falls back to desktop auth.

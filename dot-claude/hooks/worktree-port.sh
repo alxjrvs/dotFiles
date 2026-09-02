@@ -20,6 +20,12 @@
 # twice. `cksum` is POSIX. The cost is birthday collisions — two worktrees of one
 # repo share a block roughly 1 in 1000 — which degrades to exactly today's
 # behaviour, one EADDRINUSE.
+#
+# THE `.env` WRITE IS THE ENFORCEMENT, and four conditions gate it, each one a way it could
+# otherwise damage something:
+#   - the file exists            — this hook never CREATES a `.env`.
+#   - it is not a symlink        — a linked `.env` points at the primary checkout, and
+#                                  appending through it would edit
 #                                  the user's real file. Asserted directly.
 #   - git ignores it             — so the append can never show up as a tracked
 #                                  diff and never be committed by an agent.

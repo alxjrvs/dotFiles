@@ -1,16 +1,17 @@
 #!/usr/bin/env sh
 # Every name the Brewfile declares still resolves to a real formula or cask.
 #
-# WHY, AND WHY IT NEEDS A macOS RUNNER. Homebrew retires and renames casks
+# WHY, AND WHY ONLY `boom verify` CAN ASK. Homebrew retires and renames casks
 # continuously, so the declaration here is a claim about an upstream that moves
 # without telling anyone — and a retired name fails `brew bundle` outright on a
 # fresh machine. The class is INVISIBLE to the rest of the gate by construction:
 # every other check reads files, and a file naming a cask that no longer exists
-# is perfectly well-formed. It only surfaces where brew itself can answer.
+# is perfectly well-formed. It only surfaces where brew itself can answer, which
+# is a real machine, not the ubuntu runner.
 #
-# ONE `brew info` CALL for everything. Per-name calls are ~35 network round trips
-# and the runner is not free; `--json=v2` takes the whole list at once and reports
-# what it could not find on stderr with a nonzero exit.
+# ONE `brew info` CALL for everything. Per-name calls are ~35 network round trips;
+# `--json=v2` takes the whole list at once and reports what it could not find on
+# stderr with a nonzero exit.
 #
 # Usage: scripts/brew-resolves.sh [Brewfile]
 set -eu
@@ -23,7 +24,7 @@ FILE=${1:-Brewfile}
 }
 
 command -v brew > /dev/null 2>&1 || {
-  echo "brew-resolves: brew not on PATH — this check needs a macOS runner" >&2
+  echo "brew-resolves: brew not on PATH — this check runs where brew is installed (\`boom verify\`)" >&2
   exit 1
 }
 

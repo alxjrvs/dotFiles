@@ -19,7 +19,7 @@
 #
 # THE STUB ASSERTS `--all-files`, and that is the point of this suite rather than a detail of
 # it. The hook used to run bare `lefthook run pre-commit`, which inspects the INDEX; at the end
-# of an agent turn the index is empty, so the fourteen `glob:`-scoped commands in lefthook.yml
+# of an agent turn the index is empty, so every `glob:`-scoped command in lefthook.yml
 # received no files and skipped, and the gate reported success on work it had never opened. A
 # stub that returns a canned exit code for any argument list cannot see that -- the previous
 # version of this suite passed every case while the hook was vacuous. So the stub now refuses
@@ -87,11 +87,12 @@ printf '0' > "$TMPROOT/exit"
 export LEFTHOOK_STUB_EXIT="$TMPROOT/exit"
 
 # $1 = label, $2 = expected exit, $3 = cwd, $4 = session id, $5 = stop_hook_active (default false)
+# CASE_PATH, when set, replaces the PATH the hook sees (the no-`timeout` case below).
 run_case() {
   local label=$1 want=$2 cwd=$3 session=$4 active=${5:-false} out rc
   out=$(printf '{"session_id":"%s","cwd":"%s","hook_event_name":"Stop","stop_hook_active":%s}' \
     "$session" "$cwd" "$active" |
-    PATH="$BIN:$PATH" XDG_STATE_HOME="$TMPROOT/state" "$HOOK" 2>&1)
+    PATH="${CASE_PATH:-$BIN:$PATH}" XDG_STATE_HOME="$TMPROOT/state" "$HOOK" 2>&1)
   rc=$?
   if [ "$rc" = "$want" ]; then
     pass=$((pass + 1))
@@ -183,6 +184,23 @@ run_case same_tree_other_session_allows 0 "$FAILING" s8
 # this: it went quiet for the rest of the session after one failure, however much changed.
 dirty "$FAILING"
 run_case changed_tree_blocks_again 2 "$FAILING" s7
+
+# --- the bound is optional; the gate is not -----------------------------------
+# `timeout` is not in the macOS base system. The hook used to call it unguarded, and a missing
+# binary is rc 127 — which the fail-open arm read as "lefthook could not run", so the Stop gate
+# enforced nothing on the OS it is written for, and this suite could not see it because it only
+# ever ran where `timeout` exists. Same failing gate, on a PATH that carries everything the hook
+# needs except `timeout`: it must still block.
+NOTO="$TMPROOT/no-timeout-bin"
+mkdir -p "$NOTO"
+for t in bash sh env git jq cat mkdir cksum tr sed head tail dirname; do
+  p=$(command -v "$t" 2> /dev/null) && ln -s "$p" "$NOTO/$t"
+done
+ln -s "$BIN/lefthook" "$NOTO/lefthook"
+NOTIMEOUT=$(newrepo notimeout gate)
+dirty "$NOTIMEOUT"
+printf '1' > "$TMPROOT/exit"
+CASE_PATH="$NOTO" run_case gate_fails_blocks_without_timeout 2 "$NOTIMEOUT" s11
 
 # --- fail open --------------------------------------------------------------
 

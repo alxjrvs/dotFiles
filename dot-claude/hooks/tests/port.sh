@@ -7,7 +7,7 @@
 # covers: dot-claude/hooks/worktree-port.sh
 # Regression suite for worktree-port.sh.
 #
-# Its own harness for the same reason freshness.sh and publish.sh have theirs:
+# Its own harness for the same reason freshness.sh and wtremove.sh have theirs:
 # run.sh asserts on a PreToolUse `permissionDecision`, and this hook returns no
 # decision. Its observable effects are two — the port block it announces in
 # `additionalContext`, and whether a `.env` on disk gained a `PORT=` line — so

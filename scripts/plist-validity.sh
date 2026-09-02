@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 # launchd plist guardrails — the single source for both assertions.
 #
-# Called from lefthook's pre-commit (staged files) and .github/workflows/lint.yml
-# (every tracked plist).
+# Called from lefthook's pre-commit (staged files); CI runs the same roster with
+# `--all-files`.
 #
 # WHY TWO ASSERTIONS AND NOT ONE. launchd does NOT expand `~` or `$HOME` in a
 # plist value. It fails the job with EX_CONFIG (78) BEFORE running it, so the
@@ -16,8 +16,8 @@ set -eu
 
 fail=0
 
-# An empty input list is a failure, not a pass: an empty `$(git ls-files …)`
-# expansion in CI must not report success for zero files checked.
+# An empty input list is a failure, not a pass: a glob that matched nothing
+# must not report success for zero files checked.
 [ "$#" -gt 0 ] || {
   echo "no inputs — the caller's glob matched nothing, so no plist was checked" >&2
   exit 1

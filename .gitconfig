@@ -4,7 +4,7 @@
   sw = switch
   st = status -sb
   undo = reset HEAD~1 --mixed
-  gone = !git fetch -p && git branch -vv | awk '/: gone]/{print $1}' | xargs -r git branch -D
+  gone = !git fetch && git branch -vv | awk '/: gone]/{print $1}' | xargs -r git branch -D
 
 [user]
 	name = alxjrvs
@@ -28,9 +28,7 @@
 	editor = nvim
 	# No excludesfile override: git reads ~/.config/git/ignore (XDG default)
 	# for global excludes, managed by the `git/ignore` link in boomfile.toml.
-	# The repo's own .gitignore stays repo-scoped (it used to double as the
-	# global excludes via a ~/.gitignore symlink, leaking .claude/ etc. into
-	# every repo on the machine).
+	# The repo's own .gitignore stays repo-scoped.
 	pager = delta
 	untrackedCache = true
 
@@ -46,8 +44,6 @@
 	template = ~/.gitmessage
 	verbose = true
 	gpgSign = true
-	# Anything below the scissors line in the commit message is stripped.
-	cleanup = scissors
 [push]
 	autoSetupRemote = true
 	followTags = true
@@ -62,7 +58,6 @@
 [delta]
 	navigate = true
 	side-by-side = true
-	line-numbers = true
 	dark = true
 	hyperlinks = true
 [transfer]

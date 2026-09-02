@@ -4,25 +4,17 @@
 # global config (conf.d files never live in a project's cwd tree, so they're
 # never re-read as a project-local config).
 #
-# `trusted_config_paths = ["~/**/.worktrees"]` used to live here, and it was the
-# reason for the split: mise refuses that key in a project-local load
-# ("trusted_config_paths in non-global config … is ignored for security
-# reasons"), and this repo's double-duty mise.toml tripped that on every mise
-# invocation from inside the repo. Deleted 2026-08-24 as DEAD CONFIG — mise
-# matches trusted paths by prefix, not glob, so `~/**/…` never trusted a single
-# file, and mise now shares trust across a repo's linked worktrees natively.
-# Both measured against the pinned 2026.8.2 with positive controls; see
-# DECISIONS.md.
-#
-# What is left is `lockfile`, which mise accepts in any config. It stays here
-# rather than moving into mise.toml so that file remains tools-only.
+# Global-only keys cannot live in mise.toml: that file is also loaded as this
+# repo's project-local config, where mise ignores them with a warning. What is
+# here is `lockfile`, which mise accepts anywhere; it stays here rather than
+# moving into mise.toml so that file remains tools-only.
 
 [settings]
 # Keep mise.lock current automatically. Until now `node = "25"` was the only pin in mise.toml
 # and ~25 other tools sat at "latest", so "two machines converge" was true of the tool LIST but
 # not of the versions — the largest remaining reproducibility hole here. The lockfile also
 # carries SHA256 checksums, sizes and URLs (plus GitHub provenance attestations where the
-# backend supplies them), which adds supply-chain verification across 28 binaries pulled from
+# backend supplies them), which adds supply-chain verification across every binary pulled from
 # aqua, GitHub and npm.
 #
 # `lockfile`, deliberately NOT `locked`. This one auto-creates and updates the file; `locked`

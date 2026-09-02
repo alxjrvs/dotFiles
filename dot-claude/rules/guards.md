@@ -17,7 +17,7 @@ Three properties hold for every script here, and breaking one is silent:
 - **Tokenize, never substring-match.** `guard-lib.sh` carries the quote-aware
   splitter. `git log --grep "git push"` must pass untouched.
 
-## Wire it in four places or it does nothing
+## Wire it in three places or it does nothing
 
 This is the step that gets missed, and the failure is silent: the script sits on
 disk, passes its own suite, and enforces nothing.
@@ -29,7 +29,9 @@ disk, passes its own suite, and enforces nothing.
 3. `scripts/settings-guardrails.sh` — add the filename to `wired_hooks`. This is
    what makes un-wiring it fail lefthook, CI and `boom verify` rather than
    passing all three.
-4. `lefthook.yml` and `.github/workflows/lint.yml` — a suite entry.
+
+Nothing in `lefthook.yml` or CI: lefthook's `hook-tests` glob and CI's bare `all.sh`
+discover a new guard and its suite from the directory.
 
 ## Tests
 

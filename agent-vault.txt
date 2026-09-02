@@ -1,9 +1,7 @@
 # agent-vault.txt — the items in the `claude-agent` 1Password vault that THIS REPO
-# RESOLVES (or whatever `BOOM_vault` names).
+# RESOLVES.
 #
-# Documentation, not a gate. `op-agent audit` used to check it and was deleted:
-# 137 lines governing three items, in one direction, whose only recorded firing
-# was a false positive. Every consumer below reports a missing item on first use.
+# Documentation, not a gate: every consumer below reports a missing item on first use.
 #
 # Adding a line means naming what resolves it, in the same commit. Titles must be
 # kebab-case: every op:// ref is re-parsed by `sh -c`, so a space word-splits and

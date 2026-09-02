@@ -32,7 +32,7 @@ starship = "latest"     # prompt — `starship init zsh` loaded in zsh/50-prompt
 # ── Git surface (used by prompt, lefthook, pre-commit) ────────────────
 gh = "latest"           # GH CLI
 delta = "latest"        # syntax-aware git pager
-gitleaks = "latest"     # gitleaks protect — global pre-commit hook
+gitleaks = "latest"     # `gitleaks git --staged` — global pre-commit hook
 lefthook = "latest"     # repo-local pre-commit/pre-push runner
 "npm:heroku" = "latest" # Heroku CLI. `.gitconfig` names it in a credential helper for
                         # git.heroku.com, so the helper is broken on any machine without it.
@@ -78,17 +78,12 @@ shellcheck = "latest"
 biome = "latest"                          # JS/TS/JSON linter+formatter — `biome check`
                                           # (lefthook + CI + nvim format-on-save); registry
                                           # short-name → aqua:biomejs/biome
-actionlint = "latest"                     # GitHub Actions workflow linter. Was a `brew leaves`
-                                          # entry — a dev CLI, so it belongs here per the policy
-                                          # at the top of this file. Registry short-name →
-                                          # aqua:rhysd/actionlint (verified with `mise registry`).
-                                          # Its brew build is also what pulled in a second
-                                          # shellcheck as a dependency.
+actionlint = "latest"                     # GitHub Actions workflow linter (lefthook + CI);
+                                          # registry short-name → aqua:rhysd/actionlint
 
 # ── Security scanning ─────────────────────────────────────────────────
-osv-scanner = "latest"                    # OSV vulnerability scanner. Also a former undeclared
-                                          # `brew leaves` entry; registry short-name →
-                                          # aqua:google/osv-scanner.
+osv-scanner = "latest"                    # OSV vulnerability scanner, run by hand; registry
+                                          # short-name → aqua:google/osv-scanner
 
 # ── Neovim language servers (nvim/init.lua wires these in) ────────────
 # rust-analyzer is not global — it comes with a per-project `rust` toolchain,

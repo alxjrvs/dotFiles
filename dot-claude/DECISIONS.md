@@ -237,6 +237,16 @@ This is **not** measured. Claude's own commits are unsigned here (`settings.json
 is cheap and the failure it prevents is opaque, so it goes in ahead of the evidence, recorded here
 so it can be removed if it turns out to be dead.
 
+### Two `credentials` shapes that look right and are not
+
+`mode: "mask"` does not block a credential: the command sees a sentinel, and the sandbox proxy
+swaps the real value back in on outbound requests to hosts named in `injectHosts`, which needs
+`network.tlsTerminate` and the destination in `allowedDomains`. Without those the sentinel reaches
+the server unchanged and every `gh` and `npm` call authenticates with it — measured 2026-08-28,
+when six `mask` entries sat in an inert block. `mask` is the right answer only alongside a full
+network policy. And there is no `unset` mode: the documented values are `deny` and `mask`, and
+`deny` is the one that unsets.
+
 ### MEASURED, same day: the protection DOES follow the symlinks, and that is a feature
 
 This section previously said the symlink behaviour was untested. It is now measured, and the
@@ -651,12 +661,13 @@ which has been a lefthook and CI check since 2026-08-29. Its own note records th
 instance — *"an earlier version… promised 'seven', and was wrong by two before anyone read it
 again."*
 
-The roster exists in three places (this agent, `lefthook.yml`, `.github/workflows/lint.yml`) and
-nothing asserts they agree, which is the same two-roster class that let `brew-drift` live only in
-lefthook and `boomfile-sources` only in CI. Adding the missing line is the fix that was available
-today; a single `scripts/check.sh` that all three call is the fix that would stop it recurring,
-and it is not taken here because it is machinery added during a pass that is removing machinery.
-Recorded so the next person weighing it has the count: three copies, two recorded rots.
+The roster existed in three places (this agent, `lefthook.yml`, `.github/workflows/lint.yml`) and
+nothing asserted they agreed, which is the same two-roster class that let `brew-drift` live only
+in lefthook and `boomfile-sources` only in CI. A single `scripts/check.sh` that all three call was
+declined as machinery added during a pass that was removing machinery. The same day, *CI runs
+lefthook's roster instead of re-spelling it* made `lefthook run pre-commit --all-files` that
+single entry point with no new machinery, and the agent now calls it too — so one roster remains,
+`lefthook.yml`, and this file's warning about the agent's hand-copy has nothing left to warn about.
 
 ### Also in this pass: the tests that tested the test runner
 
@@ -703,24 +714,14 @@ An external audit went looking for what this config could delete. The three find
 mattered were not size at all: they were controls that read as enforcement and enforced nothing.
 Each was confirmed by running it, not by reading it.
 
-### The `sandbox` block is deleted, and two of its paths promoted
+### Two `Read()` denials came out of the old sandbox block
 
-`sandbox.enabled` was never set, and it defaults to `false`. *The sandbox measured: egress works,
-and `credentials.files` would break op-agent (2026-08-18)* already established that
-`sandbox.credentials` and `sandbox.filesystem` bind only to sandboxed Bash, and the 2026-08-28
-pass changed `mask` to `deny` and left the block standing anyway. So six credential denials and
-four `denyRead` paths sat in the file, looked like a posture, and bound to nothing — in the config
-whose own `CLAUDE.md` says *already enforced → nowhere; describing a control is not the control.*
-
-Deleting an inert block would have silently dropped the intent behind it, so the two `denyRead`
-paths with no live equivalent — `~/.config/gh/hosts.yml` and `~/.netrc` — are now `Read()` entries
-in `permissions.deny`, where they are evaluated before `auto` and before bypass. The other two
-already were.
-
-**Superseded the same day**: enabling the sandbox was taken as its own decision — see *the
-sandbox is on, shaped as egress, and the allowlist is deliberately incomplete (2026-09-01)*. The
-"day of work" this paragraph priced was building the network allowlist up front; the non-strict
-sandbox accumulates it by use instead, so the cost was in the sequencing, not the change.
+`~/.config/gh/hosts.yml` and `~/.netrc` were `sandbox.filesystem.denyRead` entries binding to
+nothing while `sandbox.enabled` was unset — a block that looked like a posture and enforced
+nothing, in the config whose own `CLAUDE.md` says *already enforced → nowhere; describing a
+control is not the control.* They are `Read()` entries in `permissions.deny` now, evaluated before
+`auto` and before bypass. The sandbox was enabled the same day as its own decision (*the sandbox
+is on, shaped as egress, and the allowlist is deliberately incomplete*).
 
 ### `verify-gate.sh` was passing vacuously, in its most common case
 
@@ -757,8 +758,7 @@ telemetry needs `CLAUDE_CODE_ENABLE_TELEMETRY` and an exporter, and neither exis
 `attribution.pr` carried a `Co-Authored-By:` trailer, but pull request descriptions get **plain
 text**; only commits get trailers, so it was prose pretending to be a co-author record.
 `env.NINETY_BASE_URL` had no `_COMMAND` sibling and no consumer. And the project-scope
-`Bash(git fetch *)` never matched a bare `git fetch` — the trailing space needs text after it,
-which is the exact gotcha `rules/claude-settings.md` documents.
+`Bash(git fetch *)` was respelled `Bash(git fetch:*)`, the form every other rule here uses.
 
 ### Declined, again: `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`
 
@@ -848,7 +848,7 @@ that nobody should have to know.
 
 Nothing replaces it. `permissions.deny` already blocks the Bash path to the tokens that do exist
 and is evaluated before `auto` and bypass; `sandbox.credentials.envVars` covers the env-at-rest
-case and stays inert until `sandbox.enabled`, which remains a separate decision. This entry pairs
+case now that the sandbox is on. This entry pairs
 with the 2026-08-20 removal of `skipAutoPermissionPrompt`: that one restored a prompt that was
 being suppressed, this one restores the mode that was being overridden.
 
@@ -930,50 +930,6 @@ not touch at all — refusing a push when the branch is *behind* its target.
 Recorded because the overlap looks like waste from either side alone, and the next cleanup
 that notices it should remove neither.
 
-## 2026-08-28 — the sandbox block was inert, and `mask` would have broken auth if it were not
-
-`sandbox.enabled` is opt-in and unset in every settings file on this machine, and both
-`sandbox.credentials` and `sandbox.filesystem` affect **sandboxed Bash commands only**. So the
-six masked credentials and the `denyRead` list enforced nothing. This file called that block
-"the countermeasure for the transcript leak" — the repo's own routing table has a row for this:
-*already enforced → nowhere. Describing a control is not the control.* This was a control that
-described itself.
-
-**And enabling it as written would have been worse than leaving it off.** All six entries used
-`mode: "mask"`, which does not block a credential — it shows the command a sentinel and has the
-sandbox proxy swap the real value back in on outbound requests to hosts named in `injectHosts`.
-That requires `network.tlsTerminate` and the destination in `network.allowedDomains`. Neither is
-set, and there is no `injectHosts` anywhere. The documented result: *"masking fails without
-exposing anything: the command still sees only the sentinel, but the sentinel reaches the server
-unchanged and authentication fails."* Every `gh` and `npm` call inside the sandbox would have
-authenticated with a sentinel.
-
-So the modes are now `deny`, which unsets the variable before each sandboxed command — the mode
-that is correct for a configuration with no network block. `mask` is the right answer only
-alongside a full network policy, and that is a different change.
-
-Two claims from the audit were checked and **not** acted on:
-
-- *"Move `~/.config/gh/hosts.yml` out of `filesystem.denyRead` into `credentials.files`."* The
-  docs say a `credentials.files` entry with `mode: "deny"` applies *"the same restriction that
-  `filesystem.denyRead` applies"*. The two are equivalent for reads, so the move buys nothing and
-  the churn was declined.
-- *"There is no `unset` mode."* The audit recommended `mode: "unset"`. The documented values are
-  `deny` and `mask`; `deny` is the one that unsets. Writing `unset` would have produced invalid
-  config.
-
-`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is the part that works without any of this: it strips
-Anthropic and cloud-provider credentials from **all** subprocesses regardless of sandboxing. It
-is set now, because it needed nothing else to be true first.
-
-> Superseded by [2026-08-31 — the credential scrub was also a permission-mode switch](#2026-08-31--the-credential-scrub-was-also-a-permission-mode-switch)
-
-Turning `sandbox.enabled` on is deliberately not part of this change. Go-based CLIs — `gh`,
-`gcloud`, `terraform` — are documented to fail TLS verification under macOS Seatbelt and need
-`excludedCommands`; `open` and `osascript` are blocked by default; and `.gitconfig` routes git
-credentials through the keychain and `op-agent`. Each is a way for "the sandbox is on" to present
-as "git is broken". It needs a live `/sandbox` session and a real push, which is a human test.
-
 ## 2026-08-26 — heroku: the Brewfile was the obvious home and the wrong one
 
 The `.gitconfig` landed a credential helper for `git.heroku.com` (`helper = !heroku
@@ -1035,8 +991,8 @@ service-account path was healthy and only the missing item was broken.
 each helper's BINARY is executable. `op-agent` is executable, so the check was green the whole
 time; a helper whose `op://` ref no longer resolves exits 0 and emits `{}`, which is
 indistinguishable from success at that layer. Closing it means resolving a secret at verify time,
-and `boom verify` runs unattended from launchd — a timer that resolves credentials is a standing
-exfiltration surface pointed at the one vault the SA can read. Worse than the blind spot, so it is
+and `boom verify` is a step anyone can run unattended — a verify that resolves credentials is a
+standing exfiltration surface pointed at the one vault the SA can read. Worse than the blind spot, so it is
 left open and named in the boomfile comment instead. `claude mcp list` is the control that catches
 this class, which `SU-SRD/docs/architecture/agent-tooling.md` already prescribes.
 
@@ -1066,10 +1022,6 @@ incident. **If the rewrite comes out empty, it was a postmortem.** Two corollari
 judgment: if the reader is necessarily already looking at one file, it belongs in that file's
 header comment; and a sentence naming a version of fast-moving software is expiring by
 construction, so it becomes an assertion something re-runs, or it comes here.
-
-Applied strictly, six rules survived — the ones that are irreversible on first attempt or land in
-an unattended session with nobody to ask. Two of them (foreign-repo writes, force-removing a
-worktree whose lock PID is alive) should become guards, after which their bullets delete.
 
 ## Permissions & security
 
@@ -1153,7 +1105,7 @@ This is the origin of the "never echo a secret — always `>/dev/null` and test 
 The `op-agent` design keeps secrets out of the model's context *by default*; that guarantee only
 holds if callers don't defeat it by printing the result.
 
-**The remediation went to the wrong layer, and it took a year to notice (fixed 2026-08-05).** The
+**The remediation went to the wrong layer, and it stood for eleven days (fixed 2026-08-05).** The
 commit that responded to this incident added four deny entries — `op-agent secret` (twice),
 `op read`, `op item get` — and **not** `op-agent header`, the command that actually leaked. So the
 one verb with a confirmed incident, a rotated token and a written postmortem stayed reachable,
@@ -1252,7 +1204,7 @@ delete.
 Both were inert. An 80% autocompact threshold on a 1M-token window is essentially never
 reached, and the 1-hour prompt-cache TTL is requested by default on a subscription.
 
-Two enumerated divergences that did nothing. Principle 2 says they go.
+Two enumerated divergences that did nothing. *Guilty until proven load-bearing* says they go.
 
 ---
 
@@ -1284,17 +1236,17 @@ would be the greater cost. Noted so the option is a choice rather than a redisco
 
 ### `outputStyle: "Proactive"` was pinned because `/config` does not persist it (2026-08-19)
 
-`/config` reported *"Set output style to Proactive"*, and the natural assumption — the same one the
-`tui`/`theme` note above records as the normal path — was that the client had rewritten
-`settings.json` and left the config-repo clone dirty for enumeration. **It had not.** Measured
+`/config` reported *"Set output style to Proactive"*, and the natural assumption was that the
+client had rewritten `settings.json`, as it does for `tui` and `theme`, and left the config-repo
+clone dirty for enumeration. **It had not.** Measured
 straight after: `outputStyle` was in neither `dot-claude/settings.json` nor `~/.claude.json`, no
 `~/.claude/output-styles/` directory existed, and *both* clones (`~/Code/DevEnv/dotFiles` and
 boom's `~/.local/state/boom/config-repo`) reported a clean tree. The style was live in the running
 session and nowhere else — it would have died with the session.
 
-That is the whole reason this is a hand-written entry rather than a reconciliation. The UI section
-above says the discipline for a self-rewriting file is "reconcile after the client edits, not
-prevent it"; this is the **complementary** failure, where the client edits nothing and there is
+That is the whole reason this is a hand-written entry rather than a reconciliation. The discipline
+for a self-rewriting file is "reconcile after the client edits, not prevent it"; this is the
+**complementary** failure, where the client edits nothing and there is
 nothing to reconcile, so a setting silently never persists. **Don't infer persistence from a
 `/config` confirmation** — check the file, and check *which* clone the `~/.claude/settings.json`
 symlink resolves into (it points at boom's state-dir clone, not the `~/Code` checkout, so a
@@ -1305,13 +1257,11 @@ The value is a built-in style name, confirmed against the settings schema rather
 `Explanatory`, `Learning`. Capitalisation is load-bearing and there is no validation at the file
 level, so a typo degrades to "no style" silently.
 
-On the substance: it is the behavioral counterpart to `defaultMode: auto` +
-`skipAutoPermissionPrompt`. Those remove the per-tool-call human gate; this removes the
-per-decision one. The accepted-risk-and-re-evaluate note on the permissions entry now covers a
-strictly wider surface, and the two should be reconsidered together rather than separately. It
-buys nothing enforcement-wise — the style's own prose about confirming destructive actions is a
-prompt, not a control, and the real floor is unchanged: `permissions.deny`, the three `PreToolUse`
-guards, and the no-direct-push-to-`main` rule.
+On the substance: it is the behavioral counterpart to `defaultMode: auto` — that removes the
+per-tool-call human gate; this removes the per-decision one. It buys nothing enforcement-wise —
+the style's own prose about confirming destructive actions is a prompt, not a control, and the
+real floor is unchanged: `permissions.deny`, the four `PreToolUse` guards, and the
+no-direct-push-to-`main` rule.
 
 ## Worktrees & merges
 
@@ -1378,25 +1328,3 @@ instead of merging something unreviewed. The step-by-step is in the `agent-frien
 
 **Branch protection is the gate this rests on, and nothing in this repo asserts it exists.** If
 the required check is ever dropped, `gh pr merge --auto` merges immediately.
-
-## Secrets
-
-### The Spacebase server was silently down because a vault item had spaces (fixed 2026-07-25)
-
-The `_COMMAND` value is run through `/bin/sh -c`, so an `op://` ref containing spaces word-splits
-into separate arguments and the resolve fails. The item used to be titled `Spacebase API Key`, and
-that is exactly why the server sat at **✘ Failed to connect** with
-`[spacebase-mcp] SPACEBASE_API_KEY_COMMAND failed` and zero calls, silently, for an unknown period —
-while `gninety`, whose ref had no spaces, was the one server that kept working.
-
-Fixed at the root: **every `claude-agent` item is now space-free `kebab-case`** (`spacebase-api-key`),
-so quoting is defence-in-depth rather than the only thing holding it up. Both halves matter — the
-rename protects refs someone forgets to quote, the quoting protects against someone re-introducing a
-space. A `boom verify` step now fails when any MCP server is down, so this class of breakage surfaces
-instead of reading as disuse.
-
-### Why the Ninety PAT lives in the `claude-agent` vault
-
-1Password service-account vault access is **immutable after creation** — you cannot grant an SA a
-second vault. So the secret comes to the SA, not the reverse: agent secrets are copied into
-`claude-agent` rather than the SA being granted access to wherever they already lived.

@@ -1,0 +1,4 @@
+# gates.sh fixture: a third-party tap (explicit clone URL) with no `trusted:`.
+# scripts/brew-drift.sh must fail on this file, brew or no brew.
+tap "someone/tap", "https://github.com/someone/homebrew-tap"
+brew "someone/tap/thing"
