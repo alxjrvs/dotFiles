@@ -19,3 +19,5 @@
 
 # Claude Code machine-local override — never tracked in ANY repo.
 **/.claude/settings.local.json
+
+**/.claude/.cc-writes/
