@@ -124,12 +124,6 @@ pre-commit:
       # regression through.
       glob: "{home/dot_claude/hooks/*.sh,home/dot_claude/hooks/tests/*}"
       run: home/dot_claude/hooks/tests/all.sh --changed {staged_files}
-    brew-drift:
-      # Machine state, not file state: `brew bundle` installs what the Brewfile
-      # names but never uninstalls what it omits. Runs only when the Brewfile is
-      # touched; no-ops where brew is absent.
-      glob: "home/dot_config/homebrew/Brewfile"
-      run: scripts/brew-drift.sh
 
     actionlint:
       # Also reaches the embedded shell in every `run:`, which the shellcheck

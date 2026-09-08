@@ -67,9 +67,8 @@ jobs:
       # empty file list and report success for inspecting nothing — the same
       # vacuous pass that `home/dot_claude/hooks/verify-gate.sh` was fixed for.
       #
-      # `brew-drift` no-ops here by design (no brew on a runner, and it says so
-      # rather than passing silently). The `commit-msg` stage is not part of
-      # `run pre-commit` and is only meaningful on a real commit.
+      # The `commit-msg` stage is not part of `run pre-commit` and is only
+      # meaningful on a real commit.
       - name: lefthook pre-commit (the whole local gate)
         run: lefthook run pre-commit --all-files
 

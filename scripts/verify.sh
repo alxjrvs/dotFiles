@@ -36,11 +36,17 @@ else
   skip "chezmoi not installed"
 fi
 
-# ── Homebrew: declared is installed; installed is declared or excluded ────────
+# ── Homebrew: declared is installed, and installed is declared ────────────────
+# `brew bundle` never uninstalls what the Brewfile omits, so the second direction is the
+# silent one. `brew bundle cleanup` without --force only prints what it would remove
+# (formulae, casks, taps; dependencies of declared entries are kept) and exits 0 either way,
+# so its output is the finding. A brew copy of a mise-pinned tool is undeclared, so it lands
+# in that list too.
 brewfile="$HOME/.config/homebrew/Brewfile"
 if command -v brew > /dev/null 2>&1 && [ -f "$brewfile" ]; then
   if brew bundle check --no-upgrade --file="$brewfile" > /dev/null 2>&1; then ok "brew bundle check"; else bad "brew bundle check: a declared formula or cask is missing (run: chezmoi apply)"; fi
-  if out=$("$REPO/scripts/brew-drift.sh" "$brewfile" 2>&1); then ok "brew-drift"; else bad "brew-drift:
+  out=$(brew bundle cleanup --file="$brewfile" 2>&1)
+  if [ -z "$out" ]; then ok "brew bundle cleanup: nothing undeclared"; else bad "brew bundle cleanup would remove (declare it, or brew uninstall it):
 $out"; fi
 else
   skip "brew or Brewfile absent"

@@ -78,13 +78,6 @@ else
   case_exit settings_local_clean 0 ./scripts/settings-guardrails.sh home/dot_claude/settings.json
 fi
 
-# --- a third-party tap must declare its trust, with or without brew ---------
-# brew-drift.sh's tap-trust assertion reads the Brewfile, not the machine, so it
-# must fire on a runner too — it did not, once: the `command -v brew` early exit
-# sat above it, and the regression it exists for sailed through CI. Negative
-# control only: a fixture Brewfile is a wrong declared list on any real machine.
-case_exit brewdrift_untrusted_tap 1 ./scripts/brew-drift.sh scripts/tests/fixtures/untrusted-tap-Brewfile
-
 # --- the gitleaks .mcp.json rule fires on the bare placeholder --------------
 # gitleaks' default global allowlist drops any finding that is exactly `${NAME}`,
 # which is the shape this rule exists for; the first spelling of the rule was

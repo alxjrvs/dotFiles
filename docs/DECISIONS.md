@@ -59,6 +59,17 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-08 — brew-drift.sh retired; `brew bundle cleanup` is the native check
+
+`brew bundle cleanup` without `--force` prints what is installed but not declared and exits 0
+either way, so `scripts/verify.sh` now fails on any output. The script it replaces had grown an
+exclusion list that was, in practice, an amnesty: eleven packages the Brewfile said to
+uninstall by hand (`gh node shellcheck netlify-cli heroku usage actionlint osv-scanner`; casks
+`karabiner-elements zulu17 orbstack`) sat installed for weeks with the check green, because
+naming them there was cheaper than removing them. The precondition for the native check is
+uninstalling them once; from then on verify.sh asserts that cleanup prints nothing, and an
+undeclared package has exactly two exits — declare it, or `brew uninstall` it.
+
 ## 2026-09-08 — the push guard retired; the default branch is protected where it lives
 
 `rebase-guard.sh` is deleted, with its two handlers, its `wired_hooks` line, and its 83 fixture
