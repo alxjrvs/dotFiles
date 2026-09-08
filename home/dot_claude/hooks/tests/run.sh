@@ -16,10 +16,10 @@ set -u
 
 HERE=$(cd -- "$(dirname -- "$0")" && pwd)
 CASES=${1:-$HERE/cases.tsv}
-GUARD_DIR=$(cd -- "$HERE/.." && pwd)
+GUARD=$(cd -- "$HERE/.." && pwd)/op-guard.sh
 
 # op-guard decides from the command text alone and never invokes git, so the
-# only hermeticity the suite needs is that `cd "$fd"` goes where it says.
+# only hermeticity the suite needs is that `cd "$ROOT"` goes where it says.
 unset CDPATH
 
 command -v jq > /dev/null 2>&1 || {
@@ -31,62 +31,25 @@ ROOT=$(mktemp -d "${TMPDIR:-/tmp}/guard-tests.XXXXXX") || exit 2
 cleanup() { rm -rf "$ROOT"; }
 trap cleanup EXIT INT TERM
 
-# --- fixtures ---------------------------------------------------------------
-# One scratch directory. op-guard's verdict is decided from the command text
-# alone, so every case runs from a plain non-repo directory; the git fixtures
-# the old push-guard cases needed went with those cases.
-build_fixtures() {
-  mkdir -p "$ROOT/nonrepo" || return 1
-  return 0
-}
-
-fixture_dir() {
-  case "$1" in
-    nonrepo) printf '%s' "$ROOT/nonrepo" ;;
-    *) return 1 ;;
-  esac
-}
-
-guard_path() {
-  case "$1" in
-    op) printf '%s' "$GUARD_DIR/op-guard.sh" ;;
-    *) return 1 ;;
-  esac
-}
-
-if ! build_fixtures; then
-  echo "guard-tests: could not build fixtures" >&2
-  exit 2
-fi
-
 # --- run --------------------------------------------------------------------
+# One scratch directory for every case: op-guard's verdict is decided from the
+# command text alone, so no case needs a git fixture.
 pass=0
 fail=0
 failed_lines=''
 
-while IFS=$'\t' read -r guard fixture command expected || [ -n "${guard:-}" ]; do
-  case "${guard:-}" in '' | '#'*) continue ;; esac
+while IFS=$'\t' read -r command expected || [ -n "${command:-}" ]; do
+  case "${command:-}" in '' | '#'*) continue ;; esac
   [ -n "${expected:-}" ] || continue
-
-  gp=$(guard_path "$guard") || {
-    echo "guard-tests: unknown guard '$guard'" >&2
-    fail=$((fail + 1))
-    continue
-  }
-  fd=$(fixture_dir "$fixture") || {
-    echo "guard-tests: unknown fixture '$fixture'" >&2
-    fail=$((fail + 1))
-    continue
-  }
 
   # `\n` in a case's command becomes a real newline, so multi-line commands and
   # heredoc bodies — both of which the guards must treat differently from a
   # single line — can still be written on one TSV row.
   command=$(printf '%b' "$command")
 
-  out=$(cd "$fd" && printf '%s' "$command" |
+  out=$(cd "$ROOT" && printf '%s' "$command" |
     jq -Rs '{tool_name:"Bash", tool_input:{command:.}}' |
-    "$gp" 2> /dev/null)
+    "$GUARD" 2> /dev/null)
   actual=$(printf '%s' "$out" |
     jq -r '.hookSpecificOutput.permissionDecision // "allow"' 2> /dev/null)
   [ -n "$actual" ] || actual=allow
@@ -96,7 +59,7 @@ while IFS=$'\t' read -r guard fixture command expected || [ -n "${guard:-}" ]; d
   else
     fail=$((fail + 1))
     failed_lines="${failed_lines}
-  [${guard}/${fixture}] expected ${expected}, got ${actual}
+  expected ${expected}, got ${actual}
       \$ ${command}"
   fi
 done < "$CASES"
