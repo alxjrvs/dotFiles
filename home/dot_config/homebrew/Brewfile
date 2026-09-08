@@ -1,17 +1,5 @@
 # ~/.config/homebrew/Brewfile — casks, system libs, and the two bootstrap formulae.
-#
-# Policy (Lean A): every dev CLI lives in ~/.config/mise/config.toml — single update path
-# via `mise upgrade`. The formulae here are the bootstraps — `mise`, which would otherwise
-# be a chicken-and-egg problem, and `chezmoi`, which applies this file — plus the system
-# libraries mise-built CLIs link against. Casks (GUI apps, fonts) stay because mise doesn't
-# manage them.
-#
-# Rule: if you're about to add a `brew "..."` line here, stop. Put it in the mise config.
-# The exceptions are the two bootstraps, casks, and system libraries (no mise equivalent)
-# that pre-built CLIs link against at runtime.
-#
-# Applied by home/run_onchange_after_10-brew.sh.tmpl, which re-runs `brew bundle
-# --no-upgrade` whenever this file's hash changes, and never upgrades anything.
+# A `brew "..."` line for a CLI belongs in ~/.config/mise/config.toml instead.
 #
 # ── Upgrading is three commands, and `chezmoi apply` is not one of them ──────────────
 #
@@ -26,9 +14,9 @@
 # delivers without closing anything.
 #
 # Casks are left to their own updaters, which Chrome, Slack, Discord, 1Password, Raycast and
-# the rest all ship. Pushing brew's copy over an app that has already self-updated is the
-# heroku shape in docs/DECISIONS.md — brew's version record was fiction — with a forced
-# restart attached. When a cask genuinely needs moving: `brew upgrade --cask <name>`.
+# the rest all ship; brew's version record for a self-updating app is fiction, and pushing
+# it over the app forces a restart to deliver nothing. When a cask genuinely needs moving:
+# `brew upgrade --cask <name>`.
 #
 # Installed-but-undeclared is drift too: `scripts/verify.sh` fails on anything `brew bundle
 # cleanup` lists, so undeclaring a package here is only half of deleting it.
@@ -36,17 +24,10 @@
 # A third-party `tap` line needs `trusted:` — brew refuses to load an untrusted tap until
 # someone runs `brew trust` by hand, which is a fresh machine stopping halfway.
 brew "mise"
-
-# chezmoi itself: the bootstrap that applies this file. The fresh-machine sequence is
-# `brew install chezmoi && chezmoi init --apply alxjrvs` (README), and from then on brew owns
-# the binary like any other formula.
 brew "chezmoi"
 
-# openssl@3 is a system library, not a CLI — `aqua:rossmacarthur/sheldon`
-# dyld-links against /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib and
-# segfaults without it. Cargo-built sheldon also needs openssl-sys
-# (transitively via git2). Keeping it explicit guarantees fresh-machine
-# installs don't ship a broken sheldon binary.
+# openssl@3 is a system library, not a CLI: `aqua:rossmacarthur/sheldon` dyld-links against
+# /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib and segfaults without it.
 brew "openssl@3"
 
 # ── 1Password CLI + desktop ───────────────────────────────────────────
@@ -54,11 +35,10 @@ cask "1password-cli"
 cask "1password"
 
 # ── Apps ──────────────────────────────────────────────────────────────
-# cask "claude" is the Claude desktop GUI app, NOT the CLI (it ships no
-# `claude` binary on PATH, so it coexists with the native CLI). The Claude
-# Code CLI is installed via the native curl installer (home/run_after_00-claude-cli.sh.tmpl,
-# "Claude" section) which self-updates — never install the CLI via brew
-# (cask "claude-code") or npm.
+# cask "claude" is the Claude desktop GUI app, NOT the CLI (it ships no `claude` binary on
+# PATH, so it coexists with the native CLI). The Claude Code CLI comes from the native curl
+# installer (home/run_after_00-claude-cli.sh.tmpl), which self-updates — never install it
+# via brew (cask "claude-code") or npm.
 cask "claude"
 cask "discord"
 
@@ -66,8 +46,6 @@ cask "discord"
 cask "font-fira-code-nerd-font"
 
 # ── Terminal ──────────────────────────────────────────────────────────
-# Ghostty is the sole terminal: a fast Metal-GPU emulator, configured by
-# home/dot_config/ghostty/config (symlinked by chezmoi).
 cask "ghostty"
 
 cask "google-chrome"
@@ -77,14 +55,10 @@ cask "google-chrome"
 
 cask "notunes"
 
-# ── Declared after the drift check found them installed-but-undeclared ──
 cask "devutils"      # offline developer toolbox (JSON/JWT/regex/diff)
 cask "gcloud-cli"    # Google Cloud SDK
 cask "ngrok"         # public tunnel to a local port
 cask "obs"           # screen recording
-
-# Window mgmt + launcher + clipboard (replaces Rectangle + Spotlight).
-cask "raycast"
-
+cask "raycast"       # window management + launcher + clipboard
 cask "slack"
 cask "tuple"
