@@ -18,9 +18,10 @@ chezmoi init --apply alxjrvs/dotFiles
 
 `init --apply` clones this repo to `~/.local/share/chezmoi`, renders `~/.config/chezmoi/chezmoi.toml`
 from [`home/.chezmoi.toml.tmpl`](home/.chezmoi.toml.tmpl), and applies: symlinks into `~`, then
-the `run_` scripts in [`home/`](home/) — Homebrew bundle, `mise install`, gh extensions, macOS
-defaults, LaunchAgents, lefthook, the 1Password MCP registration, op-agent, git signing — each
-darwin-gated and either hashed on the file it applies or cheap enough to run every time.
+the `run_` scripts in [`home/`](home/) — the Claude Code CLI, Homebrew bundle, `mise install`,
+gh extensions, macOS defaults, LaunchAgents, lefthook, tldr, the 1Password MCP registration,
+op-agent, git signing — each darwin-gated and either hashed on the file it applies or cheap
+enough to run every time.
 
 To work from an existing checkout instead of the managed clone, point chezmoi at it once:
 `chezmoi init --source <your checkout> --apply`. The config template records `sourceDir`, so
@@ -38,7 +39,7 @@ notifies on failure. Upgrades are not chezmoi's job: `brew upgrade --formula`, t
 .chezmoiroot            "home" — the source state lives one directory down
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/run_*.sh.tmpl      machine setup, in the order chezmoi runs them (before → files → after)
-home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json, hooks, rules, skills
+home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json, hooks, rules, skills, agents
 home/dot_claude/hooks/  Claude Code guards + their regression suites (suites are chezmoi-ignored)
 home/.chezmoi*          chezmoi's own contract: config template, ignore, remove, externals
 scripts/                the assertions lefthook, CI and verify.sh share; verify.sh itself
