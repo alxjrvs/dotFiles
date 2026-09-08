@@ -25,9 +25,9 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 - `home/dot_claude/` is the **user-global** Claude config (`~/.claude/`). The repo-root
   `.claude/` is this repo's project scope. Don't conflate them.
 - CLIs go in `home/dot_config/mise/config.toml`, every version pinned; Renovate bumps them.
-  The Brewfile is casks, system libs, and the two bootstraps (`mise`, `chezmoi`). `gh`
-  extensions are `gh-extensions.txt`. Upgrading is `brew upgrade --formula` then
-  `mise upgrade`; `chezmoi apply` never upgrades anything.
+  The Brewfile is casks, system libs, the two bootstraps (`mise`, `chezmoi`) and a few CLIs
+  brew owns. `gh` extensions are `gh-extensions.txt`. Upgrading is `brew upgrade --formula`
+  then `mise upgrade`; `chezmoi apply` never upgrades anything.
 - Machine setup steps are chezmoi `run_` scripts in `home/`, darwin-gated by template. Each is
   either `onchange` on the hash of the file it applies, or cheap and idempotent every apply.
 - `claude` is a shell function (`home/dot_config/zsh/65-claude.zsh`), so `which claude`
