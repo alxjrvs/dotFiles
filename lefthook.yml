@@ -1,24 +1,32 @@
-# Lefthook config for this repo (a boom config / dotfiles repo).
+# Lefthook config for this repo (a chezmoi source repo).
 #
-# no_auto_install: boom owns hook installation (the `lefthook` section's sync step
-# runs `lefthook install`). After a lefthook.yml change, re-run
-# `boom source --only=lefthook` (or `lefthook install`) to refresh the checksum.
+# no_auto_install: chezmoi owns hook installation — home/run_onchange_after_60-lefthook.sh.tmpl
+# runs `lefthook install` whenever this file changes. By hand: `lefthook install`.
 no_auto_install: true
 
 pre-commit:
   parallel: true
   commands:
     shellcheck:
-      # `*.sh` matches every shell payload recursively.
-      glob: "{*.sh,git-template/hooks/*}"
+      # `*.sh` matches every shell payload recursively; the two extensionless
+      # scripts are named. chezmoi run scripts (`*.sh.tmpl`) get their own command.
+      glob: "{*.sh,home/dot_config/git/template/hooks/*,home/dot_local/bin/op-agent}"
       run: shellcheck -x {staged_files}
     shfmt-check:
-      # boomfile.toml is DSL config (an aligned link table by design) — validated
-      # by `boom source --dry-run` in CI ("boomfile applies"), not shfmt, so it is
-      # deliberately not in scope here.
-      glob: "{*.sh,git-template/hooks/*}"
+      glob: "{*.sh,home/dot_config/git/template/hooks/*,home/dot_local/bin/op-agent}"
       # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}
+    chezmoi-scripts:
+      # The run_ scripts are shell wrapped in a template. Only two template shapes
+      # are used — a whole-line `{{ if }}`/`{{ end }}` guard and an inline
+      # `{{ … }}` inside a string or comment — so stripping the first and
+      # replacing the second with a placeholder yields shell that shellcheck can
+      # read. Not shfmt: the placeholders would reflow.
+      glob: "home/run_*.sh.tmpl"
+      run: |
+        for f in {staged_files}; do
+          sed -e '/^{{.*}}$/d' -e 's/{{[^}]*}}/TEMPLATE/g' "$f" | shellcheck -x -s bash - || { echo "shellcheck failed on $f"; exit 1; }
+        done
     biome-check:
       # `check` reports without rewriting — like shfmt-check it won't auto-fix on
       # commit; run `biome check --write` to fix. Config: biome.json.
@@ -27,31 +35,31 @@ pre-commit:
     gitleaks:
       # --config: the repo's own copy of the global rules, so this repo's gate and
       # every other repo's template hook enforce the same set.
-      run: gitleaks git --staged --redact -v --no-banner --config gitleaks/gitleaks.toml
+      run: gitleaks git --staged --redact -v --no-banner --config home/dot_config/gitleaks/gitleaks.toml
     settings-json-validity:
-      # Same script CI and `boom verify` run, against the STAGED file, so a bad
-      # commit is caught immediately rather than at the next `boom verify`. The
+      # Same script CI and scripts/verify.sh run, against the STAGED file, so a
+      # bad commit is caught immediately rather than at the next drift check. The
       # assertions and their reasoning live in the script, once.
-      glob: "dot-claude/settings*.json"
+      glob: "home/dot_claude/settings*.json"
       run: scripts/settings-guardrails.sh {staged_files}
 
     context-budget:
       # The two CLAUDE.md files are loaded into every session, so they carry a
       # byte ceiling (Anthropic's guidance is "under 200 lines"; 3000 bytes is
-      # roughly 40). A rule in dot-claude/rules/ is free ONLY with `paths:`
+      # roughly 40). A rule in home/dot_claude/rules/ is free ONLY with `paths:`
       # frontmatter — without it the rule loads at launch like CLAUDE.md, and
       # nothing about the omission looks wrong. Checked here, whole set, every
       # commit that touches any of them; CI runs the same command --all-files.
       # A date makes a sentence a record, not a rule, and it expires unnoticed; a
       # full YYYY-MM-DD has no business in an instruction file.
-      glob: "{CLAUDE.md,dot-claude/CLAUDE.md,dot-claude/rules/*.md}"
+      glob: "{CLAUDE.md,home/dot_claude/CLAUDE.md,home/dot_claude/rules/*.md}"
       run: |
-        for f in CLAUDE.md dot-claude/CLAUDE.md; do
+        for f in CLAUDE.md home/dot_claude/CLAUDE.md; do
           n=$(wc -c < "$f" | tr -d ' ')
           [ "$n" -le 3000 ] || { echo "$f: $n bytes, ceiling 3000 — it is billed to every request; move it to a skill, a rule, or DECISIONS.md"; exit 1; }
           ! grep -nE '[0-9]{4}-[0-9]{2}-[0-9]{2}' "$f" || { echo "$f: dated claim above — a date makes it a record, not a rule"; exit 1; }
         done
-        for r in dot-claude/rules/*.md; do
+        for r in home/dot_claude/rules/*.md; do
           [ -e "$r" ] || continue
           awk 'NR==1 { if ($0 != "---") exit 1; next } /^---[[:space:]]*$/ { exit } /^paths:/ { f=1 } END { exit !f }' "$r" \
             || { echo "$r: no paths: in frontmatter — it would load into EVERY session"; exit 1; }
@@ -64,12 +72,12 @@ pre-commit:
       # with an unlocked version resolves through the API and passes). So: every pin
       # must have a matching lock entry. Extra lock entries are not checked — mise
       # prunes them itself on the next install.
-      glob: "{mise.toml,mise.lock}"
+      glob: "home/dot_config/mise/{config.toml,mise.lock}"
       run: |
         python3 - <<'PY'
         import sys, tomllib
-        cfg = tomllib.load(open("mise.toml", "rb"))["tools"]
-        lock = tomllib.load(open("mise.lock", "rb")).get("tools", {})
+        cfg = tomllib.load(open("home/dot_config/mise/config.toml", "rb"))["tools"]
+        lock = tomllib.load(open("home/dot_config/mise/mise.lock", "rb")).get("tools", {})
         bad = []
         for tool, want in cfg.items():
             got = {e.get("version") for e in lock.get(tool, [])}
@@ -85,21 +93,24 @@ pre-commit:
     plist-validity:
       # Same script CI runs. Two assertions, not one: structural validity does
       # not catch a `~` in a path value. See the script header.
-      glob: "launchd/*.plist"
+      # The verify timer is a `.plist.tmpl` (it renders the repo path in); a
+      # template is not a plist, so CI's chezmoi dry run renders it instead and
+      # `.chezmoiignore` keeps `Library` visible on Linux for exactly that reason.
+      glob: "home/Library/LaunchAgents/*.plist"
       run: scripts/plist-validity.sh {staged_files}
     zsh-syntax:
       # shellcheck cannot parse zsh at all ("Unknown shell: zsh"), so the
       # interactive shell payload is out of its scope. `zsh -n` is the native
       # no-exec syntax check.
-      glob: "{*.zsh,.zshrc,.zprofile,.zshenv}"
+      glob: "{*.zsh,home/dot_zshrc,home/dot_zprofile,home/dot_zshenv}"
       run: |
         for f in {staged_files}; do
           zsh -n "$f" || { echo "zsh syntax error in $f"; exit 1; }
         done
     toml-validity:
-      # A parse error otherwise surfaces at `boom source` time on a real machine.
-      # --no-schema = pure syntax check (hermetic, offline); won't reformat the
-      # hand-aligned link tables.
+      # A parse error otherwise surfaces at `chezmoi apply` time on a real machine.
+      # --no-schema = pure syntax check (hermetic, offline). `.chezmoi.toml.tmpl`
+      # is a template, not TOML, and is not matched.
       glob: "*.toml"
       run: taplo check --no-schema {staged_files}
     hook-tests:
@@ -111,13 +122,13 @@ pre-commit:
       # latency optimisation. CI passes no argument and runs all of them, so the
       # merge gate is unchanged and a wrong `covers:` line cannot let a
       # regression through.
-      glob: "{hooks/*.sh,dot-claude/hooks/*.sh,dot-claude/hooks/tests/*}"
-      run: dot-claude/hooks/tests/all.sh --changed {staged_files}
+      glob: "{home/dot_claude/hooks/*.sh,home/dot_claude/hooks/tests/*}"
+      run: home/dot_claude/hooks/tests/all.sh --changed {staged_files}
     brew-drift:
       # Machine state, not file state: `brew bundle` installs what the Brewfile
       # names but never uninstalls what it omits. Runs only when the Brewfile is
       # touched; no-ops where brew is absent.
-      glob: "Brewfile"
+      glob: "home/dot_config/homebrew/Brewfile"
       run: scripts/brew-drift.sh
 
     actionlint:

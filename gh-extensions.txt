@@ -4,7 +4,7 @@
 # community forks (boneskull/, VladimirAnaniev/, ThePlenkov/gh-stackx, 134130/gh-domino), so the
 # owner is what distinguishes the official extension from a fork.
 #
-# boom's `gh` pkg manager installs only the misses and never upgrades — matching gh's own
+# The gh-extensions chezmoi script installs only the misses and never upgrades — matching gh's own
 # behavior, which "will check for new versions once every 24 hours and display an upgrade
 # notice" rather than installing. So this pins nothing: `gh stack` stays on whatever version
 # first landed until someone runs `gh extension upgrade gh-stack`. That remains a live trap for

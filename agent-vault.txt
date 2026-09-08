@@ -11,8 +11,8 @@
 # Why membership is the lever at all, and why the vault is kept small: service
 # account vault access is IMMUTABLE after creation, so scope can never be
 # tightened in place — only the vault's contents can change. Reasoning, and the
-# 2026-08-19 reduction that shrank it: dot-claude/DECISIONS.md.
+# 2026-08-19 reduction that shrank it: docs/DECISIONS.md.
 
 claude-git-pat            # git credential.helper (agent pushes) — its only consumer
-gninety                   # NINETY_API_TOKEN_COMMAND in dot-claude/settings.json
+gninety                   # NINETY_API_TOKEN_COMMAND in home/dot_claude/settings.json
 npm-publish-token         # npm/publish.env -> `op run --env-file=npm/publish.env -- npm publish`
