@@ -10,6 +10,12 @@
 # Resolution order: registry short-name first (verified with `mise
 # registry <name>`); fall back to `aqua:owner/repo` then `github:`/`cargo:`
 # when the registry doesn't cover or the registry alias is broken.
+#
+# Every version is PINNED, and Renovate (renovate.json) bumps the pins. `"latest"` gave a
+# bot nothing to move, so mise.lock only ever changed when someone ran `mise upgrade` by
+# hand. A pin here plus the lockfile means two machines converge on the same binary AND a
+# bump arrives as a reviewable PR. `mise install` after a merged bump rewrites mise.lock;
+# commit it.
 
 [tools]
 # Only tools worth installing globally on every machine live here. Anything
@@ -17,24 +23,24 @@
 # installed incidentally — `mise use <tool>` in that project, or on demand.
 
 # ── Language toolchains ───────────────────────────────────────────────
-node = "25"
-bun = "latest"
+node = "25.9.0"
+bun = "1.4.0"
 
 # ── Shell-init-time tools (need PATH presence before zsh fragments load) ─
-sheldon = "latest"      # zsh plugin manager — loaded in zsh/30-plugins.zsh
+sheldon = "0.8.5"       # zsh plugin manager — loaded in zsh/30-plugins.zsh
                         # NOTE: links against /opt/homebrew/opt/openssl@3/lib —
                         # ensure `openssl@3` is in Brewfile or the binary segfaults.
-atuin = "latest"        # shell history sync — loaded in zsh/30-plugins.zsh
-fzf = "latest"          # `fzf --zsh` integration loaded in zsh/60-tools.zsh
-zoxide = "latest"       # frecency `cd` — `zoxide init zsh` loaded in zsh/60-tools.zsh
-starship = "latest"     # prompt — `starship init zsh` loaded in zsh/50-prompt.zsh
+atuin = "18.16.1"       # shell history sync — loaded in zsh/60-tools.zsh
+fzf = "0.73.1"          # `fzf --zsh` integration loaded in zsh/60-tools.zsh
+zoxide = "0.9.9"        # frecency `cd` — `zoxide init zsh` loaded in zsh/60-tools.zsh
+starship = "1.25.1"     # prompt — `starship init zsh` loaded in zsh/50-prompt.zsh
 
 # ── Git surface (used by prompt, lefthook, pre-commit) ────────────────
-gh = "latest"           # GH CLI
-delta = "latest"        # syntax-aware git pager
-gitleaks = "latest"     # `gitleaks git --staged` — global pre-commit hook
-lefthook = "latest"     # repo-local pre-commit/pre-push runner
-"npm:heroku" = "latest" # Heroku CLI. `.gitconfig` names it in a credential helper for
+gh = "2.94.0"           # GH CLI
+delta = "0.19.2"        # syntax-aware git pager
+gitleaks = "8.30.1"     # `gitleaks git --staged` — global pre-commit hook
+lefthook = "2.1.9"      # repo-local pre-commit/pre-push runner
+"npm:heroku" = "11.10.0" # Heroku CLI. `.gitconfig` names it in a credential helper for
                         # git.heroku.com, so the helper is broken on any machine without it.
                         # Here and not the Brewfile: there is no homebrew-core formula, only
                         # the third-party `heroku/brew` tap, which brew now reports Untrusted
@@ -65,36 +71,36 @@ lefthook = "latest"     # repo-local pre-commit/pre-push runner
 "npm:eas-cli" = "21.2.0"
 
 # ── File / text / data tools ──────────────────────────────────────────
-bat = "latest"
-fd = "latest"
-ripgrep = "latest"
-jq = "latest"
-eza = "latest"
-"aqua:dbrgn/tealdeer" = "latest"          # fast `tldr` cheatsheets (binary: tldr)
+bat = "0.26.1"
+fd = "10.4.2"
+ripgrep = "15.1.0"
+jq = "1.8.1"
+eza = "0.23.4"
+"aqua:dbrgn/tealdeer" = "1.8.1"           # fast `tldr` cheatsheets (binary: tldr)
 
 # ── Linters / formatters ─────────────────────────────────────────────
-shfmt = "latest"
-shellcheck = "latest"
-biome = "latest"                          # JS/TS/JSON linter+formatter — `biome check`
+shfmt = "3.13.1"
+shellcheck = "0.11.0"
+biome = "2.5.3"                           # JS/TS/JSON linter+formatter — `biome check`
                                           # (lefthook + CI + nvim format-on-save); registry
                                           # short-name → aqua:biomejs/biome
-actionlint = "latest"                     # GitHub Actions workflow linter (lefthook + CI);
+actionlint = "1.7.12"                     # GitHub Actions workflow linter (lefthook + CI);
                                           # registry short-name → aqua:rhysd/actionlint
 
 # ── Security scanning ─────────────────────────────────────────────────
-osv-scanner = "latest"                    # OSV vulnerability scanner, run by hand; registry
+osv-scanner = "2.5.0"                     # OSV vulnerability scanner, run by hand; registry
                                           # short-name → aqua:google/osv-scanner
 
 # ── Neovim language servers (nvim/init.lua wires these in) ────────────
 # rust-analyzer is not global — it comes with a per-project `rust` toolchain,
 # and nvim/init.lua picks it up automatically when present.
-"npm:bash-language-server" = "latest"
-"npm:typescript-language-server" = "latest"
-"aqua:artempyanykh/marksman" = "latest"   # markdown LSP
-taplo = "latest"                          # TOML LSP + formatter (`taplo lsp stdio`); registry alias → aqua:tamasfe/taplo (no -cli suffix)
+"npm:bash-language-server" = "5.6.0"
+"npm:typescript-language-server" = "5.3.0"
+"aqua:artempyanykh/marksman" = "2026-02-08" # markdown LSP (date-versioned upstream)
+taplo = "0.10.0"                          # TOML LSP + formatter (`taplo lsp stdio`); registry alias → aqua:tamasfe/taplo (no -cli suffix)
 
 # ── Editor ────────────────────────────────────────────────────────────
-neovim = "latest"                         # modal editor (binary: nvim)
+neovim = "0.12.3"                         # modal editor (binary: nvim)
 
 # Global-only [settings] (e.g. trusted_config_paths) live in mise-settings.toml,
 # symlinked to ~/.config/mise/conf.d/. They can't live here: this file is also

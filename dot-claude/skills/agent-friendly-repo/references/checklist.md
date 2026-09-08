@@ -22,6 +22,7 @@ GitHub takes the **union** of classic protection and rulesets — a footgun, bec
 
 Ruleset rules for the default branch:
 - `required_linear_history`, `non_fast_forward`, `deletion` — block force-push and branch deletion, keep history linear.
+- `pull_request` with `required_approving_review_count: 0` — **every change to the default branch arrives through a PR, and no human has to approve it.** This is the server-side form of "never push directly to main": it rejects a direct push from anyone, agent or owner, in a way no client-side hook can be spelled around. Zero approvals is what keeps the agent completion path (`gh pr merge --auto`) unattended; a required review is the one thing that breaks it. Required status checks alone already reject an unchecked commit, but only when a check exists to require — this rule holds on a repo with no CI too.
 - `required_status_checks` → a **single aggregate gate job** (e.g. `quality-checks`), not every individual job. An aggregate `if: always()` job that `needs:` every other job and fails if any *actually failed* (path-filtered "skipped" jobs are fine) avoids "required check stuck pending" when per-area jobs are path-filtered out of a given PR.
 - **No required human PR reviews.** A required review blocks agent auto-merge forever — agents can't approve their own PRs. `--auto` waiting on green CI is the gate, not a human.
 - `bypass_actors: []` — nobody bypasses, incl. admins → "CI green for everyone" (the standing preference). Agents don't need bypass; `--auto` just waits for green.

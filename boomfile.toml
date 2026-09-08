@@ -68,6 +68,13 @@ dst = "~/.npmrc"
 src = "git-template/hooks/pre-commit"
 dst = "~/.config/git/template/hooks/pre-commit"
 
+# Global gitleaks rules for repos that declare none of their own. gitleaks reads no global
+# file by itself: the git template hook passes this path, and this repo's lefthook and CI
+# pass their tracked copy. Never exported as GITLEAKS_CONFIG (it would outrank a repo's own).
+[[section.link]]
+src = "gitleaks/gitleaks.toml"
+dst = "~/.config/gitleaks/gitleaks.toml"
+
 [[section]]
 name = "SSH"
 
@@ -201,11 +208,11 @@ dst = "~/.claude/hooks/verify-gate.sh"
 mode = "755"
 
 # SessionStart/SubagentStart hook: start an agent on CURRENT code. The client's
-# `worktree.baseRef: "fresh"` cuts from the local `origin/<default>` ref and only
-# refreshes it when .git/FETCH_HEAD is more than 24h old (measured against 2.1.237), so
-# an agent can silently branch from a day-old base. This refreshes the ref in the primary
-# checkout and fast-forwards a virgin worktree onto it; it only ever runs
-# `git merge --ff-only`, so it cannot discard a commit.
+# `worktree.baseRef: "fresh"` cuts from the local `origin/<default>` ref and, by its own
+# documentation, refreshes it only when the repo has not fetched in 24h — so an agent can
+# silently branch from a day-old base. This refreshes the ref in the primary checkout and
+# fast-forwards a virgin worktree onto it; it only ever runs `git merge --ff-only`, so it
+# cannot discard a commit.
 [[section.link]]
 src = "dot-claude/hooks/worktree-freshness.sh"
 dst = "~/.claude/hooks/worktree-freshness.sh"
@@ -252,8 +259,8 @@ dst = "~/.claude/agents/"
 # file matching one of its globs, so guidance that is only true while editing one kind of
 # file can be written at any length and still cost a session nothing until that file is
 # opened. A rule WITHOUT `paths:` loads at launch with the same priority as CLAUDE.md —
-# billed like the file it was supposed to relieve — so `scripts/rules-scoped.sh` fails on
-# any rule here that omits the key.
+# billed like the file it was supposed to relieve — so lefthook's `context-budget` command
+# fails on any rule here that omits the key.
 [[section.link]]
 src = "dot-claude/rules/*"
 dst = "~/.claude/rules/"
@@ -351,20 +358,6 @@ exit 1
 on = "verify"
 cmd = "git diff --quiet -- dot-claude/ || { echo 'live Claude config diverges from the committed contract (dirty boom config-repo)'; exit 1; }"
 
-# worktree-freshness.sh is written against a client defect measured against 2.1.237, and the
-# client self-updates — so a workaround whose bug is gone is not inert: it still mutates
-# worktrees. This step owns that expiry.
-#
-# INVERTED POLARITY, deliberately: it fails when the workaround looks UNNECESSARY. A failure
-# means "go re-measure", never "the bug is fixed" — the fingerprints are string literals, a
-# monotone signal and not a proof. It also fails LOUD when its own method breaks: if the
-# client is ever packaged so its strings cannot be read, every fingerprint vanishes at once,
-# and reporting that as all-clear would be a canary that lies. The anchor check separates
-# those two cases, and tests/canary.sh asserts it.
-[[section.run]]
-on = "verify"
-cmd = "hooks/claude-canary.sh"
-
 # Is this machine still reproducible from the Brewfile? `brew bundle` installs what the
 # Brewfile names and never removes what it omits, so drift is one-directional and silent.
 # Verify-time because it is a property of the MACHINE, not of the file — lefthook only
@@ -372,31 +365,6 @@ cmd = "hooks/claude-canary.sh"
 [[section.run]]
 on = "verify"
 cmd = "scripts/brew-drift.sh"
-
-# Do the names in the Brewfile still RESOLVE? Different question from the drift check
-# above, and only brew can answer it: a cask retired upstream leaves a perfectly
-# well-formed line that every file-reading gate passes, then fails `brew bundle` outright
-# on a fresh machine. Not a required CI check — it depends on Homebrew's live API, and a
-# transient upstream outage must not block an unattended agent — so it lives here, where
-# `notify` reaches a human.
-[[section.run]]
-on = "verify"
-cmd = "scripts/brew-resolves.sh"
-
-# NOTE — scheduled-job liveness is boom's job, not a check here. `boom verify` covers every
-# scheduled job on this machine whichever mechanism installed it, so a hand-rolled version
-# would be a second implementation of an assertion the engine already tests.
-
-# Interactive shell startup has not got structurally slower. The drift it watches is six
-# `eval`s of six independently upgrading tools, none of which announces getting heavier —
-# a baseline comment in zsh/30-plugins.zsh explains it, but only this fires.
-#
-# A ceiling well above the baseline, not a baseline comparison: load, a cold cache and a
-# Rosetta shell all move the number, and a check that fires on those is one you ignore.
-[[section.run]]
-on = "verify"
-timeout = 60
-cmd = "scripts/startup-budget.sh"
 
 # `settings.local.json` must not exist. One `absent` entry covers both verbs: sync removes
 # it, verify fails while it is there.

@@ -36,11 +36,8 @@ case_exit() {
 # --- a named input that does not exist must FAIL, never be skipped -----------
 case_exit guardrails_missing_path 1 ./scripts/settings-guardrails.sh dot-claude/does-not-exist.json
 case_exit plist_missing_path 1 ./scripts/plist-validity.sh launchd/does-not-exist.plist
-case_exit skillcap_missing_path 1 ./scripts/description-cap.sh dot-claude/skills/nope/SKILL.md
 
 # --- an EMPTY input list must FAIL: the caller's glob matched nothing --------
-# `description-cap.sh` is excluded on purpose — with no arguments it defaults to
-# its own glob, which still resolves to real files.
 case_exit guardrails_no_args 1 ./scripts/settings-guardrails.sh
 case_exit plist_no_args 1 ./scripts/plist-validity.sh
 
@@ -56,8 +53,6 @@ case_exit guardrails_real 0 ./scripts/settings-guardrails.sh dot-claude/settings
 # Globbed, not named: a hardcoded plist label is an owner this suite would
 # carry into every fork.
 case_exit plist_real 0 ./scripts/plist-validity.sh launchd/*.plist
-case_exit skillcap_default_glob 0 ./scripts/description-cap.sh
-case_exit context_budget_real 0 ./scripts/context-budget.sh
 
 # --- the project-scoped settings.local.json must be caught -------------------
 # `.gitignore` hides this file at every scope, so it can never be committed and
@@ -83,31 +78,6 @@ else
   case_exit settings_local_clean 0 ./scripts/settings-guardrails.sh dot-claude/settings.json
 fi
 
-# --- the ~/.claude/ link inventory ------------------------------------------
-# context-budget.sh caps two files, but more surfaces than that are billed, and a
-# link arriving with the budget none the wiser is invisible. The inventory closes
-# that, so it needs the same treatment as the gates above — a positive control, a
-# negative control, and a refusal to pass when it read nothing.
-case_exit inventory_unclassified_link 1 \
-  env BOOMFILE=scripts/tests/fixtures/unclassified-link-boomfile.toml ./scripts/context-budget.sh
-case_exit inventory_missing_boomfile 1 \
-  env BOOMFILE=scripts/tests/fixtures/does-not-exist.toml ./scripts/context-budget.sh
-
-# --- the cap covers SUBAGENTS, not just skills ------------------------------
-# dot-claude/agents/ is linked into ~/.claude/ and every agent `description:` is
-# billed per session, so the cap must read agents as well as skills.
-case_exit descriptioncap_agent_over 1 ./scripts/description-cap.sh scripts/tests/fixtures/agents/over-cap-agent.md
-case_exit descriptioncap_agent_real 0 ./scripts/description-cap.sh dot-claude/agents/drift-triage.md
-
-# --- rules must be path-scoped, or they are not free ------------------------
-# The rules directory is exempt from the byte ceiling on one condition: every
-# rule carries `paths:`, so it loads only when a matching file is read. Without
-# this suite the exemption would be unearned.
-case_exit rules_unscoped 1 ./scripts/rules-scoped.sh scripts/tests/fixtures/rules/unscoped.md
-case_exit rules_real 0 ./scripts/rules-scoped.sh
-case_exit rules_no_rule_inputs 1 ./scripts/rules-scoped.sh README.md
-case_exit rules_missing_dir 1 env DIR=dot-claude/does-not-exist ./scripts/rules-scoped.sh
-
 # --- a third-party tap must declare its trust, with or without brew ---------
 # brew-drift.sh's tap-trust assertion reads the Brewfile, not the machine, so it
 # must fire on a runner too — it did not, once: the `command -v brew` early exit
@@ -115,20 +85,22 @@ case_exit rules_missing_dir 1 env DIR=dot-claude/does-not-exist ./scripts/rules-
 # control only: a fixture Brewfile is a wrong declared list on any real machine.
 case_exit brewdrift_untrusted_tap 1 ./scripts/brew-drift.sh scripts/tests/fixtures/untrusted-tap-Brewfile
 
-# --- a skill body loads in full when the skill fires -------------------------
-# The body cap is what keeps a split skill from silently growing back into one
-# oversized file billed in full on any trigger.
-case_exit skillbody_over 1 \
-  env BODY_CAP=500 ./scripts/description-cap.sh dot-claude/skills/agent-friendly-repo/SKILL.md
-
-# --- the cap must be able to SEE a multi-line description --------------------
-# A YAML folded block puts the indicator (`>-`) on the `description:` line, and a
-# single-line parser scores that as one word — so any skill could carry an
-# unbounded description past a gate reporting `ok (1 words)`.
-case_exit skillcap_folded_over 1 ./scripts/description-cap.sh scripts/tests/fixtures/folded-over-cap-SKILL.md
-# Positive control: a SHORT folded block must still pass, or the fix would have
-# replaced one broken gate with another.
-case_exit skillcap_folded_under 0 ./scripts/description-cap.sh scripts/tests/fixtures/folded-under-cap-SKILL.md
+# --- the gitleaks .mcp.json rule fires on the bare placeholder --------------
+# gitleaks' default global allowlist drops any finding that is exactly `${NAME}`,
+# which is the shape this rule exists for; the first spelling of the rule was
+# silently allowlisted on every real case. The fixture is generated, never
+# tracked, so CI's own `gitleaks dir .` does not trip over it.
+if command -v gitleaks > /dev/null 2>&1; then
+  _gl=$(mktemp -d)
+  # shellcheck disable=SC2016  # the literal ${GITHUB_TOKEN} IS the fixture
+  printf '{"mcpServers":{"github":{"env":{"GITHUB_TOKEN":"${GITHUB_TOKEN}"}}}}\n' > "$_gl/.mcp.json"
+  case_exit gitleaks_mcp_placeholder_caught 1 gitleaks dir "$_gl" --config gitleaks/gitleaks.toml --no-banner --redact
+  printf '{"mcpServers":{"github":{"command":"op","args":["run","--env-file=.env","--","srv"]}}}\n' > "$_gl/.mcp.json"
+  case_exit gitleaks_mcp_clean_ok 0 gitleaks dir "$_gl" --config gitleaks/gitleaks.toml --no-banner --redact
+  rm -rf "$_gl"
+else
+  echo "  [gitleaks_mcp_*] skipped: gitleaks not on PATH (CI has it)"
+fi
 
 # --- the sandbox's two measured invariants ----------------------------------
 # DERIVED FROM THE REAL FILE, never a checked-in fixture: a fixture copy of

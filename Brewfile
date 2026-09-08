@@ -148,7 +148,9 @@ cask "devutils"      # offline developer toolbox (JSON/JWT/regex/diff)
 cask "gcloud-cli"    # Google Cloud SDK
 cask "ngrok"         # public tunnel to a local port
 cask "obs"           # screen recording
-cask "orbstack"      # Docker/Linux VMs, the lighter Docker Desktop
+# `orbstack` was declared here after drift detection found it installed; the owner
+# confirmed on 2026-09-08 it is not in use. `brew uninstall --cask orbstack` by hand —
+# `brew bundle` never removes what a Brewfile omits.
 
 # Window mgmt + launcher + clipboard (replaces Rectangle + Spotlight).
 cask "raycast"

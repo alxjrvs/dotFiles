@@ -45,10 +45,3 @@ so it can be pasted back.
 Never propose a fix. You did not read the guard, and a fix from someone who only
 saw the failure is how a test gets edited to match a bug. Report; let the caller
 decide.
-
-## The one thing to flag unprompted
-
-`canary.sh` has INVERTED polarity: its load-bearing cases are the ones where the
-canary must FAIL. If it reports all-clear on every case, say so explicitly —
-that is the state that means the canary has stopped working, not that everything
-is fine.

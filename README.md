@@ -36,7 +36,7 @@ Preview without touching anything: `boom source --dry-run`.
 
 ```
 boomfile.toml         the manifest — symlinks, packages, macOS defaults, verify steps
-hooks/                boom hooks and verify-step scripts (the directory name is boom's contract)
+hooks/                boom hooks, and the op-agent CLI (the directory name is boom's contract)
 dot-claude/           user-global Claude config, symlinked into ~/.claude/
 dot-claude/hooks/     Claude Code hooks (guards, session start, stop) + their regression suites
 git-template/hooks/   copied into every new repo via init.templateDir
