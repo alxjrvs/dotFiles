@@ -30,8 +30,11 @@ $1"
 skip() { printf 'skip %s\n' "$1"; }
 
 # ── chezmoi: every managed target matches the source ──────────────────────────
+# `--exclude scripts`: verify counts a script that WOULD run as a difference, and the
+# every-apply `run_after_` scripts always would, so without it this fails on a clean
+# machine forever. Every file, symlink and external is still checked.
 if command -v chezmoi > /dev/null 2>&1; then
-  if out=$(chezmoi verify 2>&1); then ok "chezmoi verify"; else bad "chezmoi verify: ${out:-targets differ from source (run: chezmoi apply)}"; fi
+  if out=$(chezmoi verify --exclude scripts 2>&1); then ok "chezmoi verify"; else bad "chezmoi verify: ${out:-targets differ from source (run: chezmoi apply)}"; fi
 else
   skip "chezmoi not installed"
 fi
