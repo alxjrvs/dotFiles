@@ -59,8 +59,10 @@ cask "ghostty"
 
 cask "google-chrome"
 
-# Caps Lock → Control is hidutil (home/Library/LaunchAgents/com.alxjrvs.capslock-control.plist),
-# so karabiner-elements is deliberately undeclared.
+# Caps Lock → Control is hidutil (home/Library/LaunchAgents/com.alxjrvs.capslock-control.plist).
+# Karabiner is for the other keybinds; its config is tracked at home/dot_config/karabiner/ once
+# `chezmoi add ~/.config/karabiner/karabiner.json` has run on a machine that has one.
+cask "karabiner-elements"
 
 cask "notunes"
 
