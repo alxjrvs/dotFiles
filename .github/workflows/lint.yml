@@ -96,12 +96,15 @@ jobs:
       - name: chezmoi applies
         run: |
           mise install chezmoi@2.66.0
-          mise exec chezmoi@2.66.0 -- chezmoi \
-            --source "$PWD" --destination "$RUNNER_TEMP/home" --config ci/chezmoi.toml \
-            apply --dry-run --verbose --exclude externals
-          mise exec chezmoi@2.66.0 -- chezmoi \
-            --source "$PWD" --destination "$RUNNER_TEMP/home" --config ci/chezmoi.toml \
-            managed | sed 's/^/  /'
+          # --persistent-state: chezmoi otherwise writes its state DB beside --config,
+          # i.e. into the checkout.
+          chez() {
+            mise exec chezmoi@2.66.0 -- chezmoi \
+              --source "$PWD" --destination "$RUNNER_TEMP/home" --config ci/chezmoi.toml \
+              --persistent-state "$RUNNER_TEMP/chezmoistate.boltdb" "$@"
+          }
+          chez apply --dry-run --verbose --exclude externals
+          chez managed | sed 's/^/  /'
 
       # NOT redundant with the lefthook roster above, and this is the one place
       # the duplication is deliberate. Lefthook's `hook-tests` command runs

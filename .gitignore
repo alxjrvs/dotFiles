@@ -39,3 +39,7 @@
 # because git was told to ignore it. `home/.chezmoiremove` closes that half —
 # removed on every `chezmoi apply`.
 home/dot_claude/settings.local.json
+
+# chezmoi writes its persistent state next to whatever --config it is given. A local run
+# against ci/chezmoi.toml would land it here; CI passes --persistent-state into $RUNNER_TEMP.
+ci/chezmoistate.boltdb
