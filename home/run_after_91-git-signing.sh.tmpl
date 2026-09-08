@@ -1,8 +1,6 @@
 {{ if eq .chezmoi.os "darwin" -}}
 #!/bin/bash
-# Discover the ONE signing value that has to be discovered — user.signingkey, by key name
-# from the 1Password agent — and record it in ~/.gitconfig.local + allowed_signers. Everything
-# constant about signing lives in dot_gitconfig. The script is Bun (bun comes from mise).
+# Record user.signingkey in ~/.gitconfig.local; scripts/git-signing.ts explains. Bun is from mise.
 set -euo pipefail
 export PATH="$HOME/.local/share/mise/shims:/opt/homebrew/bin:$PATH"
 command -v bun > /dev/null 2>&1 || exit 0

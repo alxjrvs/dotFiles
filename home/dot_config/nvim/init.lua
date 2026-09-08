@@ -1,8 +1,5 @@
--- nvim/init.lua — minimal, plugin-free Neovim starter config.
---
--- Symlinked to ~/.config/nvim/init.lua by chezmoi.
--- All LSP/formatter binaries live in mise.toml so they're on PATH in every shell.
--- Requires Neovim 0.11+ (native vim.lsp.config / vim.lsp.enable, no lspconfig).
+-- nvim/init.lua — plugin-free. LSP/formatter binaries come from mise; Neovim 0.11+ (native
+-- vim.lsp.config / vim.lsp.enable, no lspconfig).
 
 -- ── Options ──────────────────────────────────────────────────────────────
 vim.g.mapleader = " "
@@ -31,10 +28,8 @@ local map = vim.keymap.set
 map("n", "<leader>w", "<cmd>write<cr>", { desc = "Save" })
 map("n", "<leader>q", "<cmd>quit<cr>", { desc = "Quit" })
 map("n", "<esc>", "<cmd>nohlsearch<cr>", { desc = "Clear search highlight" })
--- grn / gra / grr are Neovim's OWN defaults since 0.11, and so is `K` -> hover;
--- restating them bought nothing, and the `K` map actively suppressed the default
--- it duplicated (the default applies "unless a custom keymap for K exists").
--- `gd` is not a default and stays.
+-- grn / gra / grr / K are Neovim's own defaults since 0.11, and mapping K by hand
+-- suppresses the default hover it duplicates; `gd` is not a default.
 map("n", "gd", vim.lsp.buf.definition, { desc = "LSP definition" })
 
 -- ── Language servers (native, no lspconfig) ────────────────────────────────

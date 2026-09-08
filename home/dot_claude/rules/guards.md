@@ -25,9 +25,9 @@ disk, passes its own suite, and enforces nothing.
 1. `home/dot_claude/settings.json` — a handler under the right event. Put an `"if"`
    on the HANDLER, never on the matcher group: it is silently dropped there.
 2. The file itself, in `home/dot_claude/hooks/`, committed with the executable bit
-   (`chmod +x`, then `git add`). chezmoi symlinks the whole directory in symlink
-   mode, and a symlink runs with the SOURCE file's mode — a 644 hook is placed and
-   never executes. The tests directory beside it is excluded by `.chezmoiignore`.
+   (`chmod +x`, then `git add`). In symlink mode each file in `~/.claude/hooks/` is a
+   symlink to its source, and a symlink runs with the SOURCE file's mode — a 644 hook
+   is placed and never executes. The tests directory beside it is excluded by `.chezmoiignore`.
 
 Nothing else: `scripts/settings-guardrails.sh` reads the hooks directory and fails
 lefthook, CI and `scripts/verify.sh` on any script there without a handler, and

@@ -1,28 +1,17 @@
-# ~/.config/mise/config.toml — language toolchains + ALL dev CLIs.
+# ~/.config/mise/config.toml — language toolchains + ALL dev CLIs (the brew/mise split is
+# CLAUDE.md's; the Brewfile header holds the upgrade doctrine).
 #
-# The brew/mise split and its rationale are stated once, in the Brewfile header.
-# Read it there; this file does not restate it.
-#
-# Unique to this file: PATH includes `~/.local/share/mise/shims` via `.zshenv` so
-# tools resolve in every shell context (interactive, non-interactive, git hooks,
-# editor subprocesses) without waiting for `mise activate`.
-#
+# PATH includes `~/.local/share/mise/shims` via `.zshenv`, so tools resolve in every shell
+# context (non-interactive, git hooks, editor subprocesses) without waiting for `mise activate`.
 # CI reads this same file through MISE_GLOBAL_CONFIG_FILE, and mise.lock beside it.
 #
-# Resolution order: registry short-name first (verified with `mise
-# registry <name>`); fall back to `aqua:owner/repo` then `github:`/`cargo:`
-# when the registry doesn't cover or the registry alias is broken.
-#
-# Every version is PINNED, and Renovate (renovate.json) bumps the pins. `"latest"` gave a
-# bot nothing to move, so mise.lock only ever changed when someone ran `mise upgrade` by
-# hand. A pin here plus the lockfile means two machines converge on the same binary AND a
-# bump arrives as a reviewable PR. `mise install` after a merged bump rewrites mise.lock;
-# commit it.
+# Resolution order: registry short-name first (verified with `mise registry <name>`); fall
+# back to `aqua:owner/repo`, then `github:`/`cargo:`/`npm:`, when the registry does not cover
+# a tool or its alias is broken.
 
 [tools]
-# Only tools worth installing globally on every machine live here. Anything
-# situational (a language toolchain for one project, a one-off CLI) is
-# installed incidentally — `mise use <tool>` in that project, or on demand.
+# Only tools worth installing globally on every machine live here. Anything situational is
+# `mise use <tool>` in that project.
 
 # ── Language toolchains ───────────────────────────────────────────────
 node = "25.9.0"
@@ -30,8 +19,6 @@ bun = "1.4.0"
 
 # ── Shell-init-time tools (need PATH presence before zsh fragments load) ─
 sheldon = "0.8.5"       # zsh plugin manager — loaded in zsh/30-plugins.zsh
-                        # NOTE: links against /opt/homebrew/opt/openssl@3/lib —
-                        # ensure `openssl@3` is in Brewfile or the binary segfaults.
 atuin = "18.16.1"       # shell history sync — loaded in zsh/60-tools.zsh
 fzf = "0.73.1"          # `fzf --zsh` integration loaded in zsh/60-tools.zsh
 zoxide = "0.9.9"        # frecency `cd` — `zoxide init zsh` loaded in zsh/60-tools.zsh
@@ -42,34 +29,12 @@ gh = "2.94.0"           # GH CLI
 delta = "0.19.2"        # syntax-aware git pager
 gitleaks = "8.30.1"     # `gitleaks git --staged` — global pre-commit hook
 lefthook = "2.1.9"      # repo-local pre-commit/pre-push runner
-"npm:heroku" = "11.10.0" # Heroku CLI. `.gitconfig` names it in a credential helper for
-                        # git.heroku.com, so the helper is broken on any machine without it.
-                        # Here and not the Brewfile: there is no homebrew-core formula, only
-                        # the third-party `heroku/brew` tap, which brew now reports Untrusted
-                        # and refuses to load without an interactive `brew trust` — a step
-                        # an unattended apply cannot perform, so a fresh machine would stall. The
-                        # registry resolves `heroku` to npm, per the fallback order above.
+"npm:heroku" = "11.10.0" # npm:heroku, not the brew tap: the tap needs an interactive `brew trust`
 
 # ── Mobile / Expo ─────────────────────────────────────────────────────
-# EAS CLI. NOT `expo-cli`: that package is EOL, and the Expo CLI in use ships
-# inside each project's own `expo` dependency (`bunx expo`, `bunx expo-doctor` —
-# 22 call sites in BinfiniteApp). Nothing global is needed for it, and the only
-# `expo-cli` string left in that repo is a stale generated `.gitignore` marker.
-#
-# `eas` IS worth having globally, for the commands that run outside a project:
-# `eas login`, `eas whoami`, `eas build:list`. Builds never use this copy —
-# every call site is `bunx eas-cli@21.2.0`, behind BinfiniteApp's
-# `check:bunx-pins` gate.
-#
-# PINNED, and that is the point. This arrived as an undeclared `bun install -g`
-# that no drift check could see, and it had drifted to 18.4.0 against a repo
-# pinning 21.2.0 — three majors stale, so a hand-typed `eas build` ran a
-# different CLI than any script did. The pin is what makes the two agree.
-# DRIFT: this version is not checked against BinfiniteApp's bunx pin by
-# anything. Bump them together.
-#
-# Explicit `npm:` backend because the registry has no `eas` entry (`mise
-# registry eas` → tool not found), per the fallback order at the top of this file.
+# Not `expo-cli` (EOL; each project's `expo` dependency ships its CLI). `eas` is for the
+# commands that run outside a project (`eas login`, `eas build:list`); project builds use
+# their own `bunx eas-cli@<pin>`.
 "npm:eas-cli" = "21.2.0"
 
 # ── File / text / data tools ──────────────────────────────────────────
@@ -83,34 +48,25 @@ eza = "0.23.4"
 # ── Linters / formatters ─────────────────────────────────────────────
 shfmt = "3.13.1"
 shellcheck = "0.11.0"
-biome = "2.5.3"                           # JS/TS/JSON linter+formatter — `biome check`
-                                          # (lefthook + CI + nvim format-on-save); registry
-                                          # short-name → aqua:biomejs/biome
-actionlint = "1.7.12"                     # GitHub Actions workflow linter (lefthook + CI);
-                                          # registry short-name → aqua:rhysd/actionlint
+biome = "2.5.3"                           # JS/TS/JSON linter+formatter (lefthook + CI + nvim)
+actionlint = "1.7.12"                     # GitHub Actions workflow linter (lefthook + CI)
 
 # ── Security scanning ─────────────────────────────────────────────────
-osv-scanner = "2.5.0"                     # OSV vulnerability scanner, run by hand; registry
-                                          # short-name → aqua:google/osv-scanner
+osv-scanner = "2.5.0"                     # OSV vulnerability scanner, run by hand
 
 # ── Neovim language servers (nvim/init.lua wires these in) ────────────
-# rust-analyzer is not global — it comes with a per-project `rust` toolchain,
-# and nvim/init.lua picks it up automatically when present.
+# rust-analyzer is not global: it comes with a per-project `rust` toolchain.
 "npm:bash-language-server" = "5.6.0"
 "npm:typescript-language-server" = "5.3.0"
 "aqua:artempyanykh/marksman" = "2026-02-08" # markdown LSP (date-versioned upstream)
-taplo = "0.10.0"                          # TOML LSP + formatter (`taplo lsp stdio`); registry alias → aqua:tamasfe/taplo (no -cli suffix)
+taplo = "0.10.0"                          # TOML LSP + formatter; registry alias → aqua:tamasfe/taplo (no -cli suffix)
 
 # ── Editor ────────────────────────────────────────────────────────────
 neovim = "0.12.3"                         # modal editor (binary: nvim)
 
 [settings]
-# Keep mise.lock current automatically. Every tool above is pinned, and the lockfile adds the
-# SHA256 checksums, sizes, URLs and GitHub provenance attestations for each binary — so two
-# machines converge on the same bytes, not only the same version string.
-#
-# `lockfile`, deliberately NOT `locked`. This one auto-creates and updates the file; `locked`
-# ENFORCES it — and per jdx (jdx/mise#8663) "ALL settings are global no matter where they are
-# defined", so `locked = true` would apply to every project on the machine and warn on any
-# tool absent from a lockfile. A much larger commitment than pinning this config.
+# `lockfile`, deliberately NOT `locked`. This one auto-creates and updates mise.lock (checksums,
+# URLs, provenance for each binary); `locked` ENFORCES it, and per jdx (jdx/mise#8663) "ALL
+# settings are global no matter where they are defined", so `locked = true` would apply to
+# every project on the machine and warn on any tool absent from a lockfile.
 lockfile = true

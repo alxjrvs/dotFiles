@@ -447,8 +447,8 @@ $SAFE_SHAPES"
     # the account, far outside `claude-agent` — scoped item access was asked for,
     # account-wide enumeration was not.
     # `op service-account create` prints a NEW TOKEN to stdout. `ratelimit` is
-    # the read-only counter that CLAUDE.md points at for usage on a plan tier
-    # with no audit log.
+    # the read-only usage counter, the only usage signal on a plan tier with no
+    # audit log.
     service-account)
       shift
       case "${1:-}" in

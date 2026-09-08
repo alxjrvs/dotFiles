@@ -1,8 +1,5 @@
-# Completions — must run after fpath extensions (sheldon adds zsh-completions in
-# 30-plugins.zsh) and BEFORE fzf-tab, which wraps the completion system. sheldon
-# sources fzf-tab in 30-plugins.zsh, before this file, and fzf's own init in
-# 60-tools.zsh then rebinds ^I after both; fzf-tab is re-enabled at the end of
-# 60-tools.zsh — see the comment there.
+# compinit — after sheldon's fpath additions (30-plugins.zsh); fzf-tab is re-enabled in
+# 60-tools.zsh, which explains the ordering.
 autoload -Uz compinit
 # Glob qualifiers don't expand inside [[ ]]; evaluate via an array assignment.
 # `N` = nullglob (empty when no match). `_fresh` matches the dump only when it

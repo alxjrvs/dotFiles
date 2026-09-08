@@ -8,13 +8,10 @@ pre-commit:
   parallel: true
   commands:
     shellcheck:
-      # `*.sh` matches every shell payload recursively; the two extensionless
-      # scripts are named. chezmoi run scripts (`*.sh.tmpl`) get their own command.
       glob: "{*.sh,home/dot_config/git/template/hooks/*,home/dot_local/bin/op-agent}"
       run: shellcheck -x {staged_files}
     shfmt-check:
       glob: "{*.sh,home/dot_config/git/template/hooks/*,home/dot_local/bin/op-agent}"
-      # -d prints a unified diff and exits nonzero — won't auto-rewrite on commit
       run: shfmt -d -i 2 -ci -sr {staged_files}
     chezmoi-scripts:
       # The run_ scripts are shell wrapped in a template. Only two template shapes
@@ -28,8 +25,6 @@ pre-commit:
           sed -e '/^{{.*}}$/d' -e 's/{{[^}]*}}/TEMPLATE/g' "$f" | shellcheck -x -s bash - || { echo "shellcheck failed on $f"; exit 1; }
         done
     biome-check:
-      # `check` reports without rewriting — like shfmt-check it won't auto-fix on
-      # commit; run `biome check --write` to fix. Config: biome.json.
       glob: "{*.ts,*.tsx,*.js,*.jsx,*.json,*.jsonc}"
       run: biome check {staged_files}
     gitleaks:
@@ -37,21 +32,16 @@ pre-commit:
       # every other repo's template hook enforce the same set.
       run: gitleaks git --staged --redact -v --no-banner --config home/dot_config/gitleaks/gitleaks.toml
     settings-json-validity:
-      # Same script CI and scripts/verify.sh run, against the STAGED file, so a
-      # bad commit is caught immediately rather than at the next drift check. The
-      # assertions and their reasoning live in the script, once.
       glob: "home/dot_claude/settings*.json"
       run: scripts/settings-guardrails.sh {staged_files}
 
     context-budget:
-      # The two CLAUDE.md files are loaded into every session, so they carry a
-      # byte ceiling (Anthropic's guidance is "under 200 lines"; 3000 bytes is
-      # roughly 40). A rule in home/dot_claude/rules/ is free ONLY with `paths:`
-      # frontmatter — without it the rule loads at launch like CLAUDE.md, and
-      # nothing about the omission looks wrong. Checked here, whole set, every
-      # commit that touches any of them; CI runs the same command --all-files.
-      # A date makes a sentence a record, not a rule, and it expires unnoticed; a
-      # full YYYY-MM-DD has no business in an instruction file.
+      # The two CLAUDE.md files are loaded into every session, so they carry a byte
+      # ceiling (Anthropic's guidance is "under 200 lines"; 3000 bytes is roughly 40).
+      # A rule in home/dot_claude/rules/ is free ONLY with `paths:` frontmatter —
+      # without it the rule loads at launch like CLAUDE.md, and nothing about the
+      # omission looks wrong. A date makes a sentence a record, not a rule, and it
+      # expires unnoticed.
       glob: "{CLAUDE.md,home/dot_claude/CLAUDE.md,home/dot_claude/rules/*.md}"
       run: |
         for f in CLAUDE.md home/dot_claude/CLAUDE.md; do
@@ -91,44 +81,37 @@ pre-commit:
         PY
 
     plist-validity:
-      # Same script CI runs. Two assertions, not one: structural validity does
-      # not catch a `~` in a path value. See the script header.
-      # The verify timer is a `.plist.tmpl` (it renders the repo path in); a
-      # template is not a plist, so CI's chezmoi dry run renders it instead and
-      # `.chezmoiignore` keeps `Library` visible on Linux for exactly that reason.
+      # Two assertions, not one: structural validity does not catch a `~` in a path
+      # value. The verify timer is a `.plist.tmpl`, not matched here; CI's chezmoi
+      # dry run renders it instead.
       glob: "home/Library/LaunchAgents/*.plist"
       run: scripts/plist-validity.sh {staged_files}
     zsh-syntax:
-      # shellcheck cannot parse zsh at all ("Unknown shell: zsh"), so the
-      # interactive shell payload is out of its scope. `zsh -n` is the native
-      # no-exec syntax check.
+      # shellcheck cannot parse zsh at all ("Unknown shell: zsh"); `zsh -n` is the
+      # native no-exec syntax check.
       glob: "{*.zsh,home/dot_zshrc,home/dot_zprofile,home/dot_zshenv}"
       run: |
         for f in {staged_files}; do
           zsh -n "$f" || { echo "zsh syntax error in $f"; exit 1; }
         done
     toml-validity:
-      # A parse error otherwise surfaces at `chezmoi apply` time on a real machine.
-      # --no-schema = pure syntax check (hermetic, offline). `.chezmoi.toml.tmpl`
-      # is a template, not TOML, and is not matched.
+      # --no-schema: pure syntax check, offline. `.chezmoi.toml.tmpl` is a template,
+      # not TOML, and is not matched.
       glob: "*.toml"
       run: taplo check --no-schema {staged_files}
     hook-tests:
-      # The glob is a guard, a suite, cases.tsv, or the repo's own hooks; the
-      # whole roster runs on any of them. Hermetic, no network, ~15 s.
       glob: "{home/dot_claude/hooks/*.sh,home/dot_claude/hooks/tests/*}"
       run: home/dot_claude/hooks/tests/all.sh
 
     actionlint:
-      # Also reaches the embedded shell in every `run:`, which the shellcheck
-      # glob above cannot.
+      # Also reaches the embedded shell in every `run:`, which the shellcheck glob
+      # cannot.
       glob: ".github/workflows/*.yml"
       run: actionlint
 
     gate-tests:
-      # The property the hook suites assert, for the shared assertions in
-      # scripts/: a gate that checked nothing must not print `ok`. The glob
-      # reaches the fixtures too, so editing one re-runs the suite locally.
+      # The property the hook suites assert, for the shared assertions in scripts/:
+      # a gate that checked nothing must not print `ok`.
       glob: "{scripts/*.sh,scripts/tests/**}"
       run: scripts/tests/gates.sh
 

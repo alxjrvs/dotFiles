@@ -44,11 +44,11 @@ stated, the more confidently it lies later.**
 Three corollaries, each mechanical:
 
 - **Never state a threshold that a check already enforces.** Say *"a byte ceiling, enforced by
-  `always-loaded context budget`"* and let that check own the number. Two copies of a constant
+  lefthook's `context-budget`"* and let that check own the number. Two copies of a constant
   desync silently, and both look authoritative.
-- **Never annotate a feature with the version it arrived in.** `boom >= 0.14.0` on a feature this
-  boomfile actively uses conveys nothing — the feature working is the proof it exists — and it
-  only ages. A version belongs in a dated entry, or beside code that must be re-measured, never as
+- **Never annotate a feature with the version it arrived in.** "landed in atuin 18.13" beside
+  a `search_mode` this config actively uses conveys nothing — the feature working is the proof
+  it exists — and it only ages. A version belongs in a dated entry, or beside code that must be re-measured, never as
   a decoration on working config.
 - **Never cross-reference by position.** *"Seventeen lines above"*, *"the section below"*, *"two
   bullets up"* — all rot on the next edit. Name the thing.
@@ -59,47 +59,45 @@ the invariant and drop the digit.
 
 ---
 
-## 2026-09-08 — brew-drift.sh retired; `brew bundle cleanup` is the native check
+## 2026-09-08 — signing constants are tracked, and "a box without 1Password" is host detection
 
-`brew bundle cleanup` without `--force` prints what is installed but not declared and exits 0
-either way, so `scripts/verify.sh` now fails on any output. The script it replaces had grown an
-exclusion list that was, in practice, an amnesty: eleven packages the Brewfile said to
-uninstall by hand (`gh node shellcheck netlify-cli heroku usage actionlint osv-scanner`; casks
-`karabiner-elements zulu17 orbstack`) sat installed for weeks with the check green, because
-naming them there was cheaper than removing them. The precondition for the native check is
-uninstalling them once; from then on verify.sh asserts that cleanup prints nothing, and an
-undeclared package has exactly two exits — declare it, or `brew uninstall` it.
+`commit.gpgSign`, `tag.gpgSign`, `gpg.format` and `gpg.ssh.program` live in the tracked
+`home/dot_gitconfig`; `scripts/git-signing.ts` writes only `user.signingkey` into
+`~/.gitconfig.local`, the one value that has to be discovered (by key name from the 1Password
+agent, so a rotated key converges without an edit).
 
-Gone with it, as an accepted loss: the file-level assertion that a third-party `tap` line
-declares `trusted:`. The Brewfile carries no `tap` line today; the rule survives as one comment
-beside where a tap would go, and the incident (a fresh machine stopping at `brew trust`) as the
-reason for it.
+They were machine-local before, on the reasoning that "a box without 1Password shouldn't fail
+commits". That is host detection wearing another name, and it guards a machine this config does
+not support anyway: README ranks 1Password second in what breaks on a fork, and `scripts/verify.sh`
+fails on day one without it. Agent sessions still turn signing off explicitly, via
+`GIT_CONFIG_KEY_0` in `home/dot_claude/settings.json`.
 
----
+## 2026-09-08 — why `claude` is a shell function: macOS TCC keys a grant to the executable's path
 
-## 2026-09-08 — the `--changed` suite selection and `ci/config.toml` retired
+`home/dot_config/zsh/65-claude.zsh` carries the mechanism; this is the measurement behind it.
+macOS TCC keys a file-access grant to the executable's absolute path — `csreq` is NULL on those
+rows, so the code hash is not pinned — and the native installer stages every release at its own
+`~/.local/share/claude/versions/<ver>`. Measured 2026-08-19: 76 accumulated rows in TCC.db, 46 of
+them `kTCCServiceSystemPolicyAppData`, roughly one per update since May.
 
-Both were the kind of thing a native default now covers. The hook-test runner selected suites
-by `covers:` lines each suite declared, and CI ran the whole roster a second time so that a
-wrong line could not narrow the gate — an optimisation that needed a duplicate to be safe. The
-full roster is about 15 s and runs only on commits that touch a hook, so the selection, the
-six preambles and the CI duplicate went together. CI's hand-written chezmoi config went for the
-same reason: `chezmoi init --source "$PWD" --config "$RUNNER_TEMP/chezmoi.toml"` renders the
-real `home/.chezmoi.toml.tmpl`, puts the state DB beside that config by default, and so also
-retires `--persistent-state`, the `*.boltdb` ignore and the "expected warning" paragraph. A
-template error now fails in CI instead of on a machine.
+The bundle the function launches through is Anthropic's, not ours: Claude Code writes a
+`ClaudeCode.app` beside `versions/` (CFBundleIdentifier `com.anthropic.claude-code`), hardlinks
+the current release into it, and re-execs through it with responsibility disclaimed — but only
+from the background / PTY-host entry point, never for the foreground TUI. Background sessions
+therefore had a permanent TCC identity all along and had already earned the bundle its grants
+for Documents, Desktop, Downloads, AppData, MediaLibrary and NetworkVolumes; pointing the
+interactive launch at the same bundle cost zero prompts.
 
-## 2026-09-08 — the push guard retired; the default branch is protected where it lives
+## 2026-09-08 — the default branch is protected where it lives, not by a client-side guard
 
-`rebase-guard.sh` is deleted, with its two handlers, its `wired_hooks` line, and its 83 fixture
-cases. It did two jobs: refuse a direct push to the default branch, and refuse a push or PR from a
-branch behind its target. On the default branch of an owned repo that carries the ruleset, both
-are now the server's, and better held there:
+No hook refuses a direct push to the default branch or a push from a stale branch. On the
+default branch of an owned repo that carries the ruleset, both are the server's, and better held
+there:
 
 - **The ruleset.** Every owned repo carries a `pull_request` rule with zero required approvals
   (the `agent-friendly-repo` skill applies it). GitHub then rejects a direct push to the default
   branch from anyone, agent or owner, in a way no spelling walks past — `git -c alias.x=push`,
-  `bash -c`, `--all`, a substitution in program position, none of the 83 spellings matter.
+  `bash -c`, `--all`, a substitution in program position, none of it matters.
 - **Strict required status checks** refuse to merge a stale branch where a required check
   exists, and `gh pr merge --auto` waits; the worktree-freshness hook's advisory says so.
 
@@ -107,9 +105,8 @@ The layers that stay: `autoMode.hard_deny` keeps its one natural-language senten
 differently from a server rule and costs one line; and `worktree-freshness.sh` still
 fast-forwards a virgin worktree so the agent starts on current code.
 
-**The boundary, stated plainly.** A ruleset is per repo and per branch; the guard was neither.
-Outside that boundary the setup goes from a deterministic deny to the classifier sentence alone:
-a repo the agent can push to that has no ruleset (a collaborator repo, an org repo outside
+**The boundary, stated plainly.** A ruleset is per repo and per branch. Outside that boundary the
+setup goes from a deterministic deny to the classifier sentence alone: a repo the agent can push to that has no ruleset (a collaborator repo, an org repo outside
 `_owned_orgs`, the owner's own forks, which nobody ran the skill against); a private repo on a
 GitHub Free plan, where the API accepts a ruleset and does not enforce it; the emergency window
 while a ruleset is deleted by hand; `git push --mirror`, which the ruleset stops on the default
@@ -118,32 +115,15 @@ repo with no CI, where there is no required check for `strict` to bite on. Each 
 agent's classic PAT and the org-scope guard already bound where it writes, and the default
 branches that matter are the owned ones.
 
-**This lands only after the ruleset is on every owned repo, forks included.** Deleting the guard
-first would remove the sole deterministic no-push-to-main control for the gap. The PR is a draft
-until the owner confirms, and the merge is the confirmation.
+Accepted with it: the "you are behind, rebase" nudge arrives from the merge gate a little later
+than a client-side check would deliver it.
 
-What is lost, and accepted: the five-second `git fetch` inside every push, which was the single
-highest-latency thing this config did on the hot path, and an earlier "you are behind, rebase"
-nudge that the merge gate now delivers a little later.
+## 2026-09-08 — chezmoi in symlink mode is the engine
 
-## 2026-09-08 — boom retired; chezmoi in symlink mode is the engine
-
-The audit's largest decision. boom was a 5,900-line private engine with one production consumer,
-this repo, and the North Star word *shareable* argued against resting a showpiece on it. chezmoi is
-the field's standard, and every convention this repo needed already exists in it:
-
-| boom | chezmoi |
-|---|---|
-| `[[section.link]]` with `mode` | `home/` source state; `dot_`, `private_`, `empty_` prefixes; symlink mode |
-| `[[section.dir]]` | a directory in the source tree, `.keep` to make git track it |
-| `[[section.absent]]` | `.chezmoiremove` |
-| `pkg` (brew, mise, gh) | `run_onchange_` scripts hashed on the file they apply |
-| `osx_default`, `launchd` | `run_onchange_` scripts |
-| `hook` (TypeScript, `HookApi`) | a Bun script (`scripts/git-signing.ts`) called from `run_after_` |
-| the statusline clone hook | `.chezmoiexternal.toml`, two `archive-file` entries from the tag tarball |
-| `run on = "verify"`, `[boom] notify` | `scripts/verify.sh` on a launchd timer, notifying on failure |
-
-Three choices worth recording:
+The audit's largest decision: a private dotfiles engine with one consumer was replaced by the
+field's standard, because the North Star word *shareable* argued against resting a showpiece on
+it, and every convention this repo needed already exists in chezmoi. Three choices worth
+recording:
 
 - **Symlink mode, not chezmoi's default copy mode.** The owner's edit-in-place model stays: a file in
   `~` is a symlink into the checkout, so an edit is live without an apply. The costs are known
@@ -155,27 +135,17 @@ Three choices worth recording:
   none is `before`, so a package failure never leaves the shell without its files, and none
   is `once`, which would record "done" on a machine that lacked the tool.
 - **The checkout is the source.** `chezmoi init --source <checkout>` and a `sourceDir` line in the
-  config template mean one clone, where boom kept a managed cache clone beside the working copy
-  and the log records a session confused about which one the symlinks resolved into.
-- **Verify is a script on a timer, not a framework.** Twelve `run on = "verify"` steps became one
-  `scripts/verify.sh` with the checks that survived the audit; the ones that only existed to
-  catch silent decay of things nothing schedules did not. `com.alxjrvs.dotfiles-verify` runs it
-  daily, which is the timer `[boom] notify = true` never had.
+  config template mean one clone; a managed cache clone beside the working copy is a second
+  place for the symlinks to resolve into, and the log records a session confused about which.
+- **Verify is a script on a timer, not a framework.** `scripts/verify.sh` holds the checks that
+  survived the audit; the ones that only existed to catch silent decay of things nothing
+  schedules did not. `com.alxjrvs.dotfiles-verify` runs it daily.
 
-`boom askpass` goes with the binary, so op-guard's `boom` arm, its cases, and the two deny
-entries are removed rather than left guarding a program that is no longer installed.
-
-Cutover on an existing machine, in order: merge, `brew install chezmoi`, then
-`chezmoi init --source <checkout> --apply` straight over boom's symlinks — measured: symlink
-mode replaces a symlink that points elsewhere, replaces a regular file, and turns a directory
-symlink into a real directory of symlinks, without prompting and without touching what they
-pointed at. **Not `boom uninstall`**, before or after: before, it leaves the shell with no rc
-files; after, it would remove the very targets chezmoi just placed. Retire the engine with
-`brew uninstall alxjrvs/boom/boom && brew untap alxjrvs/boom && rm -rf ~/.local/state/boom`.
-Then `gh auth status` (the gh-extensions script waits for it), `chezmoi doctor`,
-`scripts/verify.sh`, and once: `launchctl print gui/$(id -u)/com.alxjrvs.capslock-control` —
-that plist is a symlink now, and launchd loading a symlinked agent is the one step this
-runner could not measure.
+Measured at cutover: symlink mode replaces a symlink that points elsewhere, replaces a regular
+file, and turns a directory symlink into a real directory of symlinks, without prompting and
+without touching what they pointed at. launchd loading a symlinked agent was the one step the
+runner could not measure; `launchctl print gui/$(id -u)/com.alxjrvs.capslock-control` is the
+check.
 
 ## 2026-09-08 — the audit: controls move to the boundary that owns the resource
 
@@ -184,9 +154,8 @@ machine ever reads. The rest enforces, tests, or explains. Nearly all of it desc
 premise: the agent session runs with the owner's full credentials, so its *commands* are policed
 from inside the session. The decisions, so the next pass finds reasons rather than gaps:
 
-- **Stage 1 (this change) cut what no engine will carry.** `hooks/claude-canary.sh` went because
-  the 24-hour worktree fetch it fingerprinted is now *documented* client behaviour, not a bug
-  awaiting a silent fix; a canary for a policy watches for nothing. `startup-budget.sh` and
+- **Cut what no engine will carry.** `hooks/claude-canary.sh` went because the 24-hour worktree
+  fetch it fingerprinted is now *documented* client behaviour, not a bug awaiting a silent fix; a canary for a policy watches for nothing. `startup-budget.sh` and
   `brew-resolves.sh` were monitoring inside a verify verb that nothing schedules. The three
   self-policing gates (`context-budget.sh`, `description-cap.sh`, `rules-scoped.sh`) and their
   suite collapsed into one lefthook command: the byte ceiling (one number now, 3000, where the
@@ -200,23 +169,19 @@ from inside the session. The decisions, so the next pass finds reasons rather th
   `GITLEAKS_CONFIG` is not exported: it outranks a repo's own `.gitleaks.toml`.
 - **Renovate, with pins.** Renovate had authored zero pull requests here in the life of
   `renovate.json`, and even installed it would have found nothing to bump: every tool but two was
-  `"latest"`. Versions are pinned to what `mise.lock` had already resolved, Renovate owns Actions
-  and mise together, and Dependabot with its auto-merge workflow is gone. The app must be installed
-  on the repo for any of it to fire. The gate all of this rests on is still the branch ruleset;
+  `"latest"`. Versions are pinned to what `mise.lock` had already resolved, and Renovate owns
+  Actions and mise together — one bot, not two. The app must be installed on the repo for any of
+  it to fire. The gate all of this rests on is still the branch ruleset;
   nothing in this repo asserts one exists.
 - **Kept, and why.** The classic PAT stays, so `repo-scope-guard.sh` stays: with an unscoped
   token, the guard is the only thing scoping `gh` writes. The 1Password service account stays
   because it is 1Password's own recommendation for unattended agents, so `op-agent` and
   `op-guard.sh` stay with it. The permission floor stays in `~/.claude/settings.json`, the one
   file that governs both terminal and web sessions; managed settings were considered and declined.
-- **Next: rulesets everywhere, then chezmoi.** A `pull_request` rule with zero approvals goes on
-  every owned repo (added to the `agent-friendly-repo` ruleset in this change). Once applied, a
-  direct push to main is rejected by the server for owner and agent alike, and
-  `rebase-guard.sh`'s push arm is a courtesy that can go. Then the boomfile migrates to chezmoi in
-  symlink mode: `run_onchange_` scripts for brew, mise, gh extensions, macOS defaults and
-  launchd; `.chezmoiremove` for `settings.local.json`; the two TS hooks kept as Bun scripts; the
-  surviving machine checks as one `scripts/verify.sh` on a launchd timer, which is the timer
-  `[boom] notify` never had.
+- **Rulesets everywhere.** A `pull_request` rule with zero approvals is on every owned repo
+  (the `agent-friendly-repo` skill applies it), so a direct push to main is rejected by the
+  server for owner and agent alike; *the default branch is protected where it lives* and
+  *chezmoi in symlink mode is the engine* record what followed from that.
 
 ## 2026-09-01 — `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is removed, and it had no entry here
 
@@ -428,7 +393,6 @@ are wrong, and the second is checkable.
 | what the comment explains | in `cases.tsv` | in `DECISIONS.md` |
 |---|---|---|
 | `git -C <path>` names the target repo | 13 | **0** |
-| `boom askpass` prints a resolved ref | 3 | **0** |
 | `npm exec` / `docker exec` had no arm | 5 | **0** |
 | `caffeinate`/`arch`/`setsid`/`chroot` flag grammars | 5 | **0** |
 
@@ -459,9 +423,9 @@ audit's number standing.
 
 `.github/workflows/lint.yml` had fourteen steps, each a re-spelling of a `lefthook.yml` command
 with a `git ls-files` expansion swapped in for `{staged_files}`. Nothing asserted the two lists
-agreed, and **they had already drifted in both directions**: `brew-drift` existed only in lefthook,
-`boomfile-sources` only in CI. A `boomfile.toml` edit that dangled a `src` passed `git commit`
-clean and failed only after the push.
+agreed, and **they had already drifted in both directions**: one check existed only in lefthook,
+another only in CI, so an edit that check would have caught passed `git commit` clean and failed
+only after the push.
 
 CI now runs `lefthook run pre-commit --all-files`. One roster, and the drift class is impossible
 rather than merely unlikely.
@@ -471,20 +435,9 @@ index, so bare `lefthook run pre-commit` would hand every `glob:`-scoped command
 list and report success for inspecting nothing. That is the identical vacuous pass this repo had
 in its Stop hook, in a different place.
 
-### Two things stay outside the roster, each for a reason
-
-- **gitleaks.** Lefthook runs `git --staged`, which reads the index; a runner has none, and the
-  useful remote question is different anyway — does the CURRENT TREE contain a secret, rather
-  than does this commit add one. Same tool, different verb.
-- **The chezmoi dry run.** Not a lint check and not a lefthook command: it is the engine asking
-  whether the source state still applies.
-
-(A third, a bare re-run of the hook suites to cover for lefthook's `--changed` selection, went
-with that selection — see 2026-09-08.)
-
-`zsh` moves to the setup step: lefthook's roster runs `zsh -n` over the shell payload and a runner
-has no zsh, so installing it inside that command would fail mid-roster with a confusing message
-instead of at setup with a clear one.
+What stays outside the roster — a tree-wide gitleaks scan, and the chezmoi dry run that asks the
+engine whether the source state still applies — is remote-only by nature, and `lint.yml` says why
+beside each step.
 
 ---
 
@@ -526,10 +479,9 @@ The trigger should be a person asking for a specific guard, not a packaging exer
 speculatively is the same move as `ssh/config`'s "so future per-org keys have a place to land",
 which this pass deleted for being speculative.
 
-**And only three of the seven guards are publishable at all**, which is worth knowing before
+**And only some of the guards are publishable at all**, which is worth knowing before
 committing to a repo for them. `worktree-remove-guard.sh` and `worktree-port.sh` are pure git and
-worktree semantics with nothing personal in them; `rebase-guard.sh` mostly is. The other four
-encode this machine: `repo-scope-guard.sh` hardcodes `_owned_orgs()`, `op-guard.sh` assumes
+worktree semantics with nothing personal in them. The rest encode this machine: `repo-scope-guard.sh` hardcodes `_owned_orgs()`, `op-guard.sh` assumes
 op-agent and the `claude-agent` vault, `verify-gate.sh` assumes lefthook is the repo's gate, and
 `worktree-freshness.sh` is a version-pinned workaround that would spread past its expiry. The
 shareable surface is smaller, and less interesting, than the guard count suggests.
@@ -555,7 +507,7 @@ is worth. A recommendation drawn from documentation is not evidence about this m
 
 What was cut instead, in the same pass, is the class that genuinely rots: **procedure duplicated
 from the `agent-friendly-repo` skill** — the stacks/merge-queue mechanics, the classic
-branch-protection payload, the Dependabot workflow steps — where the skill is the copy that gets
+branch-protection payload, the auto-merge workflow steps — where the skill is the copy that gets
 used and this one silently diverged (it still carried a claim the skill had withdrawn, and a
 strikethrough-plus-correction this file's own rule forbids). Plus one entry restating
 `rules/guards.md`. About 100 lines, none of it a measurement, none of it an incident.
@@ -608,13 +560,13 @@ its result dict on success, which is noise, and launchd already records the exit
 
 `op-agent audit` is deleted: 137 lines (plus `_prefixed`) asserting that three declared vault
 items exist, in one direction, plus a kebab-case regex over three hand-written strings. The
-`boom verify` step that called it goes with it, and `agent-vault.txt` drops from 61 lines to 20 —
+verify step that called it goes with it, and `agent-vault.txt` drops from 61 lines to 20 —
 three data lines under 57 lines of essay, in a repo whose own routing table sends reasons and
 incidents *here*.
 
 The half worth having was already gone. Its own comments recorded why: the reverse check — an
 item in the vault that the manifest does not name — *"made the vault effectively read-only,
-because adding or retiring a credential failed `boom verify` until this file was edited in the
+because adding or retiring a credential failed verify until this file was edited in the
 same breath,"* so it was removed. What remained asserts that three declared items exist, which
 every consumer reports on first resolve anyway.
 
@@ -637,21 +589,6 @@ rather than in a file symlinked nowhere:
 `_sa_expiry_epoch` is untouched. 1Password exposes no service-account token expiry — no API, no UI
 field, no pre-expiry alert — so decoding the JWT `exp` locally is the only way to know, and it is
 the best bespoke code in this repo.
-
-### The gate roster rotted again, in the file that warns about it
-
-`home/dot_claude/agents/guard-tester.md` listed seven gates and omitted `scripts/rules-scoped.sh`,
-which has been a lefthook and CI check since 2026-08-29. Its own note records the previous
-instance — *"an earlier version… promised 'seven', and was wrong by two before anyone read it
-again."*
-
-The roster existed in three places (this agent, `lefthook.yml`, `.github/workflows/lint.yml`) and
-nothing asserted they agreed, which is the same two-roster class that let `brew-drift` live only
-in lefthook and `boomfile-sources` only in CI. A single `scripts/check.sh` that all three call was
-declined as machinery added during a pass that was removing machinery. The same day, *CI runs
-lefthook's roster instead of re-spelling it* made `lefthook run pre-commit --all-files` that
-single entry point with no new machinery, and the agent now calls it too — so one roster remains,
-`lefthook.yml`, and this file's warning about the agent's hand-copy has nothing left to warn about.
 
 ## 2026-09-01 — three controls that were describing themselves, and one that was passing on work it never read
 
@@ -686,15 +623,6 @@ hand-rolled a session-keyed marker to stand in for it. And that marker armed onl
 failure, so a passing session re-ran the full gate every dirty turn while a failing one went quiet
 for good. The marker is now keyed by tree state — `status --porcelain` **and** `diff HEAD`, because
 porcelain alone prints ` M f.txt` whatever the file now contains, which the suite caught.
-
-### `identity-drift.sh` is deleted, because it had already failed open
-
-Six of its twenty-four allowlist entries named files that still exist and no longer carry the
-owner. It compares one way (`comm -23`), so the allowlist rots **permissive** and nothing notices:
-those six could re-acquire a hardcoded owner and the gate would still print
-`ok identity-drift (18 files name 'alxjrvs', all documented)`. Fixing it means a second comparison
-and more machinery, to protect a `git grep -il alxjrvs` that a forker runs once, ever. README now
-says the list is unenforced rather than implying a gate stands behind it.
 
 ### Also removed
 
@@ -833,6 +761,16 @@ here. A rule is the fourth destination, for the narrow case of "true only while 
 files". The failure mode to watch is a rule becoming a second CLAUDE.md by accumulation, which
 is why the directory is exempt from the ceiling only on the condition that command asserts.
 
+### The rule that survives
+
+Keep a sentence in an always-loaded file only if a session must believe it **before its first
+tool call**, and no hook, permission rule, verify step, test suite, or on-demand skill will tell
+it in time. Then write it as a bare imperative — no date, no version, no "measured", no past
+incident. **If the rewrite comes out empty, it was a postmortem.** Two corollaries need no
+judgment: if the reader is necessarily already looking at one file, it belongs in that file's
+header comment; and a sentence naming a version of fast-moving software is expiring by
+construction, so it becomes an assertion something re-runs, or it comes here.
+
 ## 2026-08-29 — `AGENTS.md` considered, and declined
 
 `AGENTS.md` is a real de-facto standard: 60,000+ repos, stewarded by the Agentic AI
@@ -857,7 +795,7 @@ one instruction file.
 
 The `.gitconfig` landed a credential helper for `git.heroku.com` (`helper = !heroku
 git:credentials`) — appended by the heroku CLI itself, and committed so it would stop
-re-dirtying boom's config cache on every use. That left a stanza naming a binary the Brewfile
+re-dirtying the checkout on every use. That left a stanza naming a binary the Brewfile
 did not install, so the obvious fix was to declare `brew "heroku"`.
 
 It does not work. There is no homebrew-core formula for heroku. The only source is the
@@ -867,18 +805,18 @@ load the formula at all:
 > Refusing to load formula heroku/brew/heroku from untrusted tap heroku/brew.
 > Run `brew trust --formula heroku/brew/heroku` or `brew trust heroku/brew` to trust it.
 
-`brew trust` is interactive, and `boom source` runs unattended. A Brewfile line that requires a
-human is a fresh machine that stops halfway through its first converge — which is the one thing
+`brew trust` is interactive, and `chezmoi apply` runs unattended. A Brewfile line that requires a
+human is a fresh machine that stops halfway through its first apply — which is the one thing
 the Brewfile exists to prevent. **A declaration that cannot run unattended is not a
-declaration.** That, not the Lean A policy, is the reason it went to `mise.toml`; the policy
-merely agreed.
+declaration.** That, not the brew/mise split, is the reason it went to the mise config; the
+policy merely agreed.
 
 Two things found while checking, both arguing the same way:
 
 - The installed brew copy had **self-updated past its own Cellar version**: the symlink pointed
   at `Cellar/heroku/11.3.0`, and the binary it resolved to reported `11.9.0`. The heroku CLI
   updates itself in place, so brew's record of its version was already false, and any
-  `boom.lock` pin for it would have been recording a number nothing controlled.
+  lock pin for it would have been recording a number nothing controlled.
 - `mise registry heroku` resolves to `npm:heroku`, which installs clean and lands *ahead* of
   both (11.10.0). The repo already runs `npm:` backends for two language servers, so this adds
   a package, not a mechanism.
@@ -894,57 +832,6 @@ danger would have been describing a failure the config already fixed.
 So removing the brew copy is hygiene, not a correctness fix: it reclaims the Cellar, and it drops
 an Untrusted tap from the machine, which is worth doing on its own. Nothing breaks while it sits
 there.
-
-## 2026-08-22 — a `headersHelper` can point at a deleted vault item and still pass `boom verify`
-
-Asked whether frequently-used keys could be moved into the agent vault. The answer was **nothing
-to move**: this machine resolves exactly the items `agent-vault.txt` declares, each with a live
-consumer, and `op item list --vault claude-agent` agreed with the file. The vault was already
-reduced to its consumers on 2026-08-19 and had not drifted. Recording it because "we checked and
-there was no work" is the finding, and without a note the same audit gets redone.
-
-**What the audit did turn up, running the other way.** The `render` MCP server (project-scoped to
-`~/Code/SU-SRD`) carried a local-scope `headersHelper` resolving
-`op://claude-agent/render-api-key/credential` — an item that is not in the vault. `claude mcp list`
-reported `render ✘ Failed to connect — Incompatible auth server: does not support dynamic client
-registration`, while `github`, on the identical `op-agent header` mechanism, connected. So the
-service-account path was healthy and only the missing item was broken.
-
-**The blind spot, and why it stays open.** The `~/.claude.json` assertion in `boomfile.toml` proves
-each helper's BINARY is executable. `op-agent` is executable, so the check was green the whole
-time; a helper whose `op://` ref no longer resolves exits 0 and emits `{}`, which is
-indistinguishable from success at that layer. Closing it means resolving a secret at verify time,
-and `boom verify` is a step anyone can run unattended — a verify that resolves credentials is a
-standing exfiltration surface pointed at the one vault the SA can read. Worse than the blind spot, so it is
-left open and named in the boomfile comment instead. `claude mcp list` is the control that catches
-this class, which `SU-SRD/docs/architecture/agent-tooling.md` already prescribes.
-
-**A comment that was wrong in the direction that hides the bug.** The same boomfile block claimed
-`render-api-key` was dropped "because no `render` server exists in any scope". A server did exist,
-in two scopes. That framing is what made the gap above read as already-handled, so it was replaced
-rather than deleted — per this file's rule that a wrong line is corrected in place.
-
-**Three guardrails refused this work in a row, and each refusal was right.** op-guard denied
-`op item move --destination-vault claude-agent` (inbound moves are self-escalation — an agent
-granting itself a credential); the auto-mode classifier denied `claude mcp remove`, which is the
-restored human gate from removing `skipAutoPermissionPrompt` doing its job on a mutating config
-change; and SU-SRD's own cutover plan denied deleting `render` from `.mcp.json`, because that is a
-**P8** step and P8 is gated behind a P7 that is still red. The pull each time was to route around
-a control that was correctly saying no — including one temptation to reach the blocked edit with
-`jq` instead, which would have been the same mutation evading the same gate. The near-miss worth
-recording: deleting a documented server over a misleading auth error is precisely how the GitHub
-MCP was once removed instead of repaired, and the error string here was character-for-character
-the one in that incident.
-
-### The rule that survives
-
-Keep a sentence in an always-loaded file only if a session must believe it **before its first
-tool call**, and no hook, permission rule, verify step, test suite, or on-demand skill will tell
-it in time. Then write it as a bare imperative — no date, no version, no "measured", no past
-incident. **If the rewrite comes out empty, it was a postmortem.** Two corollaries need no
-judgment: if the reader is necessarily already looking at one file, it belongs in that file's
-header comment; and a sentence naming a version of fast-moving software is expiring by
-construction, so it becomes an assertion something re-runs, or it comes here.
 
 ## Permissions & security
 
@@ -984,13 +871,13 @@ Consequences worth keeping:
   because a hook `allow` bypasses the permission system and would put the guard *above*
   `permissions.deny`. Denying-or-silent means it can subtract permission and never add it, so the
   two layers compose instead of racing. Worth copying to any future security hook.
-- **Allow-listing `op run` opened a hole in a *different* guard, and it was closed in the same
-  commit.** `op run -- git push origin main` presents `op` as the program, so `rebase-guard.sh` —
-  which tokenizes for a `git`/`gh` program — never sees the push. op-guard denies a `git`/`gh`
-  child for that reason alone; neither gets credentials from `op run` anyway. The general lesson:
-  when you permit a *wrapper*, check what every other guard's tokenizer now fails to see.
-- **The interpreter residue is closed for `op`.** `CLAUDE.md` records that deny "cannot cover an
-  arbitrary interpreter — `sh -c 'op read …'` still walks past". A hook that tokenizes can: op-guard
+- **Allow-listing a wrapper hides the program from every other guard.** `op run -- git push
+  origin main` presents `op` as the program, so a guard that tokenizes for a `git`/`gh` program
+  never sees the push. op-guard denies a `git`/`gh` child for that reason alone; neither gets
+  credentials from `op run` anyway. The general lesson: when you permit a *wrapper*, check what
+  every other guard's tokenizer now fails to see.
+- **The interpreter residue is closed for `op`.** Deny cannot cover an arbitrary interpreter —
+  `sh -c 'op read …'` walks past a spelling rule. A hook that tokenizes can: op-guard
   takes a basename (every path spelling) and scans an interpreter's payload for an `op`
   subcommand, anchored on the subcommand so `xargs grep op foo` and `bash -c 'echo loop'` do not
   trip it. Still open for everything else deny covers.
@@ -1003,8 +890,8 @@ Consequences worth keeping:
 - **The pairing is asserted, not trusted.** `permissions.allow` carries `Bash(op run:*)` so the
   recommended shape is deterministic rather than left to the probabilistic classifier — which this
   file already records deciding identically-shaped commands differently. That pre-approval is only
-  safe with the guard in front of it, so every enforcement point (`boomfile.toml`,
-  `lefthook.yml`, `lint.yml`) now also asserts `op-guard.sh` is wired. Un-wiring the hook while
+  safe with the guard in front of it, so `scripts/settings-guardrails.sh` — lefthook, CI and
+  `verify.sh` all run it — asserts `op-guard.sh` is wired. Un-wiring the hook while
   leaving the allow entry is the single edit that would turn this change from narrower into wider.
 - **53 regression cases written before the deny list was relaxed**, and a negative control run
   afterwards (inverting two expectations produced exactly two failures), because a new block that
@@ -1105,7 +992,7 @@ Least privilege genuinely rests on the PAT's scopes and the SA-scoped vault, not
 Stated plainly here so the deny list is never mistaken for a security boundary.
 
 **It is nonetheless now tested.** Until 2026-08-05 the entire `deny` array could be deleted and
-lefthook, CI and `boom verify` all stayed green — the "deterministic floor" had no regression test
+lefthook and CI both stayed green — the "deterministic floor" had no regression test
 at all, while the four cosmetic-by-comparison settings guardrails did. A floor with no test is not
 a floor, so every secret-path entry is asserted in every enforcement point.
 
@@ -1148,8 +1035,9 @@ removed it."*
 So a client-side push guard went from belt-and-braces to **sole enforcement**, in a client
 update, with no signal. Everything still worked, which is exactly why it needed noticing.
 
-That is the argument that moved the rule to the server (the 2026-09-08 entry above): a
-`pull_request` ruleset rule is not subject to a client release. If a client-side layer is ever
+That is the argument that moved the rule to the server (*the default branch is protected where
+it lives, not by a client-side guard*): a `pull_request` ruleset rule is not subject to a client
+release. If a client-side layer is ever
 wanted back, `permissions.ask: ["Bash(git push *)"]` is the documented mechanism — content-scoped
 ask rules are evaluated before the classifier and force a prompt even in auto mode. Not adopted:
 this machine pushes constantly and the prompt fatigue would be the greater cost.
@@ -1162,8 +1050,7 @@ this machine pushes constantly and the prompt fatigue would be the greater cost.
 client had rewritten `settings.json`, as it does for `tui` and `theme`, and left the config-repo
 clone dirty for enumeration. **It had not.** Measured
 straight after: `outputStyle` was in neither `home/dot_claude/settings.json` nor `~/.claude.json`, no
-`~/.claude/output-styles/` directory existed, and *both* clones (`~/Code/DevEnv/dotFiles` and
-boom's `~/.local/state/boom/config-repo`) reported a clean tree. The style was live in the running
+`~/.claude/output-styles/` directory existed, and the checkout reported a clean tree. The style was live in the running
 session and nowhere else — it would have died with the session.
 
 That is the whole reason this is a hand-written entry rather than a reconciliation. The discipline
@@ -1229,11 +1116,3 @@ The mechanics — required checks, the aggregate job, `merge_group:` sequencing,
 required check strands a PR pending forever — are in the `agent-friendly-repo` skill, which is
 where a procedure goes. They were duplicated here in full, including a claim the skill had since
 withdrawn, and a strikethrough-plus-correction that this file's own rule forbids.
-
-## Branch protection
-
-### Classic protection — legacy fallback only
-
-Rulesets are the mechanism; classic branch protection stays only as the fallback for a repo that
-has none. The JSON payload for configuring either lives in the `agent-friendly-repo` skill with
-the rest of the setup procedure, not here.
