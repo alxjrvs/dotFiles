@@ -12,14 +12,27 @@
 // Exit 0 always: a machine without 1Password is reported, never failed — signing is then
 // simply not converged, and `verify.sh` says nothing about it because nothing can.
 
-import { appendFileSync, chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  chmodSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { $ } from "bun";
 
 const HOME = process.env.HOME ?? "";
 const REPO = join(import.meta.dir, "..");
 const PROG = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign";
-const SOCK = join(HOME, "Library", "Group Containers", "2BUA8C4S2C.com.1password", "t", "agent.sock");
+const SOCK = join(
+  HOME,
+  "Library",
+  "Group Containers",
+  "2BUA8C4S2C.com.1password",
+  "t",
+  "agent.sock",
+);
 const name = process.argv[2] ?? "GitHubSSH";
 
 const log = (s: string) => console.log(`git-signing: ${s}`);
@@ -45,15 +58,27 @@ if (!existsSync(PROG)) {
 }
 const pub = await pubkey();
 if (!pub) {
-  log(`1Password agent not offering "${name}" (running? SSH agent enabled?) — skipping`);
+  log(
+    `1Password agent not offering "${name}" (running? SSH agent enabled?) — skipping`,
+  );
   process.exit(0);
 }
 
 // Machine-local git overrides: sign with the 1Password key via op-ssh-sign.
 const cfg = join(HOME, ".gitconfig.local");
-if (!existsSync(cfg)) writeFileSync(cfg, "# Machine-local git overrides — NOT in dotfiles. Written by scripts/git-signing.ts.\n");
+if (!existsSync(cfg))
+  writeFileSync(
+    cfg,
+    "# Machine-local git overrides — NOT in dotfiles. Written by scripts/git-signing.ts.\n",
+  );
 const want = `key::${pub}`;
-const cur = (await $`git config --file ${cfg} user.signingkey`.nothrow().quiet().text().catch(() => "")).trim();
+const cur = (
+  await $`git config --file ${cfg} user.signingkey`
+    .nothrow()
+    .quiet()
+    .text()
+    .catch(() => "")
+).trim();
 if (cur !== want) {
   await $`git config --file ${cfg} user.signingkey ${want}`.nothrow().quiet();
   log(`signingkey set to the 1Password "${name}" key`);
@@ -62,11 +87,17 @@ if (cur !== want) {
 // allowed_signers (append-only) so `git log --show-signature` verifies locally.
 const allowed = join(HOME, ".ssh", "allowed_signers");
 const email = (
-  await $`git config --file ${join(REPO, "home", "dot_gitconfig")} user.email`.nothrow().quiet().text().catch(() => "")
+  await $`git config --file ${join(REPO, "home", "dot_gitconfig")} user.email`
+    .nothrow()
+    .quiet()
+    .text()
+    .catch(() => "")
 ).trim();
 if (email) {
   const line = `${email} ${pub}`;
-  const have = existsSync(allowed) && readFileSync(allowed, "utf8").split("\n").includes(line);
+  const have =
+    existsSync(allowed) &&
+    readFileSync(allowed, "utf8").split("\n").includes(line);
   if (!have) {
     appendFileSync(allowed, `${line}\n`);
     log("allowed_signers updated");
