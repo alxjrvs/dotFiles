@@ -5,6 +5,7 @@ eval "$(fzf --zsh)"
 # be the last thing to bind ^I and must follow compinit, and sheldon loads it before both
 # (30-plugins.zsh); without this line Tab still completes, so the loss is invisible. Guarded,
 # so a machine where sheldon has not cloned the plugin yet still gets a working shell.
+# Check: `zsh -i -c 'bindkey "^I"'` prints fzf-tab-complete, not fzf-completion.
 (( $+functions[enable-fzf-tab] )) && enable-fzf-tab
 
 # Atuin shell history — Ctrl-R fuzzy search. Must load AFTER fzf: both bind

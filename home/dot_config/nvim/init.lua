@@ -28,7 +28,8 @@ local map = vim.keymap.set
 map("n", "<leader>w", "<cmd>write<cr>", { desc = "Save" })
 map("n", "<leader>q", "<cmd>quit<cr>", { desc = "Quit" })
 map("n", "<esc>", "<cmd>nohlsearch<cr>", { desc = "Clear search highlight" })
--- grn / gra / grr / K are Neovim's own defaults since 0.11; `gd` is not.
+-- grn / gra / grr / K are Neovim's own defaults since 0.11, and mapping K by hand
+-- suppresses the default hover it duplicates; `gd` is not a default.
 map("n", "gd", vim.lsp.buf.definition, { desc = "LSP definition" })
 
 -- ── Language servers (native, no lspconfig) ────────────────────────────────

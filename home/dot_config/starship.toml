@@ -21,6 +21,7 @@ symbol = " "
 style = "blue"
 format = '[\[](bright-black)[$symbol$branch]($style)[\]](bright-black)'
 
+# `style` omitted: starship's default is already bold yellow.
 [git_state]
 format = '[\[](bright-black)[$state]($style)[\]](bright-black)'
 

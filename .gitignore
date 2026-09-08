@@ -12,4 +12,6 @@
 # `.claude/*` rather than `.claude/` on purpose: git never descends into an excluded
 # *directory*, so a `!` negation inside one is silently inert.
 .claude/*
+# The one tracked exception: this repo's project-scope permission allows are a property of
+# the repo. settings.local.json and worktrees/ stay ignored.
 !.claude/settings.json

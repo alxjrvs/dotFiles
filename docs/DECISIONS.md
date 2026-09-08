@@ -180,7 +180,8 @@ from inside the session. The decisions, so the next pass finds reasons rather th
   file that governs both terminal and web sessions; managed settings were considered and declined.
 - **Rulesets everywhere.** A `pull_request` rule with zero approvals is on every owned repo
   (the `agent-friendly-repo` skill applies it), so a direct push to main is rejected by the
-  server for owner and agent alike; the entries above record what followed from that.
+  server for owner and agent alike; *the default branch is protected where it lives* and
+  *chezmoi in symlink mode is the engine* record what followed from that.
 
 ## 2026-09-01 — `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is removed, and it had no entry here
 
