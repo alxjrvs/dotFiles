@@ -17,7 +17,7 @@ Three properties hold for every script here, and breaking one is silent:
 - **Tokenize, never substring-match.** `guard-lib.sh` carries the quote-aware
   splitter. `git log --grep "git push"` must pass untouched.
 
-## Wire it in three places or it does nothing
+## Wire it in two places or it does nothing
 
 This is the step that gets missed, and the failure is silent: the script sits on
 disk, passes its own suite, and enforces nothing.
@@ -28,12 +28,10 @@ disk, passes its own suite, and enforces nothing.
    (`chmod +x`, then `git add`). chezmoi symlinks the whole directory in symlink
    mode, and a symlink runs with the SOURCE file's mode — a 644 hook is placed and
    never executes. The tests directory beside it is excluded by `.chezmoiignore`.
-3. `scripts/settings-guardrails.sh` — add the filename to `wired_hooks`. This is
-   what makes un-wiring it fail lefthook, CI and `scripts/verify.sh` rather than
-   passing all three.
 
-Nothing in `lefthook.yml` or CI: lefthook's `hook-tests` glob and CI's bare `all.sh`
-discover a new guard and its suite from the directory.
+Nothing else: `scripts/settings-guardrails.sh` reads the hooks directory and fails
+lefthook, CI and `scripts/verify.sh` on any script there without a handler, and
+lefthook's `hook-tests` command discovers a new suite from its directory.
 
 ## Tests
 

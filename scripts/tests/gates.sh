@@ -41,13 +41,6 @@ case_exit plist_missing_path 1 ./scripts/plist-validity.sh home/Library/LaunchAg
 case_exit guardrails_no_args 1 ./scripts/settings-guardrails.sh
 case_exit plist_no_args 1 ./scripts/plist-validity.sh
 
-# A guard on disk that wired_hooks() does not name must FAIL. Without this, the
-# hand-maintained list silently stops covering a new guard and settings.json
-# could drop that handler with every gate still green. The fixture directory
-# holds a single deliberately-unnamed guard.
-case_exit guardrails_unwired_guard 1 \
-  env GUARD_DIR=scripts/tests/fixtures/hooks ./scripts/settings-guardrails.sh home/dot_claude/settings.json
-
 # --- positive controls: the real inputs must still PASS ----------------------
 case_exit guardrails_real 0 ./scripts/settings-guardrails.sh home/dot_claude/settings.json
 # Globbed, not named: a hardcoded plist label is an owner this suite would
@@ -119,6 +112,14 @@ jq '.sandbox.enabled = null' home/dot_claude/settings.json > "$_sbox/null.json"
 case_exit sandbox_enabled_null_caught 1 ./scripts/settings-guardrails.sh "$_sbox/null.json"
 jq 'del(.sandbox.enabled)' home/dot_claude/settings.json > "$_sbox/missing.json"
 case_exit sandbox_enabled_absent_caught 1 ./scripts/settings-guardrails.sh "$_sbox/missing.json"
+
+# A hook script on disk with no handler must be caught. The wired list is
+# derived from home/dot_claude/hooks/, so this is what proves the derivation
+# reads the directory rather than an empty glob: op-guard's handler is removed
+# and the gate must notice its script is unwired.
+jq 'del(.hooks.PreToolUse[].hooks[] | select(.command | test("op-guard")))' \
+  home/dot_claude/settings.json > "$_sbox/unwired.json"
+case_exit guardrails_unwired_hook_caught 1 ./scripts/settings-guardrails.sh "$_sbox/unwired.json"
 
 # A guard `if` in program-position form must be caught. Rules match the whole
 # command text, so `Bash(gh *)` misses `/usr/bin/gh …` and `env gh …`; only the
