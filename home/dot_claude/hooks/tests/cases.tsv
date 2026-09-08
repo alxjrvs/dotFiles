@@ -264,8 +264,8 @@ op	nonrepo	git commit -m "notes\nop item get stays denied"	allow
 op	nonrepo	git commit -m "notes\nop-agent header op://x/y"	allow
 # MUST STILL SPLIT: an UNQUOTED newline is a separator. This is what proves the fix
 # narrowed the split to quoted newlines rather than disabling newline splitting —
-# both with a harmless first line and with a git command first, since `git` is a
-# program the guard's bail-out regex otherwise ignores.
+# both with a harmless first line and with a git command first, since `git` has
+# its own arm in the guard that `continue`s past the rest of its segment.
 op	nonrepo	echo hi\nop read op://x/y	deny
 op	nonrepo	git status\nop read op://x/y	deny
 # MUST STILL DENY: a real interpreter payload spanning a quoted newline.

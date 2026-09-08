@@ -26,18 +26,9 @@ HERE=$(cd -- "$(dirname -- "$0")" && pwd)
 CASES=${1:-$HERE/cases.tsv}
 GUARD_DIR=$(cd -- "$HERE/.." && pwd)
 
-# Hermetic or worthless. Git exports GIT_DIR / GIT_INDEX_FILE / GIT_PREFIX into
-# every hook it runs, so under lefthook the fixtures silently resolved to the
-# REAL repo — the suite passed standalone and failed five cases in pre-commit.
-# The agent env also carries GIT_CONFIG_* (commit identity, the op-agent
-# credential helper), which must not reach a throwaway fixture either.
-for v in $(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/\1/p'); do
-  unset "$v" 2> /dev/null || true
-done
+# op-guard decides from the command text alone and never invokes git, so the
+# only hermeticity the suite needs is that `cd "$fd"` goes where it says.
 unset CDPATH
-export GIT_CONFIG_NOSYSTEM=1
-export HOME=${TMPDIR:-/tmp}/guard-tests-home.$$
-mkdir -p "$HOME"
 
 command -v jq > /dev/null 2>&1 || {
   echo "guard-tests: jq is required" >&2
@@ -45,10 +36,8 @@ command -v jq > /dev/null 2>&1 || {
 }
 
 ROOT=$(mktemp -d "${TMPDIR:-/tmp}/guard-tests.XXXXXX") || exit 2
-cleanup() { rm -rf "$ROOT" "$HOME"; }
+cleanup() { rm -rf "$ROOT"; }
 trap cleanup EXIT INT TERM
-
-q() { "$@" > /dev/null 2>&1; }
 
 # --- fixtures ---------------------------------------------------------------
 # One scratch directory. op-guard's verdict is decided from the command text

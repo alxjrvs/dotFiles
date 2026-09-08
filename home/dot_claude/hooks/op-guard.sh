@@ -116,7 +116,7 @@ _bad_op_run_child() { # $1 = basename of the command after `--`, $2.. = its argv
       done
       return 1
       ;;
-    # `op run -- git push` presents `op` as the program, so repo-scope-guard.sh
+    # `op run -- gh pr merge` presents `op` as the program, so repo-scope-guard.sh
     # (which tokenizes for a `gh` PROGRAM) never sees what runs. git and gh get
     # their credentials from the credential helper, never from `op run`, so
     # denying this costs nothing and keeps that guard unbypassable.
