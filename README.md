@@ -43,7 +43,6 @@ home/dot_claude/hooks/  Claude Code guards + their regression suites (suites are
 home/.chezmoi*          chezmoi's own contract: config template, ignore, remove, externals
 scripts/                the assertions lefthook, CI and verify.sh share; verify.sh itself
 docs/DECISIONS.md       reasons, incidents, measurements — never symlinked, so it costs nothing
-ci/config.toml          the chezmoi config CI's dry run uses (symlink mode, like the machine)
 ```
 
 ## Forking this repo

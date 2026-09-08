@@ -41,10 +41,11 @@ Two classes deserve to be called out rather than listed:
 `home/dot_claude/settings.json`. If it reports one missing, that is not drift, that is a
 control that has been switched off — say so in those words.
 
-**A package installed but neither declared nor excluded.** `brew bundle` never uninstalls,
-so this drift is one-directional and silent: the machine has something a fresh one will not
-get. The fix is a decision (declare it, or add it to `scripts/brew-drift.sh`'s exclusion
-list with a reason), not a command — present it that way rather than guessing which.
+**A package installed but not declared.** `brew bundle` never uninstalls, so this drift is
+one-directional and silent: the machine has something a fresh one will not get. verify.sh
+surfaces it as whatever `brew bundle cleanup` would remove. The fix is a decision (declare
+it in the Brewfile, or `brew uninstall` it), not a command — present it that way rather than
+guessing which.
 
 ## What not to do
 

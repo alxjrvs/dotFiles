@@ -7,21 +7,22 @@
 #
 # Usage: scripts/settings-guardrails.sh <file>...
 #
-# WHY THE HOOK LIST IS THE WHOLE LIST, not a spot-check of one guard: a handler
-# that can be deleted with every gate still green leaves the script on disk,
-# linked, passing its suite, and enforcing nothing.
+# THE HOOK LIST IS READ FROM THE DIRECTORY, never hand-written. The hazard is a
+# script on disk with no handler: linked, passing its suite, enforcing nothing.
+# A list someone has to remember to extend is the one that stops covering the
+# newest guard; a list derived from `ls` cannot be forgotten.
 set -eu
 
-# Hook scripts that must be wired. One name per line, no comments inline.
+# Every hook script beside this repo's settings.json, by basename. guard-lib.sh
+# is sourced by the others, never wired as a handler itself.
+_hooks_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../home/dot_claude/hooks" 2> /dev/null && pwd) || _hooks_dir=''
 wired_hooks() {
-  cat << 'HOOKS'
-op-guard.sh
-worktree-remove-guard.sh
-repo-scope-guard.sh
-worktree-freshness.sh
-worktree-port.sh
-verify-gate.sh
-HOOKS
+  for _g in "$_hooks_dir"/*.sh; do
+    [ -f "$_g" ] || continue
+    _n=${_g##*/}
+    [ "$_n" != guard-lib.sh ] || continue
+    printf '%s\n' "$_n"
+  done
 }
 
 # The secret-path deny floor: the Bash path to a *resolved* secret, not just to
@@ -69,26 +70,12 @@ note() {
   exit 1
 }
 
-# The wired_hooks() list is hand-maintained, and a guard MISSING from it is
-# invisible: this gate would pass while the new guard sat unwired. Repo-relative,
-# and SKIPPED when the repo is not adjacent — this also runs from scripts/verify.sh
-# against the live settings.json, where a missing checkout must not fail the
-# gate. GUARD_DIR is overridable so scripts/tests/gates.sh can aim it at a
-# fixture and prove the assertion fires.
-_guard_dir=${GUARD_DIR:-$(
-  unset CDPATH
-  cd -- "$(dirname -- "$0")/../home/dot_claude/hooks" 2> /dev/null && pwd
-)}
-if [ -n "$_guard_dir" ]; then
-  for _g in "$_guard_dir"/*.sh; do
-    [ -f "$_g" ] || continue
-    _n=${_g##*/}
-    # guard-lib.sh is sourced by the others, never wired as a handler itself.
-    if [ "$_n" != "guard-lib.sh" ]; then
-      wired_hooks | grep -qxF "$_n" || note "$_n is in home/dot_claude/hooks/ but not in wired_hooks() — add it there, or settings.json can drop its handler with every gate still green"
-    fi
-  done
-fi
+# An empty derived list would assert nothing about hooks and still print `ok`;
+# every caller (lefthook, CI, scripts/verify.sh) runs this from the checkout.
+[ -n "$(wired_hooks)" ] || {
+  echo "no hook scripts found in home/dot_claude/hooks — nothing was asserted" >&2
+  exit 1
+}
 
 for f in "$@"; do
   [ -f "$f" ] || {
@@ -175,7 +162,7 @@ for f in "$@"; do
 done
 
 # THE SAME RULE, ONE SCOPE OVER. `home/.chezmoiremove` covers only the user-global
-# `~/.claude/settings.local.json`, and `.gitignore` hides the file at EVERY scope —
+# `~/.claude/settings.local.json`, and `.gitignore` hides this one (`.claude/*`) —
 # so this repo's own project-scoped copy is never committable, never reviewable,
 # and asserted by nothing.
 #

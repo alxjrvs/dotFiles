@@ -24,11 +24,10 @@ home/dot_claude/hooks/tests/all.sh
 
 The first is the repo's whole commit gate — the same roster CI runs, read from
 `lefthook.yml`. The second is the full hook-suite roster, discovered from its
-directory; CI runs it bare as well, because lefthook's `--changed` selection
-trusts each suite's `covers:` lines. Neither roster is spelled out here, so
-this file cannot rot the way its earlier versions did: one promised "seven"
-suites and was wrong by two; the next hand-listed nine gates and had missed six
-before anyone read it again. Do not expand either back out.
+directory. Neither roster is spelled out here, so this file cannot rot the way
+its earlier versions did: one promised "seven" suites and was wrong by two; the
+next hand-listed nine gates and had missed six before anyone read it again. Do
+not expand either back out.
 
 Run both even if the first fails — the caller wants the whole picture, not the
 first problem.

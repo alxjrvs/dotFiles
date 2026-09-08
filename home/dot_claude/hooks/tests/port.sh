@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-#
-# covers: the sources below. `all.sh --changed <files>` reads these lines to
-# decide whether this suite has anything to say about a change; with no
-# argument every suite runs regardless. A suite that declares nothing always
-# runs, so forgetting a line costs time, never coverage.
-# covers: home/dot_claude/hooks/worktree-port.sh
 # Regression suite for worktree-port.sh.
 #
 # Its own harness for the same reason freshness.sh and wtremove.sh have theirs:
