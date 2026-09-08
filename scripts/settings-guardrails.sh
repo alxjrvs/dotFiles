@@ -15,7 +15,7 @@ set -eu
 
 # Every hook script beside this repo's settings.json, by basename. guard-lib.sh
 # is sourced by the others, never wired as a handler itself.
-_hooks_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../home/dot_claude/hooks" 2> /dev/null && pwd)
+_hooks_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../home/dot_claude/hooks" 2> /dev/null && pwd) || _hooks_dir=''
 wired_hooks() {
   for _g in "$_hooks_dir"/*.sh; do
     [ -f "$_g" ] || continue

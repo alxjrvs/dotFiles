@@ -25,7 +25,7 @@ bad() {
   printf 'FAIL %s\n' "$1"
   failures="$failures
 $1"
-  fail=1
+  fail=$((fail + 1))
 }
 skip() { printf 'skip %s\n' "$1"; }
 
@@ -41,11 +41,13 @@ fi
 # silent one. `brew bundle cleanup` without --force only prints what it would remove
 # (formulae, casks, taps; dependencies of declared entries are kept) and exits 0 either way,
 # so its output is the finding. A brew copy of a mise-pinned tool is undeclared, so it lands
-# in that list too.
+# in that list too. The same run appends a `brew cleanup --dry-run` section (stale downloads,
+# old kegs) and a "Run … --force" footer; neither is drift, so both are cut before the test.
 brewfile="$HOME/.config/homebrew/Brewfile"
 if command -v brew > /dev/null 2>&1 && [ -f "$brewfile" ]; then
   if brew bundle check --no-upgrade --file="$brewfile" > /dev/null 2>&1; then ok "brew bundle check"; else bad "brew bundle check: a declared formula or cask is missing (run: chezmoi apply)"; fi
-  out=$(brew bundle cleanup --file="$brewfile" 2>&1)
+  # shellcheck disable=SC2016  # `$d` is a sed address, not a variable
+  out=$(brew bundle cleanup --file="$brewfile" 2> /dev/null | sed -e '/^Would `brew cleanup`:/,$d' -e '/^Run `brew bundle cleanup --force`/d')
   if [ -z "$out" ]; then ok "brew bundle cleanup: nothing undeclared"; else bad "brew bundle cleanup would remove (declare it, or brew uninstall it):
 $out"; fi
 else
@@ -124,8 +126,7 @@ fi
 
 if [ "$fail" -ne 0 ]; then
   if [ "$notify" = 1 ] && command -v osascript > /dev/null 2>&1; then
-    n=$(printf '%s' "$failures" | grep -c .)
-    osascript -e "display notification \"$n check(s) failed — run scripts/verify.sh\" with title \"dotfiles drift\"" > /dev/null 2>&1 || true
+    osascript -e "display notification \"$fail check(s) failed — run scripts/verify.sh\" with title \"dotfiles drift\"" > /dev/null 2>&1 || true
   fi
   exit 1
 fi

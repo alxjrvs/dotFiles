@@ -33,6 +33,8 @@
 # Installed-but-undeclared is drift too: `scripts/verify.sh` fails on anything `brew bundle
 # cleanup` lists, so undeclaring a package here is only half of deleting it.
 
+# A third-party `tap` line needs `trusted:` — brew refuses to load an untrusted tap until
+# someone runs `brew trust` by hand, which is a fresh machine stopping halfway.
 brew "mise"
 
 # chezmoi itself: the bootstrap that applies this file. The fresh-machine sequence is

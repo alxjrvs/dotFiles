@@ -70,6 +70,25 @@ naming them there was cheaper than removing them. The precondition for the nativ
 uninstalling them once; from then on verify.sh asserts that cleanup prints nothing, and an
 undeclared package has exactly two exits — declare it, or `brew uninstall` it.
 
+Gone with it, as an accepted loss: the file-level assertion that a third-party `tap` line
+declares `trusted:`. The Brewfile carries no `tap` line today; the rule survives as one comment
+beside where a tap would go, and the incident (a fresh machine stopping at `brew trust`) as the
+reason for it.
+
+---
+
+## 2026-09-08 — the `--changed` suite selection and `ci/config.toml` retired
+
+Both were the kind of thing a native default now covers. The hook-test runner selected suites
+by `covers:` lines each suite declared, and CI ran the whole roster a second time so that a
+wrong line could not narrow the gate — an optimisation that needed a duplicate to be safe. The
+full roster is about 15 s and runs only on commits that touch a hook, so the selection, the
+six preambles and the CI duplicate went together. CI's hand-written chezmoi config went for the
+same reason: `chezmoi init --source "$PWD" --config "$RUNNER_TEMP/chezmoi.toml"` renders the
+real `home/.chezmoi.toml.tmpl`, puts the state DB beside that config by default, and so also
+retires `--persistent-state`, the `*.boltdb` ignore and the "expected warning" paragraph. A
+template error now fails in CI instead of on a machine.
+
 ## 2026-09-08 — the push guard retired; the default branch is protected where it lives
 
 `rebase-guard.sh` is deleted, with its two handlers, its `wired_hooks` line, and its 83 fixture
@@ -452,20 +471,16 @@ index, so bare `lefthook run pre-commit` would hand every `glob:`-scoped command
 list and report success for inspecting nothing. That is the identical vacuous pass this repo had
 in its Stop hook, in a different place.
 
-### Three things stay outside the roster, each for a reason
+### Two things stay outside the roster, each for a reason
 
-- **gitleaks.** Lefthook runs `protect --staged`, which reads the index; a runner has none, and
-  the useful remote question is different anyway — does the CURRENT TREE contain a secret, rather
+- **gitleaks.** Lefthook runs `git --staged`, which reads the index; a runner has none, and the
+  useful remote question is different anyway — does the CURRENT TREE contain a secret, rather
   than does this commit add one. Same tool, different verb.
-- **`boom source --dry-run`.** Not a lint check and not a lefthook command: it is the engine
-  asking whether the artifact still applies.
-- **`home/dot_claude/hooks/tests/all.sh`, bare.** This one is the deliberate duplication, and it is
-  worth naming because it looks like an oversight. Lefthook's `hook-tests` runs
-  `all.sh --changed <files>`, which selects suites by reading each one's `covers:` lines — a
-  latency optimisation that TRUSTS those lines. A wrong or missing `covers:` silently narrows what
-  ran, and the failure mode is a regression through a green gate. Bare `all.sh` discovers the whole
-  roster from the directory and is immune to that. Roughly 16 seconds to stop the selective run's
-  one assumption from being load-bearing.
+- **The chezmoi dry run.** Not a lint check and not a lefthook command: it is the engine asking
+  whether the source state still applies.
+
+(A third, a bare re-run of the hook suites to cover for lefthook's `--changed` selection, went
+with that selection — see 2026-09-08.)
 
 `zsh` moves to the setup step: lefthook's roster runs `zsh -n` over the shell payload and a runner
 has no zsh, so installing it inside that command would fail mid-roster with a confusing message
