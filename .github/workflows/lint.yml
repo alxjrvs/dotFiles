@@ -36,38 +36,23 @@ jobs:
           # A mise tag exists before its assets are uploaded (v2026.9.3, 2026-09-08:
           # every job 404'd for a while); a day-old release always has them.
           minimum_release_age: 24h
-      # Every guard here fails OPEN without jq, by design, so a tool that failed
-      # to install reads as a guard regression rather than a missing tool. That
-      # is why the check below is not optional. GITHUB_TOKEN bills these calls to
-      # this repo rather than a shared anonymous pool.
       - name: Install lint tools
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mise install shellcheck shfmt gitleaks jq taplo biome actionlint lefthook \
             || { sleep 20; mise install shellcheck shfmt gitleaks jq taplo biome actionlint lefthook; }
-          # RUN each tool, never `command -v`: mise puts a SHIM on PATH whether or
-          # not the tool behind it installed, so `command -v` passes on absence.
+          # Run each tool, never `command -v`: mise puts a shim on PATH whether or
+          # not the tool installed.
           for t in shellcheck shfmt gitleaks jq taplo biome actionlint lefthook; do
             "$t" --version > /dev/null 2>&1 || { echo "::error::$t did not install"; exit 1; }
           done
-          # lefthook's own roster runs `zsh -n` over the shell payload, and a
-          # runner has no zsh. Installed here rather than inside that command so
-          # a missing package fails at setup with a clear message.
+          # The roster runs `zsh -n`; a runner has no zsh.
           command -v zsh > /dev/null 2>&1 || sudo apt-get install -y -qq zsh
 
-      # ONE ROSTER. A check spelled here and in lefthook.yml is two rosters
-      # that nothing asserts agree, and they drift in both directions. Running
-      # lefthook's own roster is what makes that class impossible rather than
-      # merely unlikely.
-      #
-      # `--all-files` because there is no index on a runner: bare
-      # `lefthook run pre-commit` would hand every `glob:`-scoped command an
-      # empty file list and report success for inspecting nothing — the same
-      # vacuous pass that `home/dot_claude/hooks/verify-gate.sh` was fixed for.
-      #
-      # The `commit-msg` stage is not part of `run pre-commit` and is only
-      # meaningful on a real commit.
+      # ONE ROSTER: lefthook's own, not a copy that nothing asserts agrees with it.
+      # `--all-files` because a runner has no index: bare `run pre-commit` would hand
+      # every `glob:` command an empty file list and pass for inspecting nothing.
       - name: lefthook pre-commit (the whole local gate)
         run: lefthook run pre-commit --all-files
 

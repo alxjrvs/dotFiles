@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Drift check for this machine — the checks that used to be `boom verify` steps, plus chezmoi's
-# own. Run by hand, or daily by the com.alxjrvs.dotfiles-verify LaunchAgent with `--notify`,
+# Drift check for this machine: chezmoi's own verify plus the checks chezmoi does not make.
+# Run by hand, or daily by the com.alxjrvs.dotfiles-verify LaunchAgent with `--notify`,
 # which raises a desktop notification on any failure so the exit code does not die in a log.
 #
 # Exit 0 clean, 1 on any failure. Every check prints one line; failures are prefixed FAIL.
