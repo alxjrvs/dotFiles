@@ -4,165 +4,9 @@
 # reproduction during the 2026-07-25 audit. Cases marked REGRESSION failed on the
 # pre-fix guards; they are the reason this suite exists.
 #
-# guard:    rebase | op
-# fixture:  primary (on main) | wt-a (up to date w/ main) | wt-c (stacked on feature-b) | nonrepo
+# guard:    op
+# fixture:  nonrepo (a scratch directory; op-guard's verdict never depends on git state)
 # expected: allow | deny
-
-# --- rebase-guard: direct push to the default branch ------------------------
-rebase	primary	git push origin main	deny
-rebase	primary	git push	deny
-rebase	primary	git push origin HEAD:main	deny
-rebase	primary	git push origin main:main	deny
-# REGRESSION: `--dry-run` anywhere in the command disabled the whole guard, so a
-# real push to main was ALLOWED because an unrelated commit message contained it.
-rebase	primary	git commit -m "test --dry-run flag" && git push origin main	deny
-rebase	primary	git commit -m "document --dry-run" && git push origin HEAD:main	deny
-# A genuine dry run still passes — it never mutates the remote.
-rebase	primary	git push --dry-run origin main	allow
-rebase	primary	git push origin main --dry-run	allow
-
-# --- rebase-guard: must NOT fire out of turn --------------------------------
-# REGRESSION: the word "main" inside a commit message denied a push of a
-# perfectly ordinary feature branch. This is the false positive alxjrvs reported.
-rebase	wt-a	git commit -m "push to main branch when ready" && git push origin feature-a	allow
-rebase	wt-a	git commit -m "merge into main later" && git push origin feature-a	allow
-rebase	wt-a	git push origin feature-a	allow
-rebase	wt-a	git push -u origin HEAD	allow
-# Not a real push/pr-create at all.
-rebase	primary	git log --grep "git push origin main"	allow
-rebase	primary	echo git push origin main	allow
-
-# --- rebase-guard: stacked PRs ----------------------------------------------
-# REGRESSION: `--base` was ignored, so a stacked PR was told to rebase onto main,
-# which would flatten the stack `rebase-prs` deliberately builds.
-rebase	wt-c	gh pr create --base feature-b	allow
-rebase	wt-c	gh pr create --base=feature-b --fill	allow
-# With no --base it really is behind origin/HEAD, so denying is correct.
-rebase	wt-c	gh pr create	deny
-
-# --- rebase-guard: fail-open contract ---------------------------------------
-rebase	nonrepo	git push origin main	allow
-
-# --- 2026-08-08 audit: spellings that reached `main` -------------------------
-# All of these were ALLOWED by the pre-fix guard, reproduced through this very
-# harness. The suite had grown from two past incidents, so it tested THE FIXES
-# rather than THE RULE — and the rule has many more spellings than the rule's
-# two known violations.
-
-# The single highest-value miss: the natural agent spelling. `HEAD` is not the
-# literal string `main`, and two positionals meant it wasn't a "bare" push.
-rebase	primary	git push origin HEAD	deny
-rebase	primary	git push -u origin HEAD	deny
-
-# A `#` comment is not a dry run. This is the 2026-07-25 incident in a new
-# spelling: the old `case " $push_seg " in *" --dry-run "*` scanned the segment
-# as text, so anything after a comment marker still disabled the guard.
-rebase	primary	git push origin main # --dry-run	deny
-
-# Last-push-wins: `push_seg=$seg` overwrote, so only the FINAL push segment was
-# ever examined and the real push ahead of it was never seen.
-rebase	primary	git push origin main && git push origin main --dry-run	deny
-
-# Quoting. The destination regex required a whitespace/EOL/separator boundary
-# after the branch name, and a quote is none of those.
-rebase	primary	git push origin 'main'	deny
-rebase	primary	git push origin "main"	deny
-rebase	primary	git push "origin" "main"	deny
-
-# Refspec spellings. `+main` force-pushes main; the optional `([^[:space:]]*:)?`
-# group required a trailing colon, so a leading `+` was never absorbed.
-rebase	primary	git push origin +main	deny
-rebase	primary	git push origin refs/heads/main	deny
-rebase	primary	git push origin HEAD:refs/heads/main	deny
-rebase	primary	git push origin --delete main	deny
-
-# `pushargs=${push_seg#*push}` stripped through the FIRST literal "push", which
-# `-c push.default=…` supplies — leaving ".default=current push" to tokenize.
-rebase	primary	git -c push.default=current push	deny
-
-# Shell constructs: `prog` was `(git`, `then`, `do` — never the bare token `git`.
-rebase	primary	(git push origin main)	deny
-rebase	primary	if true; then git push origin main; fi	deny
-rebase	primary	for i in 1; do git push origin main; done	deny
-
-# Wrappers, env prefixes and absolute paths. Claude Code's own matcher strips
-# these before matching; this guard tokenizes independently and stripped none.
-rebase	primary	GIT_SSH_COMMAND=ssh git push origin main	deny
-rebase	primary	/usr/bin/git push origin main	deny
-rebase	primary	command git push origin main	deny
-rebase	primary	env git push origin main	deny
-
-# A TRAILING `cd` retargeted GIT() at a non-repo AFTER the push was matched, so
-# the guard fell through its own fail-open path. Only a `cd` that precedes the
-# push can change which repo is pushed.
-rebase	primary	git push origin main && cd ..	deny
-
-# `git -C <path>` names the repo being pushed just as surely as a leading `cd`,
-# but the flag-skipping loop discarded its value, so the guard judged every
-# cross-repo push against the SESSION's cwd repo instead of the target.
-#
-# Found bootstrapping a brand-new empty repo: `git -C ~/Code/butter push` was
-# denied with "Branch is behind origin/main" — true of the dotFiles checkout the
-# session happened to be sitting in, and meaningless for a remote that had no
-# branches at all. Both directions are wrong, and the second one is the one that
-# matters:
-#
-#   FALSE DENY  — a legitimate push blocked by an unrelated repo's staleness,
-#                 which makes bootstrapping any new repo impossible in-session.
-#   FALSE ALLOW — the default-branch rule resolves `origin/HEAD` from the cwd
-#                 repo too, so a push to another repo's default is judged
-#                 against the wrong default, and a non-repo cwd fails open and
-#                 waves it through entirely.
-rebase	wt-c	git -C ../primary push origin feature-x	allow
-rebase	primary	git -C ../wt-c push origin feature-c	deny
-rebase	nonrepo	git -C ../primary push origin main	deny
-
-# REGRESSION — `-C` is not `cd`, and conflating them opened a hole worse than the bug the
-# original -C handling closed. `cd` persists across `&&` segments; `-C` binds to the one
-# invocation carrying it. Honouring a `-C` from an EARLIER segment retargeted the guard at that
-# directory, where the is-inside-work-tree probe fails, so a bare push to the default branch
-# FAILED OPEN. Measured against the shipped guard: all four of the deny cases below were ALLOWED.
-#
-# The first two are the bypass proper: an inert `-C` on a non-push segment must not move the
-# judgement. The next two are the other half — a `-C` on the push itself DOES name the repo git
-# will act on, so a cross-repo push to another checkout's default branch has to be judged against
-# THAT repo, cumulatively and relative to any preceding `cd`, exactly as git resolves it.
-rebase	primary	git -C ../nonrepo status && git push origin main	deny
-rebase	wt-a	git -C ../nonrepo log && git push origin main	deny
-rebase	wt-a	git -C ../primary push origin main	deny
-rebase	nonrepo	cd .. && git -C primary push origin main	deny
-rebase	primary	git -C .. -C primary push origin main	deny
-# …and the inert `-C` must stay inert in the ALLOW direction too, or the fix is just a
-# blanket-deny wearing a bypass fix's clothes.
-rebase	primary	git -C ../nonrepo status && git push origin feature-x	allow
-rebase	wt-c	git -C ../nonrepo status && git -C ../primary push origin feature-x	allow
-
-# Heredoc bodies are DATA, not command structure. Writing the commit message for
-# this very change was DENIED by the guard because the message explained
-# `git push origin main`. Prose apostrophes ("lefthook's") also unbalance the
-# quote tracking, so a heredoc cannot be parsed as if it were shell text.
-# `\n` is expanded to a real newline by run.sh.
-rebase	primary	git commit -F - << 'MSG'\nexplain git push origin main here\nMSG	allow
-rebase	primary	git commit -F - << 'MSG'\nlefthook's guard denied this\ngit push origin main\nMSG	allow
-rebase	wt-a	gh pr create --body - << 'EOF'\nthis PR changes git push origin main\nEOF	allow
-# A herestring has no body and must NOT swallow the rest of the command.
-rebase	primary	grep -q x <<< "text" ; git push origin main	deny
-
-# A newline separates simple commands exactly as `;` does. Without this the whole
-# multi-line command collapsed into one segment and the push was never seen.
-rebase	primary	git status\ngit push origin main	deny
-rebase	wt-a	git status\ngit push origin feature-a	allow
-
-# Redirections are not refspecs, and must not shift the positional analysis.
-rebase	primary	git push origin main > /dev/null	deny
-rebase	primary	git push origin main 2>&1	deny
-rebase	wt-a	git push origin feature-a > /dev/null	allow
-
-# FALSE POSITIVES: the guard denied real work because segmentation ignored
-# quoting. The first spelling denied an actual tool call during the audit.
-rebase	wt-a	git commit -m "run cd . && git push origin main to ship"	allow
-rebase	primary	git commit -m "wip; git push"	allow
-rebase	wt-a	git commit -m "see 'git push origin main' in the docs"	allow
 
 # --- op-guard: the shapes an agent MUST be able to use ----------------------
 # This whole block is the point of the 2026-08-18 change. Every one of these was
@@ -241,9 +85,9 @@ op	nonrepo	op plugin run -- vercel deploy	allow
 op	nonrepo	op plugin run -- netlify deploy	allow
 # `gh` is DENIED as a plugin-run child, and this is the guard stating a
 # conclusion rather than an omission. `_bad_op_run_child` rejects `git`/`gh`
-# under any injecting invocation because rebase-guard.sh tokenizes for a
-# `git`/`gh` PROGRAM and sees `op` here — so `op plugin run -- gh pr merge`
-# would walk a merge past the push guards. It costs nothing: gh resolves its
+# under any injecting invocation because repo-scope-guard.sh tokenizes for a
+# `gh` PROGRAM and sees `op` here — so `op plugin run -- gh pr merge` would
+# walk a write past the org-scope check. It costs nothing: gh resolves its
 # token from the keychain via `gh auth git-credential`, never from a plugin.
 # A gh shell plugin on this machine would be a THIRD GitHub credential path
 # beside that and `op-agent git-credential`, and its alias lives in an
@@ -258,9 +102,9 @@ op	nonrepo	op plugin run -- op read op://claude-agent/x/credential	deny
 op	nonrepo	op plugin run -- op-agent secret op://claude-agent/x/credential	deny
 op	nonrepo	op plugin run gh repo list	deny
 op	nonrepo	op plugin run --	deny
-# `op plugin run -- git push` would hide the push from rebase-guard.sh for the
-# same reason `op run -- git push` does: both guards tokenize for a `git` PROGRAM
-# and see `op` here.
+# `op plugin run -- git push` is denied for the same reason `op run -- git push`
+# is: git gets its credential from the helper chain, never from a plugin, so
+# the shape has no legitimate use and an interpreter-like child is closed.
 op	nonrepo	op plugin run -- git push origin main	deny
 # The interpreter and `op run --` trampolines must not launder a plugin-run
 # child past the vetting above. This is why `plugin` had to join _OP_VERB_RE.
@@ -299,9 +143,9 @@ op	nonrepo	op run --no-masking -- npm publish	deny
 op	nonrepo	op run -- env	deny
 op	nonrepo	op run -- printenv	deny
 op	nonrepo	op run -- bash -c 'printenv'	deny
-# REGRESSION-BY-CONSTRUCTION: `op run -- git push` would hide the push from
-# rebase-guard.sh, which tokenizes for a `git` PROGRAM and sees `op` here.
-# Allowing `op run` without this would have opened a hole in a different guard.
+# `op run -- git` / `op run -- gh`: neither gets a credential from `op run`, so
+# the shape has no legitimate use, and `gh` under it would walk a write past
+# repo-scope-guard.sh, which tokenizes for a `gh` PROGRAM and sees `op` here.
 op	nonrepo	op run -- git push origin main	deny
 op	nonrepo	op run -- gh pr create	deny
 # No `--` means the guard cannot tell which words are the child command.
@@ -355,32 +199,6 @@ op	nonrepo	op --account myacct read op://claude-agent/claude-git-pat/credential	
 op	nonrepo	echo hi && op read op://claude-agent/claude-git-pat/credential	deny
 op	nonrepo	op whoami; op read op://claude-agent/claude-git-pat/credential	deny
 op	nonrepo	echo op://x | xargs op read	deny
-
-# --- rebase-guard: interpreters and `-c alias.` ------------------------------
-# REGRESSION (2026-08-28 audit): op-guard treats an interpreter as the residue
-# `permissions.deny` cannot cover and scans its payload. rebase-guard never got
-# the same treatment, so the identical shape reached a push to main. `sudo git
-# push` is absent from this block deliberately — the shared `_norm` fix in the
-# previous commit already closed it for every guard at once, which is the whole
-# argument for the shared library.
-rebase	primary	bash -c "git push origin main"	deny
-rebase	primary	sh -c 'git push origin main'	deny
-rebase	primary	bash -c "git push --force origin HEAD:main"	deny
-rebase	primary	echo "git push origin main" | bash	deny
-# `git -c alias.X=push X` — the flag loop consumed `-c alias.yolo=push` as a
-# value-taking global and then read the subcommand as `yolo`, so the push was
-# never recognised as a push at all. The alias is not resolved, it is refused:
-# resolving it would mean running `git config` from inside a guard.
-rebase	primary	git -c alias.yolo=push yolo origin main	deny
-rebase	primary	git -c alias.p=push p origin main	deny
-# An interpreter payload that pushes somewhere SAFE is still allowed — the fix
-# expands the payload so the ordinary refspec logic judges it, rather than
-# refusing every interpreter outright.
-rebase	wt-a	bash -c "git push origin feature-a"	allow
-rebase	primary	bash -c "echo hello"	allow
-# The false positive this suite exists for: a commit message naming a push is
-# prose, not a command, and no expansion may reach inside one.
-rebase	primary	git commit -m "explain git push origin main in the docs"	allow
 
 # --- op-guard: substitution, `sudo`, and scripting interpreters -------------
 # REGRESSION (2026-08-28 audit): every row below was ALLOWED by the guard that
@@ -444,16 +262,12 @@ op	nonrepo	op somefutureverb --print-everything	deny
 op	nonrepo	git commit -m "a change\n\nop read op://x/y is denied because it prints values"	allow
 op	nonrepo	git commit -m "notes\nop item get stays denied"	allow
 op	nonrepo	git commit -m "notes\nop-agent header op://x/y"	allow
-# The same defect, same fix, for rebase-guard: prose that happens to start a line
-# with a real push spelling must not be read as a push.
-rebase	primary	git commit -m "notes\ngit push origin main"	allow
-rebase	primary	git commit -m "why we avoid\ngit push origin HEAD:main"	allow
 # MUST STILL SPLIT: an UNQUOTED newline is a separator. This is what proves the fix
-# narrowed the split to quoted newlines rather than disabling newline splitting.
-# (rebase-guard's `git status\ngit push origin main` already asserts the same thing
-# further up — not repeated here, since a duplicate case adds no coverage and only
-# inflates the count.)
+# narrowed the split to quoted newlines rather than disabling newline splitting —
+# both with a harmless first line and with a git command first, since `git` has
+# its own arm in the guard that `continue`s past the rest of its segment.
 op	nonrepo	echo hi\nop read op://x/y	deny
+op	nonrepo	git status\nop read op://x/y	deny
 # MUST STILL DENY: a real interpreter payload spanning a quoted newline.
 op	nonrepo	sh -c "echo hi\nop read op://x/y"	deny
 
@@ -499,24 +313,6 @@ op	nonrepo	git commit -F - <<'EOM'\n```\nsee op read\n```\nEOM	allow
 # line is still program position. This is the case the fix must not widen past.
 op	nonrepo	echo starting\n$(echo op) read op://vault/item/field	deny
 op	nonrepo	echo starting\n`echo op` read op://vault/item/field	deny
-
-# --- REGRESSION: `git push --all` / `--mirror` from a feature branch --------
-# Both name their refs from the local ref namespace, not from argv, so the
-# refspec analysis could not see them and they fell through to "pushes the
-# CURRENT branch" — which from wt-a reads as safe. `--all` pushes every local
-# branch including the default one; `--mirror` also DELETES remote refs absent
-# locally. Both were ALLOWED before this fix.
-rebase	wt-a	git push --all origin	deny
-rebase	wt-a	git push --mirror origin	deny
-rebase	wt-a	git push --all	deny
-rebase	wt-a	git push --tags origin	deny
-rebase	wt-a	git push --follow-tags origin	deny
-rebase	primary	git push --all origin	deny
-# MUST STILL ALLOW: a dry run never mutates the remote, even with --all.
-rebase	wt-a	git push --all --dry-run origin	allow
-# MUST STILL ALLOW: an ordinary feature-branch push is untouched.
-rebase	wt-a	git push origin HEAD	allow
-rebase	wt-a	git push -u origin feature-a	allow
 
 # --- REGRESSION: a pipe character inside a QUOTED argument is prose ---------
 # Both scans read the raw command, so a `|` inside a quoted string counted as a
@@ -603,11 +399,6 @@ op	nonrepo	setsid -w op read op://claude-agent/claude-git-pat/credential	deny
 op	nonrepo	chroot /newroot op read op://claude-agent/claude-git-pat/credential	deny
 op	nonrepo	chroot -u nobody /newroot op read op://claude-agent/claude-git-pat/credential	deny
 op	nonrepo	npx -c 'op read op://claude-agent/claude-git-pat/credential'	deny
-# The same shapes must not reach a default-branch push either — the arms live in
-# guard-lib.sh, so rebase-guard inherits every one of them.
-rebase	primary	npm exec -- git push origin main	deny
-rebase	primary	arch -d FOO git push origin main	deny
-rebase	primary	docker exec box git push origin main	deny
 # Positive controls: every runner is an ordinary command in its ordinary shape.
 op	nonrepo	npm install	allow
 op	nonrepo	npm exec -- tsc --noEmit	allow

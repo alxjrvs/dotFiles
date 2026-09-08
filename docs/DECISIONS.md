@@ -59,6 +59,43 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-08 — the push guard retired; the default branch is protected where it lives
+
+`rebase-guard.sh` is deleted, with its two handlers, its `wired_hooks` line, and its 83 fixture
+cases. It did two jobs: refuse a direct push to the default branch, and refuse a push or PR from a
+branch behind its target. On the default branch of an owned repo that carries the ruleset, both
+are now the server's, and better held there:
+
+- **The ruleset.** Every owned repo carries a `pull_request` rule with zero required approvals
+  (the `agent-friendly-repo` skill applies it). GitHub then rejects a direct push to the default
+  branch from anyone, agent or owner, in a way no spelling walks past — `git -c alias.x=push`,
+  `bash -c`, `--all`, a substitution in program position, none of the 83 spellings matter.
+- **Strict required status checks** refuse to merge a stale branch where a required check
+  exists, and `gh pr merge --auto` waits; the worktree-freshness hook's advisory says so.
+
+The layers that stay: `autoMode.hard_deny` keeps its one natural-language sentence, which fails
+differently from a server rule and costs one line; and `worktree-freshness.sh` still
+fast-forwards a virgin worktree so the agent starts on current code.
+
+**The boundary, stated plainly.** A ruleset is per repo and per branch; the guard was neither.
+Outside that boundary the setup goes from a deterministic deny to the classifier sentence alone:
+a repo the agent can push to that has no ruleset (a collaborator repo, an org repo outside
+`_owned_orgs`, the owner's own forks, which nobody ran the skill against); a private repo on a
+GitHub Free plan, where the API accepts a ruleset and does not enforce it; the emergency window
+while a ruleset is deleted by hand; `git push --mirror`, which the ruleset stops on the default
+branch but which also deletes every remote branch absent locally; and the stale-branch arm on a
+repo with no CI, where there is no required check for `strict` to bite on. Each is accepted: the
+agent's classic PAT and the org-scope guard already bound where it writes, and the default
+branches that matter are the owned ones.
+
+**This lands only after the ruleset is on every owned repo, forks included.** Deleting the guard
+first would remove the sole deterministic no-push-to-main control for the gap. The PR is a draft
+until the owner confirms, and the merge is the confirmation.
+
+What is lost, and accepted: the five-second `git fetch` inside every push, which was the single
+highest-latency thing this config did on the hot path, and an earlier "you are behind, rebase"
+nudge that the merge gate now delivers a little later.
+
 ## 2026-09-08 — boom retired; chezmoi in symlink mode is the engine
 
 The audit's largest decision. boom was a 5,900-line private engine with one production consumer,
@@ -790,28 +827,6 @@ The condition that would reverse this is narrow and worth naming: **a second age
 machine.** Until then the standard is solving a problem this setup does not have — one agent,
 one instruction file.
 
-## 2026-08-29 — the protected-branch rule is enforced twice, and both stay
-
-`autoMode.hard_deny` carries *"Never push directly to a repository's default branch, and never
-merge into it locally"*. `rebase-guard.sh` blocks the same push by tokenizing the command. The
-two overlap completely on that one shape, and an audit flagged it as redundancy.
-
-It is not. They fail differently, which is the whole reason to keep both:
-
-- `hard_deny` is a **natural-language rule read by a classifier**. It covers shapes nobody
-  enumerated — a novel git alias, an unfamiliar porcelain — and it applies unconditionally,
-  ahead of user intent and `allow` exceptions. What it cannot promise is determinism.
-- `rebase-guard.sh` is **deterministic tokenization**. It resolves `origin/HEAD`, walks the
-  argument list, and is immune to phrasing. What it cannot do is generalize: a shape its
-  tokenizer does not model passes.
-
-A classifier miss and a tokenizer gap are uncorrelated failures, so the pair is defense in
-depth rather than duplication. `rebase-guard.sh` also owns a second job that `hard_deny` does
-not touch at all — refusing a push when the branch is *behind* its target.
-
-Recorded because the overlap looks like waste from either side alone, and the next cleanup
-that notices it should remove neither.
-
 ## 2026-08-26 — heroku: the Brewfile was the obvious home and the wrong one
 
 The `.gitconfig` landed a credential helper for `git.heroku.com` (`helper = !heroku
@@ -1104,15 +1119,14 @@ default branch."* And: *"Before v2.1.211, the context slots also included a Defa
 branches entry that treated `main` and `master` as protected until you named others. v2.1.211
 removed it."*
 
-So `rebase-guard.sh`'s default-branch arm went from belt-and-braces to **sole enforcement**, in a
-client update, with no signal. Everything still worked, which is exactly why it needed noticing:
-the guard has been carrying that rule alone for some number of releases.
+So a client-side push guard went from belt-and-braces to **sole enforcement**, in a client
+update, with no signal. Everything still worked, which is exactly why it needed noticing.
 
-This is the strongest available argument for keeping that guard, and it had been sitting outside
-the record. If a second layer is ever wanted back, `permissions.ask: ["Bash(git push *)"]` is the
-documented mechanism — content-scoped ask rules are evaluated before the classifier and force a
-prompt even in auto mode. Not adopted here: this machine pushes constantly and the prompt fatigue
-would be the greater cost. Noted so the option is a choice rather than a rediscovery.
+That is the argument that moved the rule to the server (the 2026-09-08 entry above): a
+`pull_request` ruleset rule is not subject to a client release. If a client-side layer is ever
+wanted back, `permissions.ask: ["Bash(git push *)"]` is the documented mechanism — content-scoped
+ask rules are evaluated before the classifier and force a prompt even in auto mode. Not adopted:
+this machine pushes constantly and the prompt fatigue would be the greater cost.
 
 ## UI
 

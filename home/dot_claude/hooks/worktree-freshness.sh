@@ -155,7 +155,7 @@ emit() {
 if ! git merge-base --is-ancestor "$head_sha" "$target_sha" 2> /dev/null; then
   ahead=$(git rev-list --count "$target_sha..$head_sha" 2> /dev/null || echo 0)
   [ "$behind" -gt 0 ] || quiet
-  emit "This worktree's branch \`$branch\` has diverged from \`$short_target\`: $ahead commit(s) of its own, $behind behind. Its base is stale. Rebase onto \`$short_target\` before building on it — the rebase-before-push guard will block the push otherwise."
+  emit "This worktree's branch \`$branch\` has diverged from \`$short_target\`: $ahead commit(s) of its own, $behind behind. Its base is stale. Rebase onto \`$short_target\` before building on it — the branch ruleset's required checks will refuse to merge a stale branch otherwise."
 fi
 
 # Tracked-file changes only: a fresh worktree's untracked build output is not a

@@ -34,6 +34,9 @@ jobs:
       - uses: jdx/mise-action@v4
         with:
           install: false
+          # A mise tag exists before its assets are uploaded (v2026.9.3, 2026-09-08:
+          # every job 404'd for a while); a day-old release always has them.
+          minimum_release_age: 24h
       # Every guard here fails OPEN without jq, by design, so a tool that failed
       # to install reads as a guard regression rather than a missing tool. That
       # is why the check below is not optional. GITHUB_TOKEN bills these calls to
