@@ -1,6 +1,8 @@
-# gitleaks — the global config every gitleaks call on this machine reads
-# (GITLEAKS_CONFIG, exported in zsh/00-exports.zsh; lefthook and CI pass it explicitly
-# because a hook or a runner cannot assume the interactive environment).
+# gitleaks — the config the git template hook reads in repos that declare none of their
+# own (~/.config/gitleaks/gitleaks.toml), and this repo's lefthook and CI pass explicitly.
+# Deliberately NOT exported as GITLEAKS_CONFIG: that variable outranks a repo's own
+# .gitleaks.toml, so a shell-wide export would silently discard every other repo's
+# allowlists and rules.
 #
 # Only divergences from gitleaks' own default ruleset, which `useDefault` keeps whole.
 title = "alxjrvs"
@@ -18,6 +20,11 @@ useDefault = true
 [[rules]]
 id = "mcp-json-env-placeholder"
 description = "${VAR} placeholder in a tracked .mcp.json — a later `claude mcp add` can expand it into a committed token. Use `op run --env-file` or a headersHelper instead."
-regex = '''\$\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\}'''
+# The match is the whole JSON string around the placeholder, not the placeholder alone:
+# gitleaks' default global allowlist drops any finding that is exactly `${NAME}`, which is
+# precisely the shape this rule exists for. Measured with 8.30.1 — the bare form reported
+# "no leaks found" on a `.mcp.json` carrying `${GITHUB_TOKEN}`. scripts/tests/gates.sh
+# drives this rule over a generated fixture so that regression cannot return.
+regex = '''"[^"\n]*\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}[^"\n]*"'''
 path = '''(^|/)\.mcp\.json$'''
 keywords = ["${"]

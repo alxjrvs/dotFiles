@@ -85,6 +85,22 @@ fi
 # control only: a fixture Brewfile is a wrong declared list on any real machine.
 case_exit brewdrift_untrusted_tap 1 ./scripts/brew-drift.sh scripts/tests/fixtures/untrusted-tap-Brewfile
 
+# --- the gitleaks .mcp.json rule fires on the bare placeholder --------------
+# gitleaks' default global allowlist drops any finding that is exactly `${NAME}`,
+# which is the shape this rule exists for; the first spelling of the rule was
+# silently allowlisted on every real case. The fixture is generated, never
+# tracked, so CI's own `gitleaks dir .` does not trip over it.
+if command -v gitleaks > /dev/null 2>&1; then
+  _gl=$(mktemp -d)
+  printf '{"mcpServers":{"github":{"env":{"GITHUB_TOKEN":"${GITHUB_TOKEN}"}}}}\n' > "$_gl/.mcp.json"
+  case_exit gitleaks_mcp_placeholder_caught 1 gitleaks dir "$_gl" --config gitleaks/gitleaks.toml --no-banner --redact
+  printf '{"mcpServers":{"github":{"command":"op","args":["run","--env-file=.env","--","srv"]}}}\n' > "$_gl/.mcp.json"
+  case_exit gitleaks_mcp_clean_ok 0 gitleaks dir "$_gl" --config gitleaks/gitleaks.toml --no-banner --redact
+  rm -rf "$_gl"
+else
+  echo "  [gitleaks_mcp_*] skipped: gitleaks not on PATH (CI has it)"
+fi
+
 # --- the sandbox's two measured invariants ----------------------------------
 # DERIVED FROM THE REAL FILE, never a checked-in fixture: a fixture copy of
 # settings.json drifts from the original the moment either changes, and then

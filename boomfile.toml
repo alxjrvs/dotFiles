@@ -68,8 +68,9 @@ dst = "~/.npmrc"
 src = "git-template/hooks/pre-commit"
 dst = "~/.config/git/template/hooks/pre-commit"
 
-# Global gitleaks rules. gitleaks reads no global file on its own; GITLEAKS_CONFIG
-# (zsh/00-exports.zsh) and explicit --config flags point here.
+# Global gitleaks rules for repos that declare none of their own. gitleaks reads no global
+# file by itself: the git template hook passes this path, and this repo's lefthook and CI
+# pass their tracked copy. Never exported as GITLEAKS_CONFIG (it would outrank a repo's own).
 [[section.link]]
 src = "gitleaks/gitleaks.toml"
 dst = "~/.config/gitleaks/gitleaks.toml"

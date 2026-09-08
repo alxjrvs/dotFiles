@@ -4,9 +4,9 @@ export VISUAL="$EDITOR"
 export LANG=en_US.UTF-8
 export LESS='-RFX'
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
-# gitleaks has no auto-loaded global config; this is how the custom rules reach every
-# repo (lefthook, the git template hook, and hand runs alike).
-export GITLEAKS_CONFIG="$HOME/.config/gitleaks/gitleaks.toml"
+# No GITLEAKS_CONFIG export: that variable outranks a repo's own .gitleaks.toml, so a
+# shell-wide export would silently drop every other repo's allowlists. The git template
+# hook resolves ~/.config/gitleaks/gitleaks.toml itself, for repos that declare none.
 
 # GitHub tokens are never exported into the shell env; anything that needs one
 # resolves it on demand via `gh auth token`. See .zprofile for the rationale.

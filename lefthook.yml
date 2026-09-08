@@ -42,15 +42,45 @@ pre-commit:
       # frontmatter — without it the rule loads at launch like CLAUDE.md, and
       # nothing about the omission looks wrong. Checked here, whole set, every
       # commit that touches any of them; CI runs the same command --all-files.
+      # A date makes a sentence a record, not a rule, and it expires unnoticed; a
+      # full YYYY-MM-DD has no business in an instruction file.
       glob: "{CLAUDE.md,dot-claude/CLAUDE.md,dot-claude/rules/*.md}"
       run: |
         for f in CLAUDE.md dot-claude/CLAUDE.md; do
           n=$(wc -c < "$f" | tr -d ' ')
           [ "$n" -le 3000 ] || { echo "$f: $n bytes, ceiling 3000 — it is billed to every request; move it to a skill, a rule, or DECISIONS.md"; exit 1; }
+          ! grep -nE '[0-9]{4}-[0-9]{2}-[0-9]{2}' "$f" || { echo "$f: dated claim above — a date makes it a record, not a rule"; exit 1; }
         done
         for r in dot-claude/rules/*.md; do
-          sed -n '2,/^---$/p' "$r" | grep -q '^paths:' || { echo "$r: no paths: in frontmatter — it would load into EVERY session"; exit 1; }
+          [ -e "$r" ] || continue
+          awk 'NR==1 { if ($0 != "---") exit 1; next } /^---[[:space:]]*$/ { exit } /^paths:/ { f=1 } END { exit !f }' "$r" \
+            || { echo "$r: no paths: in frontmatter — it would load into EVERY session"; exit 1; }
         done
+
+    mise-lock-sync:
+      # Renovate bumps a pin in mise.toml; the lockfile only follows when
+      # `mise install` runs and the result is committed. Under minor/patch automerge
+      # that gap would land on main unnoticed and CI would never see it (MISE_LOCKFILE
+      # with an unlocked version resolves through the API and passes). So: every pin
+      # must have a matching lock entry. Extra lock entries are not checked — mise
+      # prunes them itself on the next install.
+      glob: "{mise.toml,mise.lock}"
+      run: |
+        python3 - <<'PY'
+        import sys, tomllib
+        cfg = tomllib.load(open("mise.toml", "rb"))["tools"]
+        lock = tomllib.load(open("mise.lock", "rb")).get("tools", {})
+        bad = []
+        for tool, want in cfg.items():
+            got = {e.get("version") for e in lock.get(tool, [])}
+            if want not in got:
+                bad.append(f"{tool}: mise.toml pins {want}, mise.lock has {sorted(got) or 'nothing'}")
+        if bad:
+            print("mise.toml and mise.lock disagree — run `mise install` and commit the lock:")
+            print("\n".join("  " + b for b in bad))
+            sys.exit(1)
+        print(f"ok mise.lock covers all {len(cfg)} pins")
+        PY
 
     plist-validity:
       # Same script CI runs. Two assertions, not one: structural validity does

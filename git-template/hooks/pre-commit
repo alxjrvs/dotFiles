@@ -23,12 +23,13 @@ if ! command -v gitleaks > /dev/null 2>&1; then
   exit 1
 fi
 
-# The global config, spelled out rather than trusted to the environment: a git hook can
-# run from an editor, an agent, or launchd, none of which read the interactive shell's
-# exports. Absent, gitleaks falls back to its defaults — scanned, just without the extras.
-cfg=${GITLEAKS_CONFIG:-$HOME/.config/gitleaks/gitleaks.toml}
-if [ -f "$cfg" ]; then
-  gitleaks git --staged --redact -v --no-banner --config "$cfg"
-else
+# Config precedence, deliberately: a repo's own .gitleaks.toml wins (gitleaks finds it on
+# its own, with that repo's allowlists); otherwise the global rules at
+# ~/.config/gitleaks/gitleaks.toml; otherwise gitleaks' defaults — scanned either way.
+# Spelled out here rather than via GITLEAKS_CONFIG, which would outrank the repo file.
+global="$HOME/.config/gitleaks/gitleaks.toml"
+if [ -f "$(git rev-parse --show-toplevel 2> /dev/null)/.gitleaks.toml" ] || [ ! -f "$global" ]; then
   gitleaks git --staged --redact -v --no-banner
+else
+  gitleaks git --staged --redact -v --no-banner --config "$global"
 fi

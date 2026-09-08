@@ -71,9 +71,15 @@ from inside the session. The decisions, so the next pass finds reasons rather th
   awaiting a silent fix; a canary for a policy watches for nothing. `startup-budget.sh` and
   `brew-resolves.sh` were monitoring inside a verify verb that nothing schedules. The three
   self-policing gates (`context-budget.sh`, `description-cap.sh`, `rules-scoped.sh`) and their
-  suite collapsed into one lefthook command: the ceiling is still enforced; the five hundred lines
-  around it guarded against a regression nobody was near. The `.mcp.json` placeholder check is a
-  gitleaks rule now, so it runs wherever gitleaks does instead of only in the template hook.
+  suite collapsed into one lefthook command: the byte ceiling (one number now, 3000, where the
+  user file had 2500), the date ban, and the `paths:` check on rules are still enforced; the
+  60-word description cap and the 12,000-byte skill-body cap are not — one skill and two agents
+  sit under the vendor's own truncation, and the five hundred lines around all of it guarded
+  against a regression nobody was near. The `.mcp.json` placeholder check is a gitleaks rule
+  now, so it runs wherever gitleaks does instead of only in the template hook; its first
+  spelling matched the bare placeholder, which gitleaks' default allowlist discards, so the
+  rule matches the enclosing JSON string and a gate case drives it over a generated fixture.
+  `GITLEAKS_CONFIG` is not exported: it outranks a repo's own `.gitleaks.toml`.
 - **Renovate, with pins.** Renovate had authored zero pull requests here in the life of
   `renovate.json`, and even installed it would have found nothing to bump: every tool but two was
   `"latest"`. Versions are pinned to what `mise.lock` had already resolved, Renovate owns Actions
@@ -179,8 +185,8 @@ add`. The plugin is deliberately **not enabled on this machine.**
 
 Installing it here would put `agent-friendly-repo` on disk twice: once under `~/.claude/skills/`
 where `boomfile.toml` already links `dot-claude/skills/`, and again under the plugin's own
-directory. Two copies of one skill, both loaded, their descriptions both billed to the
-description cap — **the exact duplication Oberon was built to avoid, reintroduced one scope
+directory. Two copies of one skill, both loaded, their descriptions both billed to every
+session — **the exact duplication Oberon was built to avoid, reintroduced one scope
 down.** The machine that authors the skill is the one machine that must not install it.
 
 ---
