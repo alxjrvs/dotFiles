@@ -6,16 +6,16 @@
 # runs, so forgetting a line costs time, never coverage.
 # covers: home/dot_claude/hooks/guard-lib.sh
 # covers: home/dot_claude/hooks/op-guard.sh
-# covers: home/dot_claude/hooks/rebase-guard.sh
 # covers: home/dot_claude/hooks/tests/cases.tsv
-# Regression suite for op-guard.sh and rebase-guard.sh — the two guards whose verdict a
-# fixture table can express.
+# Regression suite for op-guard.sh — the guard whose verdict a fixture table can
+# express.
 #
-# The guards are 200+ lines of load-bearing, security-relevant shell — they are
-# the only deterministic enforcement in the setup, and they had no tests. Two
-# real defects shipped as a result: a `--dry-run` substring anywhere in a command
-# disabled the direct-push-to-default rule entirely, and the same whole-string
-# scan denied ordinary feature-branch pushes whose commit message said "main".
+# The guard is 400+ lines of load-bearing, security-relevant shell — the only
+# deterministic enforcement in the setup — and the tokenizer it shares with the
+# other guards once shipped two real defects (a `--dry-run` substring anywhere in
+# a command disabled a whole rule; a whole-string scan denied on prose). The
+# fixtures below outlive the push guard those defects were found in, because the
+# same tokenizer still decides every `op` verdict.
 #
 # Builds throwaway git fixtures in $TMPDIR, pipes a synthetic PreToolUse payload
 # into each guard from inside the right fixture, and asserts on
@@ -104,7 +104,6 @@ fixture_dir() {
 
 guard_path() {
   case "$1" in
-    rebase) printf '%s' "$GUARD_DIR/rebase-guard.sh" ;;
     op) printf '%s' "$GUARD_DIR/op-guard.sh" ;;
     *) return 1 ;;
   esac

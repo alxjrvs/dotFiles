@@ -112,8 +112,7 @@ while IFS= read -r seg; do
   [ $# -gt 0 ] || continue
   prog=${1##*/}
 
-  # A leading `cd` retargets which repo the command acts on, exactly as in
-  # rebase-guard.sh.
+  # A leading `cd` retargets which repo the command acts on.
   if [ "$prog" = cd ] && [ -n "${2:-}" ]; then
     d=$(_unquote "$2")
     case $d in

@@ -151,16 +151,6 @@
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/rebase-guard.sh",
-            "if": "Bash(*git*)"
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/rebase-guard.sh",
-            "if": "Bash(*gh*)"
-          },
-          {
-            "type": "command",
             "command": "~/.claude/hooks/worktree-remove-guard.sh",
             "if": "Bash(*git*)"
           },

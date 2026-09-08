@@ -15,7 +15,7 @@
 # add it, and the two compose instead of racing.
 #
 # Wired via home/dot_claude/settings.json `hooks.PreToolUse` (matcher "Bash"),
-# alongside rebase-guard.sh, worktree-remove-guard.sh and repo-scope-guard.sh.
+# alongside worktree-remove-guard.sh and repo-scope-guard.sh.
 # It FAILS OPEN on a missing jq, a bad envelope or a missing guard-lib: the
 # residual `permissions.deny` entries still cover the paths with confirmed
 # incidents, so that degrades to a floor rather than to nothing.
@@ -116,10 +116,10 @@ _bad_op_run_child() { # $1 = basename of the command after `--`, $2.. = its argv
       done
       return 1
       ;;
-    # `op run -- git push` would hide the push from rebase-guard.sh, which
-    # tokenizes for a `git`/`gh` PROGRAM and sees `op` here. git and gh get their
-    # credentials from the credential helper, never from `op run`, so denying
-    # this costs nothing and keeps the push guards unbypassable.
+    # `op run -- git push` presents `op` as the program, so repo-scope-guard.sh
+    # (which tokenizes for a `gh` PROGRAM) never sees what runs. git and gh get
+    # their credentials from the credential helper, never from `op run`, so
+    # denying this costs nothing and keeps that guard unbypassable.
     git | gh) return 0 ;;
     # THE SAME ARGUMENT, APPLIED TO `op` ITSELF. `permissions.deny` cannot help:
     # its rules are anchored on `op read` / `op-agent` as the FIRST token, while
@@ -175,7 +175,7 @@ $SAFE_SHAPES"
 $SAFE_SHAPES"
   fi
   if _bad_op_run_child "$_child" "$@"; then
-    deny "\`$_label -- $_child\` is denied. Either it exists to print the environment (which defeats masking and dumps every injected secret into model context), or it is an interpreter/VCS command whose payload this guard cannot see through — \`$_label -- git push\` in particular would hide the push from rebase-guard.sh. Run \`$_label --\` against the actual program that needs the secret.
+    deny "\`$_label -- $_child\` is denied. Either it exists to print the environment (which defeats masking and dumps every injected secret into model context), or it is an interpreter/VCS command whose payload this guard cannot see through — \`$_label -- gh …\` in particular would hide the write from repo-scope-guard.sh. Run \`$_label --\` against the actual program that needs the secret.
 
 $SAFE_SHAPES"
   fi
