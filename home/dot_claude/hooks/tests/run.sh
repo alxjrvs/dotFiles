@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-#
-# covers: the sources below. `all.sh --changed <files>` reads these lines to
-# decide whether this suite has anything to say about a change; with no
-# argument every suite runs regardless. A suite that declares nothing always
-# runs, so forgetting a line costs time, never coverage.
-# covers: home/dot_claude/hooks/guard-lib.sh
-# covers: home/dot_claude/hooks/op-guard.sh
-# covers: home/dot_claude/hooks/tests/cases.tsv
 # Regression suite for op-guard.sh — the guard whose verdict a fixture table can
 # express.
 #

@@ -2,8 +2,7 @@ name: lint
 
 # RUNS the local lefthook pre-commit gate on every push to main and every PR — the
 # same roster, not a second copy of it — plus the two checks that are genuinely
-# remote-only and one deliberate re-run (bare `all.sh`, explained at its step).
-# Read-only: chezmoi appears once, under `--dry-run`.
+# remote-only. Read-only: chezmoi appears once, under `--dry-run`.
 
 on:
   push:
@@ -113,18 +112,4 @@ jobs:
           }
           chez apply --dry-run --verbose --exclude externals
           chez managed | sed 's/^/  /'
-
-      # NOT redundant with the lefthook roster above, and this is the one place
-      # the duplication is deliberate. Lefthook's `hook-tests` command runs
-      # `all.sh --changed <files>`, which selects suites by reading each one's
-      # `covers:` lines — a latency optimisation that TRUSTS those lines. A wrong
-      # or missing `covers:` silently narrows what ran, and the failure mode is a
-      # regression sailing through a green gate.
-      #
-      # Bare `all.sh` takes no argument and runs the whole roster, discovered
-      # from the directory. That is the merge gate, and it is immune to a
-      # `covers:` line being wrong. ~16s to make the selective run's one
-      # assumption non-load-bearing.
-      - name: hook regression tests (full roster, no `covers:` selection)
-        run: home/dot_claude/hooks/tests/all.sh
 

@@ -114,16 +114,10 @@ pre-commit:
       glob: "*.toml"
       run: taplo check --no-schema {staged_files}
     hook-tests:
-      # The glob is the union of what these suites cover: a change to a guard, to
-      # the repo's own hooks/, to a suite, or to cases.tsv runs them. Hermetic,
-      # no network.
-      #
-      # `--changed` runs only the suites that cover the staged files — a local
-      # latency optimisation. CI passes no argument and runs all of them, so the
-      # merge gate is unchanged and a wrong `covers:` line cannot let a
-      # regression through.
+      # The glob is a guard, a suite, cases.tsv, or the repo's own hooks; the
+      # whole roster runs on any of them. Hermetic, no network, ~15 s.
       glob: "{home/dot_claude/hooks/*.sh,home/dot_claude/hooks/tests/*}"
-      run: home/dot_claude/hooks/tests/all.sh --changed {staged_files}
+      run: home/dot_claude/hooks/tests/all.sh
 
     actionlint:
       # Also reaches the embedded shell in every `run:`, which the shellcheck
