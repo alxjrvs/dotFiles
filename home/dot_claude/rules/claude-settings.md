@@ -7,10 +7,6 @@ paths:
 
 # Editing a Claude Code settings.json
 
-Both of these were in the always-loaded `CLAUDE.md`, paid for on every request of
-every session, to be useful during the rare edit of one file. They are here
-instead: a path-scoped rule costs nothing until Claude reads a matching file.
-
 - **A Bash rule matches the whole command text**, `*` standing for any text. The
   space before a trailing `*` is load-bearing: `Bash(ls *)` misses `lsof`,
   `Bash(ls*)` catches it. Verify any new `deny` rule with a positive *and* a

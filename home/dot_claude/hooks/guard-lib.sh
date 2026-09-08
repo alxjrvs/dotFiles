@@ -45,9 +45,6 @@ EOF
   printf '%s' "$out"
 }
 
-# An interpreter takes an opaque payload this guard cannot tokenize, so
-# `sh -c 'op read op://…'` walks past a program-name check. That is the residue
-# `permissions.deny` structurally cannot cover; it is covered here.
 # The GitHub owners this machine may WRITE to. Single consumer:
 # repo-scope-guard.sh gates writes on it. One copy, because a list that governs a
 # security boundary drifts the moment there are two.
@@ -62,6 +59,9 @@ Criterium-Engineers
 ORGS
 }
 
+# An interpreter takes an opaque payload this guard cannot tokenize, so
+# `sh -c 'op read op://…'` walks past a program-name check. That is the residue
+# `permissions.deny` structurally cannot cover; it is covered here.
 _is_interpreter() { # $1 = basename
   case "$1" in
     sh | bash | zsh | dash | ksh | fish | eval | xargs | watch | script) return 0 ;;

@@ -57,7 +57,8 @@ op --format json item get claude-git-pat	deny
 # `op inject` is safe ONLY when it writes to a file instead of stdout.
 op inject -i .env.tpl -o .env	allow
 op inject -i .env.tpl --out-file=.env	allow
-# op-agent is plumbing, but its one non-printing verb is the health check that
+# op-agent is plumbing, but its one non-printing verb is the health check
+# scripts/verify.sh runs.
 op-agent status	allow
 
 # --- op-guard: `op plugin`, the biometric path for HUMAN CLIs ---------------
@@ -157,8 +158,8 @@ op-agent secret op://claude-agent/gninety/credential	deny
 op-agent header op://claude-agent/claude-github-pat/credential	deny
 op-agent git-credential get	deny
 op-agent provision	deny
-# `audit` prints titles and a verdict, never a field value — but it is still
-# denied from a Bash tool call, like every op-agent verb except the (also
+# op-agent has no `audit` verb any more; the row stays because the guard denies
+# every op-agent verb except `status` by default, unknown ones included.
 op-agent audit agent-vault.txt	deny
 
 # --- op-guard: `op run --` must not trampoline back into op --------------------
@@ -182,9 +183,9 @@ op run --env-file=npm/publish.env -- npm publish	allow
 op run -- node build.js	allow
 
 # --- op-guard: the spellings `permissions.deny` structurally cannot cover ----
-# CLAUDE.md: deny matches command SPELLING, so an absolute path is not covered,
-# and "deny cannot cover an arbitrary interpreter — sh -c 'op read …' still walks
-# past". The guard takes a basename and scans interpreter payloads, so both are.
+# A deny rule matches command SPELLING (rules/claude-settings.md), so an absolute
+# path is not covered, and an interpreter payload (`sh -c 'op read …'`) walks past
+# it. The guard takes a basename and scans interpreter payloads, so both are.
 /opt/homebrew/bin/op read op://claude-agent/claude-git-pat/credential	deny
 ~/.local/bin/op-agent secret op://claude-agent/gninety/credential	deny
 sh -c 'op read op://claude-agent/claude-git-pat/credential'	deny

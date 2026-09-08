@@ -17,8 +17,7 @@ attempt, or lands in an unattended session with no one to ask.
 
 ## Where things go
 
-This file has a byte ceiling, enforced by lefthook's `context-budget` command (and CI). It
-states the number; don't restate it here. Nothing goes in this file that fits elsewhere.
+Nothing goes in this file that fits elsewhere.
 
 | | |
 |---|---|

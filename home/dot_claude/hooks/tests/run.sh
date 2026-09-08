@@ -2,12 +2,10 @@
 # Regression suite for op-guard.sh — the guard whose verdict a fixture table can
 # express.
 #
-# The guard is 400+ lines of load-bearing, security-relevant shell — the only
-# deterministic enforcement in the setup — and the tokenizer it shares with the
-# other guards once shipped two real defects (a `--dry-run` substring anywhere in
-# a command disabled a whole rule; a whole-string scan denied on prose). The
-# fixtures below outlive the push guard those defects were found in, because the
-# same tokenizer still decides every `op` verdict.
+# The guard is load-bearing, security-relevant shell, and the tokenizer it shares
+# with the other guards once shipped two real defects (a `--dry-run` substring
+# anywhere in a command disabled a whole rule; a whole-string scan denied on
+# prose). The tokenizer fixtures below exist so neither returns.
 #
 # Pipes a synthetic PreToolUse payload into the guard from a scratch directory
 # and asserts on .hookSpecificOutput.permissionDecision. No network, no side
@@ -32,8 +30,6 @@ cleanup() { rm -rf "$ROOT"; }
 trap cleanup EXIT INT TERM
 
 # --- run --------------------------------------------------------------------
-# One scratch directory for every case: op-guard's verdict is decided from the
-# command text alone, so no case needs a git fixture.
 pass=0
 fail=0
 failed_lines=''

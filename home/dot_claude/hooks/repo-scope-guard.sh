@@ -97,7 +97,7 @@ _is_owned() { # $1 = owner
   return 1
 }
 
-DRAFT_IT="Draft it and show it first — CLAUDE.md requires express permission for a write outside the owned orgs. If this is intended, run it yourself, or say so and it can be added to _owned_orgs in guard-lib.sh."
+DRAFT_IT="Draft it and show it first — a write outside the owned orgs needs express permission. If this is intended, run it yourself, or say so and it can be added to _owned_orgs in guard-lib.sh."
 
 segs=$(_split "$cmd")
 segs=$(_expand_interpreters "$cmd" "$segs")
