@@ -6,19 +6,10 @@
 # only the path — and the native installer stages every release at its own
 # ~/.local/share/claude/versions/<ver>. Every update is therefore a brand-new
 # client and the whole set of "wants to access data from other apps" dialogs
-# comes back. Measured 2026-08-19: 76 accumulated rows in TCC.db, 46 of them
-# kTCCServiceSystemPolicyAppData — roughly one per update since May. Nothing is
-# misconfigured; the recommended install layout guarantees this.
-#
-# Why the fix is Anthropic's rather than ours. Claude Code writes a
-# ClaudeCode.app bundle beside versions/ (CFBundleIdentifier
-# com.anthropic.claude-code), hardlinks the current release into it, and re-execs
-# through it with responsibility disclaimed — but ONLY from the background /
-# PTY-host entry point, never for the foreground TUI. So background sessions have
-# had a permanent TCC identity all along and interactive ones never have. This
-# points the same bundle at the current release and runs it. It costs ZERO
-# prompts, not even one: those bg sessions already earned the bundle its grants
-# for Documents, Desktop, Downloads, AppData, MediaLibrary and NetworkVolumes.
+# comes back. Nothing is misconfigured; the recommended install layout guarantees
+# this. The ClaudeCode.app bundle beside versions/ is Anthropic's own (background
+# sessions already re-exec through it, so it holds the grants); docs/DECISIONS.md
+# has the measurement.
 #
 # Why a shell function and NOT a launcher at ~/.local/bin/claude. Leaving that
 # path to the installer keeps auto-update and automatic version cleanup working,

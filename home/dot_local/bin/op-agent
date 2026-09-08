@@ -15,10 +15,8 @@
 # (gninety) execs it by path, and git execs it as a credential helper; the
 # chezmoi runs `provision` on every apply and scripts/verify.sh runs `status`.
 #
-# `header` is deleted. It emitted a bearer token for an HTTP MCP `headersHelper`; nothing in
-# the repo declares an HTTP MCP server, and it is the verb that printed a live PAT into a
-# transcript on 2026-07-25. Do not re-add api.githubcopilot.com/mcp/ behind a bespoke
-# headersHelper. Restoring it is `git log -S cmd_header`.
+# No `header` verb: it printed a live PAT into a transcript. Do not re-add an HTTP MCP
+# `headersHelper` here.
 
 set -euo pipefail
 

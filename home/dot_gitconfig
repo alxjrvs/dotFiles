@@ -1,5 +1,4 @@
 [alias]
-  # Pretty log output
   hist = log --graph --pretty=format:'%Cred%h%Creset %s%C(yellow)%d%Creset %Cgreen(%cr)%Creset [%an]' --abbrev-commit --date=relative
   sw = switch
   st = status -sb
@@ -9,9 +8,7 @@
 [user]
 	name = alxjrvs
 	email = alxjrvs@gmail.com
-	# user.signingkey is machine-local (~/.gitconfig.local, written by
-	# chezmoi (scripts/git-signing.ts)) -- a `key::` pubkey for the 1Password
-	# "GitHubSSH" key. git signs via op-ssh-sign (1Password), no local key.
+	# user.signingkey is in ~/.gitconfig.local, written by scripts/git-signing.ts.
 [credential]
 	helper = osxkeychain
 # GitHub HTTPS auth via the gh CLI (keychain-backed). Lets git push resolve a
@@ -26,17 +23,10 @@
 	helper = !gh auth git-credential
 [core]
 	editor = nvim
-	# No excludesfile override: git reads ~/.config/git/ignore (XDG default)
-	# for global excludes, managed by chezmoi (home/dot_config/git/ignore).
-	# The repo's own .gitignore stays repo-scoped.
 	pager = delta
 	untrackedCache = true
 
-# New repos copy template/hooks/pre-commit into their own .git/hooks/ at
-# `git init`/`git clone` time → gitleaks runs per-repo without conflicting
-# with lefthook (which owns .git/hooks/pre-commit in lefthook-equipped repos).
-# Repos that predate the template need a one-shot:
-#   cp ~/.config/git/template/hooks/pre-commit <repo>/.git/hooks/pre-commit
+# Repos that predate the template: cp ~/.config/git/template/hooks/pre-commit <repo>/.git/hooks/
 [init]
 	defaultBranch = main
 	templateDir = ~/.config/git/template
@@ -102,17 +92,8 @@
 	format = ssh
 [gpg "ssh"]
 	allowedSignersFile = ~/.ssh/allowed_signers
-	# Constants, so they live here rather than being written into
-	# ~/.gitconfig.local by scripts/git-signing.ts on every apply. That script keeps
-	# only the one value it has to DISCOVER — user.signingkey, looked up by key
-	# name from the 1Password agent, so a rotated key converges without an edit.
-	#
-	# They were machine-local on the reasoning that "a box without 1Password
-	# shouldn't fail commits". That is host detection wearing another name, and
-	# it guards a machine this config does not support anyway: README ranks
-	# 1Password second in what breaks on a fork, and scripts/verify.sh fails on day
-	# one without it. Agent sessions still turn signing off explicitly, via
-	# GIT_CONFIG_KEY_0 in home/dot_claude/settings.json.
+	# Constant, so tracked here; scripts/git-signing.ts writes only user.signingkey.
+	# Agent sessions turn signing off via GIT_CONFIG_KEY_0 in home/dot_claude/settings.json.
 	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
 [help]
 	autocorrect = prompt

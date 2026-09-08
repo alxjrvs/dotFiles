@@ -1,5 +1,3 @@
-# ~/.ssh/config — symlinked from dotfiles. Permissions: 600.
-
 Host *
   # 1Password SSH agent: keys live in 1Password, touch-to-sign on each use.
   # Requires "SSH agent" enabled in 1Password → Settings → Developer.

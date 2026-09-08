@@ -6,9 +6,6 @@
 # pre-commit. A lefthook-managed repo overwrites this file with lefthook's own
 # hook, and runs gitleaks from its roster instead — that is fine.
 #
-# The `.mcp.json` placeholder check that used to be hand-written here is a rule in
-# ~/.config/gitleaks/gitleaks.toml, so every gitleaks call applies it, not only this one.
-#
 # Bypass for a single commit: git commit --no-verify (only when you really need to)
 
 set -e
