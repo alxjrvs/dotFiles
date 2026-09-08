@@ -14,7 +14,8 @@
 # "deliberately excluded" different from "nobody noticed".
 set -eu
 
-BREWFILE=${1:-Brewfile}
+BREWFILE=${1:-home/dot_config/homebrew/Brewfile}
+MISE_CONFIG=${MISE_CONFIG:-home/dot_config/mise/config.toml}
 [ -f "$BREWFILE" ] || {
   echo "brew-drift: no Brewfile at $BREWFILE" >&2
   exit 2
@@ -114,13 +115,13 @@ brew list --cask 2> /dev/null | sort -u > "$tmp/installed-casks"
 # subject to the exclusions: mise owns these names, and brew having them too is
 # the finding. `brew leaves` (not `brew list`) so a formula pulled in only as
 # somebody else's dependency does not read as a deliberate install.
-if [ -f mise.toml ] && command -v brew > /dev/null 2>&1; then
+if [ -f "$MISE_CONFIG" ] && command -v brew > /dev/null 2>&1; then
   # Both spellings mise accepts: a bare `gh = "latest"`, and a quoted, backend-
   # prefixed `"npm:heroku" = "latest"` / `"aqua:dbrgn/tealdeer" = "latest"`. The
   # brew name to compare against is the LAST path segment after the backend
   # prefix, which is what lands on PATH — reading only the bare form missed
   # heroku, netlify-cli and usage, three of the eight the Brewfile documents.
-  mise_tools=$(sed -n '/^\[tools\]/,/^\[/p' mise.toml |
+  mise_tools=$(sed -n '/^\[tools\]/,/^\[/p' "$MISE_CONFIG" |
     sed -n 's/^"\{0,1\}\([a-zA-Z0-9_.:/-]*\)"\{0,1\}[[:space:]]*=.*/\1/p' |
     sed 's/.*[:/]//' | grep -v '^$' | sort -u)
   if [ -n "$mise_tools" ]; then

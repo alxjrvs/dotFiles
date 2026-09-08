@@ -1,0 +1,17 @@
+# Target paths (relative to ~) chezmoi must NOT manage. Everything else under home/ is.
+
+# The hook regression suites sit beside the hooks so run.sh finds them at `$HERE/..`, but
+# they run from the repo and must never land in ~/.claude/hooks/.
+.claude/hooks/tests
+.claude/hooks/tests/**
+
+{{ if ne .chezmoi.os "darwin" -}}
+# macOS-only surfaces, so a Linux checkout (CI's dry run) does not try to place them.
+Library
+Library/**
+.config/homebrew
+.config/homebrew/**
+.config/1Password
+.config/1Password/**
+Screenshots
+{{ end -}}

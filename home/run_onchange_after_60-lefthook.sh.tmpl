@@ -1,0 +1,8 @@
+#!/bin/bash
+# lefthook owns .git/hooks in this checkout. Re-run when its config changes so the generated
+# hook's checksum stays current; a missing lefthook (mid-provision machine) is not an error.
+# lefthook.yml hash: {{ include "../lefthook.yml" | sha256sum }}
+set -euo pipefail
+export PATH="$HOME/.local/share/mise/shims:$PATH"
+command -v lefthook > /dev/null 2>&1 || exit 0
+cd "{{ .chezmoi.workingTree }}" && lefthook install

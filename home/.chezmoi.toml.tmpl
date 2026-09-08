@@ -1,0 +1,12 @@
+# chezmoi's own configuration, rendered into ~/.config/chezmoi/chezmoi.toml by `chezmoi init`.
+# After editing this template run `chezmoi init` again (chezmoi warns when it has changed).
+
+# Symlink mode: every managed regular file in ~ is a symlink into this repo's `home/`, so an
+# edit in the checkout is live at once and `chezmoi verify` reports a target that no longer
+# points here. Templates and scripts are rendered as real files whatever the mode.
+mode = "symlink"
+
+# The checkout IS the source. `chezmoi init --source <checkout>` records it here, so there is
+# one clone rather than a managed cache plus a working copy, and no commit-push-sync round trip
+# between an edit and it being live.
+sourceDir = {{ .chezmoi.workingTree | quote }}

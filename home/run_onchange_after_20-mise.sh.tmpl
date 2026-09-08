@@ -1,0 +1,9 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+# mise: every dev CLI. Re-runs when the config changes. The lockfile beside the config is what
+# `mise install` reads and rewrites — through the symlink, into this repo. Commit it.
+# mise config hash: {{ include "dot_config/mise/config.toml" | sha256sum }}
+set -euo pipefail
+export PATH="/opt/homebrew/bin:$PATH"
+mise install --yes
+{{ end -}}

@@ -1,0 +1,16 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+# gh extensions: one owner-qualified ref per line in gh-extensions.txt at the repo root.
+# Installs only the misses and never upgrades, matching gh's own behaviour; scripts/verify.sh
+# diffs the same file against `gh extension list`, so a hand-removed extension is drift.
+# gh-extensions.txt hash: {{ include "../gh-extensions.txt" | sha256sum }}
+set -euo pipefail
+export PATH="$HOME/.local/share/mise/shims:/opt/homebrew/bin:$PATH"
+command -v gh > /dev/null 2>&1 || { echo "gh is not on PATH — mise has not installed it yet" >&2; exit 1; }
+installed=$(gh extension list 2> /dev/null | awk '{print $3}')
+while IFS= read -r line; do
+  ref=$(printf '%s' "${line%%#*}" | tr -d '[:space:]')
+  [ -n "$ref" ] || continue
+  printf '%s\n' "$installed" | grep -qx "$ref" || gh extension install "$ref"
+done < "{{ .chezmoi.workingTree }}/gh-extensions.txt"
+{{ end -}}

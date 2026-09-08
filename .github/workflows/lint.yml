@@ -3,7 +3,7 @@ name: lint
 # RUNS the local lefthook pre-commit gate on every push to main and every PR — the
 # same roster, not a second copy of it — plus the two checks that are genuinely
 # remote-only and one deliberate re-run (bare `all.sh`, explained at its step).
-# Read-only: `boom source` appears once, under `--dry-run`.
+# Read-only: chezmoi appears once, under `--dry-run`.
 
 on:
   push:
@@ -19,12 +19,12 @@ jobs:
     # Job-wide, not just on the install step: mise installs on DEMAND through its
     # shims, so the first `jq` a guard runs later triggers an install of its own.
     env:
-      # Honour mise.lock on the runner. `lockfile = true` lives in
-      # mise-settings.toml, which is symlinked on the machine and never reaches
-      # CI — so every `mise install` here resolved "latest" through the GitHub
-      # API and ran the rate limit to zero. Do not disable attestation
-      # verification to dodge that: the lock records HOW each tool was verified,
-      # so verifying less is exactly what it exists to prevent.
+      # The machine's global mise config IS the repo file; point the runner at it so
+      # `mise install` resolves the same pins and reads mise.lock beside it, instead
+      # of resolving through the GitHub API and running the rate limit to zero. Do
+      # not disable attestation verification to dodge that: the lock records HOW
+      # each tool was verified, so verifying less is exactly what it exists to prevent.
+      MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/home/dot_config/mise/config.toml
       MISE_LOCKFILE: "1"
     steps:
       - uses: actions/checkout@v7
@@ -62,7 +62,7 @@ jobs:
       # `--all-files` because there is no index on a runner: bare
       # `lefthook run pre-commit` would hand every `glob:`-scoped command an
       # empty file list and report success for inspecting nothing — the same
-      # vacuous pass that `dot-claude/hooks/verify-gate.sh` was fixed for.
+      # vacuous pass that `home/dot_claude/hooks/verify-gate.sh` was fixed for.
       #
       # `brew-drift` no-ops here by design (no brew on a runner, and it says so
       # rather than passing silently). The `commit-msg` stage is not part of
@@ -76,29 +76,32 @@ jobs:
       # CURRENT TREE contain a secret, rather than does this commit add one.
       # Same tool, different verb, so it stays its own step.
       - name: gitleaks
-        run: gitleaks dir . --redact --no-banner --config gitleaks/gitleaks.toml
+        run: gitleaks dir . --redact --no-banner --config home/dot_config/gitleaks/gitleaks.toml
 
       # THE ARTIFACT, not the assertions about it. Everything above lints files;
-      # this is the only step that asks the engine whether `boomfile.toml` still
-      # APPLIES — every declared source, the glob fan-outs, link and dir modes,
-      # the `absent` path, hook resolution and the package manifests, all
-      # resolved by the thing that will resolve them on a real machine.
+      # this is the only step that asks the engine whether the source state still
+      # APPLIES — every attribute prefix, template, `.chezmoiignore` rule, external
+      # declaration and script header, resolved by the thing that resolves them on a
+      # real machine. A template error or a bad source name fails here, not on the
+      # next `chezmoi apply` at home.
       #
-      # Safe on a runner, by construction and not by hope: `--dry-run` makes run steps
-      # no-ops (run.ts refuses to spawn a shell under it), and `osx_default` and
-      # `launchd` are OS-gated to darwin, so on ubuntu they report and change nothing.
-      # Both repo hooks honour `api.dryRun` too.
+      # Safe on a runner, by construction: `--dry-run` executes no run_ script, the
+      # darwin-gated scripts render empty anyway, `.chezmoiignore` drops the
+      # macOS-only targets on linux, `--exclude externals` skips the statusline
+      # clone, and the destination is a scratch directory. Symlink mode comes from
+      # ci/chezmoi.toml so the check matches the machine's mode.
       #
-      # Installed through boom's own published bootstrap, pinned to the same tag
-      # README documents — so this step also proves the documented fresh-machine
-      # install path still works. install.sh verifies the binary against the release's
-      # SHA256SUMS and refuses to install unverified.
-      - name: boomfile applies
-        env:
-          BOOM_CONFIG: ${{ github.workspace }}
+      # chezmoi via mise rather than the vendor curl-pipe: mise is already on the
+      # runner, and a version pinned here is one Renovate can see.
+      - name: chezmoi applies
         run: |
-          curl -fsSL https://raw.githubusercontent.com/alxjrvs/boom/v0.30.0/install.sh | sh
-          "$HOME/.local/bin/boom" source --dry-run
+          mise install chezmoi@2.66.0
+          mise exec chezmoi@2.66.0 -- chezmoi \
+            --source "$PWD" --destination "$RUNNER_TEMP/home" --config ci/chezmoi.toml \
+            apply --dry-run --verbose --exclude externals
+          mise exec chezmoi@2.66.0 -- chezmoi \
+            --source "$PWD" --destination "$RUNNER_TEMP/home" --config ci/chezmoi.toml \
+            managed | sed 's/^/  /'
 
       # NOT redundant with the lefthook roster above, and this is the one place
       # the duplication is deliberate. Lefthook's `hook-tests` command runs
@@ -112,5 +115,5 @@ jobs:
       # `covers:` line being wrong. ~16s to make the selective run's one
       # assumption non-load-bearing.
       - name: hook regression tests (full roster, no `covers:` selection)
-        run: dot-claude/hooks/tests/all.sh
+        run: home/dot_claude/hooks/tests/all.sh
 

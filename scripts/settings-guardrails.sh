@@ -2,9 +2,8 @@
 # settings.json content guardrails — the single source for the assertions.
 #
 # Called from lefthook's pre-commit (the staged file; CI runs the same roster
-# with `--all-files`) and from boomfile.toml's `boom verify` (the LIVE
-# ~/.claude/settings.json, the only copy that governs a session). Two call
-# paths, one copy of the rules.
+# with `--all-files`) and from scripts/verify.sh (the LIVE ~/.claude/settings.json,
+# the only copy that governs a session). Two call paths, one copy of the rules.
 #
 # Usage: scripts/settings-guardrails.sh <file>...
 #
@@ -48,8 +47,6 @@ Read(~/.ssh/id_*)
 Read(~/.aws/credentials)
 Bash(*/op *)
 Bash(*/op-agent *)
-Bash(boom askpass:*)
-Bash(*/boom askpass *)
 Bash(*/security find-generic-password *)
 Bash(*/security find-internet-password *)
 Bash(*/security find-certificate *)
@@ -75,13 +72,13 @@ note() {
 
 # The wired_hooks() list is hand-maintained, and a guard MISSING from it is
 # invisible: this gate would pass while the new guard sat unwired. Repo-relative,
-# and SKIPPED when the repo is not adjacent — this also runs from `boom verify`
+# and SKIPPED when the repo is not adjacent — this also runs from scripts/verify.sh
 # against the live settings.json, where a missing checkout must not fail the
 # gate. GUARD_DIR is overridable so scripts/tests/gates.sh can aim it at a
 # fixture and prove the assertion fires.
 _guard_dir=${GUARD_DIR:-$(
   unset CDPATH
-  cd -- "$(dirname -- "$0")/../dot-claude/hooks" 2> /dev/null && pwd
+  cd -- "$(dirname -- "$0")/../home/dot_claude/hooks" 2> /dev/null && pwd
 )}
 if [ -n "$_guard_dir" ]; then
   for _g in "$_guard_dir"/*.sh; do
@@ -89,7 +86,7 @@ if [ -n "$_guard_dir" ]; then
     _n=${_g##*/}
     # guard-lib.sh is sourced by the others, never wired as a handler itself.
     if [ "$_n" != "guard-lib.sh" ]; then
-      wired_hooks | grep -qxF "$_n" || note "$_n is in dot-claude/hooks/ but not in wired_hooks() — add it there, or settings.json can drop its handler with every gate still green"
+      wired_hooks | grep -qxF "$_n" || note "$_n is in home/dot_claude/hooks/ but not in wired_hooks() — add it there, or settings.json can drop its handler with every gate still green"
     fi
   done
 fi
@@ -178,14 +175,13 @@ for f in "$@"; do
   done || fail=1
 done
 
-# THE SAME RULE, ONE SCOPE OVER. `boomfile.toml`'s `absent` resource covers only
-# the user-global `~/.claude/settings.local.json`, and `.gitignore` hides the
-# file at EVERY scope — so this repo's own project-scoped copy is never
-# committable, never reviewable, and asserted by nothing.
+# THE SAME RULE, ONE SCOPE OVER. `home/.chezmoiremove` covers only the user-global
+# `~/.claude/settings.local.json`, and `.gitignore` hides the file at EVERY scope —
+# so this repo's own project-scoped copy is never committable, never reviewable,
+# and asserted by nothing.
 #
-# It cannot be closed where its sibling is: boom's `absent` runs `expandTilde`
-# and nothing else, so a repo-relative path resolves against whatever directory
-# boom ran in, and a `~`-anchored path to a development clone is host detection.
+# It cannot be closed where its sibling is: `.chezmoiremove` takes target paths
+# under ~, and a `~`-anchored path to a development clone is host detection.
 # Hence here, resolved from this script's own location rather than `$PWD`, so it
 # means the same thing from any working directory.
 _repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)

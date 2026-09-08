@@ -19,9 +19,9 @@
 *.log
 
 # Claude — this repo's own project-scoped `.claude/` is machine-local; the
-# user/global config lives in `dot-claude/`, symlinked into ~/.claude/ by
-# `boom source`. (Repo-scoped only — global excludes live in `git/ignore`, NOT
-# a blanket `.claude/` that would hide it in every repo on the machine.)
+# user/global config lives in `home/dot_claude/`, symlinked into ~/.claude/ by
+# chezmoi. (Repo-scoped only — global excludes live in `home/dot_config/git/ignore`,
+# NOT a blanket `.claude/` that would hide it in every repo on the machine.)
 #
 # `.claude/*` rather than `.claude/` on purpose: git never descends into an
 # excluded *directory*, so a `!` negation inside one is silently inert. Ignoring
@@ -36,6 +36,6 @@
 # in the committed settings.json contract). Claude Code auto-writes one on
 # "always allow"/project-trust flows, so this line stops it being COMMITTED; it
 # never stopped it EXISTING, and one carrying `Bash(gh api *)` sat unreviewed
-# because git was told to ignore it. boom's `absent` resource closes that
-# half — removed on every `boom source`, asserted absent by `boom verify`.
-dot-claude/settings.local.json
+# because git was told to ignore it. `home/.chezmoiremove` closes that half —
+# removed on every `chezmoi apply`.
+home/dot_claude/settings.local.json

@@ -1,0 +1,13 @@
+# Externals: content chezmoi fetches rather than tracks. Pinned by tag, and `refreshPeriod = "0"`
+# means the clone is never pulled on its own — bump the tag here deliberately, after reading
+# what changed, then `chezmoi apply --refresh-externals`.
+#
+# The Claude Code statusline. It ships shell scripts with no release asset, so it is not a mise
+# entry; it is an org repo with its own history, so it is not vendored. The two symlinks that
+# put its scripts on PATH are dot_local/bin/symlink_claude-*.
+[".local/share/claude-statusline"]
+    type = "git-repo"
+    url = "https://github.com/TheGnarCo/claude-statusline.git"
+    refreshPeriod = "0"
+    [".local/share/claude-statusline".clone]
+        args = ["--depth", "1", "--branch", "v1.1.1"]

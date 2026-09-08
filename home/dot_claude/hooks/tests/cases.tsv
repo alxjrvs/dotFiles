@@ -1,0 +1,628 @@
+# Guard regression cases. Columns: guard <TAB> fixture <TAB> command <TAB> expected
+#
+# Every spelling here was taken from alxjrvs's own session transcripts or from a
+# reproduction during the 2026-07-25 audit. Cases marked REGRESSION failed on the
+# pre-fix guards; they are the reason this suite exists.
+#
+# guard:    rebase | op
+# fixture:  primary (on main) | wt-a (up to date w/ main) | wt-c (stacked on feature-b) | nonrepo
+# expected: allow | deny
+
+# --- rebase-guard: direct push to the default branch ------------------------
+rebase	primary	git push origin main	deny
+rebase	primary	git push	deny
+rebase	primary	git push origin HEAD:main	deny
+rebase	primary	git push origin main:main	deny
+# REGRESSION: `--dry-run` anywhere in the command disabled the whole guard, so a
+# real push to main was ALLOWED because an unrelated commit message contained it.
+rebase	primary	git commit -m "test --dry-run flag" && git push origin main	deny
+rebase	primary	git commit -m "document --dry-run" && git push origin HEAD:main	deny
+# A genuine dry run still passes — it never mutates the remote.
+rebase	primary	git push --dry-run origin main	allow
+rebase	primary	git push origin main --dry-run	allow
+
+# --- rebase-guard: must NOT fire out of turn --------------------------------
+# REGRESSION: the word "main" inside a commit message denied a push of a
+# perfectly ordinary feature branch. This is the false positive alxjrvs reported.
+rebase	wt-a	git commit -m "push to main branch when ready" && git push origin feature-a	allow
+rebase	wt-a	git commit -m "merge into main later" && git push origin feature-a	allow
+rebase	wt-a	git push origin feature-a	allow
+rebase	wt-a	git push -u origin HEAD	allow
+# Not a real push/pr-create at all.
+rebase	primary	git log --grep "git push origin main"	allow
+rebase	primary	echo git push origin main	allow
+
+# --- rebase-guard: stacked PRs ----------------------------------------------
+# REGRESSION: `--base` was ignored, so a stacked PR was told to rebase onto main,
+# which would flatten the stack `rebase-prs` deliberately builds.
+rebase	wt-c	gh pr create --base feature-b	allow
+rebase	wt-c	gh pr create --base=feature-b --fill	allow
+# With no --base it really is behind origin/HEAD, so denying is correct.
+rebase	wt-c	gh pr create	deny
+
+# --- rebase-guard: fail-open contract ---------------------------------------
+rebase	nonrepo	git push origin main	allow
+
+# --- 2026-08-08 audit: spellings that reached `main` -------------------------
+# All of these were ALLOWED by the pre-fix guard, reproduced through this very
+# harness. The suite had grown from two past incidents, so it tested THE FIXES
+# rather than THE RULE — and the rule has many more spellings than the rule's
+# two known violations.
+
+# The single highest-value miss: the natural agent spelling. `HEAD` is not the
+# literal string `main`, and two positionals meant it wasn't a "bare" push.
+rebase	primary	git push origin HEAD	deny
+rebase	primary	git push -u origin HEAD	deny
+
+# A `#` comment is not a dry run. This is the 2026-07-25 incident in a new
+# spelling: the old `case " $push_seg " in *" --dry-run "*` scanned the segment
+# as text, so anything after a comment marker still disabled the guard.
+rebase	primary	git push origin main # --dry-run	deny
+
+# Last-push-wins: `push_seg=$seg` overwrote, so only the FINAL push segment was
+# ever examined and the real push ahead of it was never seen.
+rebase	primary	git push origin main && git push origin main --dry-run	deny
+
+# Quoting. The destination regex required a whitespace/EOL/separator boundary
+# after the branch name, and a quote is none of those.
+rebase	primary	git push origin 'main'	deny
+rebase	primary	git push origin "main"	deny
+rebase	primary	git push "origin" "main"	deny
+
+# Refspec spellings. `+main` force-pushes main; the optional `([^[:space:]]*:)?`
+# group required a trailing colon, so a leading `+` was never absorbed.
+rebase	primary	git push origin +main	deny
+rebase	primary	git push origin refs/heads/main	deny
+rebase	primary	git push origin HEAD:refs/heads/main	deny
+rebase	primary	git push origin --delete main	deny
+
+# `pushargs=${push_seg#*push}` stripped through the FIRST literal "push", which
+# `-c push.default=…` supplies — leaving ".default=current push" to tokenize.
+rebase	primary	git -c push.default=current push	deny
+
+# Shell constructs: `prog` was `(git`, `then`, `do` — never the bare token `git`.
+rebase	primary	(git push origin main)	deny
+rebase	primary	if true; then git push origin main; fi	deny
+rebase	primary	for i in 1; do git push origin main; done	deny
+
+# Wrappers, env prefixes and absolute paths. Claude Code's own matcher strips
+# these before matching; this guard tokenizes independently and stripped none.
+rebase	primary	GIT_SSH_COMMAND=ssh git push origin main	deny
+rebase	primary	/usr/bin/git push origin main	deny
+rebase	primary	command git push origin main	deny
+rebase	primary	env git push origin main	deny
+
+# A TRAILING `cd` retargeted GIT() at a non-repo AFTER the push was matched, so
+# the guard fell through its own fail-open path. Only a `cd` that precedes the
+# push can change which repo is pushed.
+rebase	primary	git push origin main && cd ..	deny
+
+# `git -C <path>` names the repo being pushed just as surely as a leading `cd`,
+# but the flag-skipping loop discarded its value, so the guard judged every
+# cross-repo push against the SESSION's cwd repo instead of the target.
+#
+# Found bootstrapping a brand-new empty repo: `git -C ~/Code/butter push` was
+# denied with "Branch is behind origin/main" — true of the dotFiles checkout the
+# session happened to be sitting in, and meaningless for a remote that had no
+# branches at all. Both directions are wrong, and the second one is the one that
+# matters:
+#
+#   FALSE DENY  — a legitimate push blocked by an unrelated repo's staleness,
+#                 which makes bootstrapping any new repo impossible in-session.
+#   FALSE ALLOW — the default-branch rule resolves `origin/HEAD` from the cwd
+#                 repo too, so a push to another repo's default is judged
+#                 against the wrong default, and a non-repo cwd fails open and
+#                 waves it through entirely.
+rebase	wt-c	git -C ../primary push origin feature-x	allow
+rebase	primary	git -C ../wt-c push origin feature-c	deny
+rebase	nonrepo	git -C ../primary push origin main	deny
+
+# REGRESSION — `-C` is not `cd`, and conflating them opened a hole worse than the bug the
+# original -C handling closed. `cd` persists across `&&` segments; `-C` binds to the one
+# invocation carrying it. Honouring a `-C` from an EARLIER segment retargeted the guard at that
+# directory, where the is-inside-work-tree probe fails, so a bare push to the default branch
+# FAILED OPEN. Measured against the shipped guard: all four of the deny cases below were ALLOWED.
+#
+# The first two are the bypass proper: an inert `-C` on a non-push segment must not move the
+# judgement. The next two are the other half — a `-C` on the push itself DOES name the repo git
+# will act on, so a cross-repo push to another checkout's default branch has to be judged against
+# THAT repo, cumulatively and relative to any preceding `cd`, exactly as git resolves it.
+rebase	primary	git -C ../nonrepo status && git push origin main	deny
+rebase	wt-a	git -C ../nonrepo log && git push origin main	deny
+rebase	wt-a	git -C ../primary push origin main	deny
+rebase	nonrepo	cd .. && git -C primary push origin main	deny
+rebase	primary	git -C .. -C primary push origin main	deny
+# …and the inert `-C` must stay inert in the ALLOW direction too, or the fix is just a
+# blanket-deny wearing a bypass fix's clothes.
+rebase	primary	git -C ../nonrepo status && git push origin feature-x	allow
+rebase	wt-c	git -C ../nonrepo status && git -C ../primary push origin feature-x	allow
+
+# Heredoc bodies are DATA, not command structure. Writing the commit message for
+# this very change was DENIED by the guard because the message explained
+# `git push origin main`. Prose apostrophes ("lefthook's") also unbalance the
+# quote tracking, so a heredoc cannot be parsed as if it were shell text.
+# `\n` is expanded to a real newline by run.sh.
+rebase	primary	git commit -F - << 'MSG'\nexplain git push origin main here\nMSG	allow
+rebase	primary	git commit -F - << 'MSG'\nlefthook's guard denied this\ngit push origin main\nMSG	allow
+rebase	wt-a	gh pr create --body - << 'EOF'\nthis PR changes git push origin main\nEOF	allow
+# A herestring has no body and must NOT swallow the rest of the command.
+rebase	primary	grep -q x <<< "text" ; git push origin main	deny
+
+# A newline separates simple commands exactly as `;` does. Without this the whole
+# multi-line command collapsed into one segment and the push was never seen.
+rebase	primary	git status\ngit push origin main	deny
+rebase	wt-a	git status\ngit push origin feature-a	allow
+
+# Redirections are not refspecs, and must not shift the positional analysis.
+rebase	primary	git push origin main > /dev/null	deny
+rebase	primary	git push origin main 2>&1	deny
+rebase	wt-a	git push origin feature-a > /dev/null	allow
+
+# FALSE POSITIVES: the guard denied real work because segmentation ignored
+# quoting. The first spelling denied an actual tool call during the audit.
+rebase	wt-a	git commit -m "run cd . && git push origin main to ship"	allow
+rebase	primary	git commit -m "wip; git push"	allow
+rebase	wt-a	git commit -m "see 'git push origin main' in the docs"	allow
+
+# --- op-guard: the shapes an agent MUST be able to use ----------------------
+# This whole block is the point of the 2026-08-18 change. Every one of these was
+# DENIED by the old binary-scoped `Bash(op:*)` rule, including `op --version`,
+# which prints no secret at all. `op run --` is 1Password's own documented shape:
+# "If a subprocess used with op run prints a secret to stdout, the secret will be
+# concealed by default."
+op	nonrepo	op run --env-file=.env -- npm publish	allow
+op	nonrepo	op run -- npm publish	allow
+op	nonrepo	op run --env-file=.env -- bun run dev	allow
+op	nonrepo	op --version	allow
+op	nonrepo	op	allow
+op	nonrepo	op whoami	allow
+op	nonrepo	op service-account ratelimit	allow
+# `op item list` and `op item move` are now ALLOWED, and the reason the guard used
+# to give for excluding them no longer holds: it said inventory browsing "is not
+# what was asked for". It has since been asked for, with a named use — the vault
+# audit reports an undeclared item and moving it out is how you fix it.
+#
+# Both print titles and metadata, never a secret VALUE, which is this guard's
+# actual criterion. `op vault list` and `op account list` stay DENIED: the measured
+# exposure recorded for them is enumerating every vault in the ACCOUNT via the
+# desktop integration, far outside claude-agent, which is a different capability.
+op	nonrepo	op item list	allow
+op	nonrepo	op item list --vault claude-agent	allow
+op	nonrepo	op vault list	deny
+op	nonrepo	op account list	deny
+# `op item move` is allowed in ONE DIRECTION. Moving an item OUT of the agent vault
+# can only narrow the agent's own reach. Moving one IN widens it — that is a
+# self-escalation path: an agent could grant itself a production credential by
+# relocating it into the vault its service account reads. Outbound allowed, inbound
+# denied, both argument spellings covered.
+op	nonrepo	op item move render-api-key --current-vault claude-agent --destination-vault Archive	allow
+op	nonrepo	op item move stray --destination-vault Archive	allow
+op	nonrepo	op item move prod-db --destination-vault claude-agent	deny
+op	nonrepo	op item move prod-db --destination-vault=claude-agent	deny
+op	nonrepo	op item move prod-db --current-vault Prod --destination-vault claude-agent	deny
+# The interpreter and `op run --` trampolines must not launder an inbound move past
+# the direction check, the same way they must not launder `op read`.
+op	nonrepo	sh -c "op item move prod-db --destination-vault claude-agent"	deny
+op	nonrepo	op run -- op item move prod-db --destination-vault claude-agent	deny
+# Reading and destroying stay denied regardless of the widening above.
+op	nonrepo	op item edit claude-git-pat	deny
+op	nonrepo	op item create --category login	deny
+# Global flags must be skipped to reach the subcommand, or `--format` would eat
+# the verb and `op --format json read op://x` would resolve its subcommand to `json`.
+op	nonrepo	op --format json item list	allow
+op	nonrepo	op --format json item get claude-git-pat	deny
+# `op inject` is safe ONLY when it writes to a file instead of stdout.
+op	nonrepo	op inject -i .env.tpl -o .env	allow
+op	nonrepo	op inject -i .env.tpl --out-file=.env	allow
+# op-agent is plumbing, but its one non-printing verb is the health check that
+op	nonrepo	op-agent status	allow
+
+# --- op-guard: `op plugin`, the biometric path for HUMAN CLIs ---------------
+# Shell plugins are 1Password's answer to a CLI token sitting in plaintext on
+# disk: the credential lives in the vault and is released per-invocation behind
+# Touch ID. Every discovery verb here was DENIED by the default-deny arm, which
+# is the same failure mode the 2026-08-18 rewrite was written to end — the guard
+# blocked the vendor's recommended pattern, so the advice became "run it from
+# your own terminal". `list`, `inspect` and `clear` print configuration metadata
+# only; `init` is an interactive picker that prints a `source` line. None emits a
+# credential VALUE, which is this guard's actual criterion.
+op	nonrepo	op plugin list	allow
+op	nonrepo	op plugin inspect gh	allow
+op	nonrepo	op plugin init gh	allow
+op	nonrepo	op plugin clear gh	allow
+op	nonrepo	op plugin	allow
+# `op plugin run` is the ONE plugin verb that injects a live credential into a
+# child process, so it gets the identical vetting as `op run --` rather than a
+# pass — same `--`, same env-dumping children, same interpreter payloads, and
+# the same 2026-08-19 trampoline finding: `op run -- op read` was allowed for
+# months because the guard saw an unremarkable child, and `op plugin run -- op
+# read` is that hole re-spelled.
+op	nonrepo	op plugin run -- vercel deploy	allow
+op	nonrepo	op plugin run -- netlify deploy	allow
+# `gh` is DENIED as a plugin-run child, and this is the guard stating a
+# conclusion rather than an omission. `_bad_op_run_child` rejects `git`/`gh`
+# under any injecting invocation because rebase-guard.sh tokenizes for a
+# `git`/`gh` PROGRAM and sees `op` here — so `op plugin run -- gh pr merge`
+# would walk a merge past the push guards. It costs nothing: gh resolves its
+# token from the keychain via `gh auth git-credential`, never from a plugin.
+# A gh shell plugin on this machine would be a THIRD GitHub credential path
+# beside that and `op-agent git-credential`, and its alias lives in an
+# interactive-shell `plugins.sh` an agent never sources — so it would break
+# agent `gh` while adding a credential. The deny is the recommendation.
+op	nonrepo	op plugin run -- gh repo list	deny
+op	nonrepo	op plugin run -- env	deny
+op	nonrepo	op plugin run -- printenv	deny
+op	nonrepo	op plugin run -- sh -c "echo $GITHUB_TOKEN"	deny
+op	nonrepo	op plugin run -- node -e "console.log(process.env)"	deny
+op	nonrepo	op plugin run -- op read op://claude-agent/x/credential	deny
+op	nonrepo	op plugin run -- op-agent secret op://claude-agent/x/credential	deny
+op	nonrepo	op plugin run gh repo list	deny
+op	nonrepo	op plugin run --	deny
+# `op plugin run -- git push` would hide the push from rebase-guard.sh for the
+# same reason `op run -- git push` does: both guards tokenize for a `git` PROGRAM
+# and see `op` here.
+op	nonrepo	op plugin run -- git push origin main	deny
+# The interpreter and `op run --` trampolines must not launder a plugin-run
+# child past the vetting above. This is why `plugin` had to join _OP_VERB_RE.
+op	nonrepo	sh -c "op plugin run -- env"	deny
+op	nonrepo	op run -- op plugin run -- env	deny
+op	nonrepo	echo "op plugin run -- env" | bash	deny
+op	nonrepo	op plugin frobnicate	deny
+# Prose about plugins is still ordinary work — the false positive this suite exists for.
+op	nonrepo	git commit -m "wire op plugin run for vercel"	allow
+
+# --- op-guard: must NOT fire out of turn ------------------------------------
+# The false positive this suite exists to prevent: prose mentioning the guarded
+# command. A `git` segment is never substring-scanned, so a commit message about
+# op is ordinary work.
+op	nonrepo	git commit -m "make op usable by the bots" && git push origin feature-a	allow
+op	nonrepo	git commit -m "op read is denied; use op run --"	allow
+op	nonrepo	echo "op read is the denied shape"	allow
+# Word-boundary, not substring: none of these contain an `op` command.
+op	nonrepo	chmod +x loop.sh	allow
+op	nonrepo	cp -r src dst	allow
+op	nonrepo	bash -c 'echo loop'	allow
+op	nonrepo	xargs grep op foo	allow
+
+# --- op-guard: values on stdout stay denied ---------------------------------
+# stdout is model context. These are the paths with a confirmed incident.
+op	nonrepo	op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	op item get claude-git-pat	deny
+op	nonrepo	op item get claude-git-pat --fields credential	deny
+op	nonrepo	op document get mydoc	deny
+# Bare `op inject` renders the template, secrets and all, to STDOUT.
+op	nonrepo	op inject -i .env.tpl	deny
+# Masking is the property that makes `op run` safe; the flag that removes it
+# converts the allowed shape back into a printing one.
+op	nonrepo	op run --no-masking -- npm publish	deny
+# A child whose whole job is to print the environment defeats masking.
+op	nonrepo	op run -- env	deny
+op	nonrepo	op run -- printenv	deny
+op	nonrepo	op run -- bash -c 'printenv'	deny
+# REGRESSION-BY-CONSTRUCTION: `op run -- git push` would hide the push from
+# rebase-guard.sh, which tokenizes for a `git` PROGRAM and sees `op` here.
+# Allowing `op run` without this would have opened a hole in a different guard.
+op	nonrepo	op run -- git push origin main	deny
+op	nonrepo	op run -- gh pr create	deny
+# No `--` means the guard cannot tell which words are the child command.
+op	nonrepo	op run npm publish	deny
+
+# --- op-guard: op-agent's printing verbs ------------------------------------
+# `op-agent header` is the exact command that put a live PAT into a transcript
+# on 2026-07-25.
+op	nonrepo	op-agent secret op://claude-agent/gninety/credential	deny
+op	nonrepo	op-agent header op://claude-agent/claude-github-pat/credential	deny
+op	nonrepo	op-agent git-credential get	deny
+op	nonrepo	op-agent provision	deny
+# `audit` prints titles and a verdict, never a field value — but it is still
+# denied from a Bash tool call, like every op-agent verb except the (also
+op	nonrepo	op-agent audit agent-vault.txt	deny
+
+# --- op-guard: `op run --` must not trampoline back into op --------------------
+# Found 2026-08-19. `_bad_op_run_child` blocked interpreters, env-dumpers and
+# git/gh, but not `op` itself — so `op run -- op read op://…` was ALLOWED by the
+# guard and unmatched by `permissions.deny` (whose rules anchor on `op read` as
+# the first token, not `op run -- op read`). `Bash(op run:*)` is in
+# permissions.allow, so the shape was pre-approved. Masking does not help: it
+# conceals values `op run` injected, and a self-reading child injected nothing.
+op	nonrepo	op run -- op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	op run -- op item get claude-git-pat	deny
+op	nonrepo	op run -- op item edit x --title y	deny
+op	nonrepo	op run -- op-agent secret op://claude-agent/gninety/credential	deny
+op	nonrepo	op run -- op-agent header op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	op run --env-file=.env -- op read op://claude-agent/claude-git-pat/credential	deny
+# Path spellings resolve because the child is basenamed before the check.
+op	nonrepo	op run -- /opt/homebrew/bin/op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	op run -- ~/.local/bin/op-agent secret op://claude-agent/gninety/credential	deny
+# CONTROLS — the legitimate shape must keep working, or this fix is an outage.
+op	nonrepo	op run --env-file=npm/publish.env -- npm publish	allow
+op	nonrepo	op run -- node build.js	allow
+
+# --- op-guard: the spellings `permissions.deny` structurally cannot cover ----
+# CLAUDE.md: deny matches command SPELLING, so an absolute path is not covered,
+# and "deny cannot cover an arbitrary interpreter — sh -c 'op read …' still walks
+# past". The guard takes a basename and scans interpreter payloads, so both are.
+op	nonrepo	/opt/homebrew/bin/op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	~/.local/bin/op-agent secret op://claude-agent/gninety/credential	deny
+op	nonrepo	sh -c 'op read op://claude-agent/claude-git-pat/credential'	deny
+op	nonrepo	bash -c "op item get claude-git-pat"	deny
+op	nonrepo	xargs op read	deny
+# `_norm` strips a leading `env` / assignment, so neither disguises the program.
+op	nonrepo	env op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	FOO=bar op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	op --account myacct read op://claude-agent/claude-git-pat/credential	deny
+# Segmentation: a denied verb anywhere in a compound command is still denied.
+op	nonrepo	echo hi && op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	op whoami; op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	echo op://x | xargs op read	deny
+
+# --- rebase-guard: interpreters and `-c alias.` ------------------------------
+# REGRESSION (2026-08-28 audit): op-guard treats an interpreter as the residue
+# `permissions.deny` cannot cover and scans its payload. rebase-guard never got
+# the same treatment, so the identical shape reached a push to main. `sudo git
+# push` is absent from this block deliberately — the shared `_norm` fix in the
+# previous commit already closed it for every guard at once, which is the whole
+# argument for the shared library.
+rebase	primary	bash -c "git push origin main"	deny
+rebase	primary	sh -c 'git push origin main'	deny
+rebase	primary	bash -c "git push --force origin HEAD:main"	deny
+rebase	primary	echo "git push origin main" | bash	deny
+# `git -c alias.X=push X` — the flag loop consumed `-c alias.yolo=push` as a
+# value-taking global and then read the subcommand as `yolo`, so the push was
+# never recognised as a push at all. The alias is not resolved, it is refused:
+# resolving it would mean running `git config` from inside a guard.
+rebase	primary	git -c alias.yolo=push yolo origin main	deny
+rebase	primary	git -c alias.p=push p origin main	deny
+# An interpreter payload that pushes somewhere SAFE is still allowed — the fix
+# expands the payload so the ordinary refspec logic judges it, rather than
+# refusing every interpreter outright.
+rebase	wt-a	bash -c "git push origin feature-a"	allow
+rebase	primary	bash -c "echo hello"	allow
+# The false positive this suite exists for: a commit message naming a push is
+# prose, not a command, and no expansion may reach inside one.
+rebase	primary	git commit -m "explain git push origin main in the docs"	allow
+
+# --- op-guard: substitution, `sudo`, and scripting interpreters -------------
+# REGRESSION (2026-08-28 audit): every row below was ALLOWED by the guard that
+# passed 156/156. Four holes in one family, none of them reachable by
+# `permissions.deny`, whose rules anchor `op read` as the FIRST token:
+#   1. `_split` had no `$( )` / backtick / `<( )` handling, so a substitution
+#      body was never tokenized as a command at all.
+#   2. `_norm`'s assignment arm shifted past `X=$(op`, resolving the program
+#      name to `read` — an allowed-looking token.
+#   3. `_norm` stripped `command`/`env`/`exec` but not `sudo`.
+#   4. `_is_interpreter` listed shells but no scripting runtime, so any
+#      language with a `system()` was an open door.
+# The substitution rows are the important ones: a value on stdout IS the leak,
+# and command substitution is the shortest path to putting one there.
+op	nonrepo	echo $(op read op://claude-agent/claude-git-pat/credential)	deny
+op	nonrepo	X=$(op read op://claude-agent/claude-git-pat/credential); echo $X	deny
+op	nonrepo	echo `op read op://claude-agent/claude-git-pat/credential`	deny
+op	nonrepo	cat <(op read op://claude-agent/claude-git-pat/credential)	deny
+op	nonrepo	sudo op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	sudo -u jarvis op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	python3 -c "import os;os.system('op read op://claude-agent/x/y')"	deny
+op	nonrepo	node -e "require('child_process').execSync('op read op://a/b/c')"	deny
+op	nonrepo	perl -e 'system("op read op://a/b/c")'	deny
+op	nonrepo	ruby -e 'system("op item get claude-git-pat")'	deny
+op	nonrepo	find . -exec op read op://a/b/c ;	deny
+op	nonrepo	echo "op read op://claude-agent/claude-git-pat/credential" | bash	deny
+# `op run --` may not trampoline through a scripting interpreter either. The
+# child prints the injected environment, which is the masking argument defeated
+# exactly as `env`/`printenv` would — those were listed, these were not.
+op	nonrepo	op run -- python3 -c "import os;print(os.environ)"	deny
+op	nonrepo	op run -- node -e "console.log(process.env)"	deny
+
+# A substitution that is NOT an op command stays allowed — the fix widens the
+# tokenizer, it does not widen the verdict.
+op	nonrepo	echo $(date +%s)	allow
+op	nonrepo	X=$(git rev-parse HEAD); echo $X	allow
+op	nonrepo	python3 -c "print(1+1)"	allow
+op	nonrepo	python3 script.py --flag	allow
+
+# --- op-guard: allow-list means UNKNOWN fails closed ------------------------
+# This is the inversion the change is built on. Under the old deny-list a verb
+# nobody enumerated sailed through — that is exactly how `op-agent header`, the
+# one command with a confirmed leak, stayed reachable. Destructive and
+# not-yet-invented verbs now fail the same closed way as the printing ones.
+op	nonrepo	op item delete claude-git-pat	deny
+op	nonrepo	op vault delete claude-agent	deny
+op	nonrepo	op item edit claude-git-pat credential=hunter2	deny
+op	nonrepo	op service-account create --expires-in 90d	deny
+op	nonrepo	op somefutureverb --print-everything	deny
+
+# --- REGRESSION: a newline INSIDE quotes is data, not a separator -------------
+# Found by this suite's own author being unable to commit. `_split` correctly keeps
+# a quoted newline in one segment, but the segment list is NEWLINE-DELIMITED, so
+# every consumer's `while read` re-split it — and a commit message with a line
+# beginning `op read ...` arrived at the guard looking like an `op` invocation.
+#
+# This is the same class the heredoc cases above cover, reached by a different
+# road: `-m` prose rather than a heredoc body. A quoted `;` was already handled,
+# which is what made the gap invisible — the quote tracking was never broken, the
+# protocol carrying its output was.
+op	nonrepo	git commit -m "a change\n\nop read op://x/y is denied because it prints values"	allow
+op	nonrepo	git commit -m "notes\nop item get stays denied"	allow
+op	nonrepo	git commit -m "notes\nop-agent header op://x/y"	allow
+# The same defect, same fix, for rebase-guard: prose that happens to start a line
+# with a real push spelling must not be read as a push.
+rebase	primary	git commit -m "notes\ngit push origin main"	allow
+rebase	primary	git commit -m "why we avoid\ngit push origin HEAD:main"	allow
+# MUST STILL SPLIT: an UNQUOTED newline is a separator. This is what proves the fix
+# narrowed the split to quoted newlines rather than disabling newline splitting.
+# (rebase-guard's `git status\ngit push origin main` already asserts the same thing
+# further up — not repeated here, since a duplicate case adds no coverage and only
+# inflates the count.)
+op	nonrepo	echo hi\nop read op://x/y	deny
+# MUST STILL DENY: a real interpreter payload spanning a quoted newline.
+op	nonrepo	sh -c "echo hi\nop read op://x/y"	deny
+
+# --- REGRESSION: a quoted or expanded PROGRAM name -------------------------
+# `_norm` compared and emitted the program token RAW, so one pair of quotation
+# marks resolved the program name to `"op"` — which is not `op` — and every
+# guard sourcing guard-lib.sh waved the command through. `"op" read` put a live
+# credential on stdout: the exact 2026-07-25 leak the allow-list exists to make
+# structurally impossible. All seven of these were ALLOWED before the fix.
+op	nonrepo	"op" read op://vault/item/field	deny
+op	nonrepo	'op' read op://vault/item/field	deny
+op	nonrepo	o""p read op://vault/item/field	deny
+op	nonrepo	"op" item get prod-db	deny
+# A program name that is itself a shell expansion cannot be read statically, so
+# it is refused rather than waved through — same doctrine as an unknown verb.
+op	nonrepo	$(echo op) read op://vault/item/field	deny
+op	nonrepo	`echo op` read op://vault/item/field	deny
+op	nonrepo	$OP read op://vault/item/field	deny
+# MUST STILL ALLOW: quoting a SANCTIONED spelling stays sanctioned. The fix
+# resolves the name; it does not deny quoting.
+op	nonrepo	"op" whoami	allow
+op	nonrepo	"op" run --env-file=.env -- npm publish	allow
+# MUST STILL ALLOW: a `$` inside an ARGUMENT is not a program name. Only the
+# program token is refused when unreadable, or every command with a variable in
+# it would be denied.
+op	nonrepo	op run --env-file=$HOME/.env -- npm publish	allow
+# MUST STILL ALLOW: a substitution inside an ARGUMENT is a path or prose, not a
+# program name. Denying these would recreate the commit-message false positive.
+op	nonrepo	git commit -m "fix `op read` guard"	allow
+op	nonrepo	tar -C "$(pwd)" -cf - .	allow
+
+# MUST STILL ALLOW, multi-line: `^` is a LINE anchor in grep, so before the
+# quote-state fix every line start of a multi-line argument read as program
+# position. A markdown code fence inside a PR body — a line beginning with a
+# backtick — was denied as a substituted program name. Measured three times in
+# one session, none of them invoking 1Password. The fence is INSIDE an open
+# quote, so it is data.
+op	nonrepo	gh pr create --body 'shapes:\n```\nop whoami\n```\nend'	allow
+op	nonrepo	git commit -F - <<'EOM'\n```\nsee op read\n```\nEOM	allow
+
+# MUST STILL DENY, multi-line: a newline IS a command separator when it is not
+# inside a quote or a heredoc body, so a substituted program name on the second
+# line is still program position. This is the case the fix must not widen past.
+op	nonrepo	echo starting\n$(echo op) read op://vault/item/field	deny
+op	nonrepo	echo starting\n`echo op` read op://vault/item/field	deny
+
+# --- REGRESSION: `git push --all` / `--mirror` from a feature branch --------
+# Both name their refs from the local ref namespace, not from argv, so the
+# refspec analysis could not see them and they fell through to "pushes the
+# CURRENT branch" — which from wt-a reads as safe. `--all` pushes every local
+# branch including the default one; `--mirror` also DELETES remote refs absent
+# locally. Both were ALLOWED before this fix.
+rebase	wt-a	git push --all origin	deny
+rebase	wt-a	git push --mirror origin	deny
+rebase	wt-a	git push --all	deny
+rebase	wt-a	git push --tags origin	deny
+rebase	wt-a	git push --follow-tags origin	deny
+rebase	primary	git push --all origin	deny
+# MUST STILL ALLOW: a dry run never mutates the remote, even with --all.
+rebase	wt-a	git push --all --dry-run origin	allow
+# MUST STILL ALLOW: an ordinary feature-branch push is untouched.
+rebase	wt-a	git push origin HEAD	allow
+rebase	wt-a	git push -u origin feature-a	allow
+
+# --- REGRESSION: a pipe character inside a QUOTED argument is prose ---------
+# Both scans read the raw command, so a `|` inside a quoted string counted as a
+# shell operator and these were DENIED — the exact commit-message false
+# positive this suite exists to prevent, reopened by the gate meant to keep it
+# closed. It blocked read-only work three times during the 2026-08-28 audit,
+# including the writing of the finding that describes it.
+op	nonrepo	git commit -m "note: x |eval can run op read op://a/b/c"	allow
+op	nonrepo	git commit -m 'doc: the |bash pipe walks past op read op://x'	allow
+op	nonrepo	echo "a |python3 payload calling op read op://x is denied"	allow
+# MUST STILL DENY: an UNQUOTED pipe into an interpreter is a real shell
+# operator, and the payload it carries is exactly what this gate is for.
+op	nonrepo	echo "op read op://x/y" | bash	deny
+op	nonrepo	echo "op read op://x/y" | sh -s	deny
+op	nonrepo	printf 'op read op://x/y' | python3	deny
+
+# The runners. `--` present and absent, since neither form is required.
+op	nonrepo	mise exec -- op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	mise x -- op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	mise exec node@20 -- op-agent secret op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	npx -y -- op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	bunx op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	caffeinate op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	caffeinate -i op-agent secret op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	arch -arm64 op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	direnv exec . op read op://claude-agent/claude-git-pat/credential	deny
+# Positive controls: the runners themselves are ordinary commands and must not
+# become undeniable just because they appear in a command line.
+op	nonrepo	mise install	allow
+op	nonrepo	mise exec -- npm test	allow
+op	nonrepo	npx tsc --noEmit	allow
+op	nonrepo	caffeinate -i bun run build	allow
+
+# --- op-guard: the two secret-printers with no path-spelling sibling --------
+# REGRESSION (2026-08-28 audit). `deny_floor()` deliberately carries
+# `Bash(*/op *)` and `Bash(*/op-agent *)` so a path spelling cannot walk past a
+# name-anchored rule. Two entries never got that treatment:
+#
+#   Bash(security find-generic-password:*)  — guards the SERVICE-ACCOUNT TOKEN,
+#     which reads every item in the vault. The single highest-value secret on
+#     the machine sat behind the weakest rule in the list.
+#   Bash(git credential:*)                  — the helper chain ends at
+#     `op-agent git-credential`, which prints `password=<PAT>` on stdout, so
+#     `git credential fill` hands the model a live PAT. Same class as the
+#     2026-07-25 `op-agent header` incident, through a different door.
+#
+# op-guard never woke for either: its bail-out regex excludes `-` after `op`, so
+# `op-claude-agent` never matched, and it had no `security` or `git` arm at all.
+op	nonrepo	security find-generic-password -s op-claude-agent -w	deny
+op	nonrepo	/usr/bin/security find-generic-password -s op-claude-agent -w	deny
+op	nonrepo	git credential fill	deny
+op	nonrepo	/usr/bin/git credential fill	deny
+op	nonrepo	git -C /tmp credential fill	deny
+op	nonrepo	mise exec -- git credential fill	deny
+# Positive controls: `security` and `git` are ordinary commands. Denying them
+# wholesale would break the machine — only the credential-printing verbs go.
+op	nonrepo	security list-keychains	allow
+op	nonrepo	git status	allow
+op	nonrepo	git commit -m "credential handling notes"	allow
+
+# --- op-guard: the runner arms, second pass -------------------------------
+# REGRESSION (pre-merge review of the first pass). The arms added above shipped
+# four defects of their own, all found by measurement rather than reading:
+#
+#   npm exec / npm x / docker exec had no arm at all — same shape, installed.
+#   `mise exec <tool> -- CMD` broke out early unless the tool spec carried an `@`,
+#     so `mise exec rg -- op read` resolved its program to `rg`. The only case
+#     covering it used `node@20`, which passed for the wrong reason.
+#   caffeinate/arch/setsid/chroot shared one flag list across four incompatible
+#     grammars: `-w` takes an argument for caffeinate and NONE for setsid, arch's
+#     `-d`/`-e` were absent, and chroot's mandatory newroot operand was never
+#     skipped, so that arm could not reach a command on any platform.
+#   `npx -c '<command string>'` skipped its argument as if it were a flag's, which
+#     hid the command rather than failing to read it.
+#
+# Each row below was `allow` before the second pass.
+op	nonrepo	npm exec -- op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	npm x -- op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	docker exec somebox op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	docker exec -it somebox op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	mise exec rg -- op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	arch -d FOO op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	setsid -w op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	chroot /newroot op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	chroot -u nobody /newroot op read op://claude-agent/claude-git-pat/credential	deny
+op	nonrepo	npx -c 'op read op://claude-agent/claude-git-pat/credential'	deny
+# The same shapes must not reach a default-branch push either — the arms live in
+# guard-lib.sh, so rebase-guard inherits every one of them.
+rebase	primary	npm exec -- git push origin main	deny
+rebase	primary	arch -d FOO git push origin main	deny
+rebase	primary	docker exec box git push origin main	deny
+# Positive controls: every runner is an ordinary command in its ordinary shape.
+op	nonrepo	npm install	allow
+op	nonrepo	npm exec -- tsc --noEmit	allow
+op	nonrepo	docker ps	allow
+op	nonrepo	arch -x86_64 uname -m	allow
+op	nonrepo	setsid true	allow
+op	nonrepo	mise exec rg -- rg --version	allow
+
+# --- op-guard: the bail-out must not swallow ordinary commands --------------
+# REGRESSION (same review). Widening the bail-out to wake on the bare program
+op	nonrepo	$(git rev-parse --show-toplevel)/scripts/gates.sh	allow
+op	nonrepo	$(brew --prefix)/bin/git status	allow
+op	nonrepo	$HOME/bin/git status	allow
+op	nonrepo	gitk --all	allow
+# …while the subcommands that DO print a credential still wake it, by every
+# spelling, including behind a runner.
+op	nonrepo	mise exec -- git credential fill	deny
+op	nonrepo	npm exec -- security find-generic-password -s op-claude-agent -w	deny

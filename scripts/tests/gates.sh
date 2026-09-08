@@ -4,7 +4,7 @@
 # Every case here asserts the SAME property: a gate that checked nothing must not
 # print `ok` and must not exit 0. Callers hand these scripts a literal path, or a
 # glob expansion that can be empty, so renaming a settings file or moving
-# `launchd/` must not leave the required `lint` check green with the deny floor
+# `home/Library/LaunchAgents/` must not leave the required `lint` check green with the deny floor
 # and the launchd `~` bug unchecked.
 #
 # The positive controls matter as much as the negative ones: a gate that fails
@@ -34,8 +34,8 @@ case_exit() {
 }
 
 # --- a named input that does not exist must FAIL, never be skipped -----------
-case_exit guardrails_missing_path 1 ./scripts/settings-guardrails.sh dot-claude/does-not-exist.json
-case_exit plist_missing_path 1 ./scripts/plist-validity.sh launchd/does-not-exist.plist
+case_exit guardrails_missing_path 1 ./scripts/settings-guardrails.sh home/dot_claude/does-not-exist.json
+case_exit plist_missing_path 1 ./scripts/plist-validity.sh home/Library/LaunchAgents/does-not-exist.plist
 
 # --- an EMPTY input list must FAIL: the caller's glob matched nothing --------
 case_exit guardrails_no_args 1 ./scripts/settings-guardrails.sh
@@ -46,17 +46,17 @@ case_exit plist_no_args 1 ./scripts/plist-validity.sh
 # could drop that handler with every gate still green. The fixture directory
 # holds a single deliberately-unnamed guard.
 case_exit guardrails_unwired_guard 1 \
-  env GUARD_DIR=scripts/tests/fixtures/hooks ./scripts/settings-guardrails.sh dot-claude/settings.json
+  env GUARD_DIR=scripts/tests/fixtures/hooks ./scripts/settings-guardrails.sh home/dot_claude/settings.json
 
 # --- positive controls: the real inputs must still PASS ----------------------
-case_exit guardrails_real 0 ./scripts/settings-guardrails.sh dot-claude/settings.json
+case_exit guardrails_real 0 ./scripts/settings-guardrails.sh home/dot_claude/settings.json
 # Globbed, not named: a hardcoded plist label is an owner this suite would
 # carry into every fork.
-case_exit plist_real 0 ./scripts/plist-validity.sh launchd/*.plist
+case_exit plist_real 0 ./scripts/plist-validity.sh home/Library/LaunchAgents/*.plist
 
 # --- the project-scoped settings.local.json must be caught -------------------
 # `.gitignore` hides this file at every scope, so it can never be committed and
-# never be reviewed, and `boomfile.toml`'s `absent` resource covers only the
+# never be reviewed, and `home/.chezmoiremove` covers only the
 # user-global twin.
 #
 # Driven for real rather than asserted on the source: the file is planted, the
@@ -70,12 +70,12 @@ else
   mkdir -p .claude
   printf '{"permissions":{"allow":["Bash(gh api *)"]}}' > "$_local"
   trap 'rm -f "$_local"; rmdir .claude 2> /dev/null || true' EXIT
-  case_exit settings_local_caught 1 ./scripts/settings-guardrails.sh dot-claude/settings.json
+  case_exit settings_local_caught 1 ./scripts/settings-guardrails.sh home/dot_claude/settings.json
   rm -f "$_local"
   rmdir .claude 2> /dev/null || true
   trap - EXIT
   # And the positive half: with it gone, the same call must pass again.
-  case_exit settings_local_clean 0 ./scripts/settings-guardrails.sh dot-claude/settings.json
+  case_exit settings_local_clean 0 ./scripts/settings-guardrails.sh home/dot_claude/settings.json
 fi
 
 # --- a third-party tap must declare its trust, with or without brew ---------
@@ -115,22 +115,22 @@ trap 'rm -rf "$_sbox"' EXIT
 # It is also the first thing the vendor example shows, which is why it needs a
 # gate and not a paragraph.
 jq '.sandbox.credentials.files = [{"path":"~/.ssh","mode":"deny"}]' \
-  dot-claude/settings.json > "$_sbox/credfiles.json"
+  home/dot_claude/settings.json > "$_sbox/credfiles.json"
 case_exit sandbox_credfiles_caught 1 ./scripts/settings-guardrails.sh "$_sbox/credfiles.json"
 
 # A `sandbox` block present with `enabled` anything but `true` binds to nothing.
 # This exact shape shipped once: a null `enabled` under ten credential and path
 # rules that read as a posture and enforced nothing. Both spellings of the
 # defect — explicitly null, and the key absent — must be caught.
-jq '.sandbox.enabled = null' dot-claude/settings.json > "$_sbox/null.json"
+jq '.sandbox.enabled = null' home/dot_claude/settings.json > "$_sbox/null.json"
 case_exit sandbox_enabled_null_caught 1 ./scripts/settings-guardrails.sh "$_sbox/null.json"
-jq 'del(.sandbox.enabled)' dot-claude/settings.json > "$_sbox/missing.json"
+jq 'del(.sandbox.enabled)' home/dot_claude/settings.json > "$_sbox/missing.json"
 case_exit sandbox_enabled_absent_caught 1 ./scripts/settings-guardrails.sh "$_sbox/missing.json"
 
 # Positive control: NO sandbox block at all is a legitimate state (it is what
 # this file held yesterday), so the `enabled` assertion must not fire on it.
 # Without this the gate would forbid ever turning the sandbox back off.
-jq 'del(.sandbox)' dot-claude/settings.json > "$_sbox/none.json"
+jq 'del(.sandbox)' home/dot_claude/settings.json > "$_sbox/none.json"
 case_exit sandbox_absent_ok 0 ./scripts/settings-guardrails.sh "$_sbox/none.json"
 
 rm -rf "$_sbox"

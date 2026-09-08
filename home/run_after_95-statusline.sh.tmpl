@@ -1,0 +1,9 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+# The statusline external is a git checkout; make its two scripts executable in case the
+# upstream commit did not, so the symlinks in ~/.local/bin resolve to something runnable.
+set -euo pipefail
+d="$HOME/.local/share/claude-statusline"
+[ -d "$d" ] || exit 0
+chmod +x "$d/statusline.sh" "$d/subagent-statusline.sh" 2> /dev/null || true
+{{ end -}}

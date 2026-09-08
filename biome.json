@@ -10,7 +10,7 @@
   },
   "overrides": [
     {
-      "includes": ["dot-claude/settings.json"],
+      "includes": ["home/dot_claude/settings.json"],
       "json": {
         "formatter": {
           "expand": "always"

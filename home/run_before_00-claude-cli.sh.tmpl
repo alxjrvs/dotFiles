@@ -1,0 +1,10 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+# Claude Code CLI via the official native installer (self-updating); never brew or npm, whose
+# builds do not auto-update. Runs on every apply and exits at once when `claude` is present,
+# so the curl-pipe happens exactly once per machine.
+set -euo pipefail
+export PATH="$HOME/.local/bin:$PATH"
+command -v claude > /dev/null 2>&1 && exit 0
+curl -fsSL https://claude.ai/install.sh | bash
+{{ end -}}
