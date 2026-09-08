@@ -162,7 +162,7 @@ for f in "$@"; do
 done
 
 # THE SAME RULE, ONE SCOPE OVER. `home/.chezmoiremove` covers only the user-global
-# `~/.claude/settings.local.json`, and `.gitignore` hides the file at EVERY scope —
+# `~/.claude/settings.local.json`, and `.gitignore` hides this one (`.claude/*`) —
 # so this repo's own project-scoped copy is never committable, never reviewable,
 # and asserted by nothing.
 #

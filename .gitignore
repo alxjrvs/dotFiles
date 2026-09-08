@@ -8,15 +8,6 @@
 *.swp
 *.swo
 *~
-.idea/
-.vscode/
-
-# Stray editor/tool backups — never committed
-*.bak
-*.bak-*
-
-# Logs
-*.log
 
 # Claude — this repo's own project-scoped `.claude/` is machine-local; the
 # user/global config lives in `home/dot_claude/`, symlinked into ~/.claude/ by
@@ -29,13 +20,5 @@
 .claude/*
 # The one tracked exception: this repo's project-scope permission allows are a
 # property of the repo, not a machine-local preference. `settings.local.json`
-# stays ignored (below) and `worktrees/` stays ignored by `.claude/*`.
+# and `worktrees/` stay ignored by `.claude/*`.
 !.claude/settings.json
-
-# Machine-local override — NOT a pattern this setup uses (every divergence lives
-# in the committed settings.json contract). Claude Code auto-writes one on
-# "always allow"/project-trust flows, so this line stops it being COMMITTED; it
-# never stopped it EXISTING, and one carrying `Bash(gh api *)` sat unreviewed
-# because git was told to ignore it. `home/.chezmoiremove` closes that half —
-# removed on every `chezmoi apply`.
-home/dot_claude/settings.local.json

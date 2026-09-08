@@ -48,7 +48,7 @@ case_exit guardrails_real 0 ./scripts/settings-guardrails.sh home/dot_claude/set
 case_exit plist_real 0 ./scripts/plist-validity.sh home/Library/LaunchAgents/*.plist
 
 # --- the project-scoped settings.local.json must be caught -------------------
-# `.gitignore` hides this file at every scope, so it can never be committed and
+# `.gitignore` hides this file (`.claude/*`), so it can never be committed and
 # never be reviewed, and `home/.chezmoiremove` covers only the
 # user-global twin.
 #

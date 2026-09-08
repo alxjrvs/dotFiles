@@ -122,9 +122,6 @@ if [ "$(uname -s)" = Darwin ]; then
   done
 fi
 
-# ── statusline on PATH ────────────────────────────────────────────────────────
-if [ -x "$HOME/.local/bin/claude-statusline" ]; then ok "claude-statusline on PATH"; else bad "claude-statusline missing or not executable (run: chezmoi apply --refresh-externals)"; fi
-
 if [ "$fail" -ne 0 ]; then
   if [ "$notify" = 1 ] && command -v osascript > /dev/null 2>&1; then
     n=$(printf '%s' "$failures" | grep -c .)
