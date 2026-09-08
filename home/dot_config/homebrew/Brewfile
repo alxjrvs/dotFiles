@@ -70,6 +70,7 @@ cask "devutils"      # offline developer toolbox (JSON/JWT/regex/diff)
 cask "gcloud-cli"    # Google Cloud SDK
 cask "ngrok"         # public tunnel to a local port
 cask "obs"           # screen recording
-cask "raycast"       # window management + launcher + clipboard
+cask "raycast"       # launcher + clipboard (its window management overlaps rectangle)
+cask "rectangle"     # window management
 cask "slack"
 cask "tuple"
