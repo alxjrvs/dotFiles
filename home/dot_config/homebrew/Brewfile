@@ -1,5 +1,5 @@
-# ~/.config/homebrew/Brewfile — casks, system libs, and the two bootstrap formulae.
-# A `brew "..."` line for a CLI belongs in ~/.config/mise/config.toml instead.
+# ~/.config/homebrew/Brewfile — casks, system libs, the two bootstrap formulae, and the few
+# CLIs brew owns on this machine. A new CLI belongs in ~/.config/mise/config.toml instead.
 #
 # ── Upgrading is three commands, and `chezmoi apply` is not one of them ──────────────
 #
@@ -29,6 +29,15 @@ brew "chezmoi"
 # openssl@3 is a system library, not a CLI: `aqua:rossmacarthur/sheldon` dyld-links against
 # /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib and segfaults without it.
 brew "openssl@3"
+
+# System utilities with no mise home.
+brew "coreutils"
+brew "moreutils"
+
+# Also pinned in mise; declared here so the brew copy is not drift. PATH order decides which
+# runs — mise's wins in an interactive login shell.
+brew "gh"
+brew "actionlint"
 
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"
