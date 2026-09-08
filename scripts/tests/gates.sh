@@ -92,6 +92,7 @@ case_exit brewdrift_untrusted_tap 1 ./scripts/brew-drift.sh scripts/tests/fixtur
 # tracked, so CI's own `gitleaks dir .` does not trip over it.
 if command -v gitleaks > /dev/null 2>&1; then
   _gl=$(mktemp -d)
+  # shellcheck disable=SC2016  # the literal ${GITHUB_TOKEN} IS the fixture
   printf '{"mcpServers":{"github":{"env":{"GITHUB_TOKEN":"${GITHUB_TOKEN}"}}}}\n' > "$_gl/.mcp.json"
   case_exit gitleaks_mcp_placeholder_caught 1 gitleaks dir "$_gl" --config gitleaks/gitleaks.toml --no-banner --redact
   printf '{"mcpServers":{"github":{"command":"op","args":["run","--env-file=.env","--","srv"]}}}\n' > "$_gl/.mcp.json"
