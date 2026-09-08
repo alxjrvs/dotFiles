@@ -17,9 +17,9 @@
 # fixtures below outlive the push guard those defects were found in, because the
 # same tokenizer still decides every `op` verdict.
 #
-# Builds throwaway git fixtures in $TMPDIR, pipes a synthetic PreToolUse payload
-# into each guard from inside the right fixture, and asserts on
-# .hookSpecificOutput.permissionDecision. No network, no side effects, ~5s.
+# Pipes a synthetic PreToolUse payload into the guard from a scratch directory
+# and asserts on .hookSpecificOutput.permissionDecision. No network, no side
+# effects, a few seconds.
 set -u
 
 HERE=$(cd -- "$(dirname -- "$0")" && pwd)
@@ -51,52 +51,16 @@ trap cleanup EXIT INT TERM
 q() { "$@" > /dev/null 2>&1; }
 
 # --- fixtures ---------------------------------------------------------------
-# origin.git ── main
-#   primary   on main, up to date
-#   wt-a      feature-a, contains main  (ordinary in-flight branch)
-#   wt-c      feature-c, stacked on feature-b and BEHIND main — so a bare
-#             `gh pr create` is correctly denied while `--base feature-b` passes.
-#             That pair is what distinguishes the fix from the bug.
+# One scratch directory. op-guard's verdict is decided from the command text
+# alone, so every case runs from a plain non-repo directory; the git fixtures
+# the old push-guard cases needed went with those cases.
 build_fixtures() {
-  q git init --bare -b main "$ROOT/origin.git" || return 1
-  q git clone "$ROOT/origin.git" "$ROOT/primary" || return 1
-  cd "$ROOT/primary" || return 1
-  q git config user.email t@example.com
-  q git config user.name Test
-  q git config commit.gpgsign false
-  echo base > README.md
-  q git add README.md
-  q git commit -m "base"
-  q git push -u origin main
-
-  # feature-b: the branch every collision case targets.
-  q git branch feature-b
-  q git push origin feature-b
-  # feature-c stacks on feature-b.
-  q git branch feature-c feature-b
-  q git push origin feature-c
-
-  # main advances AFTER the stack is cut, so feature-c is genuinely behind it.
-  echo more >> README.md
-  q git commit -am "advance main"
-  q git push origin main
-
-  # feature-a is cut from current main, so it is NOT behind.
-  q git branch feature-a main
-  q git push origin feature-a
-
-  q git worktree add "$ROOT/wt-a" feature-a || return 1
-  q git worktree add "$ROOT/wt-c" feature-c || return 1
-
   mkdir -p "$ROOT/nonrepo" || return 1
   return 0
 }
 
 fixture_dir() {
   case "$1" in
-    primary) printf '%s' "$ROOT/primary" ;;
-    wt-a) printf '%s' "$ROOT/wt-a" ;;
-    wt-c) printf '%s' "$ROOT/wt-c" ;;
     nonrepo) printf '%s' "$ROOT/nonrepo" ;;
     *) return 1 ;;
   esac

@@ -63,22 +63,34 @@ the invariant and drop the digit.
 
 `rebase-guard.sh` is deleted, with its two handlers, its `wired_hooks` line, and its 83 fixture
 cases. It did two jobs: refuse a direct push to the default branch, and refuse a push or PR from a
-branch behind its target. Both are now the server's:
+branch behind its target. On the default branch of an owned repo that carries the ruleset, both
+are now the server's, and better held there:
 
 - **The ruleset.** Every owned repo carries a `pull_request` rule with zero required approvals
   (the `agent-friendly-repo` skill applies it). GitHub then rejects a direct push to the default
   branch from anyone, agent or owner, in a way no spelling walks past — `git -c alias.x=push`,
   `bash -c`, `--all`, a substitution in program position, none of the 83 spellings matter.
-- **Strict required status checks** plus `allow_update_branch` already refuse to merge a stale
-  branch, and `gh pr merge --auto` waits; the worktree-freshness hook's advisory says so.
+- **Strict required status checks** refuse to merge a stale branch where a required check
+  exists, and `gh pr merge --auto` waits; the worktree-freshness hook's advisory says so.
 
 The layers that stay: `autoMode.hard_deny` keeps its one natural-language sentence, which fails
 differently from a server rule and costs one line; and `worktree-freshness.sh` still
 fast-forwards a virgin worktree so the agent starts on current code.
 
-**This lands only after the ruleset is on every owned repo.** Deleting the guard first would
-remove the sole deterministic no-push-to-main control for the gap. The PR is a draft until the
-owner confirms, and the merge is the confirmation.
+**The boundary, stated plainly.** A ruleset is per repo and per branch; the guard was neither.
+Outside that boundary the setup goes from a deterministic deny to the classifier sentence alone:
+a repo the agent can push to that has no ruleset (a collaborator repo, an org repo outside
+`_owned_orgs`, the owner's own forks, which nobody ran the skill against); a private repo on a
+GitHub Free plan, where the API accepts a ruleset and does not enforce it; the emergency window
+while a ruleset is deleted by hand; `git push --mirror`, which the ruleset stops on the default
+branch but which also deletes every remote branch absent locally; and the stale-branch arm on a
+repo with no CI, where there is no required check for `strict` to bite on. Each is accepted: the
+agent's classic PAT and the org-scope guard already bound where it writes, and the default
+branches that matter are the owned ones.
+
+**This lands only after the ruleset is on every owned repo, forks included.** Deleting the guard
+first would remove the sole deterministic no-push-to-main control for the gap. The PR is a draft
+until the owner confirms, and the merge is the confirmation.
 
 What is lost, and accepted: the five-second `git fetch` inside every push, which was the single
 highest-latency thing this config did on the hot path, and an earlier "you are behind, rebase"
@@ -1110,7 +1122,7 @@ removed it."*
 So a client-side push guard went from belt-and-braces to **sole enforcement**, in a client
 update, with no signal. Everything still worked, which is exactly why it needed noticing.
 
-That is the argument that moved the rule to the server (the 2026-09-08 entry below): a
+That is the argument that moved the rule to the server (the 2026-09-08 entry above): a
 `pull_request` ruleset rule is not subject to a client release. If a client-side layer is ever
 wanted back, `permissions.ask: ["Bash(git push *)"]` is the documented mechanism — content-scoped
 ask rules are evaluated before the classifier and force a prompt even in auto mode. Not adopted:

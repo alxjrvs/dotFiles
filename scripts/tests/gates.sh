@@ -127,6 +127,14 @@ case_exit sandbox_enabled_null_caught 1 ./scripts/settings-guardrails.sh "$_sbox
 jq 'del(.sandbox.enabled)' home/dot_claude/settings.json > "$_sbox/missing.json"
 case_exit sandbox_enabled_absent_caught 1 ./scripts/settings-guardrails.sh "$_sbox/missing.json"
 
+# A guard `if` in program-position form must be caught. Rules match the whole
+# command text, so `Bash(gh *)` misses `/usr/bin/gh …` and `env gh …`; only the
+# `Bash(*gh*)` substring form fires on every spelling. The gate's regex was
+# edited when the push guard retired, so this proves it still asserts.
+jq '(.hooks.PreToolUse[0].hooks[] | select(.command | test("repo-scope-guard")) | .if) = "Bash(gh *)"' \
+  home/dot_claude/settings.json > "$_sbox/badif.json"
+case_exit guard_if_program_position_caught 1 ./scripts/settings-guardrails.sh "$_sbox/badif.json"
+
 # Positive control: NO sandbox block at all is a legitimate state (it is what
 # this file held yesterday), so the `enabled` assertion must not fire on it.
 # Without this the gate would forbid ever turning the sandbox back off.
