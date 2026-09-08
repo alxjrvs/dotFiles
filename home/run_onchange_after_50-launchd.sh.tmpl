@@ -3,7 +3,7 @@
 # LaunchAgents: (re)load each managed plist when its content changes. `bootout` then
 # `bootstrap` is the modern pair; the bootout is allowed to fail on a job not loaded yet.
 # capslock plist hash: {{ include "Library/LaunchAgents/com.alxjrvs.capslock-control.plist" | sha256sum }}
-# verify plist template hash: {{ include "Library/LaunchAgents/com.alxjrvs.dotfiles-verify.plist.tmpl" | sha256sum }}
+# verify plist hash (rendered, so a changed repo path re-loads the job): {{ includeTemplate "Library/LaunchAgents/com.alxjrvs.dotfiles-verify.plist.tmpl" . | sha256sum }}
 set -euo pipefail
 domain="gui/$(id -u)"
 for label in com.alxjrvs.capslock-control com.alxjrvs.dotfiles-verify; do

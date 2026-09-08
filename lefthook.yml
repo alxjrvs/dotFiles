@@ -93,8 +93,9 @@ pre-commit:
     plist-validity:
       # Same script CI runs. Two assertions, not one: structural validity does
       # not catch a `~` in a path value. See the script header.
-      # The verify timer is a `.plist.tmpl` (it renders the repo path in), so it
-      # is validated by CI's chezmoi dry run instead — a template is not a plist.
+      # The verify timer is a `.plist.tmpl` (it renders the repo path in); a
+      # template is not a plist, so CI's chezmoi dry run renders it instead and
+      # `.chezmoiignore` keeps `Library` visible on Linux for exactly that reason.
       glob: "home/Library/LaunchAgents/*.plist"
       run: scripts/plist-validity.sh {staged_files}
     zsh-syntax:

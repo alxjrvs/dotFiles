@@ -73,7 +73,7 @@ the field's standard, and every convention this repo needed already exists in it
 | `pkg` (brew, mise, gh) | `run_onchange_` scripts hashed on the file they apply |
 | `osx_default`, `launchd` | `run_onchange_` scripts |
 | `hook` (TypeScript, `HookApi`) | a Bun script (`scripts/git-signing.ts`) called from `run_after_` |
-| the statusline clone hook | `.chezmoiexternal.toml`, `git-repo` type, pinned by tag |
+| the statusline clone hook | `.chezmoiexternal.toml`, two `archive-file` entries from the tag tarball |
 | `run on = "verify"`, `[boom] notify` | `scripts/verify.sh` on a launchd timer, notifying on failure |
 
 Three choices worth recording:
@@ -83,7 +83,10 @@ Three choices worth recording:
   and accepted: templates and scripts are still rendered as real files, and a hook's executable
   bit comes from the source file, so it must be committed with `chmod +x`. `private_` on a
   symlinked file is not applied (the mode is the source file's, 644 from git); on the `.ssh`
-  directory it is, and that is the one that matters to ssh.
+  directory it is, and that is the one that matters to ssh. Scripts that must retry — brew,
+  gh extensions, tldr — are `after` and either hashed on their input or cheap every apply;
+  none is `before`, so a package failure never leaves the shell without its files, and none
+  is `once`, which would record "done" on a machine that lacked the tool.
 - **The checkout is the source.** `chezmoi init --source <checkout>` and a `sourceDir` line in the
   config template mean one clone, where boom kept a managed cache clone beside the working copy
   and the log records a session confused about which one the symlinks resolved into.
@@ -95,11 +98,17 @@ Three choices worth recording:
 `boom askpass` goes with the binary, so op-guard's `boom` arm, its cases, and the two deny
 entries are removed rather than left guarding a program that is no longer installed.
 
-Cutover on an existing machine, in order: merge, then `brew install chezmoi`, `boom uninstall`
-(removes boom's symlinks; journaled), `chezmoi init --source <checkout> --apply`,
-`chezmoi doctor`, `scripts/verify.sh`, then `brew uninstall alxjrvs/boom/boom && brew untap
-alxjrvs/boom`. Between `boom uninstall` and `chezmoi init --apply` the shell has no rc files;
-do it in one terminal session.
+Cutover on an existing machine, in order: merge, `brew install chezmoi`, then
+`chezmoi init --source <checkout> --apply` straight over boom's symlinks — measured: symlink
+mode replaces a symlink that points elsewhere, replaces a regular file, and turns a directory
+symlink into a real directory of symlinks, without prompting and without touching what they
+pointed at. **Not `boom uninstall`**, before or after: before, it leaves the shell with no rc
+files; after, it would remove the very targets chezmoi just placed. Retire the engine with
+`brew uninstall alxjrvs/boom/boom && brew untap alxjrvs/boom && rm -rf ~/.local/state/boom`.
+Then `gh auth status` (the gh-extensions script waits for it), `chezmoi doctor`,
+`scripts/verify.sh`, and once: `launchctl print gui/$(id -u)/com.alxjrvs.capslock-control` —
+that plist is a symlink now, and launchd loading a symlinked agent is the one step this
+runner could not measure.
 
 ## 2026-09-08 — the audit: controls move to the boundary that owns the resource
 

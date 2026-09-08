@@ -7,8 +7,8 @@
 
 {{ if ne .chezmoi.os "darwin" -}}
 # macOS-only surfaces, so a Linux checkout (CI's dry run) does not try to place them.
-Library
-Library/**
+# `Library` is deliberately NOT here: rendering the two plists on Linux is harmless, and it is
+# what lets CI's dry run catch a template error in the verify timer.
 .config/homebrew
 .config/homebrew/**
 .config/1Password

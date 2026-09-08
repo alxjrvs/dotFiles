@@ -1,9 +1,11 @@
 {{ if eq .chezmoi.os "darwin" -}}
 #!/bin/bash
 # tealdeer ships no pages; fetch the archive once so `tldr <cmd>` works on a fresh machine.
-# `|| true`: an offline first apply must not fail on a cache.
+# Every apply, guarded on the cache directory rather than `run_once_`: a once-script that
+# found no tldr would record "done" and never fetch. `|| true`: an offline apply must not
+# fail on a cache.
 set -euo pipefail
 export PATH="$HOME/.local/share/mise/shims:$PATH"
 command -v tldr > /dev/null 2>&1 || exit 0
-tldr --update || true
+[ -d "$HOME/.cache/tealdeer" ] || tldr --update || true
 {{ end -}}

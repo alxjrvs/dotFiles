@@ -3,8 +3,8 @@
 macOS dotfiles for [alxjrvs](https://github.com/alxjrvs), managed by
 [chezmoi](https://www.chezmoi.io) in symlink mode. `home/` is the source state; the prompt is
 [starship](https://starship.rs); the Claude Code statusline lives in
-[its own repo](https://github.com/TheGnarCo/claude-statusline) and arrives as a pinned
-chezmoi external.
+[its own repo](https://github.com/TheGnarCo/claude-statusline) and arrives as two pinned
+chezmoi externals straight onto PATH.
 
 Principles: [`CLAUDE.md`](CLAUDE.md#principles).
 
@@ -23,8 +23,9 @@ defaults, LaunchAgents, lefthook, the 1Password MCP registration, op-agent, git 
 darwin-gated and either hashed on the file it applies or cheap enough to run every time.
 
 To work from an existing checkout instead of the managed clone, point chezmoi at it once:
-`chezmoi init --source ~/Code/DevEnv/dotFiles --apply`. The config template records
-`sourceDir`, so there is one clone and an edit here is live immediately.
+`chezmoi init --source <your checkout> --apply`. The config template records `sourceDir`, so
+there is one clone and an edit here is live immediately. Then `gh auth login` and a second
+`chezmoi apply`: the gh-extensions script skips politely until gh is authenticated.
 
 Preview without touching anything: `chezmoi apply --dry-run --verbose`. Drift:
 `scripts/verify.sh`, which the `com.alxjrvs.dotfiles-verify` LaunchAgent runs daily and which
@@ -42,7 +43,7 @@ home/dot_claude/hooks/  Claude Code guards + their regression suites (suites are
 home/.chezmoi*          chezmoi's own contract: config template, ignore, remove, externals
 scripts/                the assertions lefthook, CI and verify.sh share; verify.sh itself
 docs/DECISIONS.md       reasons, incidents, measurements — never symlinked, so it costs nothing
-ci/                     the chezmoi config CI's dry run uses
+ci/config.toml          the chezmoi config CI's dry run uses (symlink mode, like the machine)
 ```
 
 ## Forking this repo

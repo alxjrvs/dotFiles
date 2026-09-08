@@ -8,8 +8,10 @@
 # installed is current". `brew upgrade --formula` moves formulae without closing an app; casks
 # are left to their own updaters. The Brewfile header carries the cadence.
 #
-# `before`: this runs ahead of file placement, so the Brewfile is read from the SOURCE path,
-# which exists on a fresh machine before any symlink does.
+# `after`, not `before`: files land first, so a `brew bundle` that stops (a tap trust prompt, a
+# cask asking for a password, a network blip) leaves a machine with its shell config in place
+# rather than none. The name order still runs this ahead of mise (20), which brew installs.
+# The Brewfile is read from the source path, which is the same file the symlink points at.
 set -euo pipefail
 if ! command -v brew > /dev/null 2>&1; then
   [ -x /opt/homebrew/bin/brew ] || /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"

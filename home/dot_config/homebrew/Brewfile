@@ -10,7 +10,7 @@
 # The exceptions are the two bootstraps, casks, and system libraries (no mise equivalent)
 # that pre-built CLIs link against at runtime.
 #
-# Applied by home/run_onchange_before_10-brew.sh.tmpl, which re-runs `brew bundle
+# Applied by home/run_onchange_after_10-brew.sh.tmpl, which re-runs `brew bundle
 # --no-upgrade` whenever this file's hash changes, and never upgrades anything.
 #
 # ── Upgrading is three commands, and `chezmoi apply` is not one of them ──────────────
@@ -85,7 +85,7 @@ cask "1password"
 # ── Apps ──────────────────────────────────────────────────────────────
 # cask "claude" is the Claude desktop GUI app, NOT the CLI (it ships no
 # `claude` binary on PATH, so it coexists with the native CLI). The Claude
-# Code CLI is installed via the native curl installer (home/run_before_00-claude-cli.sh.tmpl,
+# Code CLI is installed via the native curl installer (home/run_after_00-claude-cli.sh.tmpl,
 # "Claude" section) which self-updates — never install the CLI via brew
 # (cask "claude-code") or npm.
 cask "claude"
