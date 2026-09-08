@@ -17,12 +17,7 @@
     {
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "minor and patch updates",
-      "automerge": true,
-      "automergeType": "pr"
-    },
-    {
-      "matchUpdateTypes": ["major"],
-      "automerge": false
+      "automerge": true
     }
   ]
 }
