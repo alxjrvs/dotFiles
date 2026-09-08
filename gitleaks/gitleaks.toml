@@ -1,0 +1,23 @@
+# gitleaks — the global config every gitleaks call on this machine reads
+# (GITLEAKS_CONFIG, exported in zsh/00-exports.zsh; lefthook and CI pass it explicitly
+# because a hook or a runner cannot assume the interactive environment).
+#
+# Only divergences from gitleaks' own default ruleset, which `useDefault` keeps whole.
+title = "alxjrvs"
+
+[extend]
+useDefault = true
+
+# A `${VAR}` placeholder in a tracked `.mcp.json` is not a secret today and becomes one
+# tomorrow: a later `claude mcp add` can expand it and write the resolved token back into
+# the tracked file (Claude Code #18692). The canonical `op run --env-file=F -- SERVER`
+# pattern needs no placeholder in `.mcp.json` at all, and a `headersHelper` needs none
+# either. This used to live as a hand-written grep in git-template/hooks/pre-commit,
+# where lefthook-managed repos never ran it; as a rule here it runs everywhere gitleaks
+# does, including this repo's own lefthook and CI.
+[[rules]]
+id = "mcp-json-env-placeholder"
+description = "${VAR} placeholder in a tracked .mcp.json — a later `claude mcp add` can expand it into a committed token. Use `op run --env-file` or a headersHelper instead."
+regex = '''\$\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\}'''
+path = '''(^|/)\.mcp\.json$'''
+keywords = ["${"]

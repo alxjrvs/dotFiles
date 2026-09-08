@@ -76,7 +76,7 @@ jobs:
       # CURRENT TREE contain a secret, rather than does this commit add one.
       # Same tool, different verb, so it stays its own step.
       - name: gitleaks
-        run: gitleaks dir . --redact --no-banner
+        run: gitleaks dir . --redact --no-banner --config gitleaks/gitleaks.toml
 
       # THE ARTIFACT, not the assertions about it. Everything above lints files;
       # this is the only step that asks the engine whether `boomfile.toml` still

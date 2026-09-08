@@ -1,19 +1,7 @@
-# Startup baseline (re-measured 2026-08-18, Apple Silicon): `zsh -i -c exit` ≈ 250 ms
-# (0.29/0.24/0.24 s, first run cold). Per-eval breakdown: sheldon 52, atuin 40,
-# mise 36, starship 32, fzf 4, zoxide 2 (ms). Was ≈ 199 ms on 2026-06-13; the
-# drift is tool growth, not a regression here. Caching the six evals to files
-# measured 188.6 → 88.5 ms of eval time (~250 → ~150 startup) and was rejected:
-# it buys ~100 ms paid only on new tabs, in exchange for a cache dir plus
-# version-keyed invalidation, and Ghostty's quick terminal keeps its surface
-# alive so the cost is rarely paid at all. No single call is pathological; the only
-# ways to cut the two largest are dropping plugins (sheldon) or deferring atuin
-# init (loses instant Ctrl-R history) — both are UX tradeoffs, so the baseline
-# is accepted as-is. Re-measure with: zsh -i -c exit under `time`.
-#
-# The number above is now also ENFORCED, not only recorded: scripts/startup-budget.sh
-# runs as a `boom verify` step against a ceiling set well above this baseline, so
-# structural drift surfaces on the next `boom verify` rather than whenever someone thinks to
-# re-time it. Move the ceiling deliberately if the baseline is re-measured upward.
+# Six evals below and in 50-prompt/60-tools cost ≈250 ms of interactive startup
+# (2026-08-18, Apple Silicon; sheldon and atuin are the two largest). Caching them
+# to files was measured and rejected: ~100 ms back, paid only on new tabs, for a
+# cache dir with version-keyed invalidation. If it feels slow: `time zsh -i -c exit`.
 
 # Sheldon plugins (adds zsh-completions to fpath, loads FSH last)
 eval "$(sheldon source)"

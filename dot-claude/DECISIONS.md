@@ -59,6 +59,41 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-08 — the audit: controls move to the boundary that owns the resource
+
+A full audit measured the repo at 12,363 tracked lines, about 2,400 of them configuration a
+machine ever reads. The rest enforces, tests, or explains. Nearly all of it descends from one
+premise: the agent session runs with the owner's full credentials, so its *commands* are policed
+from inside the session. The decisions, so the next pass finds reasons rather than gaps:
+
+- **Stage 1 (this change) cut what no engine will carry.** `hooks/claude-canary.sh` went because
+  the 24-hour worktree fetch it fingerprinted is now *documented* client behaviour, not a bug
+  awaiting a silent fix; a canary for a policy watches for nothing. `startup-budget.sh` and
+  `brew-resolves.sh` were monitoring inside a verify verb that nothing schedules. The three
+  self-policing gates (`context-budget.sh`, `description-cap.sh`, `rules-scoped.sh`) and their
+  suite collapsed into one lefthook command: the ceiling is still enforced; the five hundred lines
+  around it guarded against a regression nobody was near. The `.mcp.json` placeholder check is a
+  gitleaks rule now, so it runs wherever gitleaks does instead of only in the template hook.
+- **Renovate, with pins.** Renovate had authored zero pull requests here in the life of
+  `renovate.json`, and even installed it would have found nothing to bump: every tool but two was
+  `"latest"`. Versions are pinned to what `mise.lock` had already resolved, Renovate owns Actions
+  and mise together, and Dependabot with its auto-merge workflow is gone. The app must be installed
+  on the repo for any of it to fire. The gate all of this rests on is still the branch ruleset;
+  nothing in this repo asserts one exists.
+- **Kept, and why.** The classic PAT stays, so `repo-scope-guard.sh` stays: with an unscoped
+  token, the guard is the only thing scoping `gh` writes. The 1Password service account stays
+  because it is 1Password's own recommendation for unattended agents, so `op-agent` and
+  `op-guard.sh` stay with it. The permission floor stays in `~/.claude/settings.json`, the one
+  file that governs both terminal and web sessions; managed settings were considered and declined.
+- **Next: rulesets everywhere, then chezmoi.** A `pull_request` rule with zero approvals goes on
+  every owned repo (added to the `agent-friendly-repo` ruleset in this change). Once applied, a
+  direct push to main is rejected by the server for owner and agent alike, and
+  `rebase-guard.sh`'s push arm is a courtesy that can go. Then the boomfile migrates to chezmoi in
+  symlink mode: `run_onchange_` scripts for brew, mise, gh extensions, macOS defaults and
+  launchd; `.chezmoiremove` for `settings.local.json`; the two TS hooks kept as Bun scripts; the
+  surviving machine checks as one `scripts/verify.sh` on a launchd timer, which is the timer
+  `[boom] notify` never had.
+
 ## 2026-09-01 — upgrading split into three commands, and boom lost the flag that fought them
 
 `boom source --update` was the upgrade habit, and it kept closing Chrome. The mechanism is in the
@@ -402,58 +437,6 @@ instead of at setup with a clear one.
 
 ---
 
-## 2026-09-01 — four of six "replace with native" cuts would have been regressions
-
-An audit costed six `scripts/` gates at roughly −430 lines, on the reading that each was a native
-call wrapped in 40–150 lines of framing. Working through them, **only one was.** The line counts
-were right; what the lines were doing was not asked.
-
-**Cut, and it was real — `context-budget.sh`, 200 → 139.** Two things went. `strip_comments`, 22
-lines of awk plus a fenced-block bail-out, existed because the client strips block-level HTML
-comments before billing, so they should not count against the ceiling. True — and neither capped
-file has ever contained one, so it stripped nothing. And a `git grep` pass forbidding prose from
-restating two counts this repo computes: a real rule, but enforced by a hand-built ERE with a
-word-boundary workaround, which then needed its own case in `gates.sh` asserting the regex was not
-written with `\b`. Three artifacts to stop a sentence containing a number. `wc -c` is the
-measurement now.
-
-**Kept, with the reason, because cutting would have cost more than it saved:**
-
-- **`description-cap.sh`** — the audit called its 28-line awk "hand-rolled YAML for three files".
-  Those 28 lines ARE the fix for a shipped bug: a one-line parser scores a folded block
-  (`description: >-`) as the single word `>-`, so any skill could carry an unbounded description
-  past a gate reporting `ok (1 words)`. Replacing it with a one-liner reintroduces the defect the
-  suite has a regression case for.
-- **`rules-scoped.sh`** — "83 lines to check that two files contain `paths:`". Six of those lines
-  are an awk frontmatter reader that will not mistake a `paths:` in the body for the real one; the
-  rest is the empty-input doctrine this repo requires everywhere else (a gate that checked nothing
-  must not print `ok`). `grep -c '^paths:'` drops both properties.
-- **`brew-resolves.sh`** — already IS the native call. `brew info --json=v2` is the check; the
-  other lines are argument extraction and the error prose that tells you a cask was renamed.
-- **`plist-validity.sh`** — proposed as "two lines in lefthook.yml, two in lint.yml". It is two
-  assertions with a plutil/plistlib fallback, because CI runs on ubuntu where `plutil` does not
-  exist. Inlining duplicates that fallback and its rationale across two YAML files — recreating
-  the two-roster drift this same pass is closing elsewhere.
-
-The general lesson, worth more than the lines: **a line count is not a measure of whether a line
-earns its place.** Four of these six are long because something went wrong once and the fix is
-still there. That is what a comment-dense codebase looks like when it is working.
-
-### The one improvement in the bucket that mattered was not a cut
-
-`brew-drift.sh` gains an assertion it was missing: a tool declared in `mise.toml` **and** installed
-by brew is not "excluded", it is a double install, and whichever copy sits earlier on PATH wins.
-The Brewfile documents eight of these — *"brew's wins on PATH in some shells, so mise's pin is inert
-there"* — and every one of them sits in `excluded_formulae()`, so the script could never fail on the
-exact state it describes. The exclusion list was a permanent amnesty, not a scope note.
-
-The new check runs ahead of the drift comparison and is **not** subject to the exclusions, because
-mise owning the name is the whole point. It reads both spellings mise accepts, bare and quoted
-backend-prefixed (`"npm:heroku"`), taking the last path segment — reading only the bare form missed
-three of the eight.
-
----
-
 ## 2026-09-01 — boom is installed by Homebrew, and PATH order is why that needed more than a Brewfile line
 
 `brew "boom"` is declared, from the repo that doubles as its own tap. Adding the line alone would
@@ -669,19 +652,6 @@ lefthook's roster instead of re-spelling it* made `lefthook run pre-commit --all
 single entry point with no new machinery, and the agent now calls it too — so one roster remains,
 `lefthook.yml`, and this file's warning about the agent's hand-copy has nothing left to warn about.
 
-### Also in this pass: the tests that tested the test runner
-
-`scripts/tests/gates.sh` loses its last section — four cases and a `mk_all` helper, 51 lines,
-asserting that `dot-claude/hooks/tests/all.sh` fails when pointed at an empty directory, reports a
-failing suite, and refuses a non-executable one. Tests, for a test runner, for the suites that
-test the guards: three levels of indirection from any file that reaches a machine.
-
-The cases that stay are the ones encoding bugs that actually shipped — the folded-scalar
-description parser, the unclassified `~/.claude/` link, the `\b` that git grep silently ignores,
-the unwired-guard assertion — plus the cheap negative controls for an empty CI glob.
-
----
-
 ## 2026-09-01 — the engine now validates the artifact, because nothing did
 
 `lefthook.yml` stated that `boomfile.toml` was *"validated by `boom source --dry-run`"*. Grepping
@@ -856,7 +826,7 @@ being suppressed, this one restores the mode that was being overridden.
 
 ## 2026-08-29 — the byte ceiling was destroying guidance a free mechanism holds
 
-`scripts/context-budget.sh` caps the two symlinked `CLAUDE.md` files, and the cap works: it
+lefthook's `context-budget` command caps the two symlinked `CLAUDE.md` files, and the cap works: it
 is the only thing that ever made a cut permanent. But it had exactly one lever — deletion —
 and that turned out to be a choice, not a constraint.
 
@@ -865,7 +835,7 @@ Claude Code supports `~/.claude/rules/`, where a rule carrying `paths:` frontmat
 editing one kind of file can therefore be written at any length and still cost a session
 nothing until that file is opened. A rule *without* `paths:` loads at launch with the same
 priority as `CLAUDE.md` — so the frontmatter is the whole difference between free and billed,
-and `scripts/rules-scoped.sh` gates it.
+and the same lefthook command gates it.
 
 Two rules moved out of the always-loaded file immediately: the Bash-pattern gotcha (`Bash(ls *)`
 misses `lsof`) and the empty-string env vars, both useful only while editing a `settings.json`.
@@ -886,7 +856,7 @@ Two calibrations worth recording, because both cut against how strict this repo 
 What this does NOT change: the routing table still sends a procedure to a skill and a reason
 here. A rule is the fourth destination, for the narrow case of "true only while touching these
 files". The failure mode to watch is a rule becoming a second CLAUDE.md by accumulation, which
-is why the directory is exempt from the ceiling only on the condition `rules-scoped.sh` asserts.
+is why the directory is exempt from the ceiling only on the condition that command asserts.
 
 ## 2026-08-29 — `AGENTS.md` considered, and declined
 
@@ -901,7 +871,7 @@ not `AGENTS.md`"* — and offer two bridges: an `@AGENTS.md` import line, or
 
 Neither buys anything here, and the import actively costs. Imported files *"are expanded and
 loaded into context at launch"*, so an import is context-neutral at best while adding a hop
-that `context-budget.sh` would have to follow to keep measuring the right bytes. A symlink
+that the byte ceiling would have to follow to keep measuring the right bytes. A symlink
 avoids the cost but only works when there is no Claude-specific content, and there is.
 
 The condition that would reverse this is narrow and worth naming: **a second agent on this
@@ -1317,14 +1287,3 @@ withdrawn, and a strikethrough-plus-correction that this file's own rule forbids
 Rulesets are the mechanism; classic branch protection stays only as the fallback for a repo that
 has none. The JSON payload for configuring either lives in the `agent-friendly-repo` skill with
 the rest of the setup procedure, not here.
-
-### Dependabot auto-merge: a workflow, because there is no switch (2026-08-03)
-
-GitHub has no setting for "auto-merge Dependabot minor/patch", so it is a workflow. Two
-properties matter and are asserted by the workflow itself: `on: pull_request` rather than
-`pull_request_target` (which would run untrusted code with a writable token), and an explicit
-minor/patch ALLOWLIST rather than `!= major`, so a metadata failure falls back to a manual PR
-instead of merging something unreviewed. The step-by-step is in the `agent-friendly-repo` skill.
-
-**Branch protection is the gate this rests on, and nothing in this repo asserts it exists.** If
-the required check is ever dropped, `gh pr merge --auto` merges immediately.

@@ -79,10 +79,13 @@ X
 #   zulu17        — the retired spelling of `zulu@17`, itself undeclared since
 #                   2026-09-01 (DECISIONS.md, "Brewfile entries removed"). It no
 #                   longer resolves as a cask, so it can only be a leftover.
+#   orbstack      — undeclared since 2026-09-08 (owner confirmed unused); leftover until
+#                   `brew uninstall --cask orbstack`.
 excluded_casks() {
   cat << 'X'
 karabiner-elements
 zulu17
+orbstack
 X
 }
 
