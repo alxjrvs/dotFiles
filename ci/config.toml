@@ -1,3 +1,0 @@
-# The chezmoi config CI's dry run uses, so the check runs in the same mode as the machine.
-# The machine's real config is rendered from home/.chezmoi.toml.tmpl by `chezmoi init`.
-mode = "symlink"

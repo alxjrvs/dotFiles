@@ -79,37 +79,20 @@ jobs:
       - name: gitleaks
         run: gitleaks dir . --redact --no-banner --config home/dot_config/gitleaks/gitleaks.toml
 
-      # THE ARTIFACT, not the assertions about it. Everything above lints files;
-      # this is the only step that asks the engine whether the source state still
-      # APPLIES — every attribute prefix, template, `.chezmoiignore` rule, external
-      # declaration and script header, resolved by the thing that resolves them on a
-      # real machine. A template error or a bad source name fails here, not on the
-      # next `chezmoi apply` at home.
-      #
-      # Safe on a runner, by construction: `--dry-run` executes no run_ script, the
-      # darwin-gated scripts render empty anyway, `.chezmoiignore` drops the
-      # macOS-only targets on linux, `--exclude externals` keeps the statusline
-      # scripts out of the diff, and the destination is a scratch directory. One
-      # network call remains: chezmoi reads an `archive-file` external's tarball
-      # to know its entries even when externals are excluded, so this step reaches
-      # github.com once (which the runner can). Symlink mode comes from
-      # ci/config.toml so the check matches the machine's mode. `Library` is NOT
-      # ignored on linux, so the verify timer's plist template is rendered here.
-      #
-      # chezmoi via mise rather than the vendor curl-pipe: mise is already on the
-      # runner. The version is pinned by hand here (Renovate's github-actions
-      # manager reads `uses:` lines, not this one); bump it with the Brewfile's.
+      # THE ARTIFACT, not the assertions about it: the one step that asks the engine
+      # whether the source state still applies, resolved by the thing that resolves it
+      # on a real machine. `init` renders the real config template, so the check runs
+      # in the machine's mode and the state DB lands beside that config, out of the
+      # checkout. Safe on a runner: `--dry-run` runs no script, the darwin gates render
+      # empty on Linux, and `.chezmoiignore` drops the macOS-only targets but
+      # deliberately not `Library`, so the verify timer's template is rendered here.
+      # One github.com call remains: an `archive-file` external's tarball is read to
+      # know its entries even under `--exclude externals`. The version is pinned by
+      # hand — Renovate reads `uses:` lines only; bump it with the Brewfile's.
       - name: chezmoi applies
         run: |
           mise install chezmoi@2.66.0
-          # --persistent-state: chezmoi otherwise writes its state DB beside --config,
-          # i.e. into the checkout. The "config file template has changed" warning
-          # is expected: ci/config.toml is hand-written, not rendered by `init`.
-          chez() {
-            mise exec chezmoi@2.66.0 -- chezmoi \
-              --source "$PWD" --destination "$RUNNER_TEMP/home" --config ci/config.toml \
-              --persistent-state "$RUNNER_TEMP/chezmoistate.boltdb" "$@"
-          }
-          chez apply --dry-run --verbose --exclude externals
-          chez managed | sed 's/^/  /'
+          mise exec chezmoi@2.66.0 -- chezmoi init --source "$PWD" --destination "$RUNNER_TEMP/home" --config "$RUNNER_TEMP/chezmoi.toml"
+          mise exec chezmoi@2.66.0 -- chezmoi --config "$RUNNER_TEMP/chezmoi.toml" --destination "$RUNNER_TEMP/home" apply --dry-run --verbose --exclude externals
+          mise exec chezmoi@2.66.0 -- chezmoi --config "$RUNNER_TEMP/chezmoi.toml" --destination "$RUNNER_TEMP/home" managed | sed 's/^/  /'
 
