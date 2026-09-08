@@ -94,9 +94,9 @@ if command -v gitleaks > /dev/null 2>&1; then
   _gl=$(mktemp -d)
   # shellcheck disable=SC2016  # the literal ${GITHUB_TOKEN} IS the fixture
   printf '{"mcpServers":{"github":{"env":{"GITHUB_TOKEN":"${GITHUB_TOKEN}"}}}}\n' > "$_gl/.mcp.json"
-  case_exit gitleaks_mcp_placeholder_caught 1 gitleaks dir "$_gl" --config gitleaks/gitleaks.toml --no-banner --redact
+  case_exit gitleaks_mcp_placeholder_caught 1 gitleaks dir "$_gl" --config home/dot_config/gitleaks/gitleaks.toml --no-banner --redact
   printf '{"mcpServers":{"github":{"command":"op","args":["run","--env-file=.env","--","srv"]}}}\n' > "$_gl/.mcp.json"
-  case_exit gitleaks_mcp_clean_ok 0 gitleaks dir "$_gl" --config gitleaks/gitleaks.toml --no-banner --redact
+  case_exit gitleaks_mcp_clean_ok 0 gitleaks dir "$_gl" --config home/dot_config/gitleaks/gitleaks.toml --no-banner --redact
   rm -rf "$_gl"
 else
   echo "  [gitleaks_mcp_*] skipped: gitleaks not on PATH (CI has it)"
