@@ -85,10 +85,14 @@ if [ -f "$HOME/.claude/settings.json" ]; then
 $out"; fi
 fi
 
-# ── Claude Code: the 1Password MCP server is registered, and no MCP server is dead ──
+# ── Claude Code: the 1Password and GitHub MCP servers are registered, and no MCP server is dead ──
 mcp=/Applications/1Password.app/Contents/MacOS/1password-mcp
 if [ -x "$mcp" ] && command -v jq > /dev/null 2>&1; then
   if jq -e '.mcpServers["1password"]' "$HOME/.claude.json" > /dev/null 2>&1; then ok "1Password MCP registered"; else bad "1Password Environments MCP not registered (run: chezmoi apply)"; fi
+fi
+ghmcp="$HOME/.local/share/mise/shims/github-mcp-server"
+if "$ghmcp" --version > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
+  if jq -e '.mcpServers.github' "$HOME/.claude.json" > /dev/null 2>&1; then ok "GitHub MCP registered"; else bad "GitHub MCP not registered (run: chezmoi apply)"; fi
 fi
 if command -v claude > /dev/null 2>&1; then
   # Retry before failing: MCP health is flappy (remote 502s, stdio cold starts), and a check

@@ -26,6 +26,7 @@ starship = "1.25.1"     # prompt — `starship init zsh` loaded in zsh/50-prompt
 
 # ── Git surface (used by prompt, lefthook, pre-commit) ────────────────
 gh = "2.94.0"           # GH CLI
+"aqua:github/github-mcp-server" = "1.7.0" # GitHub MCP server for Claude Code; registered by run_after_81-github-mcp.sh.tmpl
 delta = "0.19.2"        # syntax-aware git pager
 gitleaks = "8.30.1"     # `gitleaks git --staged` — global pre-commit hook
 lefthook = "2.1.9"      # repo-local pre-commit/pre-push runner

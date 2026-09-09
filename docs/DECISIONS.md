@@ -59,6 +59,38 @@ the invariant and drop the digit.
 
 ---
 
+## 2026-09-09 — GitHub MCP is the stdio binary fed by `gh`'s keyring token, registered from chezmoi
+
+Terminal Claude Code and the desktop app's Code tab read the same `~/.claude.json`, so a
+user-scoped entry there is the one place a server is wired for both at once.
+`home/run_after_81-github-mcp.sh.tmpl` converges it; `scripts/verify.sh` asserts it.
+
+Why not the three options that looked shorter:
+
+- **GitHub's hosted MCP endpoint** (`api.githubcopilot.com/mcp`) answers Claude Code's OAuth with
+  "does not support dynamic client registration", and GitHub's own Claude Code install guide
+  offers only a PAT in an `Authorization` header. A PAT in `~/.claude.json` is a secret on disk,
+  and a `${VAR}` header expands only in a process that has the variable — the desktop app spawns
+  MCP servers with a bare environment, so there it never would.
+- **The claude.ai "GitHub Integration" connector** is the GitHub App grant for cloud sessions and
+  routines. It exposes no MCP tools on either surface (measured 2026-09-09: none, in a desktop
+  session whose Gmail, Slack and Drive connectors all had tools).
+- **The desktop app's `engineering` plugin GitHub server** is an app-injected "inline" plugin.
+  Nothing of it is on disk, so nothing of it can load in the terminal.
+
+The registered command is `/bin/sh -c 'GITHUB_PERSONAL_ACCESS_TOKEN="$(gh auth token)" exec
+github-mcp-server stdio --toolsets …'` with absolute mise-shim paths: the token is read from
+`gh`'s keyring at launch and never written, and both binaries are declared in the mise config so
+the paths hold. Toolsets are `context,repos,issues,pull_requests,actions`: the server's default
+set is actions, gists and notifications — no pull requests — and `all` puts a large tool list on
+every turn. Measured 2026-09-09: 45 tools with the chosen set.
+
+The asymmetry that prompted this: the desktop Code tab adds two layers no local file reproduces —
+the account's claude.ai connectors, registered in-process under opaque ids, and app-bundled
+"inline" plugins — while the terminal loads claude.ai connectors only when its login token
+carries the connector permission. Two surfaces, one shared layer, and that layer is the config
+file this script writes.
+
 ## 2026-09-08 — signing constants are tracked, and "a box without 1Password" is host detection
 
 `commit.gpgSign`, `tag.gpgSign`, `gpg.format` and `gpg.ssh.program` live in the tracked

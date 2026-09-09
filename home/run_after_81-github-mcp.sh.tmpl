@@ -1,0 +1,24 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+# GitHub's official MCP server (github-mcp-server, declared in mise), user-scoped, so Claude Code
+# has it in the terminal AND in the desktop app's Code tab — both read ~/.claude.json, which
+# nothing tracks. Not GitHub's hosted endpoint: it refuses Claude Code's OAuth (no dynamic client
+# registration) and GitHub's own guide wants a PAT in a header. This runs the stdio binary and
+# hands it the token `gh` already holds, read from the keyring at launch — nothing is written to
+# disk. Absolute paths and /bin/sh because the desktop app spawns MCP servers with a bare
+# environment. Converges: re-registers whenever the recorded entry differs from this one.
+set -euo pipefail
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:/opt/homebrew/bin:$PATH"
+shims="$HOME/.local/share/mise/shims"
+"$shims/github-mcp-server" --version > /dev/null 2>&1 || exit 0
+"$shims/gh" --version > /dev/null 2>&1 || exit 0
+command -v claude > /dev/null 2>&1 || exit 0
+command -v jq > /dev/null 2>&1 || exit 0
+toolsets=context,repos,issues,pull_requests,actions
+cmd="GITHUB_PERSONAL_ACCESS_TOKEN=\"\$($shims/gh auth token)\" exec $shims/github-mcp-server stdio --toolsets $toolsets"
+want=$(jq -cn --arg cmd "$cmd" '{type: "stdio", command: "/bin/sh", args: ["-c", $cmd]}')
+have=$(jq -c '.mcpServers.github // empty | {type, command, args}' "$HOME/.claude.json" 2> /dev/null || true)
+[ "$have" = "$want" ] && exit 0
+[ -z "$have" ] || claude mcp remove --scope user github
+claude mcp add-json --scope user github "$want"
+{{ end -}}
