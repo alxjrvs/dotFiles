@@ -1,9 +1,8 @@
 # dotFiles
 
-A [chezmoi](https://www.chezmoi.io) source repo in **symlink mode** — there is no engine code
-here. `home/` is the source state (chezmoi's `dot_`/`private_` naming), `scripts/` holds the
-checks lefthook, CI and the daily drift timer share, and everything else is repo plumbing.
-`chezmoi apply` reconciles the machine; `scripts/verify.sh` reports drift.
+A [chezmoi](https://www.chezmoi.io) source repo — there is no engine code here. `home/` is the
+source state (chezmoi's `dot_`/`private_` naming), `scripts/verify.sh` is the by-hand drift
+check, and everything else is repo plumbing. `chezmoi apply` reconciles the machine.
 
 ## Principles
 
