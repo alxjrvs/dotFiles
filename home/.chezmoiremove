@@ -8,4 +8,5 @@
 .claude/hooks/repo-scope-guard.sh
 .claude/hooks/guard-lib.sh
 .claude/hooks/verify-gate.sh
+.config/gitleaks/gitleaks.toml
 .claude/rules/claude-settings.md
