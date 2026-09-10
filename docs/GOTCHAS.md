@@ -25,9 +25,9 @@ not here; when a subject is gone, delete its entry.
   re-including one needs `.claude/*` (the glob) instead. Nothing here needs that today; the
   trap is recorded because the fix looks like it works either way until you check `git status`.
 - **A `PreToolUse` matcher matches a tool NAME, and an MCP tool is not `Bash`.** A guard wired
-  to `Bash` has no opinion about an `mcp__github__*` call reaching the same API. The write
-  boundary there is `--exclude-tools` on the server registration, not a hook; an unknown name in
-  that list is ignored silently, so re-verify them (`generate-docs`) after a bump.
+  to `Bash` has no opinion about an `mcp__github__*` call reaching the same API. A write
+  boundary on that path has to be `--exclude-tools` on the server registration; an unknown name
+  in that list is ignored silently, so verify any against `generate-docs`.
 - **`gh` and the `github` MCP are two credentials on one account, and `gh` is the privileged
   one.** `get_me` reports `alxjrvs` down both paths, which makes them look interchangeable. They
   are not: `gh` holds a `gho_` OAuth token carrying `repo`, `gist` and `workflow`, while the MCP

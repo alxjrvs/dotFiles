@@ -31,28 +31,11 @@ if command -v claude > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
   # GitHub's stdio server. Absolute paths and /bin/sh because the desktop app spawns MCP servers
   # with a bare environment. Re-registers whenever the recorded entry differs from this one.
   #
-  # --exclude-tools is the WRITE BOUNDARY on this path, and it is the only one there is: a
-  # PreToolUse hook matches a tool NAME, so a guard wired to `Bash` has no opinion about an
-  # `mcp__github__*` call that reaches the same API with the same token.
-  #
-  # COMMENTING IS ALLOWED EVERYWHERE; OPENING AN ISSUE IS NOT. Joining a thread that already
-  # exists — a PR or an issue, equally — is participating in work someone started. Filing a new
-  # issue is the one that arrives uninvited in a tracker nobody pointed at, and it is the only
-  # thing excluded here.
-  #
-  # So the list is short: `issue_write` (creates and updates issues) and `sub_issue_write`.
-  # Everything else — every comment and review tool, and everything the completion path uses
-  # (create_pull_request, merge_pull_request, update_pull_request, the repos tools) — is
-  # enabled. Names verified against `github-mcp-server generate-docs`; an unknown name here is
-  # ignored silently, so re-check them after a server bump.
-  #
-  # Known cost of excluding `issue_write`: it also CLOSES and edits issues, so an agent asked to
-  # close one has to use `gh issue close`, which is not on the deny floor. Splitting create from
-  # close is not expressible here — the tool is one name.
+  # No --exclude-tools: the agent may file issues as well as comment. GitHub's `Issues`
+  # permission covers both together, so the token cannot separate them either.
   shims="$HOME/.local/share/mise/shims"
   if "$shims/github-mcp-server" --version > /dev/null 2>&1; then
-    no_write=issue_write,sub_issue_write
-    cmd="GITHUB_PERSONAL_ACCESS_TOKEN=\"\$($HOME/.local/bin/op-sa read op://claude-agent/claude-git-pat/credential)\" exec $shims/github-mcp-server stdio --toolsets context,repos,issues,pull_requests,actions --exclude-tools $no_write"
+    cmd="GITHUB_PERSONAL_ACCESS_TOKEN=\"\$($HOME/.local/bin/op-sa read op://claude-agent/claude-git-pat/credential)\" exec $shims/github-mcp-server stdio --toolsets context,repos,issues,pull_requests,actions"
     want=$(jq -cn --arg cmd "$cmd" '{type: "stdio", command: "/bin/sh", args: ["-c", $cmd]}')
     have=$(jq -c '.mcpServers.github // empty | {type, command, args}' "$HOME/.claude.json" 2> /dev/null || true)
     if [ "$have" != "$want" ]; then

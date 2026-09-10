@@ -19,11 +19,6 @@ These are here because nothing else can deliver them in time: each is irreversib
 attempt, or lands in an unattended session with no one to ask.
 
 - **Never a local merge or push into a default branch.** Land work through GitHub's own gate.
-- **Never open an issue in a repo you were not asked to work in.** Commenting is not the same
-  act and is fine anywhere, on a PR or an issue equally: joining a thread that exists is
-  participating in work someone already started. Filing a new one arrives uninvited in a
-  tracker nobody pointed at, and needs nothing but a repo name — which is why it is the only
-  one that has to be said.
 - **Never put a secret on stdout** — stdout is the transcript. A secret written to a file is a
   secret read. To *use* one, pass it: `op run --env-file=F -- CMD`.
 

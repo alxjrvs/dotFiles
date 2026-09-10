@@ -21,7 +21,6 @@
       "WebSearch"
     ],
     "deny": [
-      "Bash(*gh issue create*)",
       "Bash(*gh release create*)",
       "Bash(*gh gist create*)",
       "Bash(*read op://*)",
