@@ -31,11 +31,16 @@ service-account token, which `~/.local/bin/op-sa` reads:
 security add-generic-password -a "$USER" -s op-claude-agent -w
 ```
 
-And the agent's GitHub PAT, which git's `osxkeychain` helper reads under the account name
-pinned in `home/dot_config/git/agent.gitconfig` (the name is only a keychain key):
+And the agent's GitHub PAT, which git's `osxkeychain` helper reads under the account name pinned
+in `home/dot_config/git/agent.gitconfig` (the name is only a keychain key). `-T` puts that helper
+on the item's ACL, or macOS raises an access dialog on the first agent push; add `-U` when
+replacing a rotated token:
 
 ```bash
-security add-internet-password -a claude-agent -s github.com -r htps -w
+security add-internet-password -a claude-agent -s github.com -r htps \
+  -T "$(git --exec-path)/git-credential-osxkeychain" -w
+security add-internet-password -a claude-agent -s gist.github.com -r htps \
+  -T "$(git --exec-path)/git-credential-osxkeychain" -w
 ```
 
 To work from an existing checkout instead of the managed clone, point chezmoi at it once:
@@ -72,11 +77,11 @@ every commit an agent makes on your machine is authored and co-signed as `alxjrv
 into public history.
 
 **2 — 1Password, or `verify.sh` fails on day one.** The `op://claude-agent/…` references in
-`home/dot_claude/settings.json`, `home/dot_config/git/agent.gitconfig`,
-`home/run_after_81-github-mcp.sh.tmpl` and `npm/publish.env`; the `user.signingkey` in
-`home/dot_gitconfig` and the matching line in `home/private_dot_ssh/allowed_signers`; the SSH
-items named in `home/dot_config/1Password/ssh/agent.toml`. That last file scopes per *item*,
-not per vault — 1Password's own least-privilege recommendation.
+`home/dot_claude/settings.json`, `home/run_after_81-github-mcp.sh.tmpl` and `npm/publish.env`;
+the two keychain items above; the `user.signingkey` in `home/dot_gitconfig` and the matching
+line in `home/private_dot_ssh/allowed_signers`; the SSH items named in
+`home/dot_config/1Password/ssh/agent.toml`. That last file scopes per *item*, not per vault —
+1Password's own least-privilege recommendation.
 
 **3 — Org scope, which is a security control and not a preference.** `_owned_orgs()` in
 `home/dot_claude/hooks/guard-lib.sh` is the single source deciding which repos an agent may

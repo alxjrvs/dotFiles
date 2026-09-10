@@ -13,7 +13,7 @@ attempt, or lands in an unattended session with no one to ask.
 
 - **Never a local merge or push into a default branch.** Land work through GitHub's own gate.
 - **Never put a secret on stdout** — stdout is the transcript. A secret written to a file is a
-  secret read. To *use* one, pass it: `op-sa run --env-file=F -- CMD`.
+  secret read. To *use* one, pass it: `op run --env-file=F -- CMD`.
 
 ## Where things go
 

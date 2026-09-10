@@ -115,8 +115,8 @@ if [ "$(uname -s)" = Darwin ]; then
 fi
 
 # ── git maintenance: every registered repo still exists ───────────────────────
-# `git config --get-all` without --global, because the keys live in ~/.gitconfig.local via an
-# include, and --global does not follow includes.
+# `git config --get-all` without --global: `git maintenance register` writes into whichever file
+# it was pointed at, and --global does not follow includes.
 gone=''
 while IFS= read -r r; do
   [ -n "$r" ] || continue

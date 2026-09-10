@@ -36,27 +36,22 @@ wired_hooks() {
 # EVERY entry — anything left out can be deleted unnoticed.
 deny_floor() {
   cat << 'DENY'
-Bash(security find-generic-password:*)
-Bash(op read:*)
-Bash(op item get:*)
-Bash(op document get:*)
-Bash(*op-sa read*)
-Bash(*op-sa item get*)
-Bash(*op-sa document get*)
+Bash(*read op://*)
+Bash(*item get*)
+Bash(*document get*)
+Bash(*op inject*)
 Bash(*op-sa inject*)
-Bash(git credential:*)
+Bash(*op-sa run*)
+Bash(*--no-masking*)
+Bash(*security find-generic-password*)
+Bash(*security find-internet-password*)
+Bash(*credential fill*)
+Bash(*credential-cache*)
+Bash(*credential-store*)
+Bash(*credential-osxkeychain*)
 Read(~/.ssh/id_*)
 Read(~/.aws/credentials)
 Read(~/.netrc)
-Read(~/.config/gh/hosts.yml)
-Bash(*/op *)
-Bash(*/security find-generic-password *)
-Bash(*/security find-internet-password *)
-Bash(*/security find-certificate *)
-Bash(*/security find-identity *)
-Bash(*/git credential *)
-Bash(*/git credential-store *)
-Bash(*/git credential-cache *)
 DENY
 }
 
@@ -95,11 +90,11 @@ for f in "$@"; do
   ! grep -qE '(enableAllProjectMcpServers|enabledMcpjsonServers)' "$f" ||
     note "$f: forbidden auto-approve MCP key"
 
-  # The agent's git identity comes from ~/.config/git/agent.gitconfig, never a cached PAT.
+  # The agent's git identity comes from the tracked ~/.config/git/agent.gitconfig, which is where
+  # the credential helper, the HTTPS rewrite and the signing-off keys live. Wiring it is the
+  # assertion; what it contains is asserted by the file itself.
   grep -q 'agent.gitconfig' "$f" ||
     note "$f: agent git config (include.path -> agent.gitconfig) is not wired"
-  ! grep -q 'osxkeychain' "$f" ||
-    note "$f: forbidden osxkeychain git helper (cached-PAT regression)"
 
   ! grep -qE '"model"[[:space:]]*:[[:space:]]*"[^"]*fable' "$f" ||
     note "$f: Fable pinned as default model"
