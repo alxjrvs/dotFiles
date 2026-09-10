@@ -5,7 +5,7 @@
 #
 #   chezmoi apply            # reconcile only — `brew bundle --no-upgrade`, `mise install`
 #   brew upgrade --formula   # every outdated formula. Cannot touch a cask.
-#   mise upgrade             # what actually moves the CLIs (rewrites mise.lock — commit it)
+#   mise upgrade --bump      # what actually moves the CLIs (rewrites the pins — commit them)
 #
 # Reconciling answers "is what I declared installed?", never "is what is installed current?".
 # `brew bundle` without `--no-upgrade` upgrades CASKS as well as formulae whatever `greedy`
@@ -18,26 +18,16 @@
 # it over the app forces a restart to deliver nothing. When a cask genuinely needs moving:
 # `brew upgrade --cask <name>`.
 #
-# Installed-but-undeclared is drift too: `scripts/verify.sh` fails on anything `brew bundle
-# cleanup` lists, so undeclaring a package here is only half of deleting it.
+# `brew bundle` never uninstalls: undeclaring a package here is half of removing it, and
+# `brew bundle cleanup` (dry run by default) lists the other half.
 
 # A third-party `tap` line needs `trusted:` — brew refuses to load an untrusted tap until
 # someone runs `brew trust` by hand, which is a fresh machine stopping halfway.
 brew "mise"
 brew "chezmoi"
 
-# openssl@3 is a system library, not a CLI: `aqua:rossmacarthur/sheldon` dyld-links against
-# /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib and segfaults without it.
-brew "openssl@3"
-
-# System utilities with no mise home.
+# GNU coreutils for `timeout`, which the Stop hook uses and macOS does not ship.
 brew "coreutils"
-brew "moreutils"
-
-# Also pinned in mise; declared here so the brew copy is not drift. PATH order decides which
-# runs — mise's wins in an interactive login shell.
-brew "gh"
-brew "actionlint"
 
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"

@@ -5,17 +5,17 @@ pre-commit:
   commands:
     shellcheck:
       # The run_ scripts too: their only template syntax sits inside comments or a string.
-      glob: "{*.sh,home/run_*,home/dot_config/git/template/hooks/*,home/dot_local/bin/*}"
+      glob: "{*.sh,home/run_*,home/dot_local/bin/*}"
       run: shellcheck -x {staged_files}
     shfmt-check:
-      glob: "{*.sh,home/run_*,home/dot_config/git/template/hooks/*,home/dot_local/bin/*}"
+      glob: "{*.sh,home/run_*,home/dot_local/bin/*}"
       run: shfmt -d -i 2 -ci -sr {staged_files}
     biome-check:
       glob: "{*.ts,*.tsx,*.js,*.jsx,*.json,*.jsonc}"
       run: biome check {staged_files}
     gitleaks:
-      # --config: the repo's own copy of the global rules, so this repo's gate and
-      # every other repo's template hook enforce the same set.
+      # --config: pinned to the same rules file this repo places at ~/.config/gitleaks, so the
+      # gate here and anything else pointed at that file enforce one set.
       run: gitleaks git --staged --redact -v --no-banner --config home/dot_config/gitleaks/gitleaks.toml
     settings-json-validity:
       glob: "home/dot_claude/settings*.json"
@@ -41,35 +41,10 @@ pre-commit:
             || { echo "$r: no paths: in frontmatter — it would load into EVERY session"; exit 1; }
         done
 
-    mise-lock-sync:
-      # Renovate bumps a pin in mise.toml; the lockfile only follows when
-      # `mise install` runs and the result is committed. Under minor/patch automerge
-      # that gap would land on main unnoticed and CI would never see it (MISE_LOCKFILE
-      # with an unlocked version resolves through the API and passes). So: every pin
-      # must have a matching lock entry. Extra lock entries are not checked — mise
-      # prunes them itself on the next install.
-      glob: "home/dot_config/mise/{config.toml,mise.lock}"
-      run: |
-        python3 - <<'PY'
-        import sys, tomllib
-        cfg = tomllib.load(open("home/dot_config/mise/config.toml", "rb"))["tools"]
-        lock = tomllib.load(open("home/dot_config/mise/mise.lock", "rb")).get("tools", {})
-        bad = []
-        for tool, want in cfg.items():
-            got = {e.get("version") for e in lock.get(tool, [])}
-            if want not in got:
-                bad.append(f"{tool}: mise.toml pins {want}, mise.lock has {sorted(got) or 'nothing'}")
-        if bad:
-            print("mise.toml and mise.lock disagree — run `mise install` and commit the lock:")
-            print("\n".join("  " + b for b in bad))
-            sys.exit(1)
-        print(f"ok mise.lock covers all {len(cfg)} pins")
-        PY
-
     zsh-syntax:
       # shellcheck cannot parse zsh at all ("Unknown shell: zsh"); `zsh -n` is the
       # native no-exec syntax check.
-      glob: "{*.zsh,home/dot_zshrc,home/dot_zprofile,home/dot_zshenv}"
+      glob: "{*.zsh,home/dot_zshrc,home/dot_zprofile}"
       run: |
         for f in {staged_files}; do
           zsh -n "$f" || { echo "zsh syntax error in $f"; exit 1; }

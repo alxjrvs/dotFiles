@@ -19,12 +19,8 @@ jobs:
     # shims, so the first `jq` a guard runs later triggers an install of its own.
     env:
       # The machine's global mise config IS the repo file; point the runner at it so
-      # `mise install` resolves the same pins and reads mise.lock beside it, instead
-      # of resolving through the GitHub API and running the rate limit to zero. Do
-      # not disable attestation verification to dodge that: the lock records HOW
-      # each tool was verified, so verifying less is exactly what it exists to prevent.
+      # `mise install` resolves the same pins.
       MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/home/dot_config/mise/config.toml
-      MISE_LOCKFILE: "1"
     steps:
       - uses: actions/checkout@v7
 
@@ -72,9 +68,10 @@ jobs:
       # on a real machine, with the state DB beside a throwaway config, out of the
       # checkout. Safe on a runner: `--dry-run` runs no script; it only renders every
       # file and template into a temp destination.
-      # One github.com call remains: an `archive-file` external's tarball is read to
-      # know its entries even under `--exclude externals`. The version is pinned by
-      # hand — Renovate reads `uses:` lines only; bump it with the Brewfile's.
+      # Some github.com traffic remains: every external's tarball is read for its entries
+      # even under `--exclude externals` (the statusline pair share one URL; the two zsh
+      # plugins are one each). The chezmoi version is pinned by hand — Renovate reads
+      # `uses:` lines only; bump it with the Brewfile's.
       #
       # `--source` on every command, not `init`: with the config template gone there is no
       # config to write, so `init` records nothing and the later commands would fall back to
