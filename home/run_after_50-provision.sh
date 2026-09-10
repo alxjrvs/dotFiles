@@ -42,3 +42,32 @@ if command -v claude > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
     fi
   fi
 fi
+
+# The agent's GitHub PAT, copied from the vault into the login keychain where git's own
+# osxkeychain helper can read it (~/.config/git/agent.gitconfig pins the account name).
+#
+# WHY A LOCAL COPY AT ALL. An agent's `git push` runs inside Claude Code's Bash sandbox, and
+# `op` is a Go binary that cannot verify TLS under Seatbelt, so the helper cannot resolve the
+# vault there. `chezmoi apply` runs OUTSIDE that sandbox, where op-sa works — so this is the one
+# moment a machine can mint the copy for itself, which is why it lives here and not in a runbook.
+#
+# The value never reaches argv or a transcript: it is read into a shell variable and handed to
+# `security` on stdin (`-w` with no value prompts twice, hence the value twice). Delete-then-add
+# rather than `-U`, so this script wholly owns the item and the `-T` ACL entry is guaranteed on
+# every apply however the item first got there — without it, macOS raises an access dialog on
+# the first agent push that no unattended session can answer. The read comes first, so a failed
+# resolve leaves a working item alone; a failed WRITE loses it until the next apply, which is
+# loud (pushes prompt) rather than silent.
+#
+# Rotate by changing the vault item; the next apply propagates it. Skips quietly when op-sa
+# cannot resolve — a machine without the service-account token yet, or offline.
+if [ -x "$HOME/.local/bin/op-sa" ] && _pat=$("$HOME/.local/bin/op-sa" read op://claude-agent/claude-git-pat/credential 2> /dev/null) && [ -n "$_pat" ]; then
+  _helper="$(git --exec-path)/git-credential-osxkeychain"
+  for _host in github.com gist.github.com; do
+    security delete-internet-password -a claude-agent -s "$_host" > /dev/null 2>&1
+    printf '%s\n%s\n' "$_pat" "$_pat" |
+      security add-internet-password -a claude-agent -s "$_host" -r htps -T "$_helper" -w > /dev/null 2>&1 ||
+      echo "provision: could not store the agent PAT for $_host — agent pushes will prompt until the next apply" >&2
+  done
+  unset _pat _helper _host
+fi

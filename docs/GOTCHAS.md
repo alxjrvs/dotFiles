@@ -47,11 +47,13 @@ not here; when a subject is gone, delete its entry.
   goes through it (see above), which is most of what kept it busy.
 - **`op run --env-file` only works for an agent through `op-sa`**: the desktop-app integration
   needs Touch ID and is revoked when the app locks.
-- **A keychain item is readable only by the binaries on its ACL.** The agent's PAT is created by
+- **A keychain item is readable only by the binaries on its ACL.** The agent's PAT is written by
   `security` but read by `git-credential-osxkeychain`, so it needs
-  `-T "$(git --exec-path)/git-credential-osxkeychain"` at creation, and `-U` when you replace a
-  rotated one. Without it macOS raises a dialog on the first agent push, which an unattended
-  session cannot answer.
+  `-T "$(git --exec-path)/git-credential-osxkeychain"`, or macOS raises a dialog on the first
+  agent push that an unattended session cannot answer. The provision script owns that item and
+  re-adds it with the ACL on every apply; do not hand-create it without `-T`.
+- **`security … -w` with no value reads the password from stdin, and asks for it twice.** That is
+  how the provision script keeps the PAT off argv: `printf '%s\n%s\n' "$pat" "$pat" | security …`.
 
 ## chezmoi
 

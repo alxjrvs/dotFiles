@@ -25,25 +25,20 @@ Then `gh auth login` and a second `chezmoi apply` for the gh extensions.
 Day to day: edit in the checkout (`chezmoi cd`), `chezmoi apply`, commit, PR. On another Mac,
 `chezmoi update` pulls and applies what landed. Once per clone: `lefthook install`.
 
-Two steps are by hand, once per machine, both into the login keychain with `-w` last so the
-secret is prompted for and never on argv or in shell history. The agent's 1Password
-service-account token, which `~/.local/bin/op-sa` reads:
+**One step is by hand, once per machine**, and everything else the agent needs follows from it.
+Mint a 1Password service account with `read_items` on the `claude-agent` vault, then store its
+token in the login keychain. `-w` last, so the token is prompted for and never lands on argv or
+in shell history:
 
 ```bash
 security add-generic-password -a "$USER" -s op-claude-agent -w
 ```
 
-And the agent's GitHub PAT, which git's `osxkeychain` helper reads under the account name pinned
-in `home/dot_config/git/agent.gitconfig` (the name is only a keychain key). `-T` puts that helper
-on the item's ACL, or macOS raises an access dialog on the first agent push and an unattended
-session has no way to answer it; add `-U` when replacing a rotated token:
-
-```bash
-security add-internet-password -a claude-agent -s github.com -r htps \
-  -T "$(git --exec-path)/git-credential-osxkeychain" -w
-security add-internet-password -a claude-agent -s gist.github.com -r htps \
-  -T "$(git --exec-path)/git-credential-osxkeychain" -w
-```
+From there `chezmoi apply` does the rest: `home/run_after_50-provision.sh` reads the agent's
+GitHub PAT out of the vault through `op-sa` and stores it in the keychain for git's
+`osxkeychain` helper, with that helper on the item's ACL. Rotate the PAT in 1Password and the
+next apply propagates it. That step is here rather than in this list because apply runs outside
+Claude Code's Bash sandbox, which is the only place `op` can reach 1Password at all.
 
 Preview without touching anything: `chezmoi apply --dry-run --verbose`. Drift:
 `scripts/verify.sh`, by hand. Upgrades are not chezmoi's job: `brew upgrade --formula`, then
