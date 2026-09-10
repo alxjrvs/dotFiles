@@ -14,7 +14,7 @@
 # cases fail (the three that assert the gate ran). Re-run it after changing the hook.
 set -uo pipefail
 
-HOOK="$(cd "$(dirname "$0")/.." && pwd)/verify-gate.sh"
+HOOK="$(cd "$(dirname "$0")/.." && pwd)/executable_verify-gate.sh"
 
 # Hermetic or worthless: git exports GIT_DIR / GIT_INDEX_FILE / GIT_PREFIX into every hook it
 # runs and those override `git -C`, so without this block fixture commits land in the REAL repo.

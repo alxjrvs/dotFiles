@@ -1,7 +1,7 @@
 # dotFiles
 
 macOS dotfiles for [alxjrvs](https://github.com/alxjrvs), managed by
-[chezmoi](https://www.chezmoi.io) in symlink mode. `home/` is the source state; the prompt is
+[chezmoi](https://www.chezmoi.io). `home/` is the source state; the prompt is
 [starship](https://starship.rs); the Claude Code statusline lives in
 [its own repo](https://github.com/TheGnarCo/claude-statusline) and arrives as two pinned
 chezmoi externals straight onto PATH.
@@ -16,12 +16,14 @@ brew install chezmoi
 chezmoi init --apply alxjrvs/dotFiles
 ```
 
-`init --apply` clones this repo to `~/.local/share/chezmoi`, renders `~/.config/chezmoi/chezmoi.toml`
-from [`home/.chezmoi.toml.tmpl`](home/.chezmoi.toml.tmpl), and applies: symlinks into `~`, then
-the `run_` scripts in [`home/`](home/) — the Claude Code CLI, Homebrew bundle, `mise install`,
-gh extensions, macOS defaults, LaunchAgents, lefthook, tldr, the 1Password and GitHub MCP
-registrations — each darwin-gated and either hashed on the file it applies or cheap enough to
-run every time.
+`init --apply` clones this repo to `~/.local/share/chezmoi` and applies: files into `~`, then
+the three `run_` scripts in [`home/`](home/): the Homebrew bundle (re-run when the Brewfile
+changes), macOS defaults (re-run when they change), and an every-apply provision script (the
+Claude Code CLI, `mise install`, gh extensions, the 1Password and GitHub MCP registrations).
+Then `gh auth login` and a second `chezmoi apply` for the gh extensions.
+
+Day to day: edit in the checkout (`chezmoi cd`), `chezmoi apply`, commit, PR. On another Mac,
+`chezmoi update` pulls and applies what landed. Once per clone: `lefthook install`.
 
 Two steps are by hand, once per machine, both into the login keychain with `-w` last so the
 secret is prompted for and never on argv or in shell history. The agent's 1Password
@@ -43,14 +45,8 @@ security add-internet-password -a claude-agent -s gist.github.com -r htps \
   -T "$(git --exec-path)/git-credential-osxkeychain" -w
 ```
 
-To work from an existing checkout instead of the managed clone, point chezmoi at it once:
-`chezmoi init --source <your checkout> --apply`. The config template records `sourceDir`, so
-there is one clone and an edit here is live immediately. Then `gh auth login` and a second
-`chezmoi apply`: the gh-extensions script skips politely until gh is authenticated.
-
 Preview without touching anything: `chezmoi apply --dry-run --verbose`. Drift:
-`scripts/verify.sh`, which the `com.alxjrvs.dotfiles-verify` LaunchAgent runs daily and which
-notifies on failure. Upgrades are not chezmoi's job: `brew upgrade --formula`, then
+`scripts/verify.sh`, by hand. Upgrades are not chezmoi's job: `brew upgrade --formula`, then
 `mise upgrade` (commit `mise.lock`).
 
 ## Layout
@@ -58,12 +54,12 @@ notifies on failure. Upgrades are not chezmoi's job: `brew upgrade --formula`, t
 ```
 .chezmoiroot            "home" — the source state lives one directory down
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
-home/run_*.sh.tmpl      machine setup, in the order chezmoi runs them (before → files → after)
-home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json, hooks, rules, skills, agents
-home/dot_claude/hooks/  Claude Code guards + their regression suites (suites are chezmoi-ignored)
-home/.chezmoi*          chezmoi's own contract: config template, ignore, remove, externals
-scripts/                the assertions lefthook, CI and verify.sh share; verify.sh itself
-docs/DECISIONS.md       reasons, incidents, measurements — never symlinked, so it costs nothing
+home/run_*              machine setup: brew (onchange), macOS defaults (onchange), provision (every apply)
+home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json, hooks, rules, skills
+home/dot_claude/hooks/  two Claude Code hooks + their regression suites (suites are chezmoi-ignored)
+home/.chezmoi*          chezmoi's own contract: ignore, externals
+scripts/verify.sh       drift check, by hand
+docs/DECISIONS.md       reasons, incidents, measurements — never applied to a machine, so it costs nothing
 ```
 
 ## Forking this repo

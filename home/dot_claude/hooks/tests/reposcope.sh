@@ -9,7 +9,7 @@
 set -u
 
 HERE=$(cd -- "$(dirname -- "$0")" && pwd)
-HOOK=${1:-$(cd -- "$HERE/.." && pwd)/repo-scope-guard.sh}
+HOOK=${1:-$(cd -- "$HERE/.." && pwd)/executable_repo-scope-guard.sh}
 [ -x "$HOOK" ] || {
   echo "reposcope-tests: no executable hook at $HOOK" >&2
   exit 2
