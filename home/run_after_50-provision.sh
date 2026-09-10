@@ -12,8 +12,11 @@ command -v claude > /dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | 
 mise install --yes
 mise prune --yes
 
-# This repo's own commit hook, in the source checkout.
-(cd "$(chezmoi source-path)/.." && lefthook install > /dev/null)
+# This repo's own commit hook, in the source checkout. CHEZMOI_WORKING_TREE is the repo root;
+# never call chezmoi from a run script, the outer apply holds the state lock.
+if [ -f "${CHEZMOI_WORKING_TREE:-}/lefthook.yml" ]; then
+  (cd "$CHEZMOI_WORKING_TREE" && lefthook install > /dev/null)
+fi
 
 # gh extensions, owner-qualified because same-named community forks exist.
 if gh auth status > /dev/null 2>&1; then

@@ -66,6 +66,9 @@ the PRs; when a subject is gone, delete its entry.
 - **Target modes come from the source name** (`executable_`, `private_`), never the checkout.
 - **`run_onchange_` records its hash even when the script exits 0 early.** Anything that may
   need to retry (behind `gh auth login`) belongs in the every-apply script.
+- **A run script cannot call `chezmoi`:** the outer apply holds the persistent-state lock, so
+  the inner one times out and fails the apply. Scripts get `CHEZMOI_SOURCE_DIR` and
+  `CHEZMOI_WORKING_TREE` in their environment instead.
 
 ## Shell and tools
 
