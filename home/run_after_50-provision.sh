@@ -8,8 +8,10 @@ export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:/opt/homebrew/bin:$P
 # Claude Code CLI via the native installer, which self-updates; never brew or npm.
 command -v claude > /dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash
 
-# Every pinned CLI. A no-op when converged; brew (script 10) installs mise itself.
+# node and bun. A no-op when converged; brew (script 10) installs mise itself. prune drops
+# versions no config names any more, and rebuilds the shims so a retired tool cannot shadow brew's.
 mise install --yes
+mise prune --yes
 
 # gh extensions, owner-qualified because same-named community forks exist. Needs an
 # authenticated gh, which on a fresh machine comes after the first apply: skip, converge next time.
@@ -33,9 +35,9 @@ if command -v claude > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
   #
   # No --exclude-tools: the agent may file issues as well as comment. GitHub's `Issues`
   # permission covers both together, so the token cannot separate them either.
-  shims="$HOME/.local/share/mise/shims"
-  if "$shims/github-mcp-server" --version > /dev/null 2>&1; then
-    cmd="GITHUB_PERSONAL_ACCESS_TOKEN=\"\$($HOME/.local/bin/op-sa read op://claude-agent/claude-git-pat/credential)\" exec $shims/github-mcp-server stdio --toolsets context,repos,issues,pull_requests,actions"
+  mcp=/opt/homebrew/bin/github-mcp-server
+  if [ -x "$mcp" ]; then
+    cmd="GITHUB_PERSONAL_ACCESS_TOKEN=\"\$($HOME/.local/bin/op-sa read op://claude-agent/claude-git-pat/credential)\" exec $mcp stdio --toolsets context,repos,issues,pull_requests,actions"
     want=$(jq -cn --arg cmd "$cmd" '{type: "stdio", command: "/bin/sh", args: ["-c", $cmd]}')
     have=$(jq -c '.mcpServers.github // empty | {type, command, args}' "$HOME/.claude.json" 2> /dev/null || true)
     if [ "$have" != "$want" ]; then

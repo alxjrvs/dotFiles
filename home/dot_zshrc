@@ -1,6 +1,5 @@
 # ~/.zshrc: interactive shells. Login-shell PATH lives in ~/.zprofile.
 
-# mise first, so every init below resolves the pinned binary.
 eval "$(mise activate zsh)"
 
 # --- options -----------------------------------------------------------------------------------
@@ -27,8 +26,8 @@ export MANPAGER="sh -c 'col -bx | bat -l man -p'"
 # sharp: force its prebuilt binary; a stray global libvips makes the from-source build fail.
 export SHARP_IGNORE_GLOBAL_LIBVIPS=1
 
-# --- plugins: pinned tarballs placed by .chezmoiexternal.toml ---------------------------------
-source ~/.config/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+# --- plugins: two, from brew; `source` is the plugin manager ---------------------------------
+source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # --- completion --------------------------------------------------------------------------------
 fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
@@ -67,7 +66,7 @@ alias ls='eza --icons --group-directories-first'
 alias vim='nvim'
 
 # --- syntax highlighting: last, because it wraps the ZLE widgets defined above ----------------
-source ~/.config/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 ZSH_HIGHLIGHT_STYLES[command]='fg=#4db8cc'
 ZSH_HIGHLIGHT_STYLES[alias]='fg=#4db8cc'
 ZSH_HIGHLIGHT_STYLES[builtin]='fg=#4db8cc'

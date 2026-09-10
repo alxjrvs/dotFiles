@@ -43,11 +43,8 @@ outside Claude Code's Bash sandbox, which is the only place `op` can reach 1Pass
 Preview without touching anything: `chezmoi apply --dry-run --verbose`. Drift:
 `chezmoi verify --exclude scripts` and `brew bundle check --global --no-upgrade`, by hand.
 
-Three things rot on their own clocks and only one is automated. Dependabot opens a monthly PR
-for the actions in `.github/workflows`. The mise pins and the tag tarballs in
-`home/.chezmoiexternal.toml` move by hand — `mise upgrade --bump`, and for the externals, read
-what changed upstream before bumping the tag in both entries. Nothing observes that they are
-stale, so it is a standing habit or it does not happen.
+Upgrades: `brew upgrade --formula` and `mise upgrade`; Dependabot opens a monthly PR for the
+workflow's actions; the statusline tag in `home/.chezmoiexternal.toml` moves by hand.
 
 ## Layout
 
