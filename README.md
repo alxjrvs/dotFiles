@@ -33,11 +33,16 @@ service-account token, which `~/.local/bin/op-sa` reads:
 security add-generic-password -a "$USER" -s op-claude-agent -w
 ```
 
-And the agent's GitHub PAT, which git's `osxkeychain` helper reads under the account name
-pinned in `home/dot_config/git/agent.gitconfig` (the name is only a keychain key):
+And the agent's GitHub PAT, which git's `osxkeychain` helper reads under the account name pinned
+in `home/dot_config/git/agent.gitconfig` (the name is only a keychain key). `-T` puts that helper
+on the item's ACL, or macOS raises an access dialog on the first agent push and an unattended
+session has no way to answer it; add `-U` when replacing a rotated token:
 
 ```bash
-security add-internet-password -a claude-agent -s github.com -r htps -w
+security add-internet-password -a claude-agent -s github.com -r htps \
+  -T "$(git --exec-path)/git-credential-osxkeychain" -w
+security add-internet-password -a claude-agent -s gist.github.com -r htps \
+  -T "$(git --exec-path)/git-credential-osxkeychain" -w
 ```
 
 Preview without touching anything: `chezmoi apply --dry-run --verbose`. Drift:
@@ -59,7 +64,7 @@ docs/GOTCHAS.md         traps still armed and the rule each forces; never applie
 
 ## Forking this repo
 
-`git grep -il alxjrvs` is the whole list. In order of what breaks first: git identity and
+`git grep -ilE 'alxjrvs|claude-agent|GitHubSSH'` finds every file. In order of what breaks first: git identity and
 signing key (`home/dot_gitconfig`, `home/private_dot_ssh/allowed_signers`), the agent identity
 (`home/dot_claude/settings.json`), the `op://claude-agent/…` references (`settings.json`,
 `home/run_after_50-provision.sh`, `npm/publish.env`), the SSH items in

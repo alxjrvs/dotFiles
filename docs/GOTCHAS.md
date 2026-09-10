@@ -47,6 +47,11 @@ not here; when a subject is gone, delete its entry.
   goes through it (see above), which is most of what kept it busy.
 - **`op run --env-file` only works for an agent through `op-sa`**: the desktop-app integration
   needs Touch ID and is revoked when the app locks.
+- **A keychain item is readable only by the binaries on its ACL.** The agent's PAT is created by
+  `security` but read by `git-credential-osxkeychain`, so it needs
+  `-T "$(git --exec-path)/git-credential-osxkeychain"` at creation, and `-U` when you replace a
+  rotated one. Without it macOS raises a dialog on the first agent push, which an unattended
+  session cannot answer.
 
 ## chezmoi
 
