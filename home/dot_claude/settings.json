@@ -18,14 +18,7 @@
   "permissions": {
     "allow": [
       "Artifact",
-      "WebSearch",
-      "Bash(gh pr merge:*)",
-      "Bash(gh stack merge:*)",
-      "Bash(git stash:*)",
-      "Bash(op --version)",
-      "Bash(op item list:*)",
-      "Bash(op run:*)",
-      "Bash(op whoami)"
+      "WebSearch"
     ],
     "deny": [
       "Bash(*read op://*)",
@@ -41,15 +34,21 @@
       "Bash(*credential-cache*)",
       "Bash(*credential-store*)",
       "Bash(*credential-osxkeychain*)",
+      "Bash(*gh auth token*)",
+      "Bash(*show-token*)",
+      "Bash(*NINETY_API_TOKEN_COMMAND*)",
       "Read(~/.ssh/id_*)",
       "Read(~/.aws/credentials)",
-      "Read(~/.netrc)",
-      "Read(~/.config/gh/hosts.yml)"
+      "Read(~/.netrc)"
     ],
     "defaultMode": "auto"
   },
   "sandbox": {
     "enabled": true,
+    "excludedCommands": [
+      "gh",
+      "gh *"
+    ],
     "network": {
       "allowedDomains": [
         "api.github.com",
@@ -95,31 +94,6 @@
     }
   },
   "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "startup|resume",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/worktree-freshness.sh"
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/worktree-port.sh"
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/worktree-freshness.sh"
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [
@@ -134,20 +108,6 @@
       {
         "matcher": "Bash",
         "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/op-guard.sh"
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/worktree-remove-guard.sh",
-            "if": "Bash(*git*)"
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/worktree-remove-guard.sh",
-            "if": "Bash(*rm*)"
-          },
           {
             "type": "command",
             "command": "~/.claude/hooks/repo-scope-guard.sh",

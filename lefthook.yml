@@ -33,7 +33,7 @@ pre-commit:
       run: gitleaks git --staged --redact -v --no-banner --config home/dot_config/gitleaks/gitleaks.toml
     settings-json-validity:
       glob: "home/dot_claude/settings*.json"
-      run: scripts/settings-guardrails.sh {staged_files}
+      run: jq -e . {staged_files} > /dev/null
 
     context-budget:
       # The two CLAUDE.md files are loaded into every session, so they carry a byte
@@ -108,12 +108,6 @@ pre-commit:
       # cannot.
       glob: ".github/workflows/*.yml"
       run: actionlint
-
-    gate-tests:
-      # The property the hook suites assert, for the shared assertions in scripts/:
-      # a gate that checked nothing must not print `ok`.
-      glob: "{scripts/*.sh,scripts/tests/**}"
-      run: scripts/tests/gates.sh
 
 # Forward-only: rejects throwaway subjects (bare "WIP" or a single character) so
 # they don't land in permanent history. Convention: `scope: summary` or

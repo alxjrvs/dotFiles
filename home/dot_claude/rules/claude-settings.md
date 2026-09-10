@@ -7,14 +7,13 @@ paths:
 
 # Editing a Claude Code settings.json
 
-- **A Bash rule matches the whole command text**, `*` standing for any text. The
-  space before a trailing `*` is load-bearing: `Bash(ls *)` misses `lsof`,
-  `Bash(ls*)` catches it. Verify any new `deny` rule with a positive *and* a
-  negative control before trusting it.
-
-- **The empty-string env vars are load-bearing**, not leftovers: an unset
-  `${VAR}` is passed through as a literal and read as a real value.
-
-`permissions.deny` is a floor, not the whole control — `home/dot_claude/hooks/op-guard.sh`
-sits above it as an allow-list, because a deny-list of verbs fails open on the
-verb nobody thought of.
+- **A Bash rule matches the whole command text**, `*` standing for any text, and it reaches
+  subshells, substitutions and loop bodies. `Bash(op read:*)` is a prefix; `Bash(*op read*)`
+  is a substring and is the form the deny floor uses. Verify a new `deny` rule with a positive
+  and a negative control before trusting it.
+- **Every `Bash(...)` allow entry is inert in auto mode** while `autoMode.classifyAllShell` is
+  true; the classifier judges shell commands instead.
+- **The empty-string env vars are load-bearing**: an unset `${VAR}` is passed through as a
+  literal and read as a real value.
+- **`gh` and `op-sa` are in `sandbox.excludedCommands`** because Go binaries cannot verify TLS
+  inside the macOS sandbox; the sandbox docs prescribe exactly this.
