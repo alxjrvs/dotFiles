@@ -7,9 +7,9 @@ the PRs; when a subject is gone, delete its entry.
 
 - **Go binaries cannot verify TLS inside the Bash sandbox on macOS** (`gh`, `op`, `chezmoi`):
   Seatbelt denies the `com.apple.trustd.agent` Mach lookup that Go's `crypto/x509` needs.
-  `sandbox.enableWeakerNetworkIsolation` re-allows that one lookup and nothing else on macOS;
-  `excludedCommands` is the documented alternative but is skipped for a command inside a shell
-  loop. Linux has no trustd and no such failure.
+  `sandbox.network.allowMachLookup` names that one service and nothing else.
+  `enableWeakerNetworkIsolation` is documented for MITM proxies, and `excludedCommands` is
+  skipped for a command inside a shell loop. Linux has no trustd and no such failure.
 - **The sandbox is not the whole control for secrets.** The keychain is reachable inside it and
   a `gh alias` body runs unsandboxed, so `op-sa`, `security find-*`, `gh auth token` and
   `gh alias` are text-denied in `permissions.deny`.

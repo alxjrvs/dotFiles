@@ -70,6 +70,9 @@
   "sandbox": {
     "enabled": true,
     "network": {
+      "allowMachLookup": [
+        "com.apple.trustd.agent"
+      ],
       "allowedDomains": [
         "api.github.com",
         "codeload.github.com",
@@ -112,8 +115,7 @@
           "mode": "deny"
         }
       ]
-    },
-    "enableWeakerNetworkIsolation": true
+    }
   },
   "askUserQuestionTimeout": "10m",
   "autoMemoryEnabled": false,
