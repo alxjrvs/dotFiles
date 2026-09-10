@@ -51,7 +51,7 @@ Preview without touching anything: `chezmoi apply --dry-run --verbose`. Drift:
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/run_*              machine setup: brew (onchange), macOS defaults (onchange), provision (every apply)
 home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json, hooks, rules, skills
-home/dot_claude/hooks/  two Claude Code hooks + their regression suites (suites are chezmoi-ignored)
+home/dot_claude/hooks/  the Stop-hook commit gate + its regression suite (suites are chezmoi-ignored)
 home/.chezmoi*          chezmoi's own contract: ignore, externals
 scripts/verify.sh       drift check, by hand
 docs/GOTCHAS.md         traps still armed and the rule each forces; never applied to a machine
@@ -62,9 +62,12 @@ docs/GOTCHAS.md         traps still armed and the rule each forces; never applie
 `git grep -ilE 'alxjrvs|claude-agent|GitHubSSH'` finds every file. In order of what breaks first: git identity and
 signing key (`home/dot_gitconfig`, `home/private_dot_ssh/allowed_signers`), the agent identity
 (`home/dot_claude/settings.json`), the `op://claude-agent/…` references (`settings.json`,
-`home/run_after_50-provision.sh`, `npm/publish.env`), the SSH items in
-`home/dot_config/1Password/ssh/agent.toml`, and the owned orgs in
-`home/dot_claude/hooks/guard-lib.sh`, which decide where an agent may write.
+`home/run_after_50-provision.sh`, `npm/publish.env`), and the SSH items in
+`home/dot_config/1Password/ssh/agent.toml`.
+
+What an agent may write is scoped by ACTION, not by repo owner, so there is no list to port:
+the `--exclude-tools` roster on the MCP registration in `home/run_after_50-provision.sh`, the
+`gh` verb rules in `permissions.deny`, and one rule in `home/dot_claude/CLAUDE.md`.
 
 ## Where the reasoning lives
 
