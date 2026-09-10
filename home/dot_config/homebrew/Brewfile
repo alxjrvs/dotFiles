@@ -27,7 +27,6 @@ brew "gh"
 brew "git-delta"
 brew "github-mcp-server" # registered by run_after_50-provision.sh
 brew "gitleaks"
-brew "lefthook"
 
 # ── Files and text ────────────────────────────────────────────────────
 brew "bat"

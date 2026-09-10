@@ -17,8 +17,8 @@ chezmoi init --source ~/Code/dotFiles --apply
 source to that checkout; `apply` puts files into `~`, then runs the three scripts in
 [`home/.chezmoiscripts/`](home/.chezmoiscripts/): the Homebrew bundle (when the Brewfile
 changes), macOS defaults (when they change), and provisioning on every apply (Claude Code CLI,
-`mise install`, gh extensions, this repo's commit hook, plugins, the MCP registrations). Then
-`gh auth login` and `chezmoi apply` again for the extensions and the GitHub MCP.
+`mise install`, gh extensions, plugins, the MCP registrations). Then `gh auth login` and
+`chezmoi apply` again for the extensions and the GitHub MCP.
 
 A Linux box gets the portable core (shell, git, editor, `~/.claude`) and none of the Mac-only
 files, per [`home/.chezmoiignore`](home/.chezmoiignore); packages are its own business.
@@ -33,7 +33,8 @@ gh auth login
 For the plugin tokens there, the service-account token goes in `~/.config/op-sa/token`, mode
 0600, instead of the keychain.
 
-Day to day: edit in the checkout (`chezmoi cd`), `chezmoi apply`, commit, PR. Another Mac:
+Day to day: edit in the checkout (`chezmoi cd`), `chezmoi apply`, commit, PR. CI is the gate;
+`git config core.hooksPath .githooks` runs its static checks before each commit. Another Mac:
 `chezmoi update`. Drift: `chezmoi verify` and `brew bundle check --global --no-upgrade`.
 Upgrades: `brew upgrade --formula`, `mise upgrade`; the statusline tag in
 `home/.chezmoiexternal.toml` moves by hand. After editing the config template, `chezmoi init`

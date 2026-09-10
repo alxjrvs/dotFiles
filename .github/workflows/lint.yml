@@ -1,8 +1,8 @@
 name: lint
 
-# The local lefthook gate, re-run on a runner; `lint` is the status check the main ruleset requires.
-# `apply-linux` is the only Linux test this repo can have: the source rendered and applied on
-# ubuntu, then the shell and git config exercised from the applied home.
+# One job, because `lint` is the status check the main ruleset requires: the four static checks,
+# then the source rendered and applied on ubuntu with the applied shell and git config exercised.
+# That apply is the only Linux test this repo can have.
 
 on:
   push:
@@ -15,36 +15,33 @@ permissions:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      # The runner image ships Homebrew off PATH.
-      - run: echo /home/linuxbrew/.linuxbrew/bin >> "$GITHUB_PATH"
-      - run: brew install lefthook gitleaks shellcheck zsh
-      # --all-files: nothing is staged on a runner, so every glob would otherwise see nothing.
-      - run: lefthook run pre-commit --all-files
-      # The roster's gitleaks scans the staged diff, which is empty here; this scans the tree.
-      - run: gitleaks dir . --redact --no-banner
-
-  apply-linux:
-    runs-on: ubuntu-latest
     env:
+      HOME_T: ${{ github.workspace }}/../home
       CHEZMOI_ARGS: --config ${{ github.workspace }}/../chezmoi.toml --persistent-state ${{ github.workspace }}/../chezmoi.db --destination ${{ github.workspace }}/../home
     steps:
       - uses: actions/checkout@v7
-      - run: sudo apt-get install -y -q zsh
+      - run: sudo apt-get install -y -q shellcheck zsh jq
+      - run: shellcheck -x home/.chezmoiscripts/* home/dot_local/bin/* .githooks/*
+      - run: for f in home/dot_zshrc home/dot_zprofile; do zsh -n "$f"; done
+      - run: for f in $(git ls-files '*.json'); do jq -e . "$f" > /dev/null; done
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - run: mkdir -p "$GITHUB_WORKSPACE/../home"
+      - run: mkdir -p "$HOME_T"
       # init renders home/.chezmoi.toml.tmpl; apply lays down every non-Mac file, externals included.
       - run: chezmoi init --source "$GITHUB_WORKSPACE" $CHEZMOI_ARGS
       - run: chezmoi $CHEZMOI_ARGS ignored
       - run: chezmoi $CHEZMOI_ARGS apply --exclude scripts
       - run: chezmoi $CHEZMOI_ARGS verify --exclude scripts
       # The applied shell must start with none of the guarded tools present.
-      - run: HOME="$GITHUB_WORKSPACE/../home" zsh -l -i -c 'echo shell ok'
-      # The Mac half of git config is absent here; the include must be silently skipped.
-      # --includes: `--global` alone defaults to --no-includes.
+      - run: HOME="$HOME_T" zsh -l -i -c 'echo shell ok'
+      # The Mac half of git config is absent here; the include must be silently skipped. The
+      # runner exports its own XDG_CONFIG_HOME, and `--global` alone defaults to --no-includes.
       - run: |
-          export HOME="$GITHUB_WORKSPACE/../home"
+          export HOME="$HOME_T" XDG_CONFIG_HOME="$HOME_T/.config"
+          git config --global --includes --list --show-origin
           test "$(git config --global --includes --get user.name)" = alxjrvs
           test -z "$(git config --global --includes --get commit.gpgSign)"
           test "$(git config --global --includes --get-all credential.https://github.com.helper | tail -1)" = '!gh auth git-credential'
