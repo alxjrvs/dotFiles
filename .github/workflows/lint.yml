@@ -62,6 +62,12 @@ jobs:
       - name: gitleaks
         run: gitleaks dir . --redact --no-banner --config home/dot_config/gitleaks/gitleaks.toml
 
+      # The one roster check that lives here instead: taplo panics in Claude Code's Bash
+      # sandbox, and nothing is sandboxed on a runner. Explicit file list because bare
+      # `taplo check` resolves its own include patterns and can cover nothing silently.
+      - name: toml-validity
+        run: git ls-files -z '*.toml' | xargs -0 taplo check --no-schema
+
       # The one step that asks the engine whether the source state still applies. `--dry-run`
       # runs no script; it renders every file and template into a temp destination. Externals
       # are excluded, though chezmoi still reads each archive's index to know its entries.
