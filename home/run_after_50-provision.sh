@@ -27,17 +27,18 @@ if gh auth status > /dev/null 2>&1; then
 fi
 
 # User-scoped MCP servers live only in ~/.claude.json, which nothing tracks, so they converge here.
+# Absolute paths: the desktop app does not always hand spawned servers the login shell's PATH.
 if command -v claude > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
   op_mcp=/Applications/1Password.app/Contents/MacOS/1password-mcp
   if [ -x "$op_mcp" ] && ! jq -e '.mcpServers["1password"]' "$HOME/.claude.json" > /dev/null 2>&1; then
     claude mcp add --scope user 1password -- "$op_mcp"
   fi
-  # Absolute paths and /bin/sh: the desktop app spawns MCP servers with a bare environment.
-  # Re-registered whenever the recorded entry differs from this one. No --exclude-tools: the
-  # agent may file issues as well as comment, and GitHub's Issues permission cannot split them.
-  mcp=/opt/homebrew/bin/github-mcp-server
-  if [ -x "$mcp" ]; then
-    cmd="GITHUB_PERSONAL_ACCESS_TOKEN=\"\$($HOME/.local/bin/op-sa read op://claude-agent/claude-git-pat/credential)\" exec $mcp stdio --toolsets context,repos,issues,pull_requests,actions"
+  # GitHub on gh's own token: one identity for the human, the agent and the MCP. Re-registered
+  # whenever the recorded entry differs from this one.
+  mcp=$(command -v github-mcp-server || true)
+  gh_bin=$(command -v gh || true)
+  if [ -n "$mcp" ] && [ -n "$gh_bin" ]; then
+    cmd="GITHUB_PERSONAL_ACCESS_TOKEN=\"\$($gh_bin auth token)\" exec $mcp stdio --toolsets context,repos,issues,pull_requests,actions"
     want=$(jq -cn --arg cmd "$cmd" '{type: "stdio", command: "/bin/sh", args: ["-c", $cmd]}')
     have=$(jq -c '.mcpServers.github // empty | {type, command, args}' "$HOME/.claude.json" 2> /dev/null || true)
     if [ "$have" != "$want" ]; then
@@ -46,20 +47,3 @@ if command -v claude > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
     fi
   fi
 fi
-
-# The agent's GitHub PAT, from the vault into the login keychain on every apply, so a rotation
-# in 1Password lands on the next apply. Written by git's own helper (that puts the helper on the
-# item's ACL), value on stdin, `erase` then `store` (before git 2.45 store is a silent no-op on
-# an existing item, and re-creating it keeps the ACL current). No service-account token yet is
-# the fresh-machine case and skips quietly; a token that no longer works says so.
-_helper="$(git --exec-path)/git-credential-osxkeychain"
-if security find-generic-password -s op-claude-agent > /dev/null 2>&1 && [ -x "$_helper" ]; then
-  if _pat=$("$HOME/.local/bin/op-sa" read op://claude-agent/claude-git-pat/credential) && [ -n "$_pat" ]; then
-    printf 'protocol=https\nhost=github.com\nusername=claude-agent\n\n' | "$_helper" erase || true
-    printf 'protocol=https\nhost=github.com\nusername=claude-agent\npassword=%s\n\n' "$_pat" |
-      "$_helper" store || echo "provision: could not store the agent PAT; agent pushes will prompt" >&2
-  else
-    echo "provision: could not read the agent PAT from the vault; is the service-account token still valid?" >&2
-  fi
-fi
-unset _pat _helper
