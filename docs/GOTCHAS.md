@@ -53,6 +53,14 @@ not here; when a subject is gone, delete its entry.
 - **Service-account tokens have no visible expiry** anywhere in 1Password (no CLI, no UI, no
   alert), so an expired one fails every resolve at once. Mint with the default lifetime and
   revoke on incident rather than scheduling a rotation nothing can observe.
+- **The agent's GitHub PAT is fine-grained, so it expires — which inverts the entry above.**
+  One year maximum, and GitHub mails a warning: an observable clock, unlike the service-account
+  token beside it. What lapses is every agent push and every `mcp__github__*` call at once, so a
+  push that suddenly asks for a password is this, not a broken credential helper.
+- **A fine-grained PAT needs `Workflows: write` to push a change under `.github/workflows/`**,
+  and `Actions: read` before any `mcp__github__*` run or job-log tool answers. Neither failure
+  names the missing permission usefully — the push is rejected outright and the tools simply
+  return nothing — so grant both when minting rather than diagnosing it later.
 - **Service-account rate limits are per account per day** on personal plans; git no longer
   goes through it (see above), which is most of what kept it busy.
 - **`op run --env-file` only works for an agent through `op-sa`**: the desktop-app integration
