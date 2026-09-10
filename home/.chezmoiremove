@@ -8,3 +8,7 @@
 .claude/rules/claude-settings.md
 .config/zsh/claude.zsh
 .config/zsh/plugins
+.claude/rules/guards.md
+.claude/bin/gh-ci
+.claude/gh-config
+.claude/hooks/tests

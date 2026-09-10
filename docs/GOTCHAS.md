@@ -57,11 +57,6 @@ the PRs; when a subject is gone, delete its entry.
 
 ## chezmoi
 
-- **`chezmoi verify` counts an every-apply script as a difference:** drift checks use
-  `--exclude scripts`.
-- **`chezmoi init` writes no config when the source has none, and removes none that exists.**
-  A machine from before this repo dropped its template keeps `mode = "symlink"` in
-  `~/.config/chezmoi/chezmoi.toml` until that file is deleted.
 - **Nothing removes a target whose source was deleted.** `.chezmoiremove` is the one mechanism.
 - **Target modes come from the source name** (`executable_`, `private_`), never the checkout.
 - **`run_onchange_` records its hash even when the script exits 0 early.** Anything that may

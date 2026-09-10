@@ -9,19 +9,22 @@ macOS dotfiles for [alxjrvs](https://github.com/alxjrvs), managed by
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew install chezmoi
-chezmoi init --apply alxjrvs/dotFiles
+git clone https://github.com/alxjrvs/dotFiles ~/Code/dotFiles
+chezmoi init --source ~/Code/dotFiles --apply
 ```
 
-That clones to `~/.local/share/chezmoi` and applies: files into `~`, then the three `run_`
-scripts in [`home/`](home/): the Homebrew bundle (when the Brewfile changes), macOS defaults
-(when they change), and provisioning on every apply (Claude Code CLI, `mise install`, gh
-extensions, this repo's commit hook, the MCP registrations, the agent's PAT). Then
-`gh auth login` and `chezmoi apply` again for the extensions.
+`init` renders `home/.chezmoi.toml.tmpl` into `~/.config/chezmoi/chezmoi.toml`, which pins the
+source to that checkout; `apply` puts files into `~`, then runs the three `run_` scripts in
+[`home/`](home/): the Homebrew bundle (when the Brewfile changes), macOS defaults (when they
+change), and provisioning on every apply (Claude Code CLI, `mise install`, gh extensions, this
+repo's commit hook, the MCP registrations, the agent's PAT). Then `gh auth login` and
+`chezmoi apply` again for the extensions.
 
 Day to day: edit in the checkout (`chezmoi cd`), `chezmoi apply`, commit, PR. Another Mac:
-`chezmoi update`. Drift: `chezmoi verify --exclude scripts` and
-`brew bundle check --global --no-upgrade`. Upgrades: `brew upgrade --formula`, `mise upgrade`;
-the statusline tag in `home/.chezmoiexternal.toml` moves by hand.
+`chezmoi update`. Drift: `chezmoi verify` and `brew bundle check --global --no-upgrade`.
+Upgrades: `brew upgrade --formula`, `mise upgrade`; the statusline tag in
+`home/.chezmoiexternal.toml` moves by hand. After editing the config template, `chezmoi init`
+again.
 
 ## The agent
 
@@ -46,7 +49,7 @@ outside Claude Code's Bash sandbox, and `op` cannot reach 1Password from inside 
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/run_*              machine setup: brew (onchange), macOS defaults (onchange), provision (every apply)
 home/dot_claude/        user-global Claude Code config
-home/.chezmoi*          chezmoi's own contract: externals, removals
+home/.chezmoi*          chezmoi's own contract: config template, version floor, externals, removals
 docs/GOTCHAS.md         traps still armed and the rule each forces; never applied to a machine
 ```
 
