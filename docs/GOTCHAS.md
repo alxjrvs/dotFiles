@@ -13,19 +13,13 @@ not here; when a subject is gone, delete its entry.
 - **The `git credential-cache` socket is blocked in the sandbox** and `op` fails there, so the
   agent's push credential is git's own `osxkeychain` helper with a pinned username, never `op`.
 - **A tool that writes its own cache or reads system config fails INSIDE the sandbox, and says
-  so in its own vocabulary rather than the sandbox's.** Two measured instances, both of which
-  look like the repo is broken:
-  - `taplo` panics ("Attempted to create a NULL object" — `system-configuration` reading
-    SCDynamicStore), so the commit gate's `toml-validity` step aborts and an agent cannot
-    commit a `.toml` change at all. `--no-schema` does not help, the HTTP client is built
-    before schemas are consulted; nor does pinning `ALL_PROXY`/`NO_PROXY`.
-  - `brew bundle check` exits nonzero while printing "The Brewfile's dependencies are
-    satisfied", because it cannot write `~/Library/Caches/Homebrew`. `scripts/verify.sh`
-    reports FAIL on a converged machine.
-
-  `sandbox.excludedCommands` fixes neither: it matches the command the agent TYPED, and both of
-  these are grandchildren of one (`git commit`, `scripts/verify.sh`). Run both from a normal
-  terminal, and do not trust a red line from a sandboxed run without reading what it printed.
+  so in its own vocabulary rather than the sandbox's** — it looks like the repo is broken.
+  `taplo` panics on SCDynamicStore ("Attempted to create a NULL object"); `brew bundle check`
+  exits nonzero while printing that the Brewfile is satisfied. `sandbox.excludedCommands` fixes
+  neither: it matches the command the agent TYPED, and both are grandchildren of one. Give the
+  tool a writable cache where that is the cause (`scripts/verify.sh` sets `HOMEBREW_CACHE`), or
+  move it off the local gate entirely (taplo runs in CI, not lefthook). Do not trust a red line
+  from a sandboxed run without reading what it printed.
 - **A `!` negation inside an excluded DIRECTORY is silently inert.** git never descends into an
   ignored directory, so `.claude/` plus `!.claude/settings.json` does not track that file —
   re-including one needs `.claude/*` (the glob) instead. Nothing here needs that today; the

@@ -3,13 +3,12 @@
 # checks it does not make. Exit 1 on any failure. `--exclude scripts`: verify counts an
 # every-apply script as a difference. Upgrades are not drift (`brew upgrade --formula`,
 # `mise upgrade`), and nothing here resolves a secret: the keychain check reads metadata only.
-#
-# FROM A NORMAL TERMINAL, not an agent. Inside Claude Code's Bash sandbox `brew bundle check`
-# reports FAIL while printing "The Brewfile's dependencies are satisfied" — it exits nonzero
-# because it cannot write its own API cache, not because anything drifted. A drift check that
-# cries wolf is worse than none, so do not read a red line from a sandboxed run.
 set -uo pipefail
 export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:/opt/homebrew/bin:$PATH"
+
+# `brew bundle check` exits nonzero when it cannot write its own API cache, while printing that
+# the Brewfile is satisfied. Conditional so a normal terminal keeps brew's real cache.
+[ -w "$HOME/Library/Caches/Homebrew" ] || export HOMEBREW_CACHE="${TMPDIR:-/tmp}/homebrew-cache"
 
 fail=0
 check() { # $1 = label, $2... = command
