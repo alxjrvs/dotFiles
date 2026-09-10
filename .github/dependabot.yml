@@ -1,7 +1,5 @@
 # Only the actions in .github/workflows: nothing else here is a dependency Dependabot
-# understands. The mise pins and the .chezmoiexternal.toml tag tarballs are the other two
-# things that rot, and both move by hand — `mise upgrade --bump`, then read what changed in
-# the external repos. Dependabot has no backend for either.
+# understands. The statusline tag in home/.chezmoiexternal.toml moves by hand.
 version: 2
 updates:
   - package-ecosystem: github-actions

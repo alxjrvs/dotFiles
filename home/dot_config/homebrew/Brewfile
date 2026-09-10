@@ -1,5 +1,6 @@
 # ~/.config/homebrew/Brewfile — every CLI and app on the machine. Runtimes (node, bun) are
-# mise's, in ~/.config/mise/config.toml.
+# mise's, in ~/.config/mise/config.toml; brew's own node arrives as a dependency of the two
+# npm-built language servers and sits behind mise's shims on PATH.
 #
 # `chezmoi apply` reconciles (`brew bundle --no-upgrade`) and never upgrades: a cask upgrade
 # replaces the .app and quits the running program. Upgrading is `brew upgrade --formula`, and
@@ -21,8 +22,9 @@ brew "zsh-autosuggestions"
 brew "zsh-syntax-highlighting"
 
 # ── Git ───────────────────────────────────────────────────────────────
-brew "delta"
 brew "gh"
+brew "git-delta"
+brew "github-mcp-server" # registered by run_after_50-provision.sh
 brew "gitleaks"
 brew "lefthook"
 
