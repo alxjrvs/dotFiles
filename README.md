@@ -58,7 +58,7 @@ Claude Code's Bash sandbox). Repeat the second when the agent's PAT is rotated, 
    ```
 
 Preview without touching anything: `chezmoi apply --dry-run --verbose`. Drift:
-`chezmoi verify --exclude scripts` and `brew bundle check --no-upgrade --file=~/.config/homebrew/Brewfile`, by hand.
+`chezmoi verify --exclude scripts` and `brew bundle check --global --no-upgrade`, by hand.
 
 Upgrades: `brew upgrade --formula` and `mise upgrade`; Dependabot opens a monthly PR for the
 workflow's actions; the statusline tag in `home/.chezmoiexternal.toml` moves by hand.
@@ -69,7 +69,7 @@ workflow's actions; the statusline tag in `home/.chezmoiexternal.toml` moves by 
 .chezmoiroot            "home" — the source state lives one directory down
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/run_*              machine setup: brew (onchange), macOS defaults (onchange), provision (every apply)
-home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json, rules
+home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json
 home/.chezmoi*          chezmoi's own contract: ignore, externals
 docs/GOTCHAS.md         traps still armed and the rule each forces; never applied to a machine
 ```
