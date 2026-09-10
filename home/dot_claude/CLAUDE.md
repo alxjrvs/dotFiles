@@ -25,7 +25,7 @@ Nothing goes in this file that fits elsewhere.
 | a procedure | a skill in `home/dot_claude/skills/` |
 | it only matters for some files | a path-scoped rule in `home/dot_claude/rules/` — free until one is read |
 | it must hold | a hook, `permissions.deny`, or a `scripts/verify.sh` check |
-| a reason, an incident, a measurement | `docs/DECISIONS.md` |
+| a trap still armed, and the rule it forces | `docs/GOTCHAS.md` |
 | already enforced | nowhere. Describing a control is not the control. |
 
 Never record a measurement against a tool version here: it expires unnoticed and nothing owns it.

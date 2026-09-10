@@ -90,7 +90,7 @@ local formatters = {
   bash = { "shfmt", "-i", "2", "-ci", "-sr" },
   -- biome check --write applies formatting + safe lint fixes (incl. import
   -- sorting) and prints the result to stdout; --stdin-file-path's extension
-  -- tells biome the language. Mirrors the `biome check` lefthook/CI gate.
+  -- tells biome the language.
   typescript = { "biome", "check", "--write", "--stdin-file-path=stdin.ts" },
   typescriptreact = { "biome", "check", "--write", "--stdin-file-path=stdin.tsx" },
   javascript = { "biome", "check", "--write", "--stdin-file-path=stdin.js" },

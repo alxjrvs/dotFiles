@@ -8,7 +8,7 @@
 # client and the whole set of "wants to access data from other apps" dialogs
 # comes back. Nothing is misconfigured; the recommended install layout guarantees
 # this. The ClaudeCode.app bundle beside versions/ is Anthropic's own (background
-# sessions already re-exec through it, so it holds the grants); docs/DECISIONS.md
+# sessions already re-exec through it, so it holds the grants); docs/GOTCHAS.md
 # has the measurement.
 #
 # Why a shell function and NOT a launcher at ~/.local/bin/claude. Leaving that
