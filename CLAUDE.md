@@ -1,8 +1,8 @@
 # dotFiles
 
 A [chezmoi](https://www.chezmoi.io) source repo — there is no engine code here. `home/` is the
-source state (chezmoi's `dot_`/`private_` naming), `chezmoi verify` is the drift
-check, and everything else is repo plumbing. `chezmoi apply` reconciles the machine.
+source state (chezmoi's `dot_`/`private_` naming), and everything else is repo plumbing.
+`chezmoi apply` reconciles the machine.
 
 ## Principles
 
@@ -32,8 +32,8 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 - `gh` auth is keychain-backed; never `--insecure-storage`.
 - nvim is plugin-free. `home/dot_claude/settings.json` carries only divergences from defaults;
   don't tidy a key away without reading why it is there.
-- Secrets: `op://` references only, never a plaintext token, never a `${VAR}` in a tracked
-  `.mcp.json`. To use a secret, pass it (`op run --env-file=F -- CMD`), never read it.
+- Secrets: `op://` references only, never a plaintext token. To use a secret, pass it
+  (`op run --env-file=F -- CMD`), never read it.
 - A source file's mode comes from its name (`executable_`, `private_`), never from the checkout.
 - Traps still armed and the rule each forces: `docs/GOTCHAS.md`. Outside `home/`, so it never
   reaches a machine and costs nothing per session. History is the PRs, not a file.

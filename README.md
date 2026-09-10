@@ -41,7 +41,7 @@ the next apply propagates it. That step is automatic rather than in this list be
 outside Claude Code's Bash sandbox, which is the only place `op` can reach 1Password at all.
 
 Preview without touching anything: `chezmoi apply --dry-run --verbose`. Drift:
-`chezmoi verify --exclude scripts` and `brew bundle check --no-upgrade --file=~/.config/homebrew/Brewfile`, by hand.
+`chezmoi verify --exclude scripts` and `brew bundle check --global --no-upgrade`, by hand.
 
 Three things rot on their own clocks and only one is automated. Dependabot opens a monthly PR
 for the actions in `.github/workflows`. The mise pins and the tag tarballs in
@@ -55,7 +55,7 @@ stale, so it is a standing habit or it does not happen.
 .chezmoiroot            "home" — the source state lives one directory down
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/run_*              machine setup: brew (onchange), macOS defaults (onchange), provision (every apply)
-home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json, rules
+home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json
 home/.chezmoi*          chezmoi's own contract: ignore, externals
 docs/GOTCHAS.md         traps still armed and the rule each forces; never applied to a machine
 ```
