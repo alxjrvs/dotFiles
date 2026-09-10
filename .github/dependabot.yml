@@ -1,4 +1,5 @@
-# The workflow's actions are the only dependency Dependabot understands here.
+# Only the actions in .github/workflows: nothing else here is a dependency Dependabot
+# understands. The statusline tag in home/.chezmoiexternal.toml moves by hand.
 version: 2
 updates:
   - package-ecosystem: github-actions

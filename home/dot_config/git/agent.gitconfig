@@ -13,8 +13,12 @@
 	insteadOf = ssh://git@github.com/
 
 # The agent's PAT from the login keychain, pinned to its own username so the human's entry is
-# never returned. Seeded once per machine; see the README.
+# never returned. Seeded on every apply by run_after_50-provision.sh, which is also what puts
+# this helper on the item's ACL.
 [credential "https://github.com"]
 	helper =
 	helper = osxkeychain
 	username = claude-agent
+# No helper at all for gists, so an agent gist push fails closed instead of using the human's.
+[credential "https://gist.github.com"]
+	helper =

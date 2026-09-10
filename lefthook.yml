@@ -5,5 +5,11 @@ pre-commit:
     shellcheck:
       glob: "{*.sh,home/run_*,home/dot_local/bin/*}"
       run: shellcheck -x {staged_files}
+    zsh-syntax:
+      glob: "{*.zsh,home/dot_zshrc,home/dot_zprofile}"
+      run: for f in {staged_files}; do zsh -n "$f" || exit 1; done
+    json-validity:
+      glob: "*.json"
+      run: jq -e . {staged_files} > /dev/null
     gitleaks:
       run: gitleaks git --staged --redact --no-banner
