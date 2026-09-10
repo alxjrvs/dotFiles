@@ -18,7 +18,7 @@ jobs:
       # The runner image ships Homebrew off PATH.
       - run: echo /home/linuxbrew/.linuxbrew/bin >> "$GITHUB_PATH"
       - run: brew install lefthook gitleaks shellcheck
-      # --all-files: a runner has no index, so the shellcheck glob would otherwise see nothing.
+      # --all-files: nothing is staged on a runner, so every glob would otherwise see nothing.
       - run: lefthook run pre-commit --all-files
-      # The gate scans the index; the remote question is whether the tree holds a secret.
+      # The roster's gitleaks scans the staged diff, which is empty here; this scans the tree.
       - run: gitleaks dir . --redact --no-banner
