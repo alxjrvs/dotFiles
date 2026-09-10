@@ -12,6 +12,9 @@ command -v claude > /dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | 
 mise install --yes
 mise prune --yes
 
+# This repo's own commit hook, in the source checkout.
+(cd "$(chezmoi source-path)/.." && lefthook install > /dev/null)
+
 # gh extensions, owner-qualified because same-named community forks exist.
 if gh auth status > /dev/null 2>&1; then
   installed=$(gh extension list 2> /dev/null | awk '{print $3}')

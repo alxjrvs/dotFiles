@@ -1,11 +1,7 @@
-# Login shells. PATH belongs here, after macOS's /etc/zprofile has run path_helper, which rebuilds
-# PATH from scratch and demotes anything a .zshenv set. Scripts and launchd jobs set their own.
+# Login shells. PATH goes here, after /etc/zprofile's path_helper has rebuilt it from scratch.
+# No GitHub token and no SSH_AUTH_SOCK: gh and git resolve credentials on demand, and signing
+# and ssh both go through the 1Password agent.
 eval "$(/opt/homebrew/bin/brew shellenv)"
 export XDG_CONFIG_HOME="$HOME/.config"
 typeset -U path PATH
 path=("$HOME/.local/bin" "$HOME/.local/share/mise/shims" $path)
-
-# No GitHub token in the environment: it would sit in every subprocess an agent spawns. `gh` and
-# the agent's git credential helper resolve one on demand. Signing and ssh both go through the
-# single 1Password agent (gpg.format = ssh + op-ssh-sign; ssh/config IdentityAgent), so there is
-# no SSH_AUTH_SOCK export and no second agent.

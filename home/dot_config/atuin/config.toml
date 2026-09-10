@@ -1,27 +1,14 @@
-# Atuin — minimal overrides. Everything else is upstream defaults.
-# Full reference: https://docs.atuin.sh/configuration/config/
+# Atuin: only divergences from defaults. https://docs.atuin.sh/configuration/config/
 
-# Match the shell's vi-mode (zsh `bindkey -v`).
 keymap_mode = "vim-normal"
-
-# Compact rendering — less screen-takeover than the default full TUI.
 style = "compact"
 inline_height = 20
-
-# Scope history search/cycling to the current repo (git root) rather than
-# globally — most Ctrl-R recall is "what did I run in this project".
+# Scope search to the current repo; the daemon's in-memory index keeps that cheap.
 workspaces = true
-
-# Fuzzy search served from the daemon's in-memory index instead of SQLite per keystroke:
-# `workspaces = true` makes every search a repeated scoped query, which is what a hot index
-# accelerates, and the daemon also removes the per-command sync fork from shell startup.
 search_mode = "daemon-fuzzy"
 
-# Drop accidentally-typed secrets BEFORE they are stored or synced; zsh's
-# HIST_IGNORE_SPACE does not propagate to atuin's preexec hook. Atuin's own
-# `secrets_filter` (default true) already covers well-known token shapes; this
-# adds the `key: value` form it does not. Top-level, not `[history]`: atuin's parser
-# silently discards unknown keys.
+# Drop typed secrets before they are stored: zsh's HIST_IGNORE_SPACE does not reach atuin's
+# hook, and the default secrets_filter misses the `key: value` form. Top-level, not [history].
 history_filter = [
   "(?i)(password|secret|token|apikey|api[_-]?key|pat)\\s*[:=]\\s*\\S+",
   "gh[oprsu]_[A-Za-z0-9]{20,}",

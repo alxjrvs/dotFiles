@@ -42,10 +42,7 @@ zstyle ':completion:*:descriptions' format '[%d]'
 zstyle ':completion:*:git-checkout:*' sort false
 
 # --- tools -------------------------------------------------------------------------------------
-# fzf binds Ctrl-R in emacs, viins AND vicmd; an empty command makes it skip all three, so
-# atuin's binding wins. atuin itself binds only emacs and viins (plus `/` in vicmd), so vicmd
-# gets an explicit binding below or Ctrl-R there falls back to zsh's `redo`. Ctrl-T and Alt-C
-# stay fzf's.
+# Empty so fzf skips its Ctrl-R binding and atuin's wins; vicmd gets atuin's explicitly below.
 export FZF_CTRL_R_COMMAND=
 export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40% --color=bg+:#3b4252,bg:#2e3440,spinner:#81a1c1,hl:#a3be8c,fg:#d8dee9,header:#a3be8c,info:#ebcb8b,pointer:#81a1c1,marker:#81a1c1,prompt:#81a1c1'
 export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow'

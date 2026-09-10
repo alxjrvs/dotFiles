@@ -2,8 +2,5 @@
 --max-columns-preview
 --smart-case
 --hidden
-# --hidden without this walks the object store on every search. ripgrep's own
-# flag docs: "--hidden will include files and folders like .git ... you must
-# explicitly ignore them using another flag or ignore file". rg has no
-# auto-loaded global ignore file, so it goes here rather than beside fd's.
+# --hidden alone walks the object store; rg has no global ignore file, so it lives here.
 --glob=!.git/

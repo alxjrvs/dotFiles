@@ -1,6 +1,7 @@
-# ~/.config/homebrew/Brewfile — every CLI and app on the machine. Runtimes (node, bun) are
+# ~/.config/homebrew/Brewfile — the CLIs and apps on the machine. Runtimes (node, bun) are
 # mise's, in ~/.config/mise/config.toml; brew's own node arrives as a dependency of the two
-# npm-built language servers and sits behind mise's shims on PATH.
+# npm-built language servers and sits behind mise's shims on PATH. The Claude Code CLI is the
+# native installer (run_after_50) and git is Xcode's.
 #
 # `chezmoi apply` reconciles (`brew bundle --no-upgrade`) and never upgrades: a cask upgrade
 # replaces the .app and quits the running program. Upgrading is `brew upgrade --formula`, and
