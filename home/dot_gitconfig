@@ -8,16 +8,11 @@
 [user]
 	name = alxjrvs
 	email = alxjrvs@gmail.com
-	# The public half of the 1Password "GitHubSSH" item, offered identically on every machine by
-	# the agent named under [gpg "ssh"]. ~/.ssh/allowed_signers carries the same key so
-	# `git log --show-signature` verifies locally.
+	# The public half of the 1Password "GitHubSSH" item; ~/.ssh/allowed_signers has it too.
 	signingkey = key::ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKjF9JmW396EbH0n1zWeU7eT+2VvMFZAn+A1WKAi4tqT
 [credential]
 	helper = osxkeychain
-# GitHub HTTPS auth via the gh CLI (keychain-backed). Lets git push resolve a
-# token on demand instead of needing a PAT in the environment. The empty
-# `helper =` resets the inherited osxkeychain helper for github.com so gh is
-# used. Mirrors `gh auth setup-git`.
+# github.com through gh's keychain token instead (what `gh auth setup-git` writes).
 [credential "https://github.com"]
 	helper =
 	helper = !gh auth git-credential
@@ -51,8 +46,7 @@
 	prune = true
 	writeCommitGraph = true
 [gc]
-	# Agent worktrees churn daily; drop the bookkeeping for a hand-deleted one after a week
-	# instead of git's three months. Only metadata for a directory already gone, never a ref.
+	# Agent worktrees churn daily; forget a hand-deleted one after a week, not three months.
 	worktreePruneExpire = 1.week.ago
 
 [merge]
@@ -76,7 +70,6 @@
 	format = ssh
 [gpg "ssh"]
 	allowedSignersFile = ~/.ssh/allowed_signers
-	# Agent sessions turn signing off in ~/.config/git/agent.gitconfig.
 	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
 [help]
 	autocorrect = prompt

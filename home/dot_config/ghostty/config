@@ -1,10 +1,5 @@
-# Ghostty.app config — the sole terminal. Read from ~/.config/ghostty/config
-# (a fixed path, no override).
-
-# Theme
 theme = Nord
 
-# Font
 font-family = FiraCode Nerd Font
 font-thicken = true
 font-size = 14
@@ -25,10 +20,7 @@ quit-after-last-window-closed = true
 macos-option-as-alt = left
 
 
-# Quick terminal — drop-down visor toggled by a global hotkey. Pairs with
-# Raycast for zero-latency context switching; no app launch needed for a
-# 10-second command. `global:` makes the keybind work even when Ghostty
-# isn't focused.
+# Quick terminal: a drop-down visor on a global hotkey.
 quick-terminal-screen = mouse
 quick-terminal-animation-duration = 0.15
 

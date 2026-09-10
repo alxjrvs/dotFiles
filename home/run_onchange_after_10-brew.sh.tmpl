@@ -1,10 +1,6 @@
 #!/bin/bash
-# Homebrew bundle. Re-runs only when the Brewfile changes, via the hash below, chezmoi's idiom
-# for a package list. `--no-upgrade`: reconciling means "what is declared is installed", never
-# "what is installed is current"; upgrading is `brew upgrade --formula` (the Brewfile header has
-# the doctrine). `after`, not `before`: files land first, so a bundle that stops on a tap prompt,
-# a cask password or a network blip leaves the shell config in place. README installs Homebrew
-# itself before chezmoi exists.
+# Homebrew bundle, re-run when the Brewfile changes. `--no-upgrade`: apply reconciles, never
+# upgrades. `after`: files land first, so a bundle that stops on a prompt leaves the shell usable.
 # Brewfile hash: {{ include "dot_config/homebrew/Brewfile" | sha256sum }}
 set -euo pipefail
 eval "$(/opt/homebrew/bin/brew shellenv)"
