@@ -7,12 +7,11 @@ to refuse him.
 bun for JS. In an agent worktree, bind dev servers to the block
 `20000 + (cksum of the worktree name % 1000) * 10`, so parallel agents never share a port.
 
-**A GitHub write goes through the `github` MCP, not `gh`.** They are two credentials on one
-account: the MCP carries the agent's own scoped PAT, while `gh` is signed in as alxjrvs with
-`repo`, `gist` and `workflow` scope — so every write typed as `gh` spends the human's token
-instead of the agent's. Reads, `gh pr checks --watch`, `gh stack`, `gh extension` and anything
-with no MCP tool stay on `gh`, except PR creation and merging, which are denied outright:
-the MCP merges immediately, and auto-merge is armed by the human, not the agent.
+**Prefer the `github` MCP for GitHub writes; `gh` is allowed.** They are two credentials on
+one account: the MCP carries the agent's own scoped PAT, while `gh` is signed in as alxjrvs
+with `repo`, `gist` and `workflow` scope, so a write typed as `gh` spends the human's token.
+Use `gh` where the MCP has no tool: reads, `gh pr checks --watch`, `gh pr merge --auto`,
+`gh stack`, `gh extension`.
 
 ## Rules
 
