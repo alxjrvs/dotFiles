@@ -23,12 +23,16 @@
     "deny": [
       "Bash(*gh release create*)",
       "Bash(*gh gist create*)",
+      "Bash(*gh alias*)",
       "Bash(*gh auth token*)",
       "Bash(*--show-token*)",
+      "Bash(*read op://*)",
+      "Bash(*op-sa run*)",
       "Bash(*security find-generic-password*)",
       "Bash(*security find-internet-password*)",
       "Bash(*git credential*)",
       "Bash(*credential-osxkeychain*)",
+      "Bash(*credential.helper*)",
       "Read(~/.ssh/id_*)",
       "Read(~/.aws/credentials)",
       "Read(~/.netrc)"
@@ -66,6 +70,18 @@
     },
     "credentials": {
       "envVars": [
+        {
+          "name": "GITHUB_TOKEN",
+          "mode": "deny"
+        },
+        {
+          "name": "GH_TOKEN",
+          "mode": "deny"
+        },
+        {
+          "name": "NPM_TOKEN",
+          "mode": "deny"
+        },
         {
           "name": "NINETY_API_TOKEN",
           "mode": "deny"
@@ -110,6 +126,7 @@
     "enabled": true,
     "mode": "hold"
   },
+  "theme": "auto",
   "skipWorkflowUsageWarning": true,
   "outputStyle": "Proactive",
   "editorMode": "vim",

@@ -55,7 +55,7 @@ stale, so it is a standing habit or it does not happen.
 .chezmoiroot            "home" — the source state lives one directory down
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/run_*              machine setup: brew (onchange), macOS defaults (onchange), provision (every apply)
-home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json, rules
+home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json
 home/.chezmoi*          chezmoi's own contract: ignore, externals
 docs/GOTCHAS.md         traps still armed and the rule each forces; never applied to a machine
 ```
