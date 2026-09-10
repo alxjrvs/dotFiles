@@ -18,10 +18,39 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # brew, unpinned: the same source the machine gets chezmoi from, and the linters' output
-      # does not change meaningfully across patch versions.
-      - name: Install tools
-        run: brew install shellcheck shfmt gitleaks jq taplo actionlint lefthook chezmoi
+      # brew for the two BOOTSTRAPS only, exactly as a machine gets them (Brewfile). Everything
+      # else is a mise pin, below.
+      - name: Install the bootstraps
+        run: brew install mise chezmoi
+
+      # ONE ROSTER for tool versions: the same config.toml a machine gets, copied to the same
+      # path chezmoi puts it at, so `mise install` resolves the identical exact pins. CI used to
+      # `brew install` these seven unpinned, which meant a Homebrew bump could fail a PR that
+      # passed on the machine that wrote it — and that the pins were never exercised anywhere
+      # but by hand. Named tools rather than a bare `mise install`: the config also pins node,
+      # bun, neovim and the language servers, and a linter job has no use for those.
+      #
+      # GITHUB_TOKEN because mise resolves aqua/github-backed tools through the API, and a
+      # runner is UNAUTHENTICATED by default: 60 requests/hour shared across every GitHub-hosted
+      # runner on that IP. The first run of this step hit exactly that and fell back to the
+      # cached version list; a run that could not would fail the install and surface as a
+      # confusing "command not found" in lefthook. The automatic token is read-only here.
+      - name: Install the pinned linters
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p "$HOME/.config/mise"
+          cp home/dot_config/mise/config.toml "$HOME/.config/mise/config.toml"
+          mise install shellcheck shfmt gitleaks jq taplo actionlint lefthook
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
+
+      # Proof the pins actually took. `mise install <name>` on a config it failed to read would
+      # silently install latest, which is the failure this whole step exists to prevent. Tools
+      # the config pins but this job does not install correctly read as "(missing)".
+      - name: Show resolved versions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mise ls --current
 
       # ONE ROSTER: lefthook's own. `--all-files` because a runner has no index; bare
       # `run pre-commit` would hand every `glob:` command an empty file list and pass.

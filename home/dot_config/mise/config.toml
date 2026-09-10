@@ -3,9 +3,9 @@
 # identical; `mise upgrade --bump` moves them, in one commit, when you choose.
 #
 # ~/.zprofile puts `~/.local/share/mise/shims` on PATH for every login shell (scripts and git
-# hooks included); ~/.zshrc runs `mise activate` for interactive ones. CI does not read this
-# file: it installs its handful of linters from brew, so these pins are checked on a machine,
-# by `chezmoi apply` and `scripts/verify.sh`, not in the workflow.
+# hooks included); ~/.zshrc runs `mise activate` for interactive ones. CI copies this file to
+# the same path and installs the seven linters from it, so a bad pin fails a PR rather than
+# waiting to be found by hand on a machine.
 #
 # Resolution order: registry short-name first (verified with `mise registry <name>`); fall
 # back to `aqua:owner/repo`, then `github:`/`cargo:`/`npm:`, when the registry does not cover
