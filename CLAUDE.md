@@ -20,16 +20,16 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 
 ## Local facts
 
-- Symlink mode means an edit in this checkout is **live at once** — the file in `~` points
-  here. Commit and push are how it reaches CI and other machines, not how it takes effect.
+- chezmoi's default file mode: an edit here takes effect on `chezmoi apply`; another Mac gets
+  it with `chezmoi update` after it lands. `chezmoi verify` is the honest drift signal.
 - `home/dot_claude/` is the **user-global** Claude config (`~/.claude/`). The repo-root
   `.claude/` is this repo's project scope. Don't conflate them.
 - CLIs go in `home/dot_config/mise/config.toml`, every version pinned; Renovate bumps them.
   The Brewfile is casks, system libs, the two bootstraps (`mise`, `chezmoi`) and a few CLIs
   brew owns. `gh` extensions are `gh-extensions.txt`. Upgrading is `brew upgrade --formula`
   then `mise upgrade`; `chezmoi apply` never upgrades anything.
-- Machine setup steps are chezmoi `run_` scripts in `home/`, darwin-gated by template. Each is
-  either `onchange` on the hash of the file it applies, or cheap and idempotent every apply.
+- Machine setup is three chezmoi `run_` scripts in `home/`: `onchange` on the Brewfile hash,
+  `onchange` on the macOS defaults, and an every-apply idempotent provision script.
 - `claude` is a shell function (`home/dot_config/zsh/65-claude.zsh`), so `which claude`
   misleads.
 - `gh` auth is keychain-backed; never `--insecure-storage`.
@@ -39,8 +39,8 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 - Secrets: `op://` references only, never a plaintext token, never a `${VAR}` in a tracked
   `.mcp.json`. To use a secret, pass it (`op run --env-file=F -- CMD`), never read it.
 - The hooks, guards, and their suites carry their own reasoning in their headers. Each guard fails
-  open by design; add a regression case before changing one. A hook must be committed with its
-  executable bit: in symlink mode it runs with the source file's mode.
+  open by design; add a regression case before changing one. A hook source is named
+  `executable_*.sh`; chezmoi sets the target's mode from that prefix.
 - Reasons, incidents, measurements: `docs/DECISIONS.md`. Outside `home/`, so it never reaches a
   machine and costs nothing per session — which is exactly why it, and not this file, holds the
   history.

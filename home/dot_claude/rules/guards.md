@@ -16,7 +16,8 @@ and `verify-gate.sh` (Stop, the repo's own commit gate over the turn's changed f
 - **Tokenize, never substring-match.** `guard-lib.sh` splits on unquoted separators and strips
   wrappers; `git commit -m "gh pr create"` must pass.
 - **Wire it in `home/dot_claude/settings.json`** with an `"if"` on the handler (a substring rule,
-  `Bash(*gh*)`), and commit the script with its executable bit.
+  `Bash(*gh*)`), and name the source `executable_<name>.sh`: chezmoi sets the target's mode
+  from that prefix, not from the checkout.
 - **Add the regression case before changing behaviour.** `tests/all.sh` discovers every suite in
   its directory. Most cases assert the guard did NOT fire, so a stub hook passes them; run the
   negative control named in each suite's header before trusting green.

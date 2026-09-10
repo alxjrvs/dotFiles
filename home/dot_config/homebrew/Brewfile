@@ -59,9 +59,8 @@ cask "ghostty"
 
 cask "google-chrome"
 
-# Caps Lock → Control is hidutil (home/Library/LaunchAgents/com.alxjrvs.capslock-control.plist).
-# Karabiner is for the other keybinds; its config is tracked at home/dot_config/karabiner/ once
-# `chezmoi add ~/.config/karabiner/karabiner.json` has run on a machine that has one.
+# Key remapping (Caps Lock → Control); config tracked at home/dot_config/karabiner/. Karabiner
+# rewrites that file when edited in its UI: `chezmoi re-add ~/.config/karabiner/karabiner.json`.
 cask "karabiner-elements"
 
 cask "notunes"

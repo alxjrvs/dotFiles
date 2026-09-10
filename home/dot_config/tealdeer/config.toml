@@ -1,0 +1,3 @@
+# tealdeer ships no pages; let it fetch and refresh the archive itself.
+[updates]
+auto_update = true

@@ -1,29 +1,15 @@
-# Lefthook config for this repo (a chezmoi source repo).
-#
-# no_auto_install: chezmoi owns hook installation — home/run_onchange_after_60-lefthook.sh.tmpl
-# runs `lefthook install` whenever this file changes. By hand: `lefthook install`.
-no_auto_install: true
+# Lefthook config for this repo (a chezmoi source repo). Once per clone: `lefthook install`.
 
 pre-commit:
   parallel: true
   commands:
     shellcheck:
-      glob: "{*.sh,home/dot_config/git/template/hooks/*,home/dot_local/bin/*}"
+      # The run_ scripts too: their only template syntax sits inside comments or a string.
+      glob: "{*.sh,home/run_*,home/dot_config/git/template/hooks/*,home/dot_local/bin/*}"
       run: shellcheck -x {staged_files}
     shfmt-check:
-      glob: "{*.sh,home/dot_config/git/template/hooks/*,home/dot_local/bin/*}"
+      glob: "{*.sh,home/run_*,home/dot_config/git/template/hooks/*,home/dot_local/bin/*}"
       run: shfmt -d -i 2 -ci -sr {staged_files}
-    chezmoi-scripts:
-      # The run_ scripts are shell wrapped in a template. Only two template shapes
-      # are used — a whole-line `{{ if }}`/`{{ end }}` guard and an inline
-      # `{{ … }}` inside a string or comment — so stripping the first and
-      # replacing the second with a placeholder yields shell that shellcheck can
-      # read. Not shfmt: the placeholders would reflow.
-      glob: "home/run_*.sh.tmpl"
-      run: |
-        for f in {staged_files}; do
-          sed -e '/^{{.*}}$/d' -e 's/{{[^}]*}}/TEMPLATE/g' "$f" | shellcheck -x -s bash - || { echo "shellcheck failed on $f"; exit 1; }
-        done
     biome-check:
       glob: "{*.ts,*.tsx,*.js,*.jsx,*.json,*.jsonc}"
       run: biome check {staged_files}
@@ -80,12 +66,6 @@ pre-commit:
         print(f"ok mise.lock covers all {len(cfg)} pins")
         PY
 
-    plist-validity:
-      # Two assertions, not one: structural validity does not catch a `~` in a path
-      # value. The verify timer is a `.plist.tmpl`, not matched here; CI's chezmoi
-      # dry run renders it instead.
-      glob: "home/Library/LaunchAgents/*.plist"
-      run: scripts/plist-validity.sh {staged_files}
     zsh-syntax:
       # shellcheck cannot parse zsh at all ("Unknown shell: zsh"); `zsh -n` is the
       # native no-exec syntax check.

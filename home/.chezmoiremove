@@ -1,6 +1,0 @@
-# Paths chezmoi REMOVES on every apply.
-#
-# Claude Code writes settings.local.json itself on an "always allow" click. .gitignore can stop
-# it being committed but never stops it existing, and a permission nobody reviewed then lives
-# on disk. Every divergence lives in the committed settings.json, so this file must not exist.
-.claude/settings.local.json

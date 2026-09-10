@@ -69,11 +69,9 @@ jobs:
 
       # THE ARTIFACT, not the assertions about it: the one step that asks the engine
       # whether the source state still applies, resolved by the thing that resolves it
-      # on a real machine. `init` renders the real config template, so the check runs
-      # in the machine's mode and the state DB lands beside that config, out of the
-      # checkout. Safe on a runner: `--dry-run` runs no script, the darwin gates render
-      # empty on Linux, and `.chezmoiignore` drops the macOS-only targets but
-      # deliberately not `Library`, so the verify timer's template is rendered here.
+      # on a real machine, with the state DB beside a throwaway config, out of the
+      # checkout. Safe on a runner: `--dry-run` runs no script; it only renders every
+      # file and template into a temp destination.
       # One github.com call remains: an `archive-file` external's tarball is read to
       # know its entries even under `--exclude externals`. The version is pinned by
       # hand — Renovate reads `uses:` lines only; bump it with the Brewfile's.

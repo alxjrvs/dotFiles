@@ -1,21 +1,11 @@
-{{ if eq .chezmoi.os "darwin" -}}
 #!/bin/bash
-# Homebrew: the bootstrap for everything else (mise, chezmoi itself, casks). Re-runs only when
-# the Brewfile changes, via the hash below — chezmoi's documented idiom for a package list.
+# Homebrew bundle. Re-runs only when the Brewfile changes, via the hash below, chezmoi's idiom
+# for a package list. `--no-upgrade`: reconciling means "what is declared is installed", never
+# "what is installed is current"; upgrading is `brew upgrade --formula` (the Brewfile header has
+# the doctrine). `after`, not `before`: files land first, so a bundle that stops on a tap prompt,
+# a cask password or a network blip leaves the shell config in place. README installs Homebrew
+# itself before chezmoi exists.
 # Brewfile hash: {{ include "dot_config/homebrew/Brewfile" | sha256sum }}
-#
-# `--no-upgrade`, always: reconciling means "what is declared is installed", never "what is
-# installed is current". `brew upgrade --formula` moves formulae without closing an app; casks
-# are left to their own updaters. The Brewfile header carries the cadence.
-#
-# `after`, not `before`: files land first, so a `brew bundle` that stops (a tap trust prompt, a
-# cask asking for a password, a network blip) leaves a machine with its shell config in place
-# rather than none. The name order still runs this ahead of mise (20), which brew installs.
-# The Brewfile is read from the source path, which is the same file the symlink points at.
 set -euo pipefail
-if ! command -v brew > /dev/null 2>&1; then
-  [ -x /opt/homebrew/bin/brew ] || /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  eval "$(/opt/homebrew/bin/brew shellenv)"
-fi
+eval "$(/opt/homebrew/bin/brew shellenv)"
 brew bundle --no-upgrade --file="{{ .chezmoi.sourceDir }}/dot_config/homebrew/Brewfile"
-{{ end -}}

@@ -1,4 +1,3 @@
-{{ if eq .chezmoi.os "darwin" -}}
 #!/bin/bash
 # macOS defaults. Re-runs only when this script changes (its own content is the hash), then
 # restarts the apps that read these keys at launch.
@@ -37,4 +36,3 @@ defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
 defaults write com.apple.screencapture location -string "$HOME/Screenshots"
 
 killall Dock Finder SystemUIServer 2> /dev/null || true
-{{ end -}}
