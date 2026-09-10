@@ -41,10 +41,6 @@ not here; when a subject is gone, delete its entry.
 - **User-scoped MCP servers live only in `~/.claude.json`.** Nothing tracks that file; the
   provision script converges the two entries on every apply.
 - **A rule in `home/dot_claude/rules/` loads into every session unless it has `paths:`.**
-- **macOS TCC keys a file-access grant to the executable's path**, and the native installer
-  stages every Claude release at a new path, so every update re-prompted. Interactive `claude`
-  is a shell function that launches through Anthropic's own `ClaudeCode.app` bundle
-  (`home/dot_config/zsh/claude.zsh`). It must not `exec`, and an alias cannot do it.
 
 ## 1Password
 

@@ -25,8 +25,8 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
   `.claude/` is this repo's project scope. Don't conflate them.
 - CLIs go in `home/dot_config/mise/config.toml`, every version pinned exactly. The Brewfile is
   casks, the two bootstraps (`mise`, `chezmoi`) and what needs a system library. `gh` extensions
-  are in the provision script. Upgrading is `brew upgrade --formula` then `mise upgrade --bump`
-  (plain `mise upgrade` moves nothing against exact pins); `chezmoi apply` never upgrades.
+  are in the provision script. The Brewfile header holds the upgrade doctrine; `chezmoi apply`
+  never upgrades.
 - Machine setup is three chezmoi `run_` scripts in `home/`: `onchange` on the Brewfile hash,
   `onchange` on the macOS defaults, and an every-apply idempotent provision script.
 - `claude` is a shell function (`home/dot_config/zsh/claude.zsh`), so `which claude`

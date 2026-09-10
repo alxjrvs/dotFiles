@@ -41,8 +41,7 @@ the next apply propagates it. That step is automatic rather than in this list be
 outside Claude Code's Bash sandbox, which is the only place `op` can reach 1Password at all.
 
 Preview without touching anything: `chezmoi apply --dry-run --verbose`. Drift:
-`scripts/verify.sh`, by hand. Upgrades are not chezmoi's job: `brew upgrade --formula`, then
-`mise upgrade --bump` (commit the new pins).
+`scripts/verify.sh`, by hand.
 
 Three things rot on their own clocks and only one is automated. Dependabot opens a monthly PR
 for the actions in `.github/workflows`. The mise pins and the tag tarballs in
