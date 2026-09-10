@@ -8,3 +8,4 @@
 .claude/hooks/repo-scope-guard.sh
 .claude/hooks/guard-lib.sh
 .claude/hooks/verify-gate.sh
+.claude/rules/claude-settings.md
