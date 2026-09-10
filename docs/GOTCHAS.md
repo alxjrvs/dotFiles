@@ -61,8 +61,6 @@ the PRs; when a subject is gone, delete its entry.
   Every check lives inside that one job.
 - **`gitleaks/gitleaks-action` in a workflow makes GitHub schedule nothing:** no run, no error,
   no annotation. The release tarball is one `curl`.
-- **`git config --global` defaults to `--no-includes`;** assert on an included key with
-  `--includes`, or the test reads nothing and blames the include.
 
 ## Shell
 

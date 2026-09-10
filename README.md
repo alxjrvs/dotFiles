@@ -66,7 +66,7 @@ docs/GOTCHAS.md         traps still armed and the rule each forces; never applie
 ## Forking
 
 `git grep -ilE 'alxjrvs|claude-agent|GitHubSSH'` finds every file: git identity and signing key
-(`home/dot_config/git/config`, `home/private_dot_ssh/allowed_signers`), the agent's author
+(`home/dot_config/git/config.tmpl`, `home/private_dot_ssh/allowed_signers`), the agent's author
 (`home/dot_claude/settings.json`), the vault and keychain item (`settings.json`,
 `home/dot_local/bin/executable_op-sa`), and the SSH items in
 `home/dot_config/1Password/ssh/agent.toml`.
