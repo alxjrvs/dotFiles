@@ -17,7 +17,8 @@
 # helper, not 1Password: `op` is a Go binary and cannot verify TLS inside Claude Code's
 # sandbox, where every agent `git push` runs. The empty `helper =` drops the human's helpers
 # for these hosts; `username` pins the keychain lookup so the human's entries are never
-# returned; GitHub ignores the username for a PAT. Stored once per machine (README).
+# returned; GitHub ignores the username for a PAT. The item is seeded from the vault on every
+# apply by home/run_after_50-provision.sh, which is also what puts this helper on its ACL.
 [credential "https://github.com"]
 	helper =
 	helper = osxkeychain

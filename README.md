@@ -35,10 +35,10 @@ security add-generic-password -a "$USER" -s op-claude-agent -w
 ```
 
 From there `chezmoi apply` does the rest: `home/run_after_50-provision.sh` reads the agent's
-GitHub PAT out of the vault through `op-sa` and stores it in the keychain for git's
-`osxkeychain` helper, with that helper on the item's ACL. Rotate the PAT in 1Password and the
-next apply propagates it. That step is here rather than in this list because apply runs outside
-Claude Code's Bash sandbox, which is the only place `op` can reach 1Password at all.
+GitHub PAT out of the vault through `op-sa` and hands it to `git-credential-osxkeychain store`,
+which writes the keychain item itself and so is on its own ACL. Rotate the PAT in 1Password and
+the next apply propagates it. That step is automatic rather than in this list because apply runs
+outside Claude Code's Bash sandbox, which is the only place `op` can reach 1Password at all.
 
 Preview without touching anything: `chezmoi apply --dry-run --verbose`. Drift:
 `scripts/verify.sh`, by hand. Upgrades are not chezmoi's job: `brew upgrade --formula`, then
