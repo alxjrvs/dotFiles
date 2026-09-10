@@ -1,5 +1,5 @@
--- nvim/init.lua — plugin-free. LSP/formatter binaries come from mise; Neovim 0.11+ (native
--- vim.lsp.config / vim.lsp.enable, no lspconfig).
+-- nvim/init.lua — plugin-free. Neovim 0.11+ native LSP (vim.lsp.config / vim.lsp.enable);
+-- the servers and shfmt come from Homebrew.
 
 -- ── Options ──────────────────────────────────────────────────────────────
 vim.g.mapleader = " "
@@ -40,16 +40,25 @@ vim.lsp.config("rust_analyzer", {
   root_markers = { "Cargo.toml", ".git" },
 })
 
+-- Formats through shfmt when it is on PATH; these two flags match the old `shfmt -ci -sr`.
 vim.lsp.config("bashls", {
   cmd = { "bash-language-server", "start" },
   filetypes = { "sh", "bash" },
   root_markers = { ".git" },
+  settings = { bashIde = { shfmt = { caseIndent = true, spaceRedirects = true } } },
 })
 
 vim.lsp.config("ts_ls", {
   cmd = { "typescript-language-server", "--stdio" },
   filetypes = { "javascript", "javascriptreact", "typescript", "typescriptreact" },
   root_markers = { "package.json", "tsconfig.json", ".git" },
+})
+
+-- Formatter for JS/TS; ts_ls stays for everything else and is filtered out of format-on-save.
+vim.lsp.config("biome", {
+  cmd = { "biome", "lsp-proxy" },
+  filetypes = { "javascript", "javascriptreact", "typescript", "typescriptreact", "json", "jsonc" },
+  root_markers = { "biome.json", "biome.jsonc", "package.json", ".git" },
 })
 
 vim.lsp.config("marksman", {
@@ -64,49 +73,17 @@ vim.lsp.config("taplo", {
   root_markers = { ".git" },
 })
 
-vim.lsp.enable({ "rust_analyzer", "bashls", "ts_ls", "marksman", "taplo" })
+vim.lsp.enable({ "rust_analyzer", "bashls", "ts_ls", "biome", "marksman", "taplo" })
 
--- ── Format on save ─────────────────────────────────────────────────────────
--- External formatters per filetype. Buffers are piped through the formatter's
--- stdin; the buffer is left untouched on error.
-local function pipe_format(cmd)
-  local view = vim.fn.winsaveview()
-  local input = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
-  local output = vim.fn.system(cmd, input)
-  if vim.v.shell_error ~= 0 then
-    vim.notify("formatter failed: " .. output, vim.log.levels.WARN)
-    return
-  end
-  local lines = vim.split(output, "\n", { plain = true })
-  if lines[#lines] == "" then
-    table.remove(lines)
-  end
-  vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
-  vim.fn.winrestview(view)
-end
-
-local formatters = {
-  sh = { "shfmt", "-i", "2", "-ci", "-sr" },
-  bash = { "shfmt", "-i", "2", "-ci", "-sr" },
-  -- biome check --write applies formatting + safe lint fixes (incl. import
-  -- sorting) and prints the result to stdout; --stdin-file-path's extension
-  -- tells biome the language.
-  typescript = { "biome", "check", "--write", "--stdin-file-path=stdin.ts" },
-  typescriptreact = { "biome", "check", "--write", "--stdin-file-path=stdin.tsx" },
-  javascript = { "biome", "check", "--write", "--stdin-file-path=stdin.js" },
-  javascriptreact = { "biome", "check", "--write", "--stdin-file-path=stdin.jsx" },
-}
-
+-- ── Format on save: every attached server that can, except ts_ls (biome owns JS/TS) ────────
 vim.api.nvim_create_autocmd("BufWritePre", {
   group = vim.api.nvim_create_augroup("FormatOnSave", { clear = true }),
   callback = function(args)
-    local ft = vim.bo[args.buf].filetype
-    local cmd = formatters[ft]
-    if cmd then
-      pipe_format(cmd)
-    elseif ft == "rust" or ft == "toml" then
-      -- rust-analyzer and taplo both format through the LSP; one path, not two.
-      vim.lsp.buf.format({ bufnr = args.buf })
-    end
+    vim.lsp.buf.format({
+      bufnr = args.buf,
+      filter = function(client)
+        return client.name ~= "ts_ls"
+      end,
+    })
   end,
 })
