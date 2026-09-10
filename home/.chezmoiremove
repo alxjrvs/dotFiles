@@ -12,3 +12,4 @@
 .claude/rules/claude-settings.md
 .config/gh/config.yml
 .config/zsh/claude.zsh
+.config/zsh/plugins
