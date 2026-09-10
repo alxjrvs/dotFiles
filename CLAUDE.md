@@ -1,7 +1,7 @@
 # dotFiles
 
 A [chezmoi](https://www.chezmoi.io) source repo — there is no engine code here. `home/` is the
-source state (chezmoi's `dot_`/`private_` naming), `scripts/verify.sh` is the by-hand drift
+source state (chezmoi's `dot_`/`private_` naming), `chezmoi verify` is the drift
 check, and everything else is repo plumbing. `chezmoi apply` reconciles the machine.
 
 ## Principles

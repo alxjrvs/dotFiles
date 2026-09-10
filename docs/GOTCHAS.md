@@ -14,12 +14,8 @@ not here; when a subject is gone, delete its entry.
   agent's push credential is git's own `osxkeychain` helper with a pinned username, never `op`.
 - **A tool that writes its own cache or reads system config fails INSIDE the sandbox, and says
   so in its own vocabulary rather than the sandbox's** — it looks like the repo is broken.
-  `taplo` panics on SCDynamicStore ("Attempted to create a NULL object"); `brew bundle check`
-  exits nonzero while printing that the Brewfile is satisfied. `sandbox.excludedCommands` fixes
-  neither: it matches the command the agent TYPED, and both are grandchildren of one. Give the
-  tool a writable cache where that is the cause (`scripts/verify.sh` sets `HOMEBREW_CACHE`), or
-  move it off the local gate entirely (taplo runs in CI, not lefthook). Do not trust a red line
-  from a sandboxed run without reading what it printed.
+  `sandbox.excludedCommands` matches the command the agent TYPED, not its grandchildren. Do
+  not trust a red line from a sandboxed run without reading what it printed.
 - **A `!` negation inside an excluded DIRECTORY is silently inert.** git never descends into an
   ignored directory, so `.claude/` plus `!.claude/settings.json` does not track that file —
   re-including one needs `.claude/*` (the glob) instead. Nothing here needs that today; the
