@@ -19,25 +19,26 @@ chezmoi init --apply alxjrvs/dotFiles
 `init --apply` clones this repo to `~/.local/share/chezmoi` and applies: files into `~`, then
 the three `run_` scripts in [`home/`](home/): the Homebrew bundle (re-run when the Brewfile
 changes), macOS defaults (re-run when they change), and an every-apply provision script (the
-Claude Code CLI, `mise install`, gh extensions, the 1Password and GitHub MCP registrations).
-Then `gh auth login` and a second `chezmoi apply` for the gh extensions.
+Claude Code CLI, `mise install`, gh extensions, the MCP registrations, the agent's PAT). Then
+`gh auth login` and a second `chezmoi apply` for the gh extensions.
 
 Day to day: edit in the checkout (`chezmoi cd`), `chezmoi apply`, commit, PR. On another Mac,
 `chezmoi update` pulls and applies what landed. Once per clone: `lefthook install`.
 
-**One step is by hand, once per machine**, and everything else the agent needs follows from it.
-Mint a 1Password service account with `read_items` on the `claude-agent` vault, then store its
-token in the login keychain. `-w` last, so the token is prompted for and never lands on argv or
-in shell history:
+## The agent
+
+**One agent step is by hand, once per machine**, and the rest of what the agent needs follows
+from it on every apply. Mint a 1Password service account with `read_items` on the
+`claude-agent` vault and store its token in the login keychain. `-w` last: it prompts, so the
+token never lands on argv or in shell history.
 
 ```bash
 security add-generic-password -a "$USER" -s op-claude-agent -w
 ```
 
-From there `chezmoi apply` does the rest: `home/run_after_50-provision.sh` reads the agent's
-GitHub PAT out of the vault through `op-sa` and hands it to `git-credential-osxkeychain store`,
-which writes the keychain item itself and so is on its own ACL. Rotate the PAT in 1Password and
-the next apply propagates it. That step is automatic rather than in this list because apply runs
+From there `chezmoi apply` copies the agent's GitHub PAT out of the vault into the keychain
+through git's own credential helper, and registers the 1Password and GitHub MCP servers. Rotate
+the PAT in 1Password and the next apply propagates it. This runs at apply time because apply runs
 outside Claude Code's Bash sandbox, which is the only place `op` can reach 1Password at all.
 
 Preview without touching anything: `chezmoi apply --dry-run --verbose`. Drift:

@@ -1,29 +1,24 @@
-# Git config for Claude Code AGENT sessions. ~/.claude/settings.json injects it through git's
-# own env mechanism (GIT_CONFIG_KEY_0=include.path), which git reads after every file, so each
-# key here overrides ~/.gitconfig for the agent and nothing changes for the human.
+# Git config for Claude Code agent sessions, included through GIT_CONFIG_KEY_0 in
+# ~/.claude/settings.json so each key here overrides ~/.gitconfig for the agent only.
 
-# Agent commits are not signed: the signing key is the human's, behind a Touch ID prompt.
+# The signing key is the human's, behind Touch ID.
 [commit]
 	gpgSign = false
 [tag]
 	gpgSign = false
 
-# HTTPS only. An SSH remote would authenticate with the human's 1Password key.
+# HTTPS only: an SSH remote would authenticate with the human's 1Password key.
 [url "https://github.com/"]
 	insteadOf = git@github.com:
 	insteadOf = ssh://git@github.com/
 
-# The agent's PAT, from the login keychain under its own account name. git's native macOS
-# helper, not 1Password — see docs/GOTCHAS.md for why `op` cannot serve a push at all.
-# The empty `helper =` drops the human's helpers for these hosts; `username` pins the keychain
-# lookup so the human's entries are never returned; GitHub ignores the username for a PAT. The
-# item is seeded on every apply by home/run_after_50-provision.sh, which is also what puts this
-# helper on its ACL.
+# The agent's PAT from the login keychain, pinned to its own username so the human's entry is
+# never returned. Seeded on every apply by run_after_50-provision.sh, which is also what puts
+# this helper on the item's ACL.
 [credential "https://github.com"]
 	helper =
 	helper = osxkeychain
 	username = claude-agent
+# No helper at all for gists, so an agent gist push fails closed instead of using the human's.
 [credential "https://gist.github.com"]
 	helper =
-	helper = osxkeychain
-	username = claude-agent
