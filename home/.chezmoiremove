@@ -1,0 +1,12 @@
+# Target paths chezmoi must REMOVE from ~. `apply` only ever writes, so deleting a source file
+# leaves its target in place forever; this is the one mechanism that retires one.
+#
+# Safe to delete an entry once every machine has applied it — the removal is idempotent, so
+# there is no cost to leaving one here except the reading. Empty file is fine; delete the file
+# when nothing is listed.
+
+# The owned-orgs parser, retired in favour of action-scoped rules (--exclude-tools on the MCP
+# registration, gh verb rules in permissions.deny, one rule in CLAUDE.md). Its suite never
+# landed in ~ — .chezmoiignore keeps tests/ out — so only these two need removing.
+.claude/hooks/repo-scope-guard.sh
+.claude/hooks/guard-lib.sh
