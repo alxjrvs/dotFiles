@@ -13,6 +13,9 @@ These are here because nothing else can deliver them in time: each is irreversib
 attempt, or lands in an unattended session with no one to ask.
 
 - **Never a local merge or push into a default branch.** Land work through GitHub's own gate.
+- **Never open an issue, comment or review on a repo you were not asked to work in.** A push
+  needs a clone and a PR needs a branch, so both stay where the task is; a comment needs
+  nothing but a repo name, which is why this is the one that has to be said.
 - **Never put a secret on stdout** — stdout is the transcript. A secret written to a file is a
   secret read. To *use* one, pass it: `op run --env-file=F -- CMD`.
 
