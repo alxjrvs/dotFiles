@@ -1,0 +1,23 @@
+#!/bin/sh
+# op-sa: run `op` as the agent's 1Password service account.
+#
+# PLUMBING, not a command to type. Its consumers capture stdout themselves and none of them is a
+# Bash tool call: git's credential helper (~/.config/git/agent.gitconfig), Claude Code plugin
+# token commands, the GitHub MCP registration. `op-sa read …` and `op-sa run …` from an agent are
+# denied in ~/.claude/settings.json, and op-sa is deliberately NOT in sandbox.excludedCommands, so
+# an agent that types it anyway fails on TLS rather than reaching the vault.
+#
+# The token lives in the login keychain (item `op-claude-agent`) and is loaded into this process,
+# never into the shell or the agent's environment. It IS inherited by a child of `op run -- CMD`
+# (measured 2026-09-09: the child sees OP_SERVICE_ACCOUNT_TOKEN), which is the other half of why
+# `op-sa run` is denied above.
+#
+# New machine: mint one token for the `claude-agent` vault (read_items) and store it once.
+# `-w` LAST so the token is prompted for, never on argv:
+#   security add-generic-password -a "$USER" -s op-claude-agent -w
+#
+# Explicit PATH: the desktop app spawns MCP servers with a bare environment.
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+OP_SERVICE_ACCOUNT_TOKEN="$(security find-generic-password -s op-claude-agent -w)" || exit 1
+export OP_SERVICE_ACCOUNT_TOKEN
+exec op "$@"

@@ -8,10 +8,10 @@ pre-commit:
   parallel: true
   commands:
     shellcheck:
-      glob: "{*.sh,home/dot_config/git/template/hooks/*,home/dot_local/bin/op-agent}"
+      glob: "{*.sh,home/dot_config/git/template/hooks/*,home/dot_local/bin/*}"
       run: shellcheck -x {staged_files}
     shfmt-check:
-      glob: "{*.sh,home/dot_config/git/template/hooks/*,home/dot_local/bin/op-agent}"
+      glob: "{*.sh,home/dot_config/git/template/hooks/*,home/dot_local/bin/*}"
       run: shfmt -d -i 2 -ci -sr {staged_files}
     chezmoi-scripts:
       # The run_ scripts are shell wrapped in a template. Only two template shapes

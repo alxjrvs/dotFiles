@@ -26,8 +26,8 @@ wired_hooks() {
 }
 
 # The secret-path deny floor: the Bash path to a *resolved* secret, not just to
-# `op`. `op-agent header` and `op-agent git-credential get` each print a live
-# credential to stdout, and stdout is model context.
+# `op`. `op-sa read` (the service-account shim) prints a live credential to
+# stdout, and stdout is model context.
 #
 # ARRAY-AWARE, never a substring grep: a substring test only asks whether the
 # string appears anywhere in the file, so moving an entry from `deny` into
@@ -36,26 +36,22 @@ wired_hooks() {
 # EVERY entry — anything left out can be deleted unnoticed.
 deny_floor() {
   cat << 'DENY'
-Bash(security find-generic-password:*)
-Bash(op read:*)
-Bash(op item get:*)
-Bash(op document get:*)
-Bash(op-agent:*)
-Bash(~/.local/bin/op-agent:*)
-Bash(git credential:*)
+Bash(*read op://*)
+Bash(*item get*)
+Bash(*document get*)
+Bash(*op inject*)
+Bash(*op-sa inject*)
+Bash(*op-sa run*)
+Bash(*--no-masking*)
+Bash(*security find-generic-password*)
+Bash(*security find-internet-password*)
+Bash(*credential fill*)
+Bash(*credential-cache*)
+Bash(*credential-store*)
+Bash(*credential-osxkeychain*)
 Read(~/.ssh/id_*)
 Read(~/.aws/credentials)
 Read(~/.netrc)
-Read(~/.config/gh/hosts.yml)
-Bash(*/op *)
-Bash(*/op-agent *)
-Bash(*/security find-generic-password *)
-Bash(*/security find-internet-password *)
-Bash(*/security find-certificate *)
-Bash(*/security find-identity *)
-Bash(*/git credential *)
-Bash(*/git credential-store *)
-Bash(*/git credential-cache *)
 DENY
 }
 
@@ -94,11 +90,11 @@ for f in "$@"; do
   ! grep -qE '(enableAllProjectMcpServers|enabledMcpjsonServers)' "$f" ||
     note "$f: forbidden auto-approve MCP key"
 
-  # The agent's git credentials must come from op-agent, never a cached PAT.
-  grep -q 'op-agent git-credential' "$f" ||
-    note "$f: agent git helper not wired to op-agent git-credential"
-  ! grep -q 'osxkeychain' "$f" ||
-    note "$f: forbidden osxkeychain git helper (cached-PAT regression)"
+  # The agent's git identity comes from the tracked ~/.config/git/agent.gitconfig, which is where
+  # the credential helper, the HTTPS rewrite and the signing-off keys live. Wiring it is the
+  # assertion; what it contains is asserted by the file itself.
+  grep -q 'agent.gitconfig' "$f" ||
+    note "$f: agent git config (include.path -> agent.gitconfig) is not wired"
 
   ! grep -qE '"model"[[:space:]]*:[[:space:]]*"[^"]*fable' "$f" ||
     note "$f: Fable pinned as default model"

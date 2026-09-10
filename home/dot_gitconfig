@@ -8,7 +8,10 @@
 [user]
 	name = alxjrvs
 	email = alxjrvs@gmail.com
-	# user.signingkey is in ~/.gitconfig.local, written by scripts/git-signing.ts.
+	# The public half of the 1Password "GitHubSSH" item, offered identically on every machine by
+	# the agent named under [gpg "ssh"]. ~/.ssh/allowed_signers carries the same key so
+	# `git log --show-signature` verifies locally.
+	signingkey = key::ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKjF9JmW396EbH0n1zWeU7eT+2VvMFZAn+A1WKAi4tqT
 [credential]
 	helper = osxkeychain
 # GitHub HTTPS auth via the gh CLI (keychain-backed). Lets git push resolve a
@@ -92,12 +95,9 @@
 	format = ssh
 [gpg "ssh"]
 	allowedSignersFile = ~/.ssh/allowed_signers
-	# Constant, so tracked here; scripts/git-signing.ts writes only user.signingkey.
-	# Agent sessions turn signing off via GIT_CONFIG_KEY_0 in home/dot_claude/settings.json.
+	# Agent sessions turn signing off in ~/.config/git/agent.gitconfig.
 	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
 [help]
 	autocorrect = prompt
-[include]
-	path = ~/.gitconfig.local
 [credential "https://git.heroku.com"]
 	helper = !heroku git:credentials

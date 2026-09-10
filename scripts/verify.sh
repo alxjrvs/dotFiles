@@ -108,15 +108,15 @@ if command -v claude > /dev/null 2>&1; then
 $dead"; fi
 fi
 
-# ── op-agent: the service-account token is present, unexpired, and the PAT is live ──
-if [ -x "$HOME/.local/bin/op-agent" ]; then
-  if out=$(op-agent status 2>&1); then ok "op-agent status"; else bad "op-agent status:
-$out"; fi
+# ── op-sa: the agent's service-account token is in the login keychain ────────
+# Presence only, never a resolve: the item's metadata is checked, not its value.
+if [ "$(uname -s)" = Darwin ]; then
+  if security find-generic-password -s op-claude-agent > /dev/null 2>&1; then ok "op-sa keychain token"; else bad "op-sa: no op-claude-agent item in the login keychain (see home/dot_local/bin/executable_op-sa)"; fi
 fi
 
 # ── git maintenance: every registered repo still exists ───────────────────────
-# `git config --get-all` without --global, because the keys live in ~/.gitconfig.local via an
-# include, and --global does not follow includes.
+# `git config --get-all` without --global: `git maintenance register` writes into whichever file
+# it was pointed at, and --global does not follow includes.
 gone=''
 while IFS= read -r r; do
   [ -n "$r" ] || continue

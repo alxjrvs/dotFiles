@@ -1,9 +1,0 @@
-{{ if eq .chezmoi.os "darwin" -}}
-#!/bin/bash
-# The 1Password service account for the agent: ensure vault + keychain token, check the git
-# PAT. op-agent short-circuits when the token is present, so this is cheap on every apply.
-set -euo pipefail
-export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
-[ -x "$HOME/.local/bin/op-agent" ] || exit 0
-op-agent provision
-{{ end -}}

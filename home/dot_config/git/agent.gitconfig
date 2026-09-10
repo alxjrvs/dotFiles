@@ -1,0 +1,28 @@
+# Git config for Claude Code AGENT sessions. ~/.claude/settings.json injects it through git's
+# own env mechanism (GIT_CONFIG_KEY_0=include.path), which git reads after every file, so each
+# key here overrides ~/.gitconfig for the agent and nothing changes for the human.
+
+# Agent commits are not signed: the signing key is the human's, behind a Touch ID prompt.
+[commit]
+	gpgSign = false
+[tag]
+	gpgSign = false
+
+# HTTPS only. An SSH remote would authenticate with the human's 1Password key.
+[url "https://github.com/"]
+	insteadOf = git@github.com:
+	insteadOf = ssh://git@github.com/
+
+# The agent's PAT, from the login keychain under its own account name. git's native macOS
+# helper, not 1Password: `op` is a Go binary and cannot verify TLS inside Claude Code's
+# sandbox, where every agent `git push` runs. The empty `helper =` drops the human's helpers
+# for these hosts; `username` pins the keychain lookup so the human's entries are never
+# returned; GitHub ignores the username for a PAT. Stored once per machine (README).
+[credential "https://github.com"]
+	helper =
+	helper = osxkeychain
+	username = claude-agent
+[credential "https://gist.github.com"]
+	helper =
+	helper = osxkeychain
+	username = claude-agent
