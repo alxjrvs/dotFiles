@@ -1,8 +1,8 @@
 # dotFiles
 
-A [chezmoi](https://www.chezmoi.io) source repo — there is no engine code here. `home/` is the
-source state (chezmoi's `dot_`/`private_` naming), and everything else is repo plumbing.
-`chezmoi apply` reconciles the machine.
+A [chezmoi](https://www.chezmoi.io) source repo; there is no engine code. `home/` is the source
+state (chezmoi's `dot_`/`private_` naming), everything else is repo plumbing. `chezmoi apply`
+reconciles the machine; `chezmoi verify --exclude scripts` is the drift signal.
 
 ## Principles
 
@@ -11,8 +11,8 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 
 - Native over special: deleting custom code for a built-in is the highest-value change.
 - Guilty until proven load-bearing: every dependency, wrapper, and line earns its weight.
-- One config, every machine: no host detection. A once-per-machine command beats convergence
-  code that runs on every apply.
+- One config, every machine: no host detection, and no by-hand steps that `chezmoi apply` could
+  converge.
 - Standard, and agentic-enabled: 1Password, git, ssh, `gh`, MCP stay stock, wired for agents.
 - Keep it legible: one line on the decision, nothing on the mechanism.
 
