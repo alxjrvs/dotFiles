@@ -24,8 +24,6 @@ window-save-state = always
 quit-after-last-window-closed = true
 macos-option-as-alt = left
 
-# Clipboard
-copy-on-select = true
 
 # Quick terminal — drop-down visor toggled by a global hotkey. Pairs with
 # Raycast for zero-latency context switching; no app launch needed for a

@@ -1,9 +1,10 @@
-# ~/.config/mise/config.toml — language toolchains + ALL dev CLIs (the brew/mise split is
-# CLAUDE.md's; the Brewfile header holds the upgrade doctrine).
+# ~/.config/mise/config.toml: language toolchains and every dev CLI (the brew/mise split is
+# CLAUDE.md's; the Brewfile header holds the upgrade doctrine). Exact pins keep every Mac
+# identical; `mise upgrade --bump` moves them, in one commit, when you choose.
 #
-# PATH includes `~/.local/share/mise/shims` via `.zshenv`, so tools resolve in every shell
-# context (non-interactive, git hooks, editor subprocesses) without waiting for `mise activate`.
-# CI reads this same file through MISE_GLOBAL_CONFIG_FILE, and mise.lock beside it.
+# ~/.zprofile puts `~/.local/share/mise/shims` on PATH for every login shell (scripts and git
+# hooks included); ~/.zshrc runs `mise activate` for interactive ones. CI reads this same file
+# through MISE_GLOBAL_CONFIG_FILE.
 #
 # Resolution order: registry short-name first (verified with `mise registry <name>`); fall
 # back to `aqua:owner/repo`, then `github:`/`cargo:`/`npm:`, when the registry does not cover
@@ -17,26 +18,18 @@
 node = "25.9.0"
 bun = "1.4.0"
 
-# ── Shell-init-time tools (need PATH presence before zsh fragments load) ─
-sheldon = "0.8.5"       # zsh plugin manager — loaded in zsh/30-plugins.zsh
-atuin = "18.16.1"       # shell history sync — loaded in zsh/60-tools.zsh
-fzf = "0.73.1"          # `fzf --zsh` integration loaded in zsh/60-tools.zsh
-zoxide = "0.9.9"        # frecency `cd` — `zoxide init zsh` loaded in zsh/60-tools.zsh
-starship = "1.25.1"     # prompt — `starship init zsh` loaded in zsh/50-prompt.zsh
+# ── Shell-init-time tools (need PATH presence before ~/.zshrc runs) ──
+atuin = "18.16.1"       # shell history sync
+fzf = "0.73.1"          # `fzf --zsh` integration
+zoxide = "0.9.9"        # frecency `cd`
+starship = "1.25.1"     # prompt
 
 # ── Git surface (used by prompt, lefthook, pre-commit) ────────────────
 gh = "2.94.0"           # GH CLI
-"aqua:github/github-mcp-server" = "1.7.0" # GitHub MCP server for Claude Code; registered by run_after_81-github-mcp.sh.tmpl
+"aqua:github/github-mcp-server" = "1.7.0" # GitHub MCP server for Claude Code; registered by run_after_50-provision.sh
 delta = "0.19.2"        # syntax-aware git pager
-gitleaks = "8.30.1"     # `gitleaks git --staged` — global pre-commit hook
-lefthook = "2.1.9"      # repo-local pre-commit/pre-push runner
-"npm:heroku" = "11.10.0" # npm:heroku, not the brew tap: the tap needs an interactive `brew trust`
-
-# ── Mobile / Expo ─────────────────────────────────────────────────────
-# Not `expo-cli` (EOL; each project's `expo` dependency ships its CLI). `eas` is for the
-# commands that run outside a project (`eas login`, `eas build:list`); project builds use
-# their own `bunx eas-cli@<pin>`.
-"npm:eas-cli" = "21.2.0"
+gitleaks = "8.30.1"     # `gitleaks git --staged` in lefthook and CI
+lefthook = "2.1.9"      # repo-local pre-commit runner
 
 # ── File / text / data tools ──────────────────────────────────────────
 bat = "0.26.1"
@@ -52,9 +45,6 @@ shellcheck = "0.11.0"
 biome = "2.5.3"                           # JS/TS/JSON linter+formatter (lefthook + CI + nvim)
 actionlint = "1.7.12"                     # GitHub Actions workflow linter (lefthook + CI)
 
-# ── Security scanning ─────────────────────────────────────────────────
-osv-scanner = "2.5.0"                     # OSV vulnerability scanner, run by hand
-
 # ── Neovim language servers (nvim/init.lua wires these in) ────────────
 # rust-analyzer is not global: it comes with a per-project `rust` toolchain.
 "npm:bash-language-server" = "5.6.0"
@@ -64,10 +54,3 @@ taplo = "0.10.0"                          # TOML LSP + formatter; registry alias
 
 # ── Editor ────────────────────────────────────────────────────────────
 neovim = "0.12.3"                         # modal editor (binary: nvim)
-
-[settings]
-# `lockfile`, deliberately NOT `locked`. This one auto-creates and updates mise.lock (checksums,
-# URLs, provenance for each binary); `locked` ENFORCES it, and per jdx (jdx/mise#8663) "ALL
-# settings are global no matter where they are defined", so `locked = true` would apply to
-# every project on the machine and warn on any tool absent from a lockfile.
-lockfile = true

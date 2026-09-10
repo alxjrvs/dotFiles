@@ -1,7 +1,83 @@
-# Thin .zshrc — actual config lives in fragments under ~/.config/zsh/,
-# loaded in numeric order. Edit those, not this file.
-ZSH_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/zsh"
-for _f in "$ZSH_CONFIG_DIR"/[0-9]*.zsh; do
-  [ -f "$_f" ] && source "$_f"
-done
-unset _f
+# ~/.zshrc: interactive shells. Login-shell PATH lives in ~/.zprofile.
+
+# mise first, so every init below resolves the pinned binary.
+eval "$(mise activate zsh)"
+
+# --- options -----------------------------------------------------------------------------------
+setopt CORRECT EXTENDED_GLOB INTERACTIVE_COMMENTS NO_BEEP NO_FLOWCONTROL
+# History: atuin is the source of truth; the native file covers arrow-key recall only.
+HISTSIZE=10000
+SAVEHIST=10000
+setopt SHARE_HISTORY HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE HIST_VERIFY EXTENDED_HISTORY HIST_REDUCE_BLANKS
+
+# --- vi mode -----------------------------------------------------------------------------------
+bindkey -v
+KEYTIMEOUT=1
+# Cursor: steady block in normal mode, blinking bar in insert (DECSCUSR 2 / 5).
+zle-keymap-select() { if [[ $KEYMAP == vicmd ]]; then print -n '\e[2 q'; else print -n '\e[5 q'; fi }
+zle-line-init() { print -n '\e[5 q'; }
+zle -N zle-keymap-select
+zle -N zle-line-init
+
+# --- environment -------------------------------------------------------------------------------
+export EDITOR=nvim VISUAL=nvim LANG=en_US.UTF-8 LESS='-RFX'
+export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
+export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+# sharp: force its prebuilt binary; a stray global libvips makes the from-source build fail.
+export SHARP_IGNORE_GLOBAL_LIBVIPS=1
+# No GITLEAKS_CONFIG export: it would outrank every repo's own .gitleaks.toml.
+
+# --- plugins: pinned tarballs placed by .chezmoiexternal.toml ---------------------------------
+source ~/.config/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+
+# --- completion --------------------------------------------------------------------------------
+fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
+autoload -Uz compinit
+# Skip the security audit (-C) while the dump is under a day old: ~240 ms otherwise.
+_zcompdump_fresh=(${ZDOTDIR:-$HOME}/.zcompdump(Nmh-24))
+if (( ${#_zcompdump_fresh} )); then compinit -C; else compinit; fi
+unset _zcompdump_fresh
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+zstyle ':completion:*:descriptions' format '[%d]'
+zstyle ':completion:*:git-checkout:*' sort false
+
+# --- tools -------------------------------------------------------------------------------------
+# fzf binds Ctrl-R in viins AND vicmd; an empty command makes it skip that binding so atuin owns
+# Ctrl-R in every keymap. Ctrl-T and Alt-C stay fzf's.
+export FZF_CTRL_R_COMMAND=
+export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40% --color=bg+:#3b4252,bg:#2e3440,spinner:#81a1c1,hl:#a3be8c,fg:#d8dee9,header:#a3be8c,info:#ebcb8b,pointer:#81a1c1,marker:#81a1c1,prompt:#81a1c1'
+export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow'
+export FZF_CTRL_T_OPTS="--preview 'bat --color=always {}' --preview-window right:50%"
+export FZF_ALT_C_OPTS="--preview 'eza --icons -T {} | head -20'"
+export FZF_ALT_C_COMMAND='fd --type d --hidden --follow'
+eval "$(fzf --zsh)"
+# --disable-up-arrow keeps Up/Down as plain history navigation.
+eval "$(atuin init zsh --disable-up-arrow)"
+eval "$(zoxide init zsh)"
+eval "$(starship init zsh)"
+
+# --- aliases -----------------------------------------------------------------------------------
+alias gs='git status' gp='git push' gpr='git pull --rebase' gco='git checkout' gd='git diff'
+alias ..='cd ..'
+alias ls='eza --icons --group-directories-first'
+alias vim='nvim'
+
+# Interactive `claude` goes through its own app bundle (TCC grants); see the file.
+source ~/.config/zsh/claude.zsh
+
+# --- syntax highlighting: last, because it wraps the ZLE widgets defined above ----------------
+source ~/.config/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+ZSH_HIGHLIGHT_STYLES[command]='fg=#4db8cc'
+ZSH_HIGHLIGHT_STYLES[alias]='fg=#4db8cc'
+ZSH_HIGHLIGHT_STYLES[builtin]='fg=#4db8cc'
+ZSH_HIGHLIGHT_STYLES[function]='fg=#d06cb8'
+ZSH_HIGHLIGHT_STYLES[reserved-word]='fg=#d06cb8'
+ZSH_HIGHLIGHT_STYLES[precommand]='fg=#d06cb8,underline'
+ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=#e05050'
+ZSH_HIGHLIGHT_STYLES[single-quoted-argument]='fg=#d4b84a'
+ZSH_HIGHLIGHT_STYLES[double-quoted-argument]='fg=#d4b84a'
+ZSH_HIGHLIGHT_STYLES[single-hyphen-option]='fg=#8b949e'
+ZSH_HIGHLIGHT_STYLES[double-hyphen-option]='fg=#8b949e'
+ZSH_HIGHLIGHT_STYLES[comment]='fg=#8b949e,italic'
+ZSH_HIGHLIGHT_STYLES[path]='fg=#e6edf3,underline'

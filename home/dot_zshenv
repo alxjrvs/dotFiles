@@ -1,4 +1,0 @@
-# Dedup PATH, keeping the first occurrence. A login shell demotes the shims set here; the
-# re-prepend at the end of `.zprofile` explains why.
-typeset -U path PATH
-export PATH="$HOME/.local/share/mise/shims:$PATH"

@@ -17,3 +17,15 @@
     url = "https://github.com/TheGnarCo/claude-statusline/archive/refs/tags/v1.1.1.tar.gz"
     path = "claude-statusline-1.1.1/subagent-statusline.sh"
     executable = true
+
+# The two zsh plugins, the same way: a pinned tag tarball each, sourced from ~/.zshrc. No plugin
+# manager: for two plugins `source` is the manager.
+[".config/zsh/plugins/zsh-autosuggestions"]
+    type = "archive"
+    url = "https://github.com/zsh-users/zsh-autosuggestions/archive/refs/tags/v0.7.1.tar.gz"
+    stripComponents = 1
+
+[".config/zsh/plugins/zsh-syntax-highlighting"]
+    type = "archive"
+    url = "https://github.com/zsh-users/zsh-syntax-highlighting/archive/refs/tags/0.8.0.tar.gz"
+    stripComponents = 1

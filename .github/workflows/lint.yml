@@ -19,12 +19,8 @@ jobs:
     # shims, so the first `jq` a guard runs later triggers an install of its own.
     env:
       # The machine's global mise config IS the repo file; point the runner at it so
-      # `mise install` resolves the same pins and reads mise.lock beside it, instead
-      # of resolving through the GitHub API and running the rate limit to zero. Do
-      # not disable attestation verification to dodge that: the lock records HOW
-      # each tool was verified, so verifying less is exactly what it exists to prevent.
+      # `mise install` resolves the same pins.
       MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/home/dot_config/mise/config.toml
-      MISE_LOCKFILE: "1"
     steps:
       - uses: actions/checkout@v7
 

@@ -47,7 +47,7 @@ security add-internet-password -a claude-agent -s gist.github.com -r htps \
 
 Preview without touching anything: `chezmoi apply --dry-run --verbose`. Drift:
 `scripts/verify.sh`, by hand. Upgrades are not chezmoi's job: `brew upgrade --formula`, then
-`mise upgrade` (commit `mise.lock`).
+`mise upgrade --bump` (commit the new pins).
 
 ## Layout
 

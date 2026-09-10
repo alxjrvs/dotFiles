@@ -29,10 +29,10 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
   then `mise upgrade`; `chezmoi apply` never upgrades anything.
 - Machine setup is three chezmoi `run_` scripts in `home/`: `onchange` on the Brewfile hash,
   `onchange` on the macOS defaults, and an every-apply idempotent provision script.
-- `claude` is a shell function (`home/dot_config/zsh/65-claude.zsh`), so `which claude`
+- `claude` is a shell function (`home/dot_config/zsh/claude.zsh`), so `which claude`
   misleads.
 - `gh` auth is keychain-backed; never `--insecure-storage`.
-- Never hand-edit a lockfile. nvim is plugin-free. `biome.json` and
+- nvim is plugin-free. `biome.json` and
   `home/dot_claude/settings.json` carry only divergences from defaults — don't tidy a key away
   without reading why it is there.
 - Secrets: `op://` references only, never a plaintext token, never a `${VAR}` in a tracked

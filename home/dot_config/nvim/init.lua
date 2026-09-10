@@ -95,7 +95,6 @@ local formatters = {
   typescriptreact = { "biome", "check", "--write", "--stdin-file-path=stdin.tsx" },
   javascript = { "biome", "check", "--write", "--stdin-file-path=stdin.js" },
   javascriptreact = { "biome", "check", "--write", "--stdin-file-path=stdin.jsx" },
-  toml = { "taplo", "fmt", "-" },
 }
 
 vim.api.nvim_create_autocmd("BufWritePre", {
@@ -105,7 +104,8 @@ vim.api.nvim_create_autocmd("BufWritePre", {
     local cmd = formatters[ft]
     if cmd then
       pipe_format(cmd)
-    elseif ft == "rust" then
+    elseif ft == "rust" or ft == "toml" then
+      -- rust-analyzer and taplo both format through the LSP; one path, not two.
       vim.lsp.buf.format({ bufnr = args.buf })
     end
   end,
