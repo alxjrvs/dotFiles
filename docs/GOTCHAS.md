@@ -54,9 +54,10 @@ not here; when a subject is gone, delete its entry.
   alert), so an expired one fails every resolve at once. Mint with the default lifetime and
   revoke on incident rather than scheduling a rotation nothing can observe.
 - **The agent's GitHub PAT is fine-grained, so it expires — which inverts the entry above.**
-  One year maximum, and GitHub mails a warning: an observable clock, unlike the service-account
+  Ninety days here, and GitHub mails a warning: an observable clock, unlike the service-account
   token beside it. What lapses is every agent push and every `mcp__github__*` call at once, so a
-  push that suddenly asks for a password is this, not a broken credential helper.
+  push that suddenly asks for a password is this, not a broken credential helper. Rotate it in
+  the vault; the next apply propagates it.
 - **A fine-grained PAT needs `Workflows: write` to push a change under `.github/workflows/`**,
   and `Actions: read` before any `mcp__github__*` run or job-log tool answers. Neither failure
   names the missing permission usefully — the push is rejected outright and the tools simply
@@ -66,6 +67,9 @@ not here; when a subject is gone, delete its entry.
 - **A keychain item is readable only by the binaries on its ACL,** and the creating binary is on
   it automatically. So a credential git will read is written through git's own helper, never by
   `security`, or the first agent push raises a dialog no unattended session can answer.
+- **`git-credential-osxkeychain store` is a silent no-op on an existing item before git 2.47,**
+  so a rotated PAT never lands on an older Apple git. `erase` first: a no-op when absent, and
+  scoped to the username, so the human's entry for the same host is untouched.
 - **`security … -w` with no value cannot be scripted.** It reads `/dev/tty` and falls back to
   stdin only when no terminal is attached, so a piped value is silently ignored under an
   interactive shell, and two bare Returns store an empty secret.

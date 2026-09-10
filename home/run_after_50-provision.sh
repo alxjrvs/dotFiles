@@ -20,19 +20,14 @@ if gh auth status > /dev/null 2>&1; then
   done
 fi
 
-# User-scoped MCP servers live only in ~/.claude.json, which nothing tracks (the desktop app's
-# Code tab reads the same file), so a fresh machine has none until this converges them.
+# User-scoped MCP servers live only in ~/.claude.json, which nothing tracks, so they converge here.
 if command -v claude > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
-  # 1Password Environments: a stdio server inside the desktop app; human approval per call.
   op_mcp=/Applications/1Password.app/Contents/MacOS/1password-mcp
   if [ -x "$op_mcp" ] && ! jq -e '.mcpServers["1password"]' "$HOME/.claude.json" > /dev/null 2>&1; then
     claude mcp add --scope user 1password -- "$op_mcp"
   fi
-  # GitHub's stdio server. Absolute paths and /bin/sh because the desktop app spawns MCP servers
-  # with a bare environment. Re-registers whenever the recorded entry differs from this one.
-  #
-  # No --exclude-tools: the agent may file issues as well as comment. GitHub's `Issues`
-  # permission covers both together, so the token cannot separate them either.
+  # Absolute paths and /bin/sh: the desktop app spawns MCP servers with a bare environment.
+  # Re-registered whenever the recorded entry differs from this one.
   mcp=/opt/homebrew/bin/github-mcp-server
   if [ -x "$mcp" ]; then
     cmd="GITHUB_PERSONAL_ACCESS_TOKEN=\"\$($HOME/.local/bin/op-sa read op://claude-agent/claude-git-pat/credential)\" exec $mcp stdio --toolsets context,repos,issues,pull_requests,actions"
@@ -45,27 +40,16 @@ if command -v claude > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
   fi
 fi
 
-# The agent's GitHub PAT, copied from the vault into the login keychain on every apply. It lives
-# here rather than in a runbook because `chezmoi apply` is the one moment a machine runs OUTSIDE
-# Claude Code's Bash sandbox, which is the only place `op` can reach the vault at all.
-#
-# Four traps dictate the exact shape below, and all four are in docs/GOTCHAS.md under 1Password:
-# written by git's own helper and never by `security`; the value passed on stdin; `erase` before
-# `store`; `erase` rather than `security delete-internet-password`. Each looks like an obvious
-# simplification and each one breaks a different machine. Read those entries first.
-#
-# Every prerequisite sits in the `if` condition, so a failure skips the block rather than aborting
-# the apply: no service-account token yet, offline, or a `git` that cannot run at all converges on
-# the next apply.
+# The agent's GitHub PAT, from the vault into the login keychain on every apply, so a rotation
+# in 1Password lands on the next apply. Written by git's own helper (that puts the helper on the
+# item's ACL), value on stdin, `erase` then `store` (before git 2.47, store is a silent no-op on
+# an existing item). Every prerequisite is in the condition: a missing token skips, never aborts.
 if [ -x "$HOME/.local/bin/op-sa" ] &&
   _helper="$(git --exec-path)/git-credential-osxkeychain" && [ -x "$_helper" ] &&
   _pat=$("$HOME/.local/bin/op-sa" read op://claude-agent/claude-git-pat/credential 2> /dev/null) &&
   [ -n "$_pat" ]; then
-  for _host in github.com gist.github.com; do
-    printf 'protocol=https\nhost=%s\nusername=claude-agent\n\n' "$_host" | "$_helper" erase || true
-    printf 'protocol=https\nhost=%s\nusername=claude-agent\npassword=%s\n\n' "$_host" "$_pat" |
-      "$_helper" store ||
-      echo "provision: could not store the agent PAT for $_host — agent pushes will prompt" >&2
-  done
+  printf 'protocol=https\nhost=github.com\nusername=claude-agent\n\n' | "$_helper" erase || true
+  printf 'protocol=https\nhost=github.com\nusername=claude-agent\npassword=%s\n\n' "$_pat" |
+    "$_helper" store || echo "provision: could not store the agent PAT; agent pushes will prompt" >&2
 fi
-unset _pat _helper _host
+unset _pat _helper

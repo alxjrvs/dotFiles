@@ -1,7 +1,9 @@
 #!/bin/sh
 # op-sa: `op` as the agent's 1Password service account. The token lives in the login keychain
-# (item `op-claude-agent`; see the README) and is loaded into this process only. Not typed by an
-# agent: it is deliberately outside the Bash sandbox's excluded commands, so it fails there.
+# (item `op-claude-agent`; see the README) and is loaded into this process only. Consumers are
+# the provision script, the GitHub MCP registration and plugin token commands, never an agent's
+# Bash: `read` and `run` through it are text-denied in ~/.claude/settings.json, and it is
+# deliberately outside the sandbox's excluded commands so `read` also fails there on TLS.
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 OP_SERVICE_ACCOUNT_TOKEN="$(security find-generic-password -s op-claude-agent -w)" || exit 1
 export OP_SERVICE_ACCOUNT_TOKEN
