@@ -1,12 +1,12 @@
-# ~/.config/homebrew/Brewfile — the CLIs and apps on the machine. Runtimes (node, bun) are
-# mise's, in ~/.config/mise/config.toml; brew's own node arrives as a dependency of the two
-# npm-built language servers and sits behind mise's shims on PATH. The Claude Code CLI is the
-# native installer (run_before_50) and git is Xcode's.
+# ~/.config/homebrew/Brewfile — the CLIs and apps on the machine. Runtimes (node, bun) and the
+# npm-built language servers are mise's, in ~/.config/mise/config.toml, so no formula here
+# drags in a second node. The Claude Code CLI is the native installer (run_before_50) and git
+# is Xcode's.
 #
 # `chezmoi apply` reconciles (`brew bundle --no-upgrade`) and never upgrades: a cask upgrade
 # replaces the .app and quits the running program. Upgrading is `brew upgrade --formula`, and
-# `brew upgrade --cask <name>` when an app genuinely needs moving. `brew bundle cleanup` lists
-# what is installed but no longer declared.
+# `brew upgrade --cask <name>` when an app genuinely needs moving. Each bundle run ends by
+# listing what is installed but no longer declared; removing it is `brew bundle cleanup --force`.
 #
 # A third-party `tap` needs `trusted:` or a fresh machine stops at an interactive prompt.
 
@@ -36,13 +36,11 @@ brew "tealdeer"
 
 # ── Editor and language servers ───────────────────────────────────────
 brew "neovim"
-brew "bash-language-server"
 brew "biome"
 brew "marksman"
 brew "shellcheck"
 brew "shfmt"
 brew "taplo"
-brew "typescript-language-server"
 
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"

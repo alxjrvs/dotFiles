@@ -1,5 +1,8 @@
-# ~/.config/mise/config.toml: language runtimes only; every CLI is a Brewfile line. A project
-# pins its own versions in its own mise file.
+# ~/.config/mise/config.toml: language runtimes, and the two npm-built language servers, so the
+# machine has one node. Every other CLI is a Brewfile line. A project pins its own versions in
+# its own mise file.
 [tools]
 node = "lts"
 bun = "latest"
+"npm:bash-language-server" = "latest"
+"npm:typescript-language-server" = "latest"

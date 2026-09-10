@@ -20,8 +20,9 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 
 - `home/dot_claude/` is the **user-global** Claude config (`~/.claude/`). The repo-root
   `.claude/` is this repo's project scope. Don't conflate them.
-- CLIs and apps are Brewfile lines, Mac only; mise holds node and bun; the Claude Code CLI is
-  the native installer and git is the system's. `chezmoi apply` reconciles and never upgrades.
+- CLIs and apps are Brewfile lines, Mac only; mise holds node, bun and the npm-built language
+  servers; the Claude Code CLI is the native installer and git is the system's. `chezmoi apply`
+  reconciles and never upgrades.
 - Machine setup is `home/.chezmoiscripts/`, flat: `onchange` on the Brewfile hash, `onchange` on
   the macOS defaults, and an every-apply idempotent provision script.
 - One GitHub identity: `gh auth login`, keychain-backed, never `--insecure-storage`.
