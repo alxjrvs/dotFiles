@@ -12,6 +12,11 @@ not here; when a subject is gone, delete its entry.
   excluded, so an agent that types it fails there instead of reaching the vault.
 - **The `git credential-cache` socket is blocked in the sandbox** and `op` fails there, so the
   agent's push credential is git's own `osxkeychain` helper with a pinned username, never `op`.
+- **A `PreToolUse` matcher matches a tool NAME, and an MCP tool is not `Bash`.** A guard wired
+  to `Bash` has no opinion about an `mcp__github__*` call that reaches the same API with the
+  same token — and `mcp__github__get_me` reports `alxjrvs`, so it is the same token. The write
+  boundary on that path is `--exclude-tools` on the server registration, not a hook. An unknown
+  name in that list is ignored silently, so re-verify them (`generate-docs`) after a bump.
 - **A Bash permission rule matches the whole command text.** `Bash(x:*)` is a prefix and misses
   `env x`, `/usr/bin/x`, `(x`; `Bash(*x*)` is a substring and reaches subshells, substitutions and
   loop bodies. The deny floor is substring rules anchored on a verb (`*op read*`), never a path
