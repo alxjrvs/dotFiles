@@ -44,6 +44,12 @@ Preview without touching anything: `chezmoi apply --dry-run --verbose`. Drift:
 `scripts/verify.sh`, by hand. Upgrades are not chezmoi's job: `brew upgrade --formula`, then
 `mise upgrade --bump` (commit the new pins).
 
+Three things rot on their own clocks and only one is automated. Dependabot opens a monthly PR
+for the actions in `.github/workflows`. The mise pins and the tag tarballs in
+`home/.chezmoiexternal.toml` move by hand — `mise upgrade --bump`, and for the externals, read
+what changed upstream before bumping the tag in both entries. Nothing observes that they are
+stale, so it is a standing habit or it does not happen.
+
 ## Layout
 
 ```
