@@ -35,9 +35,39 @@
       "Read(~/.netrc)"
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "~/.local/bin/claude-statusline",
+    "refreshInterval": 10
+  },
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "~/.local/bin/claude-subagent-statusline"
+  },
+  "enabledPlugins": {
+    "agent-friendly-repo@oberon": true,
+    "gninety@gnar": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "gnar": {
+      "source": {
+        "source": "github",
+        "repo": "TheGnarCo/agent-skills"
+      }
+    },
+    "oberon": {
+      "source": {
+        "source": "github",
+        "repo": "alxjrvs/oberon"
+      }
+    }
+  },
+  "outputStyle": "Proactive",
   "sandbox": {
     "enabled": true,
-    "enableWeakerNetworkIsolation": true,
     "network": {
       "allowedDomains": [
         "api.github.com",
@@ -81,40 +111,12 @@
           "mode": "deny"
         }
       ]
-    }
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "~/.local/bin/claude-statusline",
-    "refreshInterval": 10
-  },
-  "subagentStatusLine": {
-    "type": "command",
-    "command": "~/.local/bin/claude-subagent-statusline"
-  },
-  "enabledPlugins": {
-    "agent-friendly-repo@oberon": true,
-    "gninety@gnar": true,
-    "typescript-lsp@claude-plugins-official": true,
-    "commit-commands@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true
-  },
-  "extraKnownMarketplaces": {
-    "gnar": {
-      "source": {
-        "source": "github",
-        "repo": "TheGnarCo/agent-skills"
-      }
     },
-    "oberon": {
-      "source": {
-        "source": "github",
-        "repo": "alxjrvs/oberon"
-      }
-    }
+    "enableWeakerNetworkIsolation": true
   },
+  "askUserQuestionTimeout": "10m",
+  "autoMemoryEnabled": false,
   "theme": "auto",
-  "outputStyle": "Proactive",
   "editorMode": "vim",
   "vimInsertModeRemaps": {
     "jj": "<Esc>"
@@ -124,12 +126,10 @@
   "terminalProgressBarEnabled": false,
   "inputNeededNotifEnabled": true,
   "autoMode": {
-    "classifyAllShell": true,
     "hard_deny": [
       "$defaults",
       "Never push directly to a repository's default branch, and never merge into it locally"
-    ]
-  },
-  "autoMemoryEnabled": false,
-  "askUserQuestionTimeout": "10m"
+    ],
+    "classifyAllShell": true
+  }
 }
