@@ -71,6 +71,18 @@
     "credentials": {
       "envVars": [
         {
+          "name": "GITHUB_TOKEN",
+          "mode": "deny"
+        },
+        {
+          "name": "GH_TOKEN",
+          "mode": "deny"
+        },
+        {
+          "name": "NPM_TOKEN",
+          "mode": "deny"
+        },
+        {
           "name": "NINETY_API_TOKEN",
           "mode": "deny"
         }
@@ -114,6 +126,7 @@
     "enabled": true,
     "mode": "hold"
   },
+  "theme": "auto",
   "skipWorkflowUsageWarning": true,
   "outputStyle": "Proactive",
   "editorMode": "vim",
