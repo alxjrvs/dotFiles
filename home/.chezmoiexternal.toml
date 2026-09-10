@@ -1,13 +1,19 @@
 # The Claude Code statusline: two scripts from a tag tarball, straight onto PATH under the names
-# dot_claude/settings.json calls. Bump the tag in both entries after reading what changed.
+# dot_claude/settings.json calls. Bump the tag and the checksum together after reading what changed:
+#   curl -fsSL <url> | shasum -a 256
+
 [".local/bin/claude-statusline"]
     type = "archive-file"
     url = "https://github.com/TheGnarCo/claude-statusline/archive/refs/tags/v1.1.1.tar.gz"
-    path = "claude-statusline-1.1.1/statusline.sh"
+    checksum.sha256 = "4cb70a81065effd55e2bdc598efd0fdc81b3c431e9bde5bb656366f416e015c7"
+    stripComponents = 1
+    path = "statusline.sh"
     executable = true
 
 [".local/bin/claude-subagent-statusline"]
     type = "archive-file"
     url = "https://github.com/TheGnarCo/claude-statusline/archive/refs/tags/v1.1.1.tar.gz"
-    path = "claude-statusline-1.1.1/subagent-statusline.sh"
+    checksum.sha256 = "4cb70a81065effd55e2bdc598efd0fdc81b3c431e9bde5bb656366f416e015c7"
+    stripComponents = 1
+    path = "subagent-statusline.sh"
     executable = true

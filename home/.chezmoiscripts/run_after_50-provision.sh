@@ -15,12 +15,6 @@ if command -v mise > /dev/null 2>&1; then
   mise prune --yes
 fi
 
-# This repo's own commit hook, in the source checkout. CHEZMOI_WORKING_TREE is the repo root;
-# never call chezmoi from a run script, the outer apply holds the state lock.
-if [ -f "${CHEZMOI_WORKING_TREE:-}/lefthook.yml" ] && command -v lefthook > /dev/null 2>&1; then
-  (cd "$CHEZMOI_WORKING_TREE" && lefthook install > /dev/null)
-fi
-
 # gh extensions, owner-qualified because same-named community forks exist.
 if gh auth status > /dev/null 2>&1; then
   installed=$(gh extension list 2> /dev/null | awk '{print $3}')
