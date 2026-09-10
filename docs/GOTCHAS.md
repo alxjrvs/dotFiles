@@ -1,7 +1,7 @@
 # Gotchas still armed
 
-Traps that cost a day once and that no file in `home/` asserts on its own: one mechanism and
-the rule it forces. History is in the PRs; when a subject is gone, delete its entry.
+Traps that cost a day once: one mechanism and the rule it forces, in one place. History is in
+the PRs; when a subject is gone, delete its entry.
 
 ## Claude Code
 
@@ -19,10 +19,9 @@ the rule it forces. History is in the PRs; when a subject is gone, delete its en
   satisfied. `excludedCommands` matches what the agent typed, not grandchildren.
 - **A Bash permission rule matches the whole command text,** subshells and heredocs included: a
   command that merely mentions a denied string is denied. Anchor on a verb, never a path.
-- **Every `Bash(...)` allow entry is inert in auto mode** while `autoMode.classifyAllShell` is
-  true; the classifier judges shell commands instead. Deny rules still apply.
-- **The empty-string env vars in `settings.json` are load-bearing:** an unset `${VAR}` is passed
-  through as a literal and read as a real value.
+- **The empty-string `NINETY_API_TOKEN` in `settings.json` is load-bearing:** Claude Code passes
+  an unset `${VAR}` through as a literal, and the empty string keeps that placeholder out of the
+  plugin's hands.
 - **A `PreToolUse` matcher matches a tool name, and an MCP tool is not `Bash`.** A boundary on
   the MCP path is `--exclude-tools` on the server registration; none is set, by choice.
 - **`gh` and the `github` MCP are two credentials on one account, and `gh` is the privileged

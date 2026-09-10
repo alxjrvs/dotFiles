@@ -15,8 +15,8 @@ chezmoi init --apply alxjrvs/dotFiles
 That clones to `~/.local/share/chezmoi` and applies: files into `~`, then the three `run_`
 scripts in [`home/`](home/): the Homebrew bundle (when the Brewfile changes), macOS defaults
 (when they change), and provisioning on every apply (Claude Code CLI, `mise install`, gh
-extensions, the MCP registrations, the agent's PAT). Then `gh auth login`, `chezmoi apply`
-again for the extensions, and `lefthook install` in the checkout.
+extensions, this repo's commit hook, the MCP registrations, the agent's PAT). Then
+`gh auth login` and `chezmoi apply` again for the extensions.
 
 Day to day: edit in the checkout (`chezmoi cd`), `chezmoi apply`, commit, PR. Another Mac:
 `chezmoi update`. Drift: `chezmoi verify --exclude scripts` and
@@ -37,7 +37,7 @@ security add-generic-password -a "$USER" -s op-claude-agent -w
 From there `chezmoi apply` copies the agent's GitHub PAT out of the vault into the keychain
 through git's own credential helper, and registers the 1Password and GitHub MCP servers. Rotate
 the PAT in 1Password and the next apply propagates it. This runs at apply time because apply runs
-outside Claude Code's Bash sandbox, which is the only place `op` can reach 1Password at all.
+outside Claude Code's Bash sandbox, and `op` cannot reach 1Password from inside it.
 
 ## Layout
 
@@ -52,9 +52,11 @@ docs/GOTCHAS.md         traps still armed and the rule each forces; never applie
 
 ## Forking
 
-`git grep -ilE 'alxjrvs|claude-agent|GitHubSSH'` finds every file: git identity and signing key
-(`home/dot_gitconfig`, `home/private_dot_ssh/allowed_signers`), the agent identity
-(`home/dot_claude/settings.json`), the `op://claude-agent/…` references (`settings.json`,
-`home/run_after_50-provision.sh`), and the SSH items in `home/dot_config/1Password/ssh/agent.toml`.
+`git grep -ilE 'alxjrvs|claude-agent|GitHubSSH'` finds every file. What breaks first: git
+identity and signing key (`home/dot_gitconfig`, `home/private_dot_ssh/allowed_signers`), the
+agent's git identity (`home/dot_claude/settings.json`, `home/dot_config/git/agent.gitconfig`),
+the vault references and keychain item names (`settings.json`, `home/run_after_50-provision.sh`,
+`home/dot_local/bin/executable_op-sa`), and the SSH items in
+`home/dot_config/1Password/ssh/agent.toml`.
 
 MIT — see [`LICENSE`](LICENSE).

@@ -20,14 +20,13 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 
 - `home/dot_claude/` is the **user-global** Claude config (`~/.claude/`). The repo-root
   `.claude/` is this repo's project scope. Don't conflate them.
-- Every CLI and app is a Brewfile line; mise holds only node and bun. `gh` extensions are in
-  the provision script. `chezmoi apply` reconciles and never upgrades.
+- CLIs and apps are Brewfile lines; mise holds only node and bun; the Claude Code CLI is the
+  native installer and git is Xcode's. `chezmoi apply` reconciles and never upgrades.
 - Machine setup is three chezmoi `run_` scripts in `home/`: `onchange` on the Brewfile hash,
   `onchange` on the macOS defaults, and an every-apply idempotent provision script.
 - `gh` auth is keychain-backed; never `--insecure-storage`.
-- nvim is plugin-free. `home/dot_claude/settings.json` carries only divergences from defaults;
-  don't tidy a key away without reading why it is there.
-- Secrets: `op://` references only, never a plaintext token. To use a secret, pass it
-  (`op run --env-file=F -- CMD`), never read it.
+- nvim is plugin-free. `home/dot_claude/settings.json` carries divergences from defaults; don't
+  tidy a key away without reading why it is there.
+- Secrets: `op://` references only, never a plaintext token, and nothing here prints one.
 - A source file's mode comes from its name (`executable_`, `private_`), never from the checkout.
 - Traps still armed and the rule each forces: `docs/GOTCHAS.md`. History is the PRs.
