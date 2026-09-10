@@ -9,7 +9,10 @@ not here; when a subject is gone, delete its entry.
 - **Go binaries cannot verify TLS inside the Bash sandbox** (macOS Seatbelt blocks the trust
   daemon): `gh`, `op`, `chezmoi`, `gcloud`. `gh` is in `sandbox.excludedCommands`; run
   `chezmoi apply` from a normal terminal, not from an agent. `op-sa` is deliberately not
-  excluded, so an agent that types it fails there instead of reaching the vault.
+  excluded, so `op-sa read` fails there instead of reaching the vault. That is not enough on
+  its own: the keychain IS reachable inside the sandbox, `op-sa run -- env` would print the
+  service-account token without contacting 1Password, and a `gh alias` body runs unsandboxed.
+  Those three spellings are text-denied in `permissions.deny`, which is what the floor is for.
 - **The `git credential-cache` socket is blocked in the sandbox** and `op` fails there, so the
   agent's push credential is git's own `osxkeychain` helper with a pinned username, never `op`.
 - **A tool that writes its own cache or reads system config fails INSIDE the sandbox, and says
@@ -32,8 +35,9 @@ not here; when a subject is gone, delete its entry.
   — the `gh` verb rules in `permissions.deny` are what stand there, and they stay.
 - **A Bash permission rule matches the whole command text.** `Bash(x:*)` is a prefix and misses
   `env x`, `/usr/bin/x`, `(x`; `Bash(*x*)` is a substring and reaches subshells, substitutions and
-  loop bodies. The deny floor is substring rules anchored on a verb (`*op read*`), never a path
-  (`*/op *` blocked `ls src/op x`). A hook `allow` cannot bypass a deny rule.
+  loop bodies, and a command that merely mentions a denied string in a comment or heredoc is
+  denied too. The deny floor is substring rules anchored on a verb, never a path (`*/op *`
+  blocked `ls src/op x`). A hook `allow` cannot bypass a deny rule.
 - **`~/.config/gh/hosts.yml` holds no token under keyring storage.** A `Read` deny on it buys
   nothing and, merged into the sandbox, made every `gh` call fail to load its config.
 - **gh keys its keychain entries by host only**, so a second `GH_CONFIG_DIR` overwrites the
@@ -41,7 +45,6 @@ not here; when a subject is gone, delete its entry.
   second gh login.
 - **User-scoped MCP servers live only in `~/.claude.json`.** Nothing tracks that file; the
   provision script converges the two entries on every apply.
-- **A rule in `home/dot_claude/rules/` loads into every session unless it has `paths:`.**
 
 ## 1Password
 
