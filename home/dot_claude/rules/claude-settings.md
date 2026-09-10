@@ -21,6 +21,6 @@ paths:
 - **`gh` is in `sandbox.excludedCommands`; `op-sa` is deliberately NOT.** `gh` needs to work
   there and `op-sa` failing there is the control — `docs/GOTCHAS.md` has the mechanism. Do not
   "fix" op-sa by adding it.
-- **The write boundary on the MCP path is `--exclude-tools`, not a rule here.** A `PreToolUse`
-  matcher matches a tool name, so nothing in this file reaches `mcp__github__*`. That list
-  lives in `home/run_after_50-provision.sh`.
+- **Nothing in this file reaches `mcp__github__*`.** A `PreToolUse` matcher matches a tool
+  name, so a boundary on that path is `--exclude-tools` on the server registration in
+  `home/run_after_50-provision.sh`. None is set today.

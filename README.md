@@ -69,9 +69,8 @@ signing key (`home/dot_gitconfig`, `home/private_dot_ssh/allowed_signers`), the 
 `home/run_after_50-provision.sh`), and the SSH items in
 `home/dot_config/1Password/ssh/agent.toml`.
 
-What an agent may write is scoped by ACTION, not by repo owner, so there is no list to port:
-the `--exclude-tools` roster on the MCP registration in `home/run_after_50-provision.sh`, the
-`gh` verb rules in `permissions.deny`, and one rule in `home/dot_claude/CLAUDE.md`.
+What an agent may write is scoped by ACTION, not by repo owner, so there is no list of repos to
+port — the `gh` verb rules in `permissions.deny` are the whole of it.
 
 ## Where the reasoning lives
 
