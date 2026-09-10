@@ -1,5 +1,5 @@
 -- nvim/init.lua — plugin-free. Neovim 0.11+ native LSP (vim.lsp.config / vim.lsp.enable);
--- the servers and shfmt come from Homebrew.
+-- the servers and shfmt are installed machine-wide, on PATH.
 
 -- ── Options ──────────────────────────────────────────────────────────────
 vim.g.mapleader = " "
@@ -40,7 +40,7 @@ vim.lsp.config("rust_analyzer", {
   root_markers = { "Cargo.toml", ".git" },
 })
 
--- Formats through shfmt when it is on PATH; these two flags match the old `shfmt -ci -sr`.
+-- Formats through shfmt when it is on PATH: -ci -sr from here, -i from shiftwidth.
 vim.lsp.config("bashls", {
   cmd = { "bash-language-server", "start" },
   filetypes = { "sh", "bash" },
@@ -54,11 +54,18 @@ vim.lsp.config("ts_ls", {
   root_markers = { "package.json", "tsconfig.json", ".git" },
 })
 
--- Formatter for JS/TS; ts_ls stays for everything else and is filtered out of format-on-save.
+-- Formatter for JS/TS/JSON, only in projects that carry a biome config: without one it would
+-- format with its own defaults (tabs) and lint with opinions the project never adopted.
+-- ts_ls stays for everything else and is filtered out of format-on-save.
 vim.lsp.config("biome", {
   cmd = { "biome", "lsp-proxy" },
   filetypes = { "javascript", "javascriptreact", "typescript", "typescriptreact", "json", "jsonc" },
-  root_markers = { "biome.json", "biome.jsonc", "package.json", ".git" },
+  root_dir = function(bufnr, on_dir)
+    local root = vim.fs.root(bufnr, { "biome.json", "biome.jsonc" })
+    if root then
+      on_dir(root)
+    end
+  end,
 })
 
 vim.lsp.config("marksman", {
@@ -76,14 +83,17 @@ vim.lsp.config("taplo", {
 vim.lsp.enable({ "rust_analyzer", "bashls", "ts_ls", "biome", "marksman", "taplo" })
 
 -- ── Format on save: every attached server that can, except ts_ls (biome owns JS/TS) ────────
+-- Import sorting is a code action, not formatting; it is not run on save.
+local function not_ts_ls(client)
+  return client.name ~= "ts_ls"
+end
+
 vim.api.nvim_create_autocmd("BufWritePre", {
   group = vim.api.nvim_create_augroup("FormatOnSave", { clear = true }),
   callback = function(args)
-    vim.lsp.buf.format({
-      bufnr = args.buf,
-      filter = function(client)
-        return client.name ~= "ts_ls"
-      end,
-    })
+    local clients = vim.lsp.get_clients({ bufnr = args.buf, method = "textDocument/formatting" })
+    if vim.iter(clients):any(not_ts_ls) then
+      vim.lsp.buf.format({ bufnr = args.buf, filter = not_ts_ls })
+    end
   end,
 })
