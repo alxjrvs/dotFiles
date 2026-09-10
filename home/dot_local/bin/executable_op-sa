@@ -2,8 +2,7 @@
 # op-sa: `op` as the agent's 1Password service account, for the plugin tokens that are not
 # GitHub's. The token lives in the login keychain (item `op-claude-agent`; see the README) and
 # is loaded into this process only. Its consumers are the token commands in
-# ~/.claude/settings.json, never an agent's Bash: `op-sa` is text-denied there, and it is
-# deliberately outside the sandbox's excluded commands so a read also fails there on TLS.
+# ~/.claude/settings.json, never an agent's Bash: `op-sa` is text-denied there.
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 OP_SERVICE_ACCOUNT_TOKEN="$(security find-generic-password -s op-claude-agent -w)" || exit 1
 export OP_SERVICE_ACCOUNT_TOKEN

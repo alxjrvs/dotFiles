@@ -5,20 +5,19 @@ the PRs; when a subject is gone, delete its entry.
 
 ## Claude Code
 
-- **Go binaries cannot verify TLS inside the Bash sandbox** (`gh`, `op`, `chezmoi`, `gcloud`).
-  `gh` is in `sandbox.excludedCommands`; `chezmoi apply` runs from a normal terminal. `op-sa`
-  is deliberately not excluded, so `op-sa read` fails there instead of reaching the vault.
+- **Go binaries cannot verify TLS inside the Bash sandbox on macOS** (`gh`, `op`, `chezmoi`):
+  Seatbelt denies the `com.apple.trustd.agent` Mach lookup that Go's `crypto/x509` needs.
+  `sandbox.enableWeakerNetworkIsolation` re-allows that one lookup and nothing else on macOS;
+  `excludedCommands` is the documented alternative but is skipped for a command inside a shell
+  loop. Linux has no trustd and no such failure.
 - **The sandbox is not the whole control for secrets.** The keychain is reachable inside it and
   a `gh alias` body runs unsandboxed, so `op-sa`, `security find-*`, `gh auth token` and
   `gh alias` are text-denied in `permissions.deny`.
 - **A tool failing inside the sandbox reports it in its own vocabulary,** and looks like a
   broken repo: `brew bundle check` exits nonzero there while printing that the Brewfile is
-  satisfied. `excludedCommands` matches what the agent typed, not grandchildren.
+  satisfied.
 - **A Bash permission rule matches the whole command text,** subshells and heredocs included: a
   command that merely mentions a denied string is denied. Anchor on a verb, never a path.
-- **The empty-string `NINETY_API_TOKEN` in `settings.json` is load-bearing:** Claude Code passes
-  an unset `${VAR}` through as a literal, and the empty string keeps that placeholder out of the
-  plugin's hands.
 - **A `PreToolUse` matcher matches a tool name, and an MCP tool is not `Bash`.** A boundary on
   the MCP path is a `mcp__github__<tool>` entry in `permissions.deny`; none is set, by choice.
 - **`gh` is the one GitHub credential, and the agent holds it.** The `gh` verb rules in
