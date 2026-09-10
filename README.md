@@ -19,7 +19,7 @@ chezmoi init --apply alxjrvs/dotFiles
 `init --apply` clones this repo to `~/.local/share/chezmoi`, renders `~/.config/chezmoi/chezmoi.toml`
 from [`home/.chezmoi.toml.tmpl`](home/.chezmoi.toml.tmpl), and applies: symlinks into `~`, then
 the `run_` scripts in [`home/`](home/) — the Claude Code CLI, Homebrew bundle, `mise install`,
-gh extensions, macOS defaults, LaunchAgents, lefthook, tldr, the 1Password MCP registration,
+gh extensions, macOS defaults, LaunchAgents, lefthook, tldr, the 1Password and GitHub MCP registrations,
 op-agent, git signing — each darwin-gated and either hashed on the file it applies or cheap
 enough to run every time.
 
