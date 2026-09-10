@@ -19,3 +19,6 @@
 	helper =
 	helper = osxkeychain
 	username = claude-agent
+# No helper at all for gists, so an agent gist push fails closed instead of using the human's.
+[credential "https://gist.github.com"]
+	helper =

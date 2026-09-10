@@ -27,10 +27,10 @@ Day to day: edit in the checkout (`chezmoi cd`), `chezmoi apply`, commit, PR. On
 
 ## The agent
 
-**One step is by hand, once per machine**, and everything else the agent needs follows from it
-on every apply. Mint a 1Password service account with `read_items` on the `claude-agent` vault
-and store its token in the login keychain. `-w` last: it prompts, so the token never lands on
-argv or in shell history.
+**One agent step is by hand, once per machine**, and the rest of what the agent needs follows
+from it on every apply. Mint a 1Password service account with `read_items` on the
+`claude-agent` vault and store its token in the login keychain. `-w` last: it prompts, so the
+token never lands on argv or in shell history.
 
 ```bash
 security add-generic-password -a "$USER" -s op-claude-agent -w
@@ -38,8 +38,8 @@ security add-generic-password -a "$USER" -s op-claude-agent -w
 
 From there `chezmoi apply` copies the agent's GitHub PAT out of the vault into the keychain
 through git's own credential helper, and registers the 1Password and GitHub MCP servers. Rotate
-the PAT in 1Password and the next apply propagates it. This runs at apply time because that is
-the one moment a machine runs outside Claude Code's Bash sandbox, where `op` can reach 1Password.
+the PAT in 1Password and the next apply propagates it. This runs at apply time because apply runs
+outside Claude Code's Bash sandbox, which is the only place `op` can reach 1Password at all.
 
 Preview without touching anything: `chezmoi apply --dry-run --verbose`. Drift:
 `chezmoi verify --exclude scripts` and `brew bundle check --global --no-upgrade`, by hand.
@@ -62,8 +62,8 @@ docs/GOTCHAS.md         traps still armed and the rule each forces; never applie
 
 `git grep -ilE 'alxjrvs|claude-agent|GitHubSSH'` finds every file. In order of what breaks first: git identity and
 signing key (`home/dot_gitconfig`, `home/private_dot_ssh/allowed_signers`), the agent identity
-(`home/dot_claude/settings.json`), the `op://claude-agent/…` references (`settings.json` and
-this README), and the SSH items in
+(`home/dot_claude/settings.json`), the `op://claude-agent/…` references (`settings.json`,
+`home/run_after_50-provision.sh`), and the SSH items in
 `home/dot_config/1Password/ssh/agent.toml`.
 
 What an agent may write is scoped by ACTION, not by repo owner, so there is no list of repos to
