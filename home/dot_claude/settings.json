@@ -23,8 +23,6 @@
     "deny": [
       "Bash(*gh release create*)",
       "Bash(*gh gist create*)",
-      "Bash(*gh pr create*)",
-      "Bash(*gh pr merge*)",
       "Bash(*gh alias*)",
       "Bash(*gh auth token*)",
       "Bash(*--show-token*)",
