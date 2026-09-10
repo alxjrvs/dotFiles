@@ -8,12 +8,9 @@ the PRs; when a subject is gone, delete its entry.
 - **Go binaries cannot verify TLS inside the Bash sandbox** (`gh`, `op`, `chezmoi`, `gcloud`).
   `gh` is in `sandbox.excludedCommands`; `chezmoi apply` runs from a normal terminal. `op-sa`
   is deliberately not excluded, so `op-sa read` fails there instead of reaching the vault.
-- **The sandbox is not the whole control for secrets.** The keychain is reachable inside it,
-  `op-sa run -- env` would print the service-account token without contacting 1Password, and a
-  `gh alias` body runs unsandboxed. Those spellings are text-denied in `permissions.deny`.
-- **`op` cannot serve a git push** for the same TLS reason, and the `credential-cache` socket
-  is blocked, so the agent's push credential is git's `osxkeychain` helper with a pinned
-  username.
+- **The sandbox is not the whole control for secrets.** The keychain is reachable inside it and
+  a `gh alias` body runs unsandboxed, so `op-sa`, `security find-*`, `gh auth token` and
+  `gh alias` are text-denied in `permissions.deny`.
 - **A tool failing inside the sandbox reports it in its own vocabulary,** and looks like a
   broken repo: `brew bundle check` exits nonzero there while printing that the Brewfile is
   satisfied. `excludedCommands` matches what the agent typed, not grandchildren.
@@ -23,13 +20,9 @@ the PRs; when a subject is gone, delete its entry.
   an unset `${VAR}` through as a literal, and the empty string keeps that placeholder out of the
   plugin's hands.
 - **A `PreToolUse` matcher matches a tool name, and an MCP tool is not `Bash`.** A boundary on
-  the MCP path is `--exclude-tools` on the server registration; none is set, by choice.
-- **`gh` and the `github` MCP are two credentials on one account, and `gh` is the privileged
-  one:** your OAuth token with `repo`, `gist` and `workflow`. Scoping the agent PAT closes
-  nothing on the `gh` path; the `gh` verb rules in `permissions.deny` stand there.
-- **gh cannot hold a second identity for the agent.** Its credential helper serves only the
-  active account, and the keychain slot for that token has no username, so a second
-  `GH_CONFIG_DIR` overwrites it. The agent's identity is a PAT in the keychain, not a gh login.
+  the MCP path is a `mcp__github__<tool>` entry in `permissions.deny`; none is set, by choice.
+- **`gh` is the one GitHub credential, and the agent holds it.** The `gh` verb rules in
+  `permissions.deny` are the only thing between the agent and a release, a gist, or the token.
 - **User-scoped MCP servers live only in `~/.claude.json`,** which nothing tracks; the
   provision script converges them on every apply.
 
@@ -38,20 +31,10 @@ the PRs; when a subject is gone, delete its entry.
 - **Item titles in the agent vault are kebab-case:** every consumer re-parses an `op://` ref
   through `sh -c`, and a space word-splits it silently.
 - **Service-account tokens have no visible expiry** anywhere. Mint with the default lifetime
-  and revoke on incident; a scheduled rotation has nothing to observe. The provision script
-  prints one line when a read fails, which is the only signal.
-- **The agent's PAT is fine-grained, so it expires, and GitHub mails a warning.** A push that
-  suddenly asks for a password is this, not a broken helper. Rotate it in the vault; the next
-  apply propagates it.
-- **A fine-grained PAT needs `Workflows: write`** to push under `.github/workflows/` and
-  `Actions: read` before any MCP run or log tool answers; neither failure names the permission.
+  and revoke on incident; a scheduled rotation has nothing to observe. A plugin that suddenly
+  has no token is the only signal.
 - **`op run --env-file` works for an agent only through `op-sa`:** the desktop integration
   needs Touch ID and is revoked when the app locks.
-- **A keychain item is readable only by the binaries on its ACL,** and the creator is on it
-  automatically. A credential git will read is written through git's helper, never `security`.
-- **`git-credential-osxkeychain store` is a silent no-op on an existing item before git 2.45.**
-  `erase` first: a no-op when absent, scoped to the username, and re-creating the item keeps its
-  ACL pointing at the helper Xcode currently ships.
 - **`security … -w` with no value cannot be scripted:** it reads `/dev/tty`, ignores a piped
   value under an interactive shell, and two bare Returns store an empty secret.
 
