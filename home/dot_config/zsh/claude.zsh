@@ -1,31 +1,23 @@
 # Route interactive Claude Code through its own app bundle, so a macOS update
 # stops re-prompting for file access.
 #
-# Why it happens. macOS TCC keys a file-access grant to the executable's
-# absolute PATH — `csreq` is NULL on those rows, so the code hash is NOT pinned,
-# only the path — and the native installer stages every release at its own
-# ~/.local/share/claude/versions/<ver>. Every update is therefore a brand-new
-# client and the whole set of "wants to access data from other apps" dialogs
-# comes back. Nothing is misconfigured; the recommended install layout guarantees
-# this. The ClaudeCode.app bundle beside versions/ is Anthropic's own (background
-# sessions already re-exec through it, so it holds the grants); docs/GOTCHAS.md
-# has the measurement.
+# macOS TCC keys a grant to the executable's absolute PATH, and the native
+# installer stages every release at its own ~/.local/share/claude/versions/<ver>
+# — so every update is a brand-new client and every "wants to access data from
+# other apps" dialog comes back. The ClaudeCode.app bundle beside versions/ is
+# Anthropic's own, and already holds the grants.
 #
-# Why a shell function and NOT a launcher at ~/.local/bin/claude. Leaving that
-# path to the installer keeps auto-update and automatic version cleanup working,
-# keeps `claude doctor` quiet, and keeps this out of the boot path of every
-# script, hook and launchd job — a wrapper there fails closed into "no working
-# claude", which is a far worse outcome than the dialog it removes. Interactive
-# shells are also exactly the sessions that can show a dialog, so the narrower
-# scope costs nothing real.
+# A shell function, NOT a launcher at ~/.local/bin/claude: leaving that path to
+# the installer keeps auto-update, version cleanup and `claude doctor` working,
+# and keeps this out of the boot path of every script and launchd job, where a
+# wrapper would fail closed into "no working claude".
 #
-# Two traps worth keeping:
+# Two traps:
 #   - It must NOT `exec`. Inside a function that replaces the shell itself, so
-#     the terminal would close the moment Claude exits.
-#   - An alias cannot do this at all — the bundle hardlink has to be refreshed
-#     before launch, or it silently pins the machine to whatever version it last
-#     held. Claude Code only refreshes it when process.execPath is under
-#     versions/, which stops being true the moment anything sits in front.
+#     the terminal closes the moment Claude exits.
+#   - An alias cannot do this: the bundle hardlink must be refreshed before
+#     launch, and Claude Code only refreshes it when process.execPath is under
+#     versions/ — which stops being true the moment anything sits in front.
 #
 # macOS only: TCC does not exist elsewhere, and `-ef` here is an inode test.
 if [[ $OSTYPE == darwin* ]]; then
