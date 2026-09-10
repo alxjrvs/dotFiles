@@ -14,8 +14,8 @@ pre-commit:
       glob: "{*.ts,*.tsx,*.js,*.jsx,*.json,*.jsonc}"
       run: biome check {staged_files}
     gitleaks:
-      # --config: the repo's own copy of the global rules, so this repo's gate and
-      # every other repo's template hook enforce the same set.
+      # --config: pinned to the same rules file this repo places at ~/.config/gitleaks, so the
+      # gate here and anything else pointed at that file enforce one set.
       run: gitleaks git --staged --redact -v --no-banner --config home/dot_config/gitleaks/gitleaks.toml
     settings-json-validity:
       glob: "home/dot_claude/settings*.json"

@@ -68,9 +68,10 @@ jobs:
       # on a real machine, with the state DB beside a throwaway config, out of the
       # checkout. Safe on a runner: `--dry-run` runs no script; it only renders every
       # file and template into a temp destination.
-      # One github.com call remains: an `archive-file` external's tarball is read to
-      # know its entries even under `--exclude externals`. The version is pinned by
-      # hand — Renovate reads `uses:` lines only; bump it with the Brewfile's.
+      # Some github.com traffic remains: every external's tarball is read for its entries
+      # even under `--exclude externals` (the statusline pair share one URL; the two zsh
+      # plugins are one each). The chezmoi version is pinned by hand — Renovate reads
+      # `uses:` lines only; bump it with the Brewfile's.
       #
       # `--source` on every command, not `init`: with the config template gone there is no
       # config to write, so `init` records nothing and the later commands would fall back to

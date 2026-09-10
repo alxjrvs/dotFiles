@@ -1,5 +1,6 @@
-# gitleaks — the config the git template hook reads in repos that declare none of their
-# own (~/.config/gitleaks/gitleaks.toml), and this repo's lefthook and CI pass explicitly.
+# gitleaks — the global rules (~/.config/gitleaks/gitleaks.toml), which this repo's lefthook and
+# CI pass explicitly. Other repos scan at commit time through their own lefthook, and GitHub's
+# push protection is the server-side net.
 # Deliberately NOT exported as GITLEAKS_CONFIG: that variable outranks a repo's own
 # .gitleaks.toml, so a shell-wide export would silently discard every other repo's
 # allowlists and rules.
