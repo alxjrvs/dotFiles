@@ -94,6 +94,9 @@ case_is fork_comment_upstream DENY "gh pr comment 1 --body hi" "$FORK"
 case_is foreign_env_wrapper DENY "env gh issue create --title x" "$FOREIGN"
 case_is foreign_abs_path DENY "/opt/homebrew/bin/gh issue create --title x" "$FOREIGN"
 case_is foreign_after_and DENY "git push && gh pr create --fill" "$FOREIGN"
+# `op run -- CMD` runs CMD: the program to judge is gh, not op.
+case_is op_run_wrapper DENY "op run --env-file=.env -- gh issue create --title x" "$FOREIGN"
+case_is op_run_wrapper_owned ALLOW "op run --env-file=.env -- gh issue create --title x" "$OWNED"
 
 # --- gh api: the path permissions.deny cannot cover --------------------------
 case_is api_post_foreign DENY "gh api -X POST repos/someone-else/thing/issues -f title=x" "$OWNED"

@@ -5,8 +5,13 @@
 # The load-bearing cases are the ones where it must NOT block: a Stop hook runs on every turn,
 # and one that blocks when it should not strands a session. So the no-op paths come first and
 # the blocking cases last. A stub `lefthook` in a temp bin returns whatever exit code a case
-# chooses, and REFUSES an invocation without `--files-from-stdin`: bare `lefthook run pre-commit`
-# reads an empty index and passes vacuously, which is the regression this suite exists for.
+# chooses, and REFUSES both shapes of the vacuous pass this suite exists for: an invocation
+# without `--files-from-stdin` (bare `lefthook run pre-commit` reads an empty index), and a
+# file list that is not NUL-separated (lefthook splits that stdin on `\0` only, so a
+# newline-separated list is one path no `glob:` matches, and every command skips).
+#
+# Negative control, measured: drop the `tr` that makes the list NUL-separated and 3 of the 16
+# cases fail (the three that assert the gate ran). Re-run it after changing the hook.
 set -uo pipefail
 
 HOOK="$(cd "$(dirname "$0")/.." && pwd)/verify-gate.sh"
@@ -50,9 +55,26 @@ case " $* " in
     exit 99
     ;;
 esac
-# The file list must actually arrive on stdin.
-n=$(wc -l < /dev/stdin | tr -d ' ')
-[ "$n" -gt 0 ] || { echo "stub lefthook: empty file list on stdin" >&2; exit 98; }
+# The list must arrive NUL-separated, and every entry must be a real path: lefthook splits this
+# stdin on \0 only, so a newline-separated list is one unmatchable path and every glob skips.
+# Written to a file rather than a variable: command substitution discards NUL bytes, which is
+# exactly the byte under test.
+raw="$LEFTHOOK_STUB_EXIT.stdin"
+cat > "$raw"
+if [ "$(tr -cd '\0' < "$raw" | wc -c | tr -d ' ')" -eq 0 ]; then
+  echo "stub lefthook: file list is not NUL-separated; lefthook splits --files-from-stdin on \\0 only" >&2
+  exit 98
+fi
+if [ "$(tr -cd '\n' < "$raw" | wc -c | tr -d ' ')" -ne 0 ]; then
+  echo "stub lefthook: file list contains a newline; a path with one would be split" >&2
+  exit 98
+fi
+while IFS= read -r f; do
+  [ -z "$f" ] || [ -e "$f" ] || {
+    echo "stub lefthook: not a path: $f" >&2
+    exit 97
+  }
+done < <(tr '\0' '\n' < "$raw")
 exit "$(cat "$LEFTHOOK_STUB_EXIT" 2> /dev/null || echo 0)"
 STUB
 chmod +x "$BIN/lefthook"

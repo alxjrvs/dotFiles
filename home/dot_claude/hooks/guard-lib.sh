@@ -132,6 +132,23 @@ _norm() { # $1 = segment -> prints normalized argv, space-separated
       command | builtin | env | exec | nohup | nice | stdbuf | noglob | time)
         shift
         ;;
+      # `op run [--env-file=F] -- CMD` runs CMD, so CMD is the program to judge. Without this
+      # arm `op run -- gh issue create` resolves to the program `op` and the gh write is never
+      # scoped. `op-sa` is denied outright in settings.json, but it costs nothing to read here.
+      op | op-sa)
+        [ "$(_dequote "${2:-}")" = run ] || break
+        shift 2
+        while [ $# -gt 0 ]; do
+          if [ "$(_dequote "$1")" = "--" ]; then
+            shift
+            break
+          fi
+          case "$(_dequote "$1")" in
+            -*) shift ;;
+            *) break ;;
+          esac
+        done
+        ;;
       # sudo/doas take flags WITH arguments (`-u user`) that would otherwise read as the program.
       sudo | doas)
         shift

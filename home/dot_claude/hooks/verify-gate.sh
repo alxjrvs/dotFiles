@@ -7,7 +7,10 @@
 #   - only in a repo that declares a gate (`lefthook.yml`), running whatever it runs on commit;
 #   - only over the CHANGED files (`--files-from-stdin`), so the cost is proportional to the turn.
 #     Bare `lefthook run pre-commit` reads the INDEX, which is empty at the end of a turn, so
-#     every glob-scoped command would skip and the gate would pass on work it never opened;
+#     every glob-scoped command would skip and the gate would pass on work it never opened.
+#     The list must be NUL-separated: lefthook splits that stdin on `\0` only, and a
+#     newline-separated list arrives as ONE path that no `glob:` matches, which is the same
+#     vacuous pass by another route (measured against lefthook 2.1.9, and asserted by the suite);
 #   - once per tree state, so an unfixable failure blocks at most once until the tree changes;
 #   - under a 60 s bound where `timeout` exists (it is not in the macOS base system).
 #
@@ -46,10 +49,10 @@ marker="$state/$tree_id"
 [ -e "$marker" ] && exit 0
 
 if command -v timeout > /dev/null 2>&1; then
-  out=$(cd "$root" && printf '%s\n' "$files" | timeout 60 lefthook run pre-commit --files-from-stdin 2>&1)
+  out=$(cd "$root" && printf "%s\n" "$files" | tr "\n" "\0" | timeout 60 lefthook run pre-commit --files-from-stdin 2>&1)
   rc=$?
 else
-  out=$(cd "$root" && printf '%s\n' "$files" | lefthook run pre-commit --files-from-stdin 2>&1)
+  out=$(cd "$root" && printf "%s\n" "$files" | tr "\n" "\0" | lefthook run pre-commit --files-from-stdin 2>&1)
   rc=$?
 fi
 # 124 = timeout, 127 = lefthook could not run: fail open rather than strand the turn.
