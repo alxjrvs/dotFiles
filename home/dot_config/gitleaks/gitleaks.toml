@@ -21,8 +21,7 @@ description = "${VAR} placeholder in a tracked .mcp.json — a later `claude mcp
 # The match is the whole JSON string around the placeholder, not the placeholder alone:
 # gitleaks' default global allowlist drops any finding that is exactly `${NAME}`, which is
 # precisely the shape this rule exists for. Measured with 8.30.1 — the bare form reported
-# "no leaks found" on a `.mcp.json` carrying `${GITHUB_TOKEN}`. scripts/tests/gates.sh
-# drives this rule over a generated fixture so that regression cannot return.
+# "no leaks found" on a `.mcp.json` carrying `${GITHUB_TOKEN}`.
 regex = '''"[^"\n]*\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}[^"\n]*"'''
 path = '''(^|/)\.mcp\.json$'''
 keywords = ["${"]

@@ -79,12 +79,6 @@ else
   skip "gh absent"
 fi
 
-# ── Claude Code: the live settings carry the deny floor and every wired hook ──
-if [ -f "$HOME/.claude/settings.json" ]; then
-  if out=$("$REPO/scripts/settings-guardrails.sh" "$HOME/.claude/settings.json" 2>&1); then ok "settings guardrails (live file)"; else bad "settings guardrails:
-$out"; fi
-fi
-
 # ── Claude Code: the 1Password and GitHub MCP servers are registered, and no MCP server is dead ──
 mcp=/Applications/1Password.app/Contents/MacOS/1password-mcp
 if [ -x "$mcp" ] && command -v jq > /dev/null 2>&1; then

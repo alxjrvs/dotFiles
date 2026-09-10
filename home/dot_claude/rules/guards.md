@@ -4,49 +4,20 @@ paths:
   - "**/.claude/hooks/*.sh"
 ---
 
-# Touching a guard hook
+# Touching a hook
 
-Three properties hold for every script here, and breaking one is silent:
+Two hooks live here: `repo-scope-guard.sh` (PreToolUse, `gh` writes outside the owned orgs)
+and `verify-gate.sh` (Stop, the repo's own commit gate over the turn's changed files).
 
-- **They fail open, by design.** A missing `jq`, a bad envelope, an unparseable
-  command: all exit 0 and allow. A guard that wedges the session gets deleted,
-  which is worse than one that misses. Keep new error paths failing open.
-- **They may deny, never allow.** No guard emits `permissionDecision: "allow"` —
-  that would bypass the permission system and put the hook *above*
-  `permissions.deny`. Subtract permission only, so the two compose.
-- **Tokenize, never substring-match.** `guard-lib.sh` carries the quote-aware
-  splitter. `git log --grep "git push"` must pass untouched.
-
-## Wire it in two places or it does nothing
-
-This is the step that gets missed, and the failure is silent: the script sits on
-disk, passes its own suite, and enforces nothing.
-
-1. `home/dot_claude/settings.json` — a handler under the right event. Put an `"if"`
-   on the HANDLER, never on the matcher group: it is silently dropped there.
-2. The file itself, in `home/dot_claude/hooks/`, committed with the executable bit
-   (`chmod +x`, then `git add`). In symlink mode each file in `~/.claude/hooks/` is a
-   symlink to its source, and a symlink runs with the SOURCE file's mode — a 644 hook
-   is placed and never executes. The tests directory beside it is excluded by `.chezmoiignore`.
-
-Nothing else: `scripts/settings-guardrails.sh` reads the hooks directory and fails
-lefthook, CI and `scripts/verify.sh` on any script there without a handler, and
-lefthook's `hook-tests` command discovers a new suite from its directory.
-
-## Tests
-
-Add the regression case before changing behaviour. `all.sh` discovers the roster
-from `home/dot_claude/hooks/tests/`, so a new suite needs no wiring. Fixture-table
-cases go in `cases.tsv`; a guard whose verdict depends on machine state needs
-its own harness — copy `wtremove.sh` or `reposcope.sh`.
-
-**Record the negative control, measured.** When most cases assert the guard did
-NOT fire, a hook that does nothing passes them all. Run a stub (`exit 0`) and an
-inverted variant, and write the resulting failure counts into the suite header.
-Do not reason them out: the counts were wrong both times someone tried.
-
-## Portability
-
-bash 3.2 — a hook cannot assume its PATH, and launchd or a mid-provision machine
-can hand it the system bash. No arrays, no `${arr[@]}` on a possibly-empty array,
-no `declare -g`.
+- **They fail open, by design.** A missing `jq`, a bad payload, an unparseable command: exit 0.
+  A hook that wedges the session gets deleted, which is worse than one that misses.
+- **They deny; they never emit `allow`.** Deny rules in `permissions.deny` cover the secret
+  paths; a hook only subtracts.
+- **Tokenize, never substring-match.** `guard-lib.sh` splits on unquoted separators and strips
+  wrappers; `git commit -m "gh pr create"` must pass.
+- **Wire it in `home/dot_claude/settings.json`** with an `"if"` on the handler (a substring rule,
+  `Bash(*gh*)`), and commit the script with its executable bit.
+- **Add the regression case before changing behaviour.** `tests/all.sh` discovers every suite in
+  its directory. Most cases assert the guard did NOT fire, so a stub hook passes them; run the
+  negative control named in each suite's header before trusting green.
+- bash 3.2: no arrays, no `declare -g`. A hook cannot assume its PATH.
