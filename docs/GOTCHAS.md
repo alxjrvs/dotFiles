@@ -32,8 +32,6 @@ not here; when a subject is gone, delete its entry.
   `env x`, `/usr/bin/x`, `(x`; `Bash(*x*)` is a substring and reaches subshells, substitutions and
   loop bodies. The deny floor is substring rules anchored on a verb (`*op read*`), never a path
   (`*/op *` blocked `ls src/op x`). A hook `allow` cannot bypass a deny rule.
-- **Every `Bash(...)` allow entry is inert in auto mode** while `autoMode.classifyAllShell` is
-  true. Do not add one expecting it to skip the classifier.
 - **`~/.config/gh/hosts.yml` holds no token under keyring storage.** A `Read` deny on it buys
   nothing and, merged into the sandbox, made every `gh` call fail to load its config.
 - **gh keys its keychain entries by host only**, so a second `GH_CONFIG_DIR` overwrites the
@@ -41,8 +39,6 @@ not here; when a subject is gone, delete its entry.
   second gh login.
 - **User-scoped MCP servers live only in `~/.claude.json`.** Nothing tracks that file; the
   provision script converges the two entries on every apply.
-- **The empty-string env vars in `settings.json` are load-bearing**: a plugin reads an unset
-  `${VAR}` as a literal value.
 - **A rule in `home/dot_claude/rules/` loads into every session unless it has `paths:`.**
 - **`lefthook run --files-from-stdin` splits on NUL only.** A newline-separated list arrives as
   one path that no `glob:` matches, so every command skips and the run passes having inspected

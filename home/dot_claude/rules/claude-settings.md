@@ -18,9 +18,9 @@ paths:
   true; the classifier judges shell commands instead.
 - **The empty-string env vars are load-bearing**: an unset `${VAR}` is passed through as a
   literal and read as a real value.
-- **`gh` is in `sandbox.excludedCommands`; `op-sa` is deliberately NOT.** Go binaries cannot
-  verify TLS inside the macOS sandbox, so an excluded one works and an unexcluded one fails
-  there. `gh` needs to work; `op-sa` failing is the control.
+- **`gh` is in `sandbox.excludedCommands`; `op-sa` is deliberately NOT.** `gh` needs to work
+  there and `op-sa` failing there is the control — `docs/GOTCHAS.md` has the mechanism. Do not
+  "fix" op-sa by adding it.
 - **The write boundary on the MCP path is `--exclude-tools`, not a rule here.** A `PreToolUse`
   matcher matches a tool name, so nothing in this file reaches `mcp__github__*`. That list
   lives in `home/run_after_50-provision.sh`.

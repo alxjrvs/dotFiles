@@ -31,6 +31,10 @@ pre-commit:
     hook-tests:
       glob: "{home/dot_claude/hooks/*.sh,home/dot_claude/hooks/tests/*}"
       run: home/dot_claude/hooks/tests/all.sh
+    check-paths:
+      # No `glob:`: a rename in one file breaks a mention in another, so this has to look at
+      # the whole tree however few files are staged.
+      run: scripts/check-paths.sh
     actionlint:
       # Also reaches the embedded shell in every `run:`, which the shellcheck glob cannot.
       glob: ".github/workflows/*.yml"

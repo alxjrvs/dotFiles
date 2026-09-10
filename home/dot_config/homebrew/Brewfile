@@ -36,8 +36,8 @@ cask "1password"
 # ── Apps ──────────────────────────────────────────────────────────────
 # cask "claude" is the Claude desktop GUI app, NOT the CLI (it ships no `claude` binary on
 # PATH, so it coexists with the native CLI). The Claude Code CLI comes from the native curl
-# installer (home/run_after_00-claude-cli.sh.tmpl), which self-updates — never install it
-# via brew (cask "claude-code") or npm.
+# installer (home/run_after_50-provision.sh), which self-updates — never install it via brew
+# (cask "claude-code") or npm.
 cask "claude"
 cask "discord"
 
