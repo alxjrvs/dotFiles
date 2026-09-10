@@ -41,9 +41,6 @@ not here; when a subject is gone, delete its entry.
 - **User-scoped MCP servers live only in `~/.claude.json`.** Nothing tracks that file; the
   provision script converges the two entries on every apply.
 - **A rule in `home/dot_claude/rules/` loads into every session unless it has `paths:`.**
-- **`lefthook run --files-from-stdin` splits on NUL only.** A newline-separated list arrives as
-  one path that no `glob:` matches, so every command skips and the run passes having inspected
-  nothing. The Stop hook pipes its list through `tr`, and its suite's stub rejects both shapes.
 - **macOS TCC keys a file-access grant to the executable's path**, and the native installer
   stages every Claude release at a new path, so every update re-prompted. Interactive `claude`
   is a shell function that launches through Anthropic's own `ClaudeCode.app` bundle

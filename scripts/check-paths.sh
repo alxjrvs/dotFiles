@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Every in-repo path a tracked file MENTIONS must exist. This repo cross-references itself
 # heavily — the README names the run scripts, comments name the file that supersedes them,
-# GOTCHAS names the hook it describes — and a rename leaves those pointing at nothing with
+# GOTCHAS names the script it describes — and a rename leaves those pointing at nothing with
 # no other check to notice. One did: the Brewfile pointed at run_after_00-claude-cli.sh.tmpl
 # for months after the three-script consolidation.
 #
 # Only `home/`, `scripts/` and `docs/` prefixes — this repo's own layout, so a match is
 # unambiguously a self-reference. `.github/` is deliberately NOT checked: docs here describe
 # configuring OTHER repos, where `.github/dependabot.yml` names a file that is correctly
-# absent from this one. A token with a glob is skipped too: `home/run_*` and `hooks/*.sh` are
+# absent from this one. A token with a glob is skipped too: `home/run_*` and `home/dot_config/*` are
 # patterns, not paths, and expanding them would be guessing at intent.
 set -uo pipefail
 cd -- "$(git rev-parse --show-toplevel)" || exit 1

@@ -27,9 +27,6 @@ pre-commit:
     gitleaks:
       # --config: the repo's copy of the global rules, the same file ~/.config/gitleaks points at.
       run: gitleaks git --staged --redact -v --no-banner --config home/dot_config/gitleaks/gitleaks.toml
-    hook-tests:
-      glob: "{home/dot_claude/hooks/*.sh,home/dot_claude/hooks/tests/*}"
-      run: home/dot_claude/hooks/tests/all.sh
     check-paths:
       # No `glob:`: a rename in one file breaks a mention in another, so this has to look at
       # the whole tree however few files are staged.
