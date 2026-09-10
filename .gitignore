@@ -9,9 +9,6 @@
 *.swo
 *~
 
-# `.claude/*` rather than `.claude/` on purpose: git never descends into an excluded
-# *directory*, so a `!` negation inside one is silently inert.
-.claude/*
-# The one tracked exception: this repo's project-scope permission allows are a property of
-# the repo. settings.local.json and worktrees/ stay ignored.
-!.claude/settings.json
+# Claude Code's machine-local state: settings.local.json, worktrees/, .cc-writes/. Nothing
+# under here is a property of the repo, so the whole directory goes.
+.claude/

@@ -12,6 +12,10 @@ not here; when a subject is gone, delete its entry.
   excluded, so an agent that types it fails there instead of reaching the vault.
 - **The `git credential-cache` socket is blocked in the sandbox** and `op` fails there, so the
   agent's push credential is git's own `osxkeychain` helper with a pinned username, never `op`.
+- **A `!` negation inside an excluded DIRECTORY is silently inert.** git never descends into an
+  ignored directory, so `.claude/` plus `!.claude/settings.json` does not track that file —
+  re-including one needs `.claude/*` (the glob) instead. Nothing here needs that today; the
+  trap is recorded because the fix looks like it works either way until you check `git status`.
 - **A `PreToolUse` matcher matches a tool NAME, and an MCP tool is not `Bash`.** A guard wired
   to `Bash` has no opinion about an `mcp__github__*` call that reaches the same API with the
   same token — and `mcp__github__get_me` reports `alxjrvs`, so it is the same token. The write
