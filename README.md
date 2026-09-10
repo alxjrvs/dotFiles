@@ -56,8 +56,7 @@ stale, so it is a standing habit or it does not happen.
 .chezmoiroot            "home" — the source state lives one directory down
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/run_*              machine setup: brew (onchange), macOS defaults (onchange), provision (every apply)
-home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json, hooks, rules
-home/dot_claude/hooks/  the Stop-hook commit gate + its regression suite (suites are chezmoi-ignored)
+home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json, rules
 home/.chezmoi*          chezmoi's own contract: ignore, externals
 scripts/verify.sh       drift check, by hand
 docs/GOTCHAS.md         traps still armed and the rule each forces; never applied to a machine
@@ -77,8 +76,7 @@ the `--exclude-tools` roster on the MCP registration in `home/run_after_50-provi
 
 ## Where the reasoning lives
 
-Beside the thing it explains: a hook's rationale is in its header, a run script's in its
-comment block. Traps that no file asserts on its own are in [`docs/GOTCHAS.md`](docs/GOTCHAS.md);
+Beside the thing it explains: a run script's rationale is in its comment block. Traps that no file asserts on its own are in [`docs/GOTCHAS.md`](docs/GOTCHAS.md);
 history is in the PRs.
 
 MIT — see [`LICENSE`](LICENSE).

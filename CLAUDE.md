@@ -36,8 +36,6 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
   don't tidy a key away without reading why it is there.
 - Secrets: `op://` references only, never a plaintext token, never a `${VAR}` in a tracked
   `.mcp.json`. To use a secret, pass it (`op run --env-file=F -- CMD`), never read it.
-- The hooks, guards, and their suites carry their own reasoning in their headers. Each guard fails
-  open by design; add a regression case before changing one. A hook source is named
-  `executable_*.sh`; chezmoi sets the target's mode from that prefix.
+- A source file's mode comes from its name (`executable_`, `private_`), never from the checkout.
 - Traps still armed and the rule each forces: `docs/GOTCHAS.md`. Outside `home/`, so it never
   reaches a machine and costs nothing per session. History is the PRs, not a file.

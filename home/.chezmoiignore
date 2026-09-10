@@ -1,5 +1,0 @@
-# Target paths (relative to ~) chezmoi must NOT manage. Everything else under home/ is.
-
-# The hook regression suites sit beside the hooks so the suites find them at `$HERE/..`, but
-# they run from the repo and must never land in ~/.claude/hooks/.
-.claude/hooks/tests
