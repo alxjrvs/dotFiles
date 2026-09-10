@@ -11,7 +11,8 @@ bun for JS. In an agent worktree, bind dev servers to the block
 account: the MCP carries the agent's own scoped PAT, while `gh` is signed in as alxjrvs with
 `repo`, `gist` and `workflow` scope — so every write typed as `gh` spends the human's token
 instead of the agent's. Reads, `gh pr checks --watch`, `gh stack`, `gh extension` and anything
-with no MCP tool stay on `gh`.
+with no MCP tool stay on `gh`, except PR creation and merging, which are denied outright:
+the MCP merges immediately, and auto-merge is armed by the human, not the agent.
 
 ## Rules
 
