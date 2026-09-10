@@ -10,3 +10,4 @@
 .claude/hooks/verify-gate.sh
 .claude/rules/claude-settings.md
 .config/zsh/claude.zsh
+.config/zsh/plugins

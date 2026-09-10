@@ -1,62 +1,69 @@
-# ~/.config/homebrew/Brewfile — casks, system libs, the two bootstrap formulae, and the few
-# CLIs brew owns on this machine. A new CLI belongs in ~/.config/mise/config.toml instead.
+# ~/.config/homebrew/Brewfile — every CLI and app on the machine. Runtimes (node, bun) are
+# mise's, in ~/.config/mise/config.toml.
 #
-# ── Upgrading is three commands, and `chezmoi apply` is not one of them ──────────────
+# `chezmoi apply` reconciles (`brew bundle --no-upgrade`) and never upgrades: a cask upgrade
+# replaces the .app and quits the running program. Upgrading is `brew upgrade --formula`, and
+# `brew upgrade --cask <name>` when an app genuinely needs moving. `brew bundle cleanup` lists
+# what is installed but no longer declared.
 #
-#   chezmoi apply            # reconcile only — `brew bundle --no-upgrade`, `mise install`
-#   brew upgrade --formula   # every outdated formula. Cannot touch a cask.
-#   mise upgrade --bump      # what actually moves the CLIs (rewrites the pins — commit them)
-#
-# Reconciling answers "is what I declared installed?", never "is what is installed current?".
-# `brew bundle` without `--no-upgrade` upgrades CASKS as well as formulae whatever `greedy`
-# says, and a cask upgrade replaces the `.app`, so Homebrew quits the running program —
-# Chrome, Slack, Ghostty, 1Password — to deliver formulae that `brew upgrade --formula`
-# delivers without closing anything.
-#
-# Casks are left to their own updaters, which Chrome, Slack, Discord, 1Password, Raycast and
-# the rest all ship; brew's version record for a self-updating app is fiction, and pushing
-# it over the app forces a restart to deliver nothing. When a cask genuinely needs moving:
-# `brew upgrade --cask <name>`.
-#
-# `brew bundle` never uninstalls: undeclaring a package here is half of removing it, and
-# `brew bundle cleanup` (dry run by default) lists the other half.
+# A third-party `tap` needs `trusted:` or a fresh machine stops at an interactive prompt.
 
-# A third-party `tap` line needs `trusted:` — brew refuses to load an untrusted tap until
-# someone runs `brew trust` by hand, which is a fresh machine stopping halfway.
+# ── Bootstraps ────────────────────────────────────────────────────────
 brew "mise"
 brew "chezmoi"
+
+# ── Shell ─────────────────────────────────────────────────────────────
+brew "atuin"
+brew "fzf"
+brew "starship"
+brew "zoxide"
+brew "zsh-autosuggestions"
+brew "zsh-syntax-highlighting"
+
+# ── Git ───────────────────────────────────────────────────────────────
+brew "delta"
+brew "gh"
+brew "gitleaks"
+brew "lefthook"
+
+# ── Files and text ────────────────────────────────────────────────────
+brew "bat"
+brew "eza"
+brew "fd"
+brew "jq"
+brew "ripgrep"
+brew "tealdeer"
+
+# ── Editor and language servers ───────────────────────────────────────
+brew "neovim"
+brew "bash-language-server"
+brew "biome"
+brew "marksman"
+brew "shellcheck"
+brew "shfmt"
+brew "taplo"
+brew "typescript-language-server"
 
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"
 cask "1password"
 
 # ── Apps ──────────────────────────────────────────────────────────────
-# cask "claude" is the Claude desktop GUI app, NOT the CLI (it ships no `claude` binary on
-# PATH, so it coexists with the native CLI). The Claude Code CLI comes from the native curl
-# installer (home/run_after_50-provision.sh), which self-updates — never install it via brew
-# (cask "claude-code") or npm.
+# The Claude desktop app. The Claude Code CLI is the native installer (run_after_50), never brew.
 cask "claude"
 cask "discord"
-
-# ── Fonts ─────────────────────────────────────────────────────────────
 cask "font-fira-code-nerd-font"
-
-# ── Terminal ──────────────────────────────────────────────────────────
 cask "ghostty"
-
 cask "google-chrome"
-
-# Key remapping (Caps Lock → Control); config tracked at home/dot_config/karabiner/. Karabiner
-# rewrites that file when edited in its UI: `chezmoi re-add ~/.config/karabiner/karabiner.json`.
+# Caps Lock → Control; config at home/dot_config/karabiner/. Karabiner rewrites that file when
+# edited in its UI: `chezmoi re-add ~/.config/karabiner/karabiner.json` afterwards.
 cask "karabiner-elements"
-
 cask "notunes"
-
 cask "devutils"      # offline developer toolbox (JSON/JWT/regex/diff)
-cask "gcloud-cli"    # Google Cloud SDK
-cask "ngrok"         # public tunnel to a local port
-cask "obs"           # screen recording
-cask "raycast"       # launcher + clipboard (its window management overlaps rectangle)
-cask "rectangle"     # window management
+cask "gcloud-cli"
+cask "ngrok"
+cask "obs"
+cask "raycast"
+cask "rectangle"
 cask "slack"
 cask "tuple"

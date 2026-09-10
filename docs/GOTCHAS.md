@@ -105,8 +105,7 @@ not here; when a subject is gone, delete its entry.
 - **Karabiner rewrites `karabiner.json`** in its own key order when edited in its UI; run
   `chezmoi re-add ~/.config/karabiner/karabiner.json` afterwards or `chezmoi verify` goes red.
 - **`brew bundle` never uninstalls.** Undeclaring a formula here is half of removing it;
-  `brew bundle cleanup` (a dry run by default) lists the other half. Do not declare a brew copy
-  of a mise-pinned tool to silence that list.
+  `brew bundle cleanup` (a dry run by default) lists the other half.
 - **heroku has no homebrew-core formula** and its tap is untrusted, so a Brewfile line for it
   stops a fresh machine at an interactive prompt. When needed: `mise x npm:heroku -- heroku`.
 - **`fetch.pruneTags` deletes a local tag you have not pushed yet**; `transfer.fsckObjects`

@@ -8,7 +8,7 @@ export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:/opt/homebrew/bin:$P
 # Claude Code CLI via the native installer, which self-updates; never brew or npm.
 command -v claude > /dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash
 
-# Every pinned CLI. A no-op when converged; brew (script 10) installs mise itself.
+# node and bun. A no-op when converged; brew (script 10) installs mise itself.
 mise install --yes
 
 # gh extensions, owner-qualified because same-named community forks exist. Needs an
