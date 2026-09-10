@@ -1,0 +1,9 @@
+# Rendered into ~/.config/chezmoi/chezmoi.toml by `chezmoi init`; run init again after editing.
+# sourceDir pins the checkout wherever `chezmoi init --source` put it.
+sourceDir = {{ .chezmoi.workingTree | quote }}
+
+# An every-apply script is not drift.
+[verify]
+    exclude = ["always"]
+[status]
+    exclude = ["always"]
