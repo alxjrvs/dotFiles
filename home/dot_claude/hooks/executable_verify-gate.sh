@@ -41,6 +41,9 @@ files=$(cd "$root" && {
 # HEAD` carries content, so an edit to an already-dirty file is re-checked.
 state="${XDG_STATE_HOME:-$HOME/.local/state}/claude-verify-gate"
 mkdir -p "$state" 2> /dev/null || exit 0
+# One marker per tree state that ever failed, and a tree state is never revisited — so without
+# this the directory grows forever. A week is far longer than any tree stays uncommitted.
+find "$state" -type f -mtime +7 -delete 2> /dev/null || true
 tree_id=$({
   git -C "$root" status --porcelain 2> /dev/null
   git -C "$root" diff HEAD 2> /dev/null
