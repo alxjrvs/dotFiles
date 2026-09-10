@@ -25,10 +25,14 @@ not here; when a subject is gone, delete its entry.
   re-including one needs `.claude/*` (the glob) instead. Nothing here needs that today; the
   trap is recorded because the fix looks like it works either way until you check `git status`.
 - **A `PreToolUse` matcher matches a tool NAME, and an MCP tool is not `Bash`.** A guard wired
-  to `Bash` has no opinion about an `mcp__github__*` call that reaches the same API with the
-  same token — and `mcp__github__get_me` reports `alxjrvs`, so it is the same token. The write
-  boundary on that path is `--exclude-tools` on the server registration, not a hook. An unknown
-  name in that list is ignored silently, so re-verify them (`generate-docs`) after a bump.
+  to `Bash` has no opinion about an `mcp__github__*` call reaching the same API. The write
+  boundary there is `--exclude-tools` on the server registration, not a hook; an unknown name in
+  that list is ignored silently, so re-verify them (`generate-docs`) after a bump.
+- **`gh` and the `github` MCP are two credentials on one account, and `gh` is the privileged
+  one.** `get_me` reports `alxjrvs` down both paths, which makes them look interchangeable. They
+  are not: `gh` holds a `gho_` OAuth token carrying `repo`, `gist` and `workflow`, while the MCP
+  holds the agent PAT from the vault. Scoping that PAT therefore closes nothing on the `gh` path
+  — the `gh` verb rules in `permissions.deny` are what stand there, and they stay.
 - **A Bash permission rule matches the whole command text.** `Bash(x:*)` is a prefix and misses
   `env x`, `/usr/bin/x`, `(x`; `Bash(*x*)` is a substring and reaches subshells, substitutions and
   loop bodies. The deny floor is substring rules anchored on a verb (`*op read*`), never a path
