@@ -62,7 +62,7 @@ docs/GOTCHAS.md         traps still armed and the rule each forces; never applie
 `git grep -ilE 'alxjrvs|claude-agent|GitHubSSH'` finds every file. In order of what breaks first: git identity and
 signing key (`home/dot_gitconfig`, `home/private_dot_ssh/allowed_signers`), the agent identity
 (`home/dot_claude/settings.json`), the `op://claude-agent/…` references (`settings.json`,
-`home/run_after_50-provision.sh`, `npm/publish.env`), and the SSH items in
+`home/run_after_50-provision.sh`), and the SSH items in
 `home/dot_config/1Password/ssh/agent.toml`.
 
 What an agent may write is scoped by ACTION, not by repo owner, so there is no list to port:
