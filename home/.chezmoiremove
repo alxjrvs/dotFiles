@@ -12,3 +12,4 @@
 .claude/bin/gh-ci
 .claude/gh-config
 .claude/hooks/tests
+.gitconfig

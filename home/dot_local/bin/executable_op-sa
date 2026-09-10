@@ -1,9 +1,12 @@
 #!/bin/sh
 # op-sa: `op` as the agent's 1Password service account, for the plugin tokens that are not
-# GitHub's. The token lives in the login keychain (item `op-claude-agent`; see the README) and
-# is loaded into this process only. Its consumers are the token commands in
-# ~/.claude/settings.json, never an agent's Bash: `op-sa` is text-denied there.
+# GitHub's. The token is loaded into this process only: from the login keychain on macOS (item
+# `op-claude-agent`; see the README), from a 0600 file elsewhere. Its consumers are the token
+# commands in ~/.claude/settings.json, never an agent's Bash: `op-sa` is text-denied there.
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
-OP_SERVICE_ACCOUNT_TOKEN="$(security find-generic-password -s op-claude-agent -w)" || exit 1
+case "$(uname -s)" in
+  Darwin) OP_SERVICE_ACCOUNT_TOKEN="$(security find-generic-password -s op-claude-agent -w)" || exit 1 ;;
+  *) OP_SERVICE_ACCOUNT_TOKEN="$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/op-sa/token")" || exit 1 ;;
+esac
 export OP_SERVICE_ACCOUNT_TOKEN
 exec op "$@"
