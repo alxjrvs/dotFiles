@@ -1,6 +1,7 @@
-# ~/.zshrc: interactive shells. Login-shell PATH lives in ~/.zprofile.
+# ~/.zshrc: interactive shells. Login-shell PATH lives in ~/.zprofile. Every tool is guarded, so
+# the same file degrades to a plain prompt on a host that has none of them.
 
-eval "$(mise activate zsh)"
+(( $+commands[mise] )) && eval "$(mise activate zsh)"
 
 # --- options -----------------------------------------------------------------------------------
 setopt CORRECT EXTENDED_GLOB INTERACTIVE_COMMENTS NO_BEEP NO_FLOWCONTROL
@@ -22,15 +23,16 @@ zle -N zle-line-init
 export EDITOR=nvim VISUAL=nvim LANG=en_US.UTF-8 LESS='-RFX'
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 export GH_PAGER=delta # env, not gh's config.yml: gh rewrites that file, so it is not managed
-export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+(( $+commands[bat] )) && export MANPAGER="sh -c 'col -bx | bat -l man -p'"
 # sharp: force its prebuilt binary; a stray global libvips makes the from-source build fail.
 export SHARP_IGNORE_GLOBAL_LIBVIPS=1
 
 # --- plugins: two, from brew; `source` is the plugin manager ---------------------------------
-source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+_zsh_plugin=$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+[[ -r $_zsh_plugin ]] && source $_zsh_plugin
 
 # --- completion --------------------------------------------------------------------------------
-fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
+[[ -d $HOMEBREW_PREFIX/share/zsh/site-functions ]] && fpath=($HOMEBREW_PREFIX/share/zsh/site-functions $fpath)
 autoload -Uz compinit
 # Skip the security audit (-C) while the dump is under a day old: ~240 ms otherwise.
 _zcompdump_fresh=(${ZDOTDIR:-$HOME}/.zcompdump(Nmh-24))
@@ -42,38 +44,46 @@ zstyle ':completion:*:descriptions' format '[%d]'
 zstyle ':completion:*:git-checkout:*' sort false
 
 # --- tools -------------------------------------------------------------------------------------
-# Empty so fzf skips its Ctrl-R binding and atuin's wins; vicmd gets atuin's explicitly below.
-export FZF_CTRL_R_COMMAND=
-export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40% --color=bg+:#3b4252,bg:#2e3440,spinner:#81a1c1,hl:#a3be8c,fg:#d8dee9,header:#a3be8c,info:#ebcb8b,pointer:#81a1c1,marker:#81a1c1,prompt:#81a1c1'
-export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow'
-export FZF_CTRL_T_OPTS="--preview 'bat --color=always {}' --preview-window right:50%"
-export FZF_ALT_C_OPTS="--preview 'eza --icons -T {} | head -20'"
-export FZF_ALT_C_COMMAND='fd --type d --hidden --follow'
-eval "$(fzf --zsh)"
-# --disable-up-arrow keeps Up/Down as plain history navigation.
-eval "$(atuin init zsh --disable-up-arrow)"
-bindkey -M vicmd '^R' atuin-search
-eval "$(zoxide init zsh)"
-eval "$(starship init zsh)"
+if (( $+commands[fzf] )); then
+  # Empty so fzf skips its Ctrl-R binding and atuin's wins; vicmd gets atuin's explicitly below.
+  export FZF_CTRL_R_COMMAND=
+  export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40% --color=bg+:#3b4252,bg:#2e3440,spinner:#81a1c1,hl:#a3be8c,fg:#d8dee9,header:#a3be8c,info:#ebcb8b,pointer:#81a1c1,marker:#81a1c1,prompt:#81a1c1'
+  export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow'
+  export FZF_CTRL_T_OPTS="--preview 'bat --color=always {}' --preview-window right:50%"
+  export FZF_ALT_C_OPTS="--preview 'eza --icons -T {} | head -20'"
+  export FZF_ALT_C_COMMAND='fd --type d --hidden --follow'
+  eval "$(fzf --zsh)"
+fi
+if (( $+commands[atuin] )); then
+  # --disable-up-arrow keeps Up/Down as plain history navigation.
+  eval "$(atuin init zsh --disable-up-arrow)"
+  bindkey -M vicmd '^R' atuin-search
+fi
+(( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
+(( $+commands[starship] )) && eval "$(starship init zsh)"
 
 # --- aliases -----------------------------------------------------------------------------------
 alias gs='git status' gp='git push' gpr='git pull --rebase' gco='git checkout' gd='git diff'
 alias ..='cd ..'
-alias ls='eza --icons --group-directories-first'
-alias vim='nvim'
+(( $+commands[eza] )) && alias ls='eza --icons --group-directories-first'
+(( $+commands[nvim] )) && alias vim='nvim'
 
 # --- syntax highlighting: last, because it wraps the ZLE widgets defined above ----------------
-source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-ZSH_HIGHLIGHT_STYLES[command]='fg=#4db8cc'
-ZSH_HIGHLIGHT_STYLES[alias]='fg=#4db8cc'
-ZSH_HIGHLIGHT_STYLES[builtin]='fg=#4db8cc'
-ZSH_HIGHLIGHT_STYLES[function]='fg=#d06cb8'
-ZSH_HIGHLIGHT_STYLES[reserved-word]='fg=#d06cb8'
-ZSH_HIGHLIGHT_STYLES[precommand]='fg=#d06cb8,underline'
-ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=#e05050'
-ZSH_HIGHLIGHT_STYLES[single-quoted-argument]='fg=#d4b84a'
-ZSH_HIGHLIGHT_STYLES[double-quoted-argument]='fg=#d4b84a'
-ZSH_HIGHLIGHT_STYLES[single-hyphen-option]='fg=#8b949e'
-ZSH_HIGHLIGHT_STYLES[double-hyphen-option]='fg=#8b949e'
-ZSH_HIGHLIGHT_STYLES[comment]='fg=#8b949e,italic'
-ZSH_HIGHLIGHT_STYLES[path]='fg=#e6edf3,underline'
+_zsh_plugin=$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+if [[ -r $_zsh_plugin ]]; then
+  source $_zsh_plugin
+  ZSH_HIGHLIGHT_STYLES[command]='fg=#4db8cc'
+  ZSH_HIGHLIGHT_STYLES[alias]='fg=#4db8cc'
+  ZSH_HIGHLIGHT_STYLES[builtin]='fg=#4db8cc'
+  ZSH_HIGHLIGHT_STYLES[function]='fg=#d06cb8'
+  ZSH_HIGHLIGHT_STYLES[reserved-word]='fg=#d06cb8'
+  ZSH_HIGHLIGHT_STYLES[precommand]='fg=#d06cb8,underline'
+  ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=#e05050'
+  ZSH_HIGHLIGHT_STYLES[single-quoted-argument]='fg=#d4b84a'
+  ZSH_HIGHLIGHT_STYLES[double-quoted-argument]='fg=#d4b84a'
+  ZSH_HIGHLIGHT_STYLES[single-hyphen-option]='fg=#8b949e'
+  ZSH_HIGHLIGHT_STYLES[double-hyphen-option]='fg=#8b949e'
+  ZSH_HIGHLIGHT_STYLES[comment]='fg=#8b949e,italic'
+  ZSH_HIGHLIGHT_STYLES[path]='fg=#e6edf3,underline'
+fi
+unset _zsh_plugin

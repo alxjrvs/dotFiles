@@ -1,20 +1,23 @@
 #!/bin/bash
 # Every-apply provisioning: each step is idempotent and cheap when converged. No hash gate, so a
 # step that has to wait for `gh auth login` on a fresh machine converges on the next apply.
+# Every tool is guarded: a Linux host without brew skips what brew would have installed.
 set -euo pipefail
 export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:/opt/homebrew/bin:$PATH"
 
 # Claude Code CLI via the native installer, which self-updates; never brew or npm.
 command -v claude > /dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash
 
-# node and bun. A no-op when converged; brew (script 10) installs mise itself. prune drops
-# versions no config names any more, and rebuilds the shims so a retired tool cannot shadow brew's.
-mise install --yes
-mise prune --yes
+# node and bun. prune drops versions no config names any more, and rebuilds the shims so a
+# retired tool cannot shadow brew's.
+if command -v mise > /dev/null 2>&1; then
+  mise install --yes
+  mise prune --yes
+fi
 
 # This repo's own commit hook, in the source checkout. CHEZMOI_WORKING_TREE is the repo root;
 # never call chezmoi from a run script, the outer apply holds the state lock.
-if [ -f "${CHEZMOI_WORKING_TREE:-}/lefthook.yml" ]; then
+if [ -f "${CHEZMOI_WORKING_TREE:-}/lefthook.yml" ] && command -v lefthook > /dev/null 2>&1; then
   (cd "$CHEZMOI_WORKING_TREE" && lefthook install > /dev/null)
 fi
 
@@ -26,9 +29,16 @@ if gh auth status > /dev/null 2>&1; then
   done
 fi
 
-# User-scoped MCP servers live only in ~/.claude.json, which nothing tracks, so they converge here.
-# Absolute paths: the desktop app does not always hand spawned servers the login shell's PATH.
 if command -v claude > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
+  # Plugins declared in ~/.claude/settings.json: declaring one does not install it.
+  installed=$(claude plugin list --json 2> /dev/null | jq -r '.[].id' || true)
+  for plugin in $(jq -r '.enabledPlugins | to_entries[] | select(.value) | .key' "$HOME/.claude/settings.json"); do
+    printf '%s\n' "$installed" | grep -qx "$plugin" ||
+      claude plugin install "$plugin" || echo "provision: could not install $plugin" >&2
+  done
+
+  # User-scoped MCP servers live only in ~/.claude.json, which nothing tracks, so they converge
+  # here. Absolute paths: the desktop app does not always hand spawned servers the login PATH.
   op_mcp=/Applications/1Password.app/Contents/MacOS/1password-mcp
   if [ -x "$op_mcp" ] && ! jq -e '.mcpServers["1password"]' "$HOME/.claude.json" > /dev/null 2>&1; then
     claude mcp add --scope user 1password -- "$op_mcp"

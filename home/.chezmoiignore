@@ -1,0 +1,26 @@
+# Target paths chezmoi skips on this host; evaluated as a template on every run. `chezmoi ignored`
+# prints the result.
+
+# Directory placeholders: the directory is created, the marker is not.
+**/.keep
+
+{{ if ne .chezmoi.os "darwin" -}}
+# macOS only: the package list, its scripts, the GUI apps' config, and the 1Password desktop
+# app's SSH agent (a Linux box gets a forwarded agent and signs nothing).
+.chezmoiscripts/10-brew.sh
+.chezmoiscripts/40-macos-defaults.sh
+.config/homebrew
+.config/karabiner
+.config/ghostty
+.config/1Password
+.config/git/darwin.gitconfig
+.ssh/config
+.hushlogin
+Screenshots
+{{- end }}
+
+{{ if or (env "CLAUDE_CODE_REMOTE") (env "CODESPACES") (eq .chezmoi.username "root") -}}
+# Ephemeral container: nothing under ~/.ssh.
+.ssh
+.ssh/**
+{{- end }}

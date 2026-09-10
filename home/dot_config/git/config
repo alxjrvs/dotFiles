@@ -1,3 +1,7 @@
+[include]
+	# macOS only: signing and the keychain helper. Absent on Linux; git ignores a missing include.
+	path = darwin.gitconfig
+
 [alias]
   hist = log --oneline --graph --decorate
   sw = switch
@@ -10,9 +14,7 @@
 	email = alxjrvs@gmail.com
 	# The public half of the 1Password "GitHubSSH" item; ~/.ssh/allowed_signers has it too.
 	signingkey = key::ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKjF9JmW396EbH0n1zWeU7eT+2VvMFZAn+A1WKAi4tqT
-[credential]
-	helper = osxkeychain
-# github.com through gh's keychain token instead (what `gh auth setup-git` writes).
+# github.com through gh's token (what `gh auth setup-git` writes).
 [credential "https://github.com"]
 	helper =
 	helper = !gh auth git-credential
@@ -28,7 +30,6 @@
 	defaultBranch = main
 [commit]
 	verbose = true
-	gpgSign = true
 [push]
 	autoSetupRemote = true
 	followTags = true
@@ -68,11 +69,9 @@
 	updateRefs = true
 [tag]
 	sort = version:refname
-	gpgSign = true
 [gpg]
 	format = ssh
 [gpg "ssh"]
 	allowedSignersFile = ~/.ssh/allowed_signers
-	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
 [help]
 	autocorrect = prompt
