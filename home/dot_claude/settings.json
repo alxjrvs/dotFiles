@@ -8,12 +8,12 @@
     "GIT_CONFIG_COUNT": "1",
     "GIT_CONFIG_KEY_0": "include.path",
     "GIT_CONFIG_VALUE_0": "~/.config/git/agent.gitconfig",
-    "NINETY_API_TOKEN_COMMAND": "~/.local/bin/op-sa read op://claude-agent/gninety/credential",
-    "NINETY_API_TOKEN": ""
+    "NINETY_API_TOKEN_COMMAND": "~/.local/bin/op-sa read op://claude-agent/gninety/credential"
   },
   "attribution": {
     "commit": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>",
-    "pr": "Co-authored with alxjrvs."
+    "pr": "Co-authored with alxjrvs.",
+    "sessionUrl": false
   },
   "permissions": {
     "allow": [
@@ -33,15 +33,11 @@
       "Read(~/.ssh/id_*)",
       "Read(~/.aws/credentials)",
       "Read(~/.netrc)"
-    ],
-    "defaultMode": "auto"
+    ]
   },
   "sandbox": {
     "enabled": true,
-    "excludedCommands": [
-      "gh",
-      "gh *"
-    ],
+    "enableWeakerNetworkIsolation": true,
     "network": {
       "allowedDomains": [
         "api.github.com",
@@ -62,7 +58,8 @@
         "rubygems.org"
       ],
       "allowUnixSockets": [
-        "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+        "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock",
+        "~/.1password/agent.sock"
       ]
     },
     "credentials": {
@@ -107,24 +104,16 @@
       "source": {
         "source": "github",
         "repo": "TheGnarCo/agent-skills"
-      },
-      "autoUpdate": false
+      }
     },
     "oberon": {
       "source": {
         "source": "github",
         "repo": "alxjrvs/oberon"
-      },
-      "autoUpdate": false
+      }
     }
   },
-  "tui": "fullscreen",
-  "voice": {
-    "enabled": true,
-    "mode": "hold"
-  },
   "theme": "auto",
-  "skipWorkflowUsageWarning": true,
   "outputStyle": "Proactive",
   "editorMode": "vim",
   "vimInsertModeRemaps": {
