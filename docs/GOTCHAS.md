@@ -7,8 +7,9 @@ not here; when a subject is gone, delete its entry.
 ## Claude Code
 
 - **Go binaries cannot verify TLS inside the Bash sandbox** (macOS Seatbelt blocks the trust
-  daemon): `gh`, `op`, `chezmoi`, `gcloud`. `gh` and `op-sa` are `sandbox.excludedCommands`;
-  run `chezmoi apply` from a normal terminal, not from an agent.
+  daemon): `gh`, `op`, `chezmoi`, `gcloud`. `gh` is in `sandbox.excludedCommands`; run
+  `chezmoi apply` from a normal terminal, not from an agent. `op-sa` is deliberately not
+  excluded, so an agent that types it fails there instead of reaching the vault.
 - **The `git credential-cache` socket is blocked in the sandbox** and `op` fails there, so the
   agent's push credential is git's own `osxkeychain` helper with a pinned username, never `op`.
 - **A Bash permission rule matches the whole command text.** `Bash(x:*)` is a prefix and misses
@@ -27,6 +28,9 @@ not here; when a subject is gone, delete its entry.
 - **The empty-string env vars in `settings.json` are load-bearing**: a plugin reads an unset
   `${VAR}` as a literal value.
 - **A rule in `home/dot_claude/rules/` loads into every session unless it has `paths:`.**
+- **`lefthook run --files-from-stdin` splits on NUL only.** A newline-separated list arrives as
+  one path that no `glob:` matches, so every command skips and the run passes having inspected
+  nothing. The Stop hook pipes its list through `tr`, and its suite's stub rejects both shapes.
 - **macOS TCC keys a file-access grant to the executable's path**, and the native installer
   stages every Claude release at a new path, so every update re-prompted. Interactive `claude`
   is a shell function that launches through Anthropic's own `ClaudeCode.app` bundle
@@ -48,6 +52,12 @@ not here; when a subject is gone, delete its entry.
 
 - **`chezmoi verify` counts an every-apply script as a difference**, so drift checks use
   `--exclude scripts`.
+- **`chezmoi init` writes no config when the source has no config template**, and it does not
+  remove one that is already there. A machine provisioned before this repo dropped its template
+  keeps `~/.config/chezmoi/chezmoi.toml` with `mode = "symlink"` and an old `sourceDir`, and
+  goes on symlinking. Deleting that file is what actually drops a machine to default file mode.
+- **Nothing removes a target whose source file was deleted.** `chezmoi apply` only writes; a
+  retired dotfile stays in `~` until someone removes it (or `.chezmoiremove` names it).
 - **Target modes come from the source name** (`executable_`, `private_`), never from the
   checkout's file mode.
 - **`run_onchange_` records its hash even when the script exits 0 early.** A step that may need
