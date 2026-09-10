@@ -15,7 +15,7 @@ shims="$HOME/.local/share/mise/shims"
 command -v claude > /dev/null 2>&1 || exit 0
 command -v jq > /dev/null 2>&1 || exit 0
 toolsets=context,repos,issues,pull_requests,actions
-cmd="GITHUB_PERSONAL_ACCESS_TOKEN=\"\$($shims/gh auth token)\" exec $shims/github-mcp-server stdio --toolsets $toolsets"
+cmd="GITHUB_PERSONAL_ACCESS_TOKEN=\"\$(\$HOME/.local/bin/op-sa read op://claude-agent/claude-git-pat/credential)\" exec $shims/github-mcp-server stdio --toolsets $toolsets"
 want=$(jq -cn --arg cmd "$cmd" '{type: "stdio", command: "/bin/sh", args: ["-c", $cmd]}')
 have=$(jq -c '.mcpServers.github // empty | {type, command, args}' "$HOME/.claude.json" 2> /dev/null || true)
 [ "$have" = "$want" ] && exit 0

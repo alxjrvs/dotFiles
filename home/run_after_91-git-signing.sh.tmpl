@@ -1,8 +1,0 @@
-{{ if eq .chezmoi.os "darwin" -}}
-#!/bin/bash
-# Record user.signingkey in ~/.gitconfig.local; scripts/git-signing.ts explains. Bun is from mise.
-set -euo pipefail
-export PATH="$HOME/.local/share/mise/shims:/opt/homebrew/bin:$PATH"
-command -v bun > /dev/null 2>&1 || exit 0
-bun run "{{ .chezmoi.workingTree }}/scripts/git-signing.ts" GitHubSSH
-{{ end -}}

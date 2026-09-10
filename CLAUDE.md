@@ -37,7 +37,7 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
   `home/dot_claude/settings.json` carry only divergences from defaults — don't tidy a key away
   without reading why it is there.
 - Secrets: `op://` references only, never a plaintext token, never a `${VAR}` in a tracked
-  `.mcp.json`. To use a secret, pass it (`op run --env-file=F -- CMD`), never read it.
+  `.mcp.json`. To use a secret, pass it (`op-sa run --env-file=F -- CMD`), never read it.
 - The hooks, guards, and their suites carry their own reasoning in their headers. Each guard fails
   open by design; add a regression case before changing one. A hook must be committed with its
   executable bit: in symlink mode it runs with the source file's mode.

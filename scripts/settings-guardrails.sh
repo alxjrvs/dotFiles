@@ -26,8 +26,8 @@ wired_hooks() {
 }
 
 # The secret-path deny floor: the Bash path to a *resolved* secret, not just to
-# `op`. `op-agent header` and `op-agent git-credential get` each print a live
-# credential to stdout, and stdout is model context.
+# `op`. `op-sa read` (the service-account shim) prints a live credential to
+# stdout, and stdout is model context.
 #
 # ARRAY-AWARE, never a substring grep: a substring test only asks whether the
 # string appears anywhere in the file, so moving an entry from `deny` into
@@ -40,15 +40,16 @@ Bash(security find-generic-password:*)
 Bash(op read:*)
 Bash(op item get:*)
 Bash(op document get:*)
-Bash(op-agent:*)
-Bash(~/.local/bin/op-agent:*)
+Bash(*op-sa read*)
+Bash(*op-sa item get*)
+Bash(*op-sa document get*)
+Bash(*op-sa inject*)
 Bash(git credential:*)
 Read(~/.ssh/id_*)
 Read(~/.aws/credentials)
 Read(~/.netrc)
 Read(~/.config/gh/hosts.yml)
 Bash(*/op *)
-Bash(*/op-agent *)
 Bash(*/security find-generic-password *)
 Bash(*/security find-internet-password *)
 Bash(*/security find-certificate *)
@@ -94,9 +95,9 @@ for f in "$@"; do
   ! grep -qE '(enableAllProjectMcpServers|enabledMcpjsonServers)' "$f" ||
     note "$f: forbidden auto-approve MCP key"
 
-  # The agent's git credentials must come from op-agent, never a cached PAT.
-  grep -q 'op-agent git-credential' "$f" ||
-    note "$f: agent git helper not wired to op-agent git-credential"
+  # The agent's git identity comes from ~/.config/git/agent.gitconfig, never a cached PAT.
+  grep -q 'agent.gitconfig' "$f" ||
+    note "$f: agent git config (include.path -> agent.gitconfig) is not wired"
   ! grep -q 'osxkeychain' "$f" ||
     note "$f: forbidden osxkeychain git helper (cached-PAT regression)"
 

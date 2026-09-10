@@ -1,0 +1,18 @@
+#!/bin/sh
+# op-sa: run `op` as the agent's 1Password service account.
+#
+# The service-account token lives in the login keychain (item `op-claude-agent`) and is loaded
+# into THIS process only, never into the shell, the agent, or a subprocess's environment. Its
+# consumers capture stdout themselves (git's credential helper in ~/.config/git/agent.gitconfig,
+# Claude Code plugin token commands, the GitHub MCP registration), so no value reaches a model
+# transcript, and `op-sa read …` typed by an agent is denied in ~/.claude/settings.json.
+#
+# New machine: mint one token for the `claude-agent` vault (read_items) and store it once.
+# `-w` LAST so the token is prompted for, never on argv:
+#   security add-generic-password -a "$USER" -s op-claude-agent -w
+#
+# Explicit PATH: the desktop app spawns MCP servers with a bare environment.
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+OP_SERVICE_ACCOUNT_TOKEN="$(security find-generic-password -s op-claude-agent -w)" || exit 1
+export OP_SERVICE_ACCOUNT_TOKEN
+exec op "$@"

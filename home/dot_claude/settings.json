@@ -5,18 +5,10 @@
     "GIT_AUTHOR_EMAIL": "alxjrvs+claude@gmail.com",
     "GIT_COMMITTER_NAME": "Claude",
     "GIT_COMMITTER_EMAIL": "alxjrvs+claude@gmail.com",
-    "GIT_CONFIG_COUNT": "5",
-    "GIT_CONFIG_KEY_0": "commit.gpgsign",
-    "GIT_CONFIG_VALUE_0": "false",
-    "GIT_CONFIG_KEY_1": "tag.gpgsign",
-    "GIT_CONFIG_VALUE_1": "false",
-    "GIT_CONFIG_KEY_2": "credential.https://github.com.helper",
-    "GIT_CONFIG_VALUE_2": "",
-    "GIT_CONFIG_KEY_3": "credential.https://github.com.helper",
-    "GIT_CONFIG_VALUE_3": "cache --timeout=900",
-    "GIT_CONFIG_KEY_4": "credential.https://github.com.helper",
-    "GIT_CONFIG_VALUE_4": "!~/.local/bin/op-agent git-credential",
-    "NINETY_API_TOKEN_COMMAND": "~/.local/bin/op-agent secret \"op://claude-agent/gninety/credential\"",
+    "GIT_CONFIG_COUNT": "1",
+    "GIT_CONFIG_KEY_0": "include.path",
+    "GIT_CONFIG_VALUE_0": "~/.config/git/agent.gitconfig",
+    "NINETY_API_TOKEN_COMMAND": "~/.local/bin/op-sa read op://claude-agent/gninety/credential",
     "NINETY_API_TOKEN": ""
   },
   "attribution": {
@@ -40,15 +32,16 @@
       "Bash(op read:*)",
       "Bash(op item get:*)",
       "Bash(op document get:*)",
-      "Bash(op-agent:*)",
-      "Bash(~/.local/bin/op-agent:*)",
+      "Bash(*op-sa read*)",
+      "Bash(*op-sa item get*)",
+      "Bash(*op-sa document get*)",
+      "Bash(*op-sa inject*)",
       "Bash(git credential:*)",
       "Read(~/.ssh/id_*)",
       "Read(~/.aws/credentials)",
       "Read(~/.netrc)",
       "Read(~/.config/gh/hosts.yml)",
       "Bash(*/op *)",
-      "Bash(*/op-agent *)",
       "Bash(*/security find-generic-password *)",
       "Bash(*/security find-internet-password *)",
       "Bash(*/security find-certificate *)",
@@ -61,6 +54,9 @@
   },
   "sandbox": {
     "enabled": true,
+    "excludedCommands": [
+      "op-sa *"
+    ],
     "network": {
       "allowedDomains": [
         "api.github.com",

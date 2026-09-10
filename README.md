@@ -19,9 +19,24 @@ chezmoi init --apply alxjrvs/dotFiles
 `init --apply` clones this repo to `~/.local/share/chezmoi`, renders `~/.config/chezmoi/chezmoi.toml`
 from [`home/.chezmoi.toml.tmpl`](home/.chezmoi.toml.tmpl), and applies: symlinks into `~`, then
 the `run_` scripts in [`home/`](home/) — the Claude Code CLI, Homebrew bundle, `mise install`,
-gh extensions, macOS defaults, LaunchAgents, lefthook, tldr, the 1Password and GitHub MCP registrations,
-op-agent, git signing — each darwin-gated and either hashed on the file it applies or cheap
-enough to run every time.
+gh extensions, macOS defaults, LaunchAgents, lefthook, tldr, the 1Password and GitHub MCP
+registrations — each darwin-gated and either hashed on the file it applies or cheap enough to
+run every time.
+
+Two steps are by hand, once per machine, both into the login keychain with `-w` last so the
+secret is prompted for and never on argv or in shell history. The agent's 1Password
+service-account token, which `~/.local/bin/op-sa` reads:
+
+```bash
+security add-generic-password -a "$USER" -s op-claude-agent -w
+```
+
+And the agent's GitHub PAT, which git's `osxkeychain` helper reads under the account name
+pinned in `home/dot_config/git/agent.gitconfig` (the name is only a keychain key):
+
+```bash
+security add-internet-password -a claude-agent -s github.com -r htps -w
+```
 
 To work from an existing checkout instead of the managed clone, point chezmoi at it once:
 `chezmoi init --source <your checkout> --apply`. The config template records `sourceDir`, so
@@ -56,11 +71,12 @@ Ordered by what breaks first. Everything else is preference.
 every commit an agent makes on your machine is authored and co-signed as `alxjrvs`, silently,
 into public history.
 
-**2 — 1Password, or `verify.sh` fails on day one.** The service-account vault name in
-`agent-vault.txt`; the `op://claude-agent/…` references in `home/dot_claude/settings.json` and
-`npm/publish.env`; the SSH signing item named in `home/run_after_91-git-signing.sh.tmpl` and in
-`home/dot_config/1Password/ssh/agent.toml`. That last file scopes per *item*, not per vault —
-1Password's own least-privilege recommendation.
+**2 — 1Password, or `verify.sh` fails on day one.** The `op://claude-agent/…` references in
+`home/dot_claude/settings.json`, `home/dot_config/git/agent.gitconfig`,
+`home/run_after_81-github-mcp.sh.tmpl` and `npm/publish.env`; the `user.signingkey` in
+`home/dot_gitconfig` and the matching line in `home/private_dot_ssh/allowed_signers`; the SSH
+items named in `home/dot_config/1Password/ssh/agent.toml`. That last file scopes per *item*,
+not per vault — 1Password's own least-privilege recommendation.
 
 **3 — Org scope, which is a security control and not a preference.** `_owned_orgs()` in
 `home/dot_claude/hooks/guard-lib.sh` is the single source deciding which repos an agent may
