@@ -32,15 +32,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: sudo apt-get install -y -q zsh
-      - run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+      - run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: mkdir -p "$GITHUB_WORKSPACE/../home"
       # init renders home/.chezmoi.toml.tmpl; apply lays down every non-Mac file, externals included.
-      - run: "$HOME/.local/bin/chezmoi" init --source "$GITHUB_WORKSPACE" $CHEZMOI_ARGS
-      - run: "$HOME/.local/bin/chezmoi" $CHEZMOI_ARGS ignored
-      - run: "$HOME/.local/bin/chezmoi" $CHEZMOI_ARGS apply --exclude scripts
-      - run: "$HOME/.local/bin/chezmoi" $CHEZMOI_ARGS verify --exclude scripts
+      - run: chezmoi init --source "$GITHUB_WORKSPACE" $CHEZMOI_ARGS
+      - run: chezmoi $CHEZMOI_ARGS ignored
+      - run: chezmoi $CHEZMOI_ARGS apply --exclude scripts
+      - run: chezmoi $CHEZMOI_ARGS verify --exclude scripts
       # The applied shell must start with none of the guarded tools present.
-      - run: HOME="$GITHUB_WORKSPACE/../home" zsh -l -i -c 'echo "shell ok: $SHELL"'
+      - run: HOME="$GITHUB_WORKSPACE/../home" zsh -l -i -c 'echo shell ok'
       # The Mac half of git config is absent here; the include must be silently skipped.
       # --includes: `--global` alone defaults to --no-includes.
       - run: |
