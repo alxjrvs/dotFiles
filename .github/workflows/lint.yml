@@ -1,8 +1,8 @@
 name: lint
 
-# RUNS the local lefthook pre-commit gate on every push to main and every PR — the
-# same roster, not a second copy of it — plus the two checks that are genuinely
-# remote-only. Read-only: chezmoi appears once, under `--dry-run`.
+# Runs the local lefthook pre-commit gate on every push to main and every PR (the same roster,
+# not a second copy), plus the two checks that are genuinely remote-only. On macOS, because the
+# tree is macOS-only and a Linux runner would need every script gated and every Mac path ignored.
 
 on:
   push:
@@ -14,73 +14,31 @@ permissions:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
-    # Job-wide, not just on the install step: mise installs on DEMAND through its
-    # shims, so the first `jq` a guard runs later triggers an install of its own.
-    env:
-      # The machine's global mise config IS the repo file; point the runner at it so
-      # `mise install` resolves the same pins.
-      MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/home/dot_config/mise/config.toml
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
 
-      # Set mise up (PATH + shims) but skip the full `mise install` — we only
-      # need the lint tools, not the whole toolchain (node, bun, neovim…).
-      - uses: jdx/mise-action@v4
-        with:
-          install: false
-          # A mise tag exists before its assets are uploaded (v2026.9.3, 2026-09-08:
-          # every job 404'd for a while); a day-old release always has them.
-          minimum_release_age: 24h
-      - name: Install lint tools
-        # GITHUB_TOKEN bills mise's GitHub API calls to this repo, not the shared anonymous pool.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          mise install shellcheck shfmt gitleaks jq taplo biome actionlint lefthook \
-            || { sleep 20; mise install shellcheck shfmt gitleaks jq taplo biome actionlint lefthook; }
-          # Run each tool, never `command -v`: mise puts a shim on PATH whether or
-          # not the tool installed.
-          for t in shellcheck shfmt gitleaks jq taplo biome actionlint lefthook; do
-            "$t" --version > /dev/null 2>&1 || { echo "::error::$t did not install"; exit 1; }
-          done
-          # The roster runs `zsh -n`; a runner has no zsh. Installed here so a missing
-          # package fails at setup with a clear message, not mid-roster.
-          command -v zsh > /dev/null 2>&1 || sudo apt-get install -y -qq zsh
+      # brew, unpinned: the same source the machine gets chezmoi from, and the linters' output
+      # does not change meaningfully across patch versions.
+      - name: Install tools
+        run: brew install shellcheck shfmt gitleaks jq taplo actionlint lefthook chezmoi
 
-      # ONE ROSTER: lefthook's own, not a copy that nothing asserts agrees with it.
-      # `--all-files` because a runner has no index: bare `run pre-commit` would hand
-      # every `glob:` command an empty file list and pass for inspecting nothing.
-      # `commit-msg` is not part of `run pre-commit` and only means anything on a real commit.
+      # ONE ROSTER: lefthook's own. `--all-files` because a runner has no index; bare
+      # `run pre-commit` would hand every `glob:` command an empty file list and pass.
       - name: lefthook pre-commit (the whole local gate)
         run: lefthook run pre-commit --all-files
 
-      # NOT part of that roster, deliberately: lefthook runs
-      # `gitleaks git --staged`, which reads the index. A runner has no
-      # index, and the useful remote question is different anyway — does the
-      # CURRENT TREE contain a secret, rather than does this commit add one.
-      # Same tool, different verb, so it stays its own step.
+      # The roster runs `gitleaks git --staged`, which reads the index. The remote question is
+      # different: does the CURRENT TREE contain a secret.
       - name: gitleaks
         run: gitleaks dir . --redact --no-banner --config home/dot_config/gitleaks/gitleaks.toml
 
-      # THE ARTIFACT, not the assertions about it: the one step that asks the engine
-      # whether the source state still applies, resolved by the thing that resolves it
-      # on a real machine, with the state DB beside a throwaway config, out of the
-      # checkout. Safe on a runner: `--dry-run` runs no script; it only renders every
-      # file and template into a temp destination.
-      # Some github.com traffic remains: every external's tarball is read for its entries
-      # even under `--exclude externals` (the statusline pair share one URL; the two zsh
-      # plugins are one each). The chezmoi version is pinned by hand — Renovate reads
-      # `uses:` lines only; bump it with the Brewfile's.
-      #
-      # `--source` on every command, not `init`: with the config template gone there is no
-      # config to write, so `init` records nothing and the later commands would fall back to
-      # ~/.local/share/chezmoi, which does not exist on a runner. An empty config file keeps
-      # the state DB out of the checkout.
+      # The one step that asks the engine whether the source state still applies. `--dry-run`
+      # runs no script; it renders every file and template into a temp destination. Externals
+      # are excluded, though chezmoi still reads each archive's index to know its entries.
       - name: chezmoi applies
         run: |
-          mise install chezmoi@2.66.0
+          mkdir -p "$RUNNER_TEMP/home"
           : > "$RUNNER_TEMP/chezmoi.toml"
-          mise exec chezmoi@2.66.0 -- chezmoi --source "$PWD" --config "$RUNNER_TEMP/chezmoi.toml" --destination "$RUNNER_TEMP/home" apply --dry-run --verbose --exclude externals
-          mise exec chezmoi@2.66.0 -- chezmoi --source "$PWD" --config "$RUNNER_TEMP/chezmoi.toml" --destination "$RUNNER_TEMP/home" managed | sed 's/^/  /'
-
+          chezmoi --source "$PWD" --config "$RUNNER_TEMP/chezmoi.toml" --destination "$RUNNER_TEMP/home" apply --dry-run --verbose --exclude externals
+          chezmoi --source "$PWD" --config "$RUNNER_TEMP/chezmoi.toml" --destination "$RUNNER_TEMP/home" managed | sed 's/^/  /'

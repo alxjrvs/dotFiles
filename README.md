@@ -35,8 +35,8 @@ security add-generic-password -a "$USER" -s op-claude-agent -w
 
 And the agent's GitHub PAT, which git's `osxkeychain` helper reads under the account name pinned
 in `home/dot_config/git/agent.gitconfig` (the name is only a keychain key). `-T` puts that helper
-on the item's ACL, or macOS raises an access dialog on the first agent push; add `-U` when
-replacing a rotated token:
+on the item's ACL, or macOS raises an access dialog on the first agent push and an unattended
+session has no way to answer it; add `-U` when replacing a rotated token:
 
 ```bash
 security add-internet-password -a claude-agent -s github.com -r htps \
@@ -59,39 +59,22 @@ home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json, hoo
 home/dot_claude/hooks/  two Claude Code hooks + their regression suites (suites are chezmoi-ignored)
 home/.chezmoi*          chezmoi's own contract: ignore, externals
 scripts/verify.sh       drift check, by hand
-docs/DECISIONS.md       reasons, incidents, measurements — never applied to a machine, so it costs nothing
+docs/GOTCHAS.md         traps still armed and the rule each forces; never applied to a machine
 ```
 
 ## Forking this repo
 
-Ordered by what breaks first. Everything else is preference.
-
-**1 — Identity, or your commits are signed as someone else.** Git name and email in
-`home/dot_gitconfig` `[user]`; the agent identity in `home/dot_claude/settings.json`
-(`GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_EMAIL`, and the `attribution` trailers). Miss these and
-every commit an agent makes on your machine is authored and co-signed as `alxjrvs`, silently,
-into public history.
-
-**2 — 1Password, or `verify.sh` fails on day one.** The `op://claude-agent/…` references in
-`home/dot_claude/settings.json`, `home/run_after_81-github-mcp.sh.tmpl` and `npm/publish.env`;
-the two keychain items above; the `user.signingkey` in `home/dot_gitconfig` and the matching
-line in `home/private_dot_ssh/allowed_signers`; the SSH items named in
-`home/dot_config/1Password/ssh/agent.toml`. That last file scopes per *item*, not per vault —
-1Password's own least-privilege recommendation.
-
-**3 — Org scope, which is a security control and not a preference.** `_owned_orgs()` in
-`home/dot_claude/hooks/guard-lib.sh` is the single source deciding which repos an agent may
-write to. On a fork it protects the wrong orgs until you change it.
-
-**4 — Cosmetic.** The launchd labels under `home/Library/LaunchAgents/` and the `# alxjrvs`
-heading in `home/dot_claude/CLAUDE.md`.
-
-Nothing enforces this list. `git grep -il alxjrvs` is the check, and forking is a once-ever event.
+`git grep -ilE 'alxjrvs|claude-agent|GitHubSSH'` finds every file. In order of what breaks first: git identity and
+signing key (`home/dot_gitconfig`, `home/private_dot_ssh/allowed_signers`), the agent identity
+(`home/dot_claude/settings.json`), the `op://claude-agent/…` references (`settings.json`,
+`home/run_after_50-provision.sh`, `npm/publish.env`), the SSH items in
+`home/dot_config/1Password/ssh/agent.toml`, and the owned orgs in
+`home/dot_claude/hooks/guard-lib.sh`, which decide where an agent may write.
 
 ## Where the reasoning lives
 
-Beside the thing it explains: a guard's rationale is in its header, a gate's in its script, a
-run script's in its comment block. Decisions still in force that no file already asserts are in
-[`docs/DECISIONS.md`](docs/DECISIONS.md), which is outside `home/` and so costs a session nothing.
+Beside the thing it explains: a hook's rationale is in its header, a run script's in its
+comment block. Traps that no file asserts on its own are in [`docs/GOTCHAS.md`](docs/GOTCHAS.md);
+history is in the PRs.
 
 MIT — see [`LICENSE`](LICENSE).

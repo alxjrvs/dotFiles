@@ -32,14 +32,12 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 - `claude` is a shell function (`home/dot_config/zsh/claude.zsh`), so `which claude`
   misleads.
 - `gh` auth is keychain-backed; never `--insecure-storage`.
-- nvim is plugin-free. `biome.json` and
-  `home/dot_claude/settings.json` carry only divergences from defaults — don't tidy a key away
-  without reading why it is there.
+- nvim is plugin-free. `home/dot_claude/settings.json` carries only divergences from defaults;
+  don't tidy a key away without reading why it is there.
 - Secrets: `op://` references only, never a plaintext token, never a `${VAR}` in a tracked
   `.mcp.json`. To use a secret, pass it (`op run --env-file=F -- CMD`), never read it.
 - The hooks, guards, and their suites carry their own reasoning in their headers. Each guard fails
   open by design; add a regression case before changing one. A hook source is named
   `executable_*.sh`; chezmoi sets the target's mode from that prefix.
-- Reasons, incidents, measurements: `docs/DECISIONS.md`. Outside `home/`, so it never reaches a
-  machine and costs nothing per session — which is exactly why it, and not this file, holds the
-  history.
+- Traps still armed and the rule each forces: `docs/GOTCHAS.md`. Outside `home/`, so it never
+  reaches a machine and costs nothing per session. History is the PRs, not a file.

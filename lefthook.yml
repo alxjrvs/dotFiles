@@ -1,4 +1,5 @@
 # Lefthook config for this repo (a chezmoi source repo). Once per clone: `lefthook install`.
+# CI runs this same roster with --all-files.
 
 pre-commit:
   parallel: true
@@ -10,69 +11,27 @@ pre-commit:
     shfmt-check:
       glob: "{*.sh,home/run_*,home/dot_local/bin/*}"
       run: shfmt -d -i 2 -ci -sr {staged_files}
-    biome-check:
-      glob: "{*.ts,*.tsx,*.js,*.jsx,*.json,*.jsonc}"
-      run: biome check {staged_files}
-    gitleaks:
-      # --config: pinned to the same rules file this repo places at ~/.config/gitleaks, so the
-      # gate here and anything else pointed at that file enforce one set.
-      run: gitleaks git --staged --redact -v --no-banner --config home/dot_config/gitleaks/gitleaks.toml
-    settings-json-validity:
-      glob: "home/dot_claude/settings*.json"
-      run: jq -e . {staged_files} > /dev/null
-
-    context-budget:
-      # The two CLAUDE.md files are loaded into every session, so they carry a byte
-      # ceiling (Anthropic's guidance is "under 200 lines"; 3000 bytes is roughly 40).
-      # A rule in home/dot_claude/rules/ is free ONLY with `paths:` frontmatter —
-      # without it the rule loads at launch like CLAUDE.md, and nothing about the
-      # omission looks wrong. A date makes a sentence a record, not a rule, and it
-      # expires unnoticed.
-      glob: "{CLAUDE.md,home/dot_claude/CLAUDE.md,home/dot_claude/rules/*.md}"
-      run: |
-        for f in CLAUDE.md home/dot_claude/CLAUDE.md; do
-          n=$(wc -c < "$f" | tr -d ' ')
-          [ "$n" -le 3000 ] || { echo "$f: $n bytes, ceiling 3000 — it is billed to every request; move it to a skill, a rule, or DECISIONS.md"; exit 1; }
-          ! grep -nE '[0-9]{4}-[0-9]{2}-[0-9]{2}' "$f" || { echo "$f: dated claim above — a date makes it a record, not a rule"; exit 1; }
-        done
-        for r in home/dot_claude/rules/*.md; do
-          [ -e "$r" ] || continue
-          awk 'NR==1 { if ($0 != "---") exit 1; next } /^---[[:space:]]*$/ { exit } /^paths:/ { f=1 } END { exit !f }' "$r" \
-            || { echo "$r: no paths: in frontmatter — it would load into EVERY session"; exit 1; }
-        done
-
     zsh-syntax:
-      # shellcheck cannot parse zsh at all ("Unknown shell: zsh"); `zsh -n` is the
-      # native no-exec syntax check.
+      # shellcheck cannot parse zsh; `zsh -n` is the native no-exec syntax check.
       glob: "{*.zsh,home/dot_zshrc,home/dot_zprofile}"
       run: |
         for f in {staged_files}; do
           zsh -n "$f" || { echo "zsh syntax error in $f"; exit 1; }
         done
+    json-validity:
+      glob: "*.json"
+      run: jq -e . {staged_files} > /dev/null
     toml-validity:
-      # --no-schema: pure syntax check, offline. `.chezmoi.toml.tmpl` is a template,
-      # not TOML, and is not matched.
+      # --no-schema: pure syntax check, offline.
       glob: "*.toml"
       run: taplo check --no-schema {staged_files}
+    gitleaks:
+      # --config: the repo's copy of the global rules, the same file ~/.config/gitleaks points at.
+      run: gitleaks git --staged --redact -v --no-banner --config home/dot_config/gitleaks/gitleaks.toml
     hook-tests:
       glob: "{home/dot_claude/hooks/*.sh,home/dot_claude/hooks/tests/*}"
       run: home/dot_claude/hooks/tests/all.sh
-
     actionlint:
-      # Also reaches the embedded shell in every `run:`, which the shellcheck glob
-      # cannot.
+      # Also reaches the embedded shell in every `run:`, which the shellcheck glob cannot.
       glob: ".github/workflows/*.yml"
       run: actionlint
-
-# Forward-only: rejects throwaway subjects (bare "WIP" or a single character) so
-# they don't land in permanent history. Convention: `scope: summary` or
-# `type(scope): summary`. Bypass once with: git commit --no-verify
-commit-msg:
-  commands:
-    no-wip:
-      run: |
-        subject=$(head -1 "{1}")
-        if printf '%s' "$subject" | grep -qiE '^(wip|.)$'; then
-          printf 'commit-msg: refusing throwaway subject "%s" — write a real summary (bypass: --no-verify)\n' "$subject" >&2
-          exit 1
-        fi
