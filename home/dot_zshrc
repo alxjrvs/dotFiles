@@ -25,7 +25,6 @@ export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 export MANPAGER="sh -c 'col -bx | bat -l man -p'"
 # sharp: force its prebuilt binary; a stray global libvips makes the from-source build fail.
 export SHARP_IGNORE_GLOBAL_LIBVIPS=1
-# No GITLEAKS_CONFIG export: it would outrank every repo's own .gitleaks.toml.
 
 # --- plugins: pinned tarballs placed by .chezmoiexternal.toml ---------------------------------
 source ~/.config/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh

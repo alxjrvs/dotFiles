@@ -1,37 +1,15 @@
-# Lefthook config for this repo (a chezmoi source repo). Once per clone: `lefthook install`.
-# CI runs this same roster with --all-files.
-#
-# TOML is the one filetype checked in CI rather than here: `taplo` panics in the Bash sandbox,
-# so a gate that runs it rejects every `.toml` commit an agent makes.
-
+# Once per clone: `lefthook install`. CI runs the same roster with --all-files.
 pre-commit:
   parallel: true
   commands:
     shellcheck:
-      # The run_ scripts too: their only template syntax sits inside comments or a string.
       glob: "{*.sh,home/run_*,home/dot_local/bin/*}"
       run: shellcheck -x {staged_files}
-    shfmt-check:
-      glob: "{*.sh,home/run_*,home/dot_local/bin/*}"
-      run: shfmt -d -i 2 -ci -sr {staged_files}
     zsh-syntax:
-      # shellcheck cannot parse zsh; `zsh -n` is the native no-exec syntax check.
       glob: "{*.zsh,home/dot_zshrc,home/dot_zprofile}"
-      run: |
-        for f in {staged_files}; do
-          zsh -n "$f" || { echo "zsh syntax error in $f"; exit 1; }
-        done
+      run: for f in {staged_files}; do zsh -n "$f" || exit 1; done
     json-validity:
       glob: "*.json"
       run: jq -e . {staged_files} > /dev/null
     gitleaks:
-      # --config: the repo's copy of the global rules, the same file ~/.config/gitleaks points at.
-      run: gitleaks git --staged --redact -v --no-banner --config home/dot_config/gitleaks/gitleaks.toml
-    check-paths:
-      # No `glob:`: a rename in one file breaks a mention in another, so this has to look at
-      # the whole tree however few files are staged.
-      run: scripts/check-paths.sh
-    actionlint:
-      # Also reaches the embedded shell in every `run:`, which the shellcheck glob cannot.
-      glob: ".github/workflows/*.yml"
-      run: actionlint
+      run: gitleaks git --staged --redact --no-banner

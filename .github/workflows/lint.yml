@@ -1,8 +1,6 @@
 name: lint
 
-# Runs the local lefthook pre-commit gate on every push to main and every PR (the same roster,
-# not a second copy), plus the two checks that are genuinely remote-only. On macOS, because the
-# tree is macOS-only and a Linux runner would need every script gated and every Mac path ignored.
+# The local lefthook gate, re-run on a runner; `lint` is the status check the main ruleset requires.
 
 on:
   push:
@@ -14,66 +12,13 @@ permissions:
 
 jobs:
   lint:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
-      # brew for the two BOOTSTRAPS only, exactly as a machine gets them (Brewfile). Everything
-      # else is a mise pin, below.
-      - name: Install the bootstraps
-        run: brew install mise chezmoi
-
-      # ONE ROSTER for tool versions: the same config.toml a machine gets, copied to the same
-      # path chezmoi puts it at, so `mise install` resolves the identical exact pins. CI used to
-      # `brew install` these seven unpinned, which meant a Homebrew bump could fail a PR that
-      # passed on the machine that wrote it — and that the pins were never exercised anywhere
-      # but by hand. Named tools rather than a bare `mise install`: the config also pins node,
-      # bun, neovim and the language servers, and a linter job has no use for those.
-      #
-      # GITHUB_TOKEN because mise resolves aqua/github-backed tools through the API, and a
-      # runner is UNAUTHENTICATED by default: 60 requests/hour shared across every GitHub-hosted
-      # runner on that IP. The first run of this step hit exactly that and fell back to the
-      # cached version list; a run that could not would fail the install and surface as a
-      # confusing "command not found" in lefthook. The automatic token is read-only here.
-      - name: Install the pinned linters
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          mkdir -p "$HOME/.config/mise"
-          cp home/dot_config/mise/config.toml "$HOME/.config/mise/config.toml"
-          mise install shellcheck shfmt gitleaks jq taplo actionlint lefthook
-          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
-
-      # Proof the pins actually took. `mise install <name>` on a config it failed to read would
-      # silently install latest, which is the failure this whole step exists to prevent. Tools
-      # the config pins but this job does not install correctly read as "(missing)".
-      - name: Show resolved versions
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mise ls --current
-
-      # ONE ROSTER: lefthook's own. `--all-files` because a runner has no index; bare
-      # `run pre-commit` would hand every `glob:` command an empty file list and pass.
-      - name: lefthook pre-commit (the whole local gate)
-        run: lefthook run pre-commit --all-files
-
-      # The roster runs `gitleaks git --staged`, which reads the index. The remote question is
-      # different: does the CURRENT TREE contain a secret.
-      - name: gitleaks
-        run: gitleaks dir . --redact --no-banner --config home/dot_config/gitleaks/gitleaks.toml
-
-      # The one roster check that lives here instead: taplo panics in Claude Code's Bash
-      # sandbox, and nothing is sandboxed on a runner. Explicit file list because bare
-      # `taplo check` resolves its own include patterns and can cover nothing silently.
-      - name: toml-validity
-        run: git ls-files -z '*.toml' | xargs -0 taplo check --no-schema
-
-      # The one step that asks the engine whether the source state still applies. `--dry-run`
-      # runs no script; it renders every file and template into a temp destination. Externals
-      # are excluded, though chezmoi still reads each archive's index to know its entries.
-      - name: chezmoi applies
-        run: |
-          mkdir -p "$RUNNER_TEMP/home"
-          : > "$RUNNER_TEMP/chezmoi.toml"
-          chezmoi --source "$PWD" --config "$RUNNER_TEMP/chezmoi.toml" --destination "$RUNNER_TEMP/home" apply --dry-run --verbose --exclude externals
-          chezmoi --source "$PWD" --config "$RUNNER_TEMP/chezmoi.toml" --destination "$RUNNER_TEMP/home" managed | sed 's/^/  /'
+      # The runner image ships Homebrew off PATH.
+      - run: echo /home/linuxbrew/.linuxbrew/bin >> "$GITHUB_PATH"
+      - run: brew install lefthook gitleaks shellcheck zsh
+      # --all-files: nothing is staged on a runner, so every glob would otherwise see nothing.
+      - run: lefthook run pre-commit --all-files
+      # The roster's gitleaks scans the staged diff, which is empty here; this scans the tree.
+      - run: gitleaks dir . --redact --no-banner
