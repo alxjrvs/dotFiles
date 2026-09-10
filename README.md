@@ -56,7 +56,7 @@ stale, so it is a standing habit or it does not happen.
 .chezmoiroot            "home" — the source state lives one directory down
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/run_*              machine setup: brew (onchange), macOS defaults (onchange), provision (every apply)
-home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json, hooks, rules, skills
+home/dot_claude/        user-global Claude config: CLAUDE.md, settings.json, hooks, rules
 home/dot_claude/hooks/  the Stop-hook commit gate + its regression suite (suites are chezmoi-ignored)
 home/.chezmoi*          chezmoi's own contract: ignore, externals
 scripts/verify.sh       drift check, by hand

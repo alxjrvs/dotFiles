@@ -120,6 +120,7 @@
     "command": "~/.local/bin/claude-subagent-statusline"
   },
   "enabledPlugins": {
+    "agent-friendly-repo@oberon": true,
     "gninety@gnar": true,
     "typescript-lsp@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,

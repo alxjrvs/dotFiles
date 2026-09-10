@@ -27,7 +27,7 @@ Nothing goes in this file that fits elsewhere.
 
 | | |
 |---|---|
-| a procedure | a skill in `home/dot_claude/skills/` |
+| a procedure | a skill — published in `alxjrvs/oberon`, or project-local in `.claude/skills/` |
 | it only matters for some files | a path-scoped rule in `home/dot_claude/rules/` — free until one is read |
 | it must hold | a hook, `permissions.deny`, or a `scripts/verify.sh` check |
 | a trap still armed, and the rule it forces | `docs/GOTCHAS.md` |
