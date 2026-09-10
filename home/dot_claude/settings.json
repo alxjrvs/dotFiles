@@ -23,6 +23,8 @@
     "deny": [
       "Bash(*gh release create*)",
       "Bash(*gh gist create*)",
+      "Bash(*gh pr create*)",
+      "Bash(*gh pr merge*)",
       "Bash(*gh alias*)",
       "Bash(*gh auth token*)",
       "Bash(*--show-token*)",
@@ -31,6 +33,7 @@
       "Bash(*security find-generic-password*)",
       "Bash(*security find-internet-password*)",
       "Bash(*git credential*)",
+      "Bash(*credential fill*)",
       "Bash(*credential-osxkeychain*)",
       "Bash(*credential.helper*)",
       "Read(~/.ssh/id_*)",
