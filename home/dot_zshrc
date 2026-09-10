@@ -66,9 +66,6 @@ alias ..='cd ..'
 alias ls='eza --icons --group-directories-first'
 alias vim='nvim'
 
-# Interactive `claude` goes through its own app bundle (TCC grants); see the file.
-source ~/.config/zsh/claude.zsh
-
 # --- syntax highlighting: last, because it wraps the ZLE widgets defined above ----------------
 source ~/.config/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 ZSH_HIGHLIGHT_STYLES[command]='fg=#4db8cc'

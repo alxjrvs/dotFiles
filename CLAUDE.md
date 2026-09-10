@@ -29,8 +29,6 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
   never upgrades.
 - Machine setup is three chezmoi `run_` scripts in `home/`: `onchange` on the Brewfile hash,
   `onchange` on the macOS defaults, and an every-apply idempotent provision script.
-- `claude` is a shell function (`home/dot_config/zsh/claude.zsh`), so `which claude`
-  misleads.
 - `gh` auth is keychain-backed; never `--insecure-storage`.
 - nvim is plugin-free. `home/dot_claude/settings.json` carries only divergences from defaults;
   don't tidy a key away without reading why it is there.
