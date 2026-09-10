@@ -33,15 +33,26 @@ if command -v claude > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
   #
   # --exclude-tools is the WRITE BOUNDARY on this path, and it is the only one there is: a
   # PreToolUse hook matches a tool NAME, so a guard wired to `Bash` has no opinion about an
-  # `mcp__github__*` call that reaches the same API with the same token. The six names are the
-  # ones that leave a mark on someone else's repo without needing a clone or a branch — issue
-  # creation, issue/PR comments, review submission. Everything the completion path uses
-  # (create_pull_request, merge_pull_request, update_pull_request, the repos tools) is untouched.
-  # Names verified against `github-mcp-server generate-docs`; an unknown name here is ignored
-  # silently, so re-check them after a server bump.
+  # `mcp__github__*` call that reaches the same API with the same token.
+  #
+  # PR REVIEW IS ALLOWED; ISSUE CREATION IS NOT. Commenting on a pull request is participating
+  # in work already under way — the review tools below are all PR-only and stay enabled.
+  # What is excluded is the issue surface, which needs nothing but a repo name to reach.
+  #
+  # `add_issue_comment` is the awkward one and is excluded on purpose. GitHub models a
+  # top-level PR comment AS an issue comment, so that single tool cannot tell a PR thread from
+  # a stranger's issue tracker. `gh` can — `gh pr comment` and `gh issue comment` are separate
+  # verbs — so top-level PR comments go through gh, which is allowed, and the tool that cannot
+  # express the distinction stays off. Drop it from this list if that split ever costs more
+  # than it buys.
+  #
+  # Everything the completion path uses (create_pull_request, merge_pull_request,
+  # update_pull_request, the repos tools) is untouched. Names verified against
+  # `github-mcp-server generate-docs`; an unknown name here is ignored silently, so re-check
+  # them after a server bump.
   shims="$HOME/.local/share/mise/shims"
   if "$shims/github-mcp-server" --version > /dev/null 2>&1; then
-    no_write=add_issue_comment,issue_write,sub_issue_write,add_comment_to_pending_review,add_reply_to_pull_request_comment,pull_request_review_write
+    no_write=add_issue_comment,issue_write,sub_issue_write
     cmd="GITHUB_PERSONAL_ACCESS_TOKEN=\"\$($HOME/.local/bin/op-sa read op://claude-agent/claude-git-pat/credential)\" exec $shims/github-mcp-server stdio --toolsets context,repos,issues,pull_requests,actions --exclude-tools $no_write"
     want=$(jq -cn --arg cmd "$cmd" '{type: "stdio", command: "/bin/sh", args: ["-c", $cmd]}')
     have=$(jq -c '.mcpServers.github // empty | {type, command, args}' "$HOME/.claude.json" 2> /dev/null || true)
