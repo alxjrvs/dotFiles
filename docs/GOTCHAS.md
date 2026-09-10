@@ -24,6 +24,8 @@ the PRs; when a subject is gone, delete its entry.
   `permissions.deny` are the only thing between the agent and a release, a gist, or the token.
 - **User-scoped MCP servers live only in `~/.claude.json`,** which nothing tracks; the
   provision script converges them on every apply.
+- **The desktop app runs its own bundled Claude Code, not `~/.local/bin/claude`,** and the two
+  update on different schedules. A settings key is verified in a terminal and in the Code tab.
 
 ## 1Password
 
@@ -40,22 +42,25 @@ the PRs; when a subject is gone, delete its entry.
 ## chezmoi
 
 - **Nothing removes a target whose source was deleted.** `.chezmoiremove` is the one mechanism.
-- **Target modes come from the source name** (`executable_`, `private_`), never the checkout.
 - **`run_onchange_` records its hash even when the script exits 0 early.** Anything that may
   need to retry (behind `gh auth login`) belongs in the every-apply script.
 - **A run script cannot call `chezmoi`:** the outer apply holds the persistent-state lock, so
   the inner one times out and fails the apply. Scripts get `CHEZMOI_SOURCE_DIR` and
   `CHEZMOI_WORKING_TREE` in their environment instead.
+- **Scripts sort by target path, so a subdirectory under `.chezmoiscripts` reorders them:**
+  `darwin/10-brew` runs after `50-provision`. The directory stays flat; `.chezmoiignore` names
+  the Mac-only scripts instead.
 
-## Shell and tools
+## GitHub
+
+- **The ruleset requires the check named `lint`; a job beside it merges red under auto-merge.**
+  Every check lives inside that one job.
+- **`gitleaks/gitleaks-action` in a workflow makes GitHub schedule nothing:** no run, no error,
+  no annotation. The release tarball is one `curl`.
+- **`git config --global` defaults to `--no-includes`;** assert on an included key with
+  `--includes`, or the test reads nothing and blames the include.
+
+## Shell
 
 - **`/etc/zprofile` runs `path_helper`, which rebuilds PATH from scratch.** PATH additions go in
   `.zprofile`, after it.
-- **`fzf --zsh` binds Ctrl-R in viins and vicmd;** an empty `FZF_CTRL_R_COMMAND` before the
-  eval makes it skip that binding so atuin's wins.
-- **Homebrew's completions are not on `fpath`** unless `.zshrc` adds them.
-- **Karabiner rewrites `karabiner.json`** in its own key order when edited in its UI:
-  `chezmoi re-add ~/.config/karabiner/karabiner.json` afterwards.
-- **`brew bundle` never uninstalls;** `brew bundle cleanup` lists the other half.
-- **heroku has no homebrew-core formula** and its tap is untrusted, so a Brewfile line stops a
-  fresh machine at a prompt. `mise x npm:heroku -- heroku` when needed.

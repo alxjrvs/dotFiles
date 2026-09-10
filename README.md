@@ -1,27 +1,23 @@
 # dotFiles
 
-macOS dotfiles for [alxjrvs](https://github.com/alxjrvs), managed by
+macOS and Linux dotfiles for [alxjrvs](https://github.com/alxjrvs), managed by
 [chezmoi](https://www.chezmoi.io). `home/` is the source state. Principles:
 [`CLAUDE.md`](CLAUDE.md#principles).
 
 ## Fresh machine
+
+A Mac:
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew install chezmoi
 git clone https://github.com/alxjrvs/dotFiles ~/Code/dotFiles
 chezmoi init --source ~/Code/dotFiles --apply
+gh auth login && chezmoi apply
 ```
 
-`init` renders `home/.chezmoi.toml.tmpl` into `~/.config/chezmoi/chezmoi.toml`, which pins the
-source to that checkout; `apply` puts files into `~`, then runs the three scripts in
-[`home/.chezmoiscripts/`](home/.chezmoiscripts/): the Homebrew bundle (when the Brewfile
-changes), macOS defaults (when they change), and provisioning on every apply (Claude Code CLI,
-`mise install`, gh extensions, plugins, the MCP registrations). Then `gh auth login` and
-`chezmoi apply` again for the extensions and the GitHub MCP.
-
-A Linux box gets the portable core (shell, git, editor, `~/.claude`) and none of the Mac-only
-files, per [`home/.chezmoiignore`](home/.chezmoiignore); packages are its own business.
+A Linux box gets the portable core (shell, git, editor, `~/.claude`) and nothing Mac-only;
+packages are its own business:
 
 ```bash
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin
@@ -30,33 +26,31 @@ chezmoi init --source ~/Code/dotFiles --apply
 gh auth login
 ```
 
-For the plugin tokens there, the service-account token goes in `~/.config/op-sa/token`, mode
-0600, instead of the keychain.
+`init` renders the config template, which pins the source to that checkout. `apply` lays down
+files, then runs [`home/.chezmoiscripts/`](home/.chezmoiscripts/): the Homebrew bundle and
+macOS defaults when they change, and provisioning every time (Claude Code CLI, mise, gh
+extensions, plugins, MCP servers). [`home/.chezmoiignore`](home/.chezmoiignore) names what is
+Mac-only.
 
-Day to day: edit in the checkout (`chezmoi cd`), `chezmoi apply`, commit, PR. CI is the gate;
-`git config core.hooksPath .githooks` runs its static checks before each commit. Another Mac:
-`chezmoi update`. Drift: `chezmoi verify` and `brew bundle check --global --no-upgrade`.
-Upgrades: `brew upgrade --formula`, `mise upgrade`; the statusline tag in
-`home/.chezmoiexternal.toml` moves by hand. After editing the config template, `chezmoi init`
-again.
+Day to day: edit in the checkout, `chezmoi apply`, commit, PR. CI is the gate;
+`git config core.hooksPath .githooks` runs its static checks locally. Drift: `chezmoi verify`.
+Upgrades: `brew upgrade --formula`, `mise upgrade`; apply reconciles and never upgrades. Another
+machine: `chezmoi update`.
 
 ## The agent
 
-The agent is you. `gh auth login` is the only GitHub credential on the machine; git and the
-GitHub MCP both borrow it. Agent commits carry the `Claude` author and the co-author trailer,
-which is all GitHub ever showed. Branch protection and the never-push-main rule are the gate.
+The agent is you. `gh auth login` is the one GitHub credential; git and the GitHub MCP borrow
+it. Agent commits carry the `Claude` author and the co-author trailer. Branch protection and the
+never-push-main rule are the gate.
 
-**One step is by hand, once per machine**, for the secrets that are not GitHub's (plugin
-tokens). Mint a 1Password service account with `read_items` on the `claude-agent` vault and
-store its token in the login keychain. `-w` last: it prompts, so the token never lands on argv
-or in shell history.
+Plugin tokens that are not GitHub's come from a 1Password service account with `read_items` on
+the `claude-agent` vault. Once per machine, put its token where `op-sa` reads it: the login
+keychain on a Mac (`-w` last: it prompts, so the token never lands on argv or in history), or
+`~/.config/op-sa/token`, mode 0600, on Linux.
 
 ```bash
 security add-generic-password -a "$USER" -s op-claude-agent -w
 ```
-
-`op-sa` loads that token for the one process that needs it and nothing else; an agent's Bash
-cannot call it.
 
 ## Layout
 
@@ -71,10 +65,10 @@ docs/GOTCHAS.md         traps still armed and the rule each forces; never applie
 
 ## Forking
 
-`git grep -ilE 'alxjrvs|claude-agent|GitHubSSH'` finds every file. What breaks first: git
-identity and signing key (`home/dot_gitconfig`, `home/private_dot_ssh/allowed_signers`), the
-agent's git author (`home/dot_claude/settings.json`), the vault reference and keychain item name
-(`settings.json`, `home/dot_local/bin/executable_op-sa`), and the SSH items in
+`git grep -ilE 'alxjrvs|claude-agent|GitHubSSH'` finds every file: git identity and signing key
+(`home/dot_config/git/config`, `home/private_dot_ssh/allowed_signers`), the agent's author
+(`home/dot_claude/settings.json`), the vault and keychain item (`settings.json`,
+`home/dot_local/bin/executable_op-sa`), and the SSH items in
 `home/dot_config/1Password/ssh/agent.toml`.
 
 MIT — see [`LICENSE`](LICENSE).
