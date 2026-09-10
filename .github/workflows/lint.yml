@@ -1,8 +1,9 @@
 name: lint
 
-# One job, because `lint` is the status check the main ruleset requires: the four static checks,
+# One job, because `lint` is the status check the main ruleset requires: three static checks,
 # then the source rendered and applied on ubuntu with the applied shell and git config exercised.
-# That apply is the only Linux test this repo can have.
+# That apply is the test of the container path. Secrets are GitHub's push protection, on the
+# repo, not a step here.
 
 on:
   push:
@@ -21,12 +22,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: sudo apt-get install -y -q shellcheck zsh jq
-      - run: shellcheck -x home/.chezmoiscripts/* home/dot_local/bin/* .githooks/*
+      - run: shellcheck -x home/.chezmoiscripts/* home/dot_local/bin/*
       - run: for f in home/dot_zshrc home/dot_zprofile; do zsh -n "$f"; done
       - run: for f in $(git ls-files '*.json'); do jq -e . "$f" > /dev/null; done
-      # gitleaks has no apt package; its release tarball is one file. Bump the version by hand.
-      - run: curl -fsSL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz | sudo tar xz -C /usr/local/bin gitleaks
-      - run: gitleaks dir . --redact --no-banner
 
       - run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: mkdir -p "$HOME_T"
