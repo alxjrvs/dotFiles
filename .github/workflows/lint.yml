@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v7
       # The runner image ships Homebrew off PATH.
       - run: echo /home/linuxbrew/.linuxbrew/bin >> "$GITHUB_PATH"
-      - run: brew install lefthook gitleaks shellcheck
+      - run: brew install lefthook gitleaks shellcheck zsh
       # --all-files: nothing is staged on a runner, so every glob would otherwise see nothing.
       - run: lefthook run pre-commit --all-files
       # The roster's gitleaks scans the staged diff, which is empty here; this scans the tree.
