@@ -42,3 +42,40 @@ if command -v claude > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
     fi
   fi
 fi
+
+# The agent's GitHub PAT, copied from the vault into the login keychain on every apply.
+#
+# WHY A LOCAL COPY AT ALL. An agent's `git push` runs inside Claude Code's Bash sandbox, and
+# `op` is a Go binary that cannot verify TLS under Seatbelt, so the helper cannot resolve the
+# vault there. `chezmoi apply` runs OUTSIDE that sandbox, where op-sa works — so this is the one
+# moment a machine can mint the copy for itself, which is why it lives here and not in a runbook.
+#
+# WRITTEN BY GIT'S OWN HELPER, not by `security`, and both reasons are load-bearing:
+#   - the credential-helper protocol takes the value on stdin, so it never reaches argv. `security
+#     … -w` cannot do this: with no value it calls getpass(3), which reads /dev/tty whenever one is
+#     attached, so a piped value is ignored and an interactive apply stops at a hidden prompt.
+#   - the helper creates the item, so the helper is on its ACL by construction. An item created by
+#     `security` needs `-T` or the first agent push raises a dialog nothing can answer.
+#
+# ERASE THEN STORE, because `store` alone is not reliably idempotent: git's osxkeychain helper
+# only learned to update an existing item in 2.47, and before that a store onto a live item is a
+# silent no-op — so a rotated PAT would never reach a Mac on an older Xcode git. `erase` is safe
+# when the item is absent (unlike `security delete-internet-password`, which exits 44 and would
+# abort this script under `set -e`) and is scoped to this username, so it cannot touch the
+# human's own entries.
+#
+# Every prerequisite sits in the `if` condition, where a failure skips the block rather than
+# aborting the apply: a machine with no service-account token yet, offline, or with a `git` that
+# cannot run at all (a stale developer dir after a macOS upgrade) converges on the next apply.
+if [ -x "$HOME/.local/bin/op-sa" ] &&
+  _helper="$(git --exec-path)/git-credential-osxkeychain" && [ -x "$_helper" ] &&
+  _pat=$("$HOME/.local/bin/op-sa" read op://claude-agent/claude-git-pat/credential 2> /dev/null) &&
+  [ -n "$_pat" ]; then
+  for _host in github.com gist.github.com; do
+    printf 'protocol=https\nhost=%s\nusername=claude-agent\n\n' "$_host" | "$_helper" erase || true
+    printf 'protocol=https\nhost=%s\nusername=claude-agent\npassword=%s\n\n' "$_host" "$_pat" |
+      "$_helper" store ||
+      echo "provision: could not store the agent PAT for $_host — agent pushes will prompt" >&2
+  done
+fi
+unset _pat _helper _host

@@ -47,11 +47,22 @@ not here; when a subject is gone, delete its entry.
   goes through it (see above), which is most of what kept it busy.
 - **`op run --env-file` only works for an agent through `op-sa`**: the desktop-app integration
   needs Touch ID and is revoked when the app locks.
-- **A keychain item is readable only by the binaries on its ACL.** The agent's PAT is created by
-  `security` but read by `git-credential-osxkeychain`, so it needs
-  `-T "$(git --exec-path)/git-credential-osxkeychain"` at creation, and `-U` when you replace a
-  rotated one. Without it macOS raises a dialog on the first agent push, which an unattended
-  session cannot answer.
+- **A keychain item is readable only by the binaries on its ACL,** and the creating binary is on
+  it automatically. So a credential git will read is written by `git-credential-osxkeychain
+  store`, never by `security`: an item `security` creates needs an explicit
+  `-T "$(git --exec-path)/git-credential-osxkeychain"` or the first agent push raises a dialog
+  no unattended session can answer.
+- **`git-credential-osxkeychain store` is not idempotent before git 2.47.** The older helper's
+  store onto an item that already exists is a silent no-op, so a rotated secret never lands on a
+  Mac with an older Xcode git. Send an `erase` first: it is a no-op when the item is absent, and
+  it is scoped to the username, so it cannot touch the human's own entry for the same host.
+- **`security … -w` with no value cannot be scripted.** It prompts through `getpass(3)`, which
+  reads `/dev/tty` and falls back to stdin only when no terminal is attached — so a piped value
+  is silently ignored under an interactive shell, and two bare Returns store an empty secret. It
+  looks like it works when tested from a process that has no tty, which is exactly how this trap
+  got into this file backwards once.
+- **`security delete-internet-password` exits 44 when the item is absent.** Under `set -e` that
+  aborts the script, on precisely the fresh machine a delete-then-add was meant to serve.
 
 ## chezmoi
 
