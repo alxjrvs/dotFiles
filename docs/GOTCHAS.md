@@ -9,11 +9,15 @@ not here; when a subject is gone, delete its entry.
 - **Go binaries cannot verify TLS inside the Bash sandbox** (macOS Seatbelt blocks the trust
   daemon): `gh`, `op`, `chezmoi`, `gcloud`. `gh` is in `sandbox.excludedCommands`; run
   `chezmoi apply` from a normal terminal, not from an agent. `op-sa` is deliberately not
-  excluded, so an agent that types it fails there instead of reaching the vault.
+  excluded, so `op-sa read` fails there instead of reaching the vault. That is not enough on
+  its own: the keychain IS reachable inside the sandbox, `op-sa run -- env` would print the
+  service-account token without contacting 1Password, and a `gh alias` body runs unsandboxed.
+  Those three spellings are text-denied in `permissions.deny`, which is what the floor is for.
 - **The `git credential-cache` socket is blocked in the sandbox** and `op` fails there, so the
   agent's push credential is git's own `osxkeychain` helper with a pinned username, never `op`.
 - **A tool that writes its own cache or reads system config fails INSIDE the sandbox, and says
   so in its own vocabulary rather than the sandbox's** — it looks like the repo is broken.
+  `brew bundle check` exits nonzero there while printing that the Brewfile is satisfied.
   `sandbox.excludedCommands` matches the command the agent TYPED, not its grandchildren. Do
   not trust a red line from a sandboxed run without reading what it printed.
 - **A `!` negation inside an excluded DIRECTORY is silently inert.** git never descends into an
