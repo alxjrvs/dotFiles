@@ -1,9 +1,10 @@
 name: lint
 
-# One job, because `lint` is the status check the main ruleset requires: three static checks,
-# then the source rendered and applied on ubuntu with the applied shell and git config exercised.
-# That apply is the test of the container path. Secrets are GitHub's push protection, on the
-# repo, not a step here.
+# `lint` is the status check the main ruleset requires, so it is the summary job; the work runs
+# in a matrix behind it. Static checks once, on ubuntu; then the source rendered, applied and
+# verified on both operating systems, with the applied shell and git config exercised. No
+# `brew bundle` here: five to nine minutes of casks prove nothing the render step does not.
+# Secrets are GitHub's push protection, on the repo, not a step here.
 
 on:
   push:
@@ -14,32 +15,59 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     env:
       HOME_T: ${{ github.workspace }}/../home
       CHEZMOI_ARGS: --config ${{ github.workspace }}/../chezmoi.toml --persistent-state ${{ github.workspace }}/../chezmoi.db --destination ${{ github.workspace }}/../home
     steps:
       - uses: actions/checkout@v7
-      - run: sudo apt-get install -y -q shellcheck zsh jq
-      - run: shellcheck -x home/.chezmoiscripts/* home/dot_local/bin/* install.sh
-      - run: for f in home/dot_zshrc home/dot_zprofile; do zsh -n "$f"; done
-      - run: for f in $(git ls-files '*.json'); do jq -e . "$f" > /dev/null; done
+
+      - if: runner.os == 'Linux'
+        run: sudo apt-get install -y -q shellcheck zsh jq
+      - if: runner.os == 'Linux'
+        run: shellcheck -x home/.chezmoiscripts/* home/dot_local/bin/* install.sh
+      # shfmt is not on the runner image; a pinned release binary, bumped by hand. install.sh is
+      # chezmoi-generated (tabs) and stays as generated; the scripts are ours.
+      - if: runner.os == 'Linux'
+        run: |
+          curl -fsSL "https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_linux_amd64" -o "$RUNNER_TEMP/shfmt"
+          chmod +x "$RUNNER_TEMP/shfmt"
+          "$RUNNER_TEMP/shfmt" -d -i 2 -ci -sr home/.chezmoiscripts/ home/dot_local/bin/
+      - if: runner.os == 'Linux'
+        run: for f in home/dot_zshrc home/dot_zprofile; do zsh -n "$f"; done
+      - if: runner.os == 'Linux'
+        run: for f in $(git ls-files '*.json'); do jq -e . "$f" > /dev/null; done
 
       - run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: mkdir -p "$HOME_T"
-      # init renders home/.chezmoi.toml.tmpl; apply lays down every non-Mac file, externals included.
+      # init renders home/.chezmoi.toml.tmpl; apply lays down every file for this OS, externals included.
       - run: chezmoi init --source "$GITHUB_WORKSPACE" $CHEZMOI_ARGS
       - run: chezmoi $CHEZMOI_ARGS ignored
       - run: chezmoi $CHEZMOI_ARGS apply --exclude scripts
       - run: chezmoi $CHEZMOI_ARGS verify --exclude scripts
       # The applied shell must start with none of the guarded tools present.
       - run: HOME="$HOME_T" zsh -l -i -c 'echo shell ok'
-      # One git config template: the Mac-only signing block must not render here, and gh must
-      # be the last helper for github.com. The runner exports its own XDG_CONFIG_HOME.
+      # One git config template: gh must be the last helper for github.com everywhere; the
+      # signing block renders only on macOS. The runner exports its own XDG_CONFIG_HOME.
       - run: |
           export HOME="$HOME_T" XDG_CONFIG_HOME="$HOME_T/.config"
           git config --global --list --show-origin
           test "$(git config --global --get user.name)" = alxjrvs
-          test -z "$(git config --global --get commit.gpgSign)"
           test "$(git config --global --get-all credential.https://github.com.helper | tail -1)" = '!gh auth git-credential'
+          case "$RUNNER_OS" in
+            macOS) test "$(git config --global --get commit.gpgSign)" = true
+                   test "$(git config --global --get gpg.ssh.program)" = /Applications/1Password.app/Contents/MacOS/op-ssh-sign ;;
+            *)     test -z "$(git config --global --get commit.gpgSign)" ;;
+          esac
+
+  lint:
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.test.result }}" = success
