@@ -23,8 +23,8 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 - CLIs and apps are Brewfile lines, Mac only; mise holds node, bun and the npm-built language
   servers; the Claude Code CLI is the native installer and git is the system's. `chezmoi apply`
   reconciles and never upgrades.
-- Machine setup is `home/.chezmoiscripts/`, flat: `onchange` on the Brewfile hash, `onchange` on
-  the macOS defaults, and an every-apply idempotent provision script.
+- Machine setup is `home/.chezmoiscripts/`, flat: guarded every-apply scripts for Homebrew and
+  provisioning, `onchange` on the Brewfile hash and on the macOS defaults.
 - One GitHub identity: `gh auth login`, keychain-backed, never `--insecure-storage`.
 - nvim is plugin-free. `home/dot_claude/settings.json` carries divergences from defaults; don't
   tidy a key away without reading why it is there.

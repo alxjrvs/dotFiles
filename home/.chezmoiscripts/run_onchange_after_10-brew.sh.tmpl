@@ -4,6 +4,7 @@
 # Brewfile hash: {{ include "dot_config/homebrew/Brewfile" | sha256sum }}
 set -euo pipefail
 eval "$(/opt/homebrew/bin/brew shellenv)"
-brew bundle --no-upgrade --file="{{ .chezmoi.sourceDir }}/dot_config/homebrew/Brewfile"
-# Installed but no longer declared: reported, never removed here.
-brew bundle cleanup --file="{{ .chezmoi.sourceDir }}/dot_config/homebrew/Brewfile" || true
+brew bundle --no-upgrade --file="$HOME/.config/homebrew/Brewfile"
+# Installed but no longer declared: reported, never removed here. Without `--force`, cleanup
+# prompts on a TTY and uninstalls on `y`; no stdin, no prompt.
+brew bundle cleanup --file="$HOME/.config/homebrew/Brewfile" < /dev/null || true
