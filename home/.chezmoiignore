@@ -13,7 +13,6 @@
 .config/karabiner
 .config/ghostty
 .config/1Password
-.config/git/darwin.gitconfig
 .ssh/config
 .hushlogin
 Screenshots

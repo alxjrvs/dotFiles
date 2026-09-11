@@ -37,11 +37,11 @@ jobs:
       - run: chezmoi $CHEZMOI_ARGS verify --exclude scripts
       # The applied shell must start with none of the guarded tools present.
       - run: HOME="$HOME_T" zsh -l -i -c 'echo shell ok'
-      # The Mac half of git config is absent here; the include must be silently skipped. The
-      # runner exports its own XDG_CONFIG_HOME, and `--global` alone defaults to --no-includes.
+      # One git config template: the Mac-only signing block must not render here, and gh must
+      # be the last helper for github.com. The runner exports its own XDG_CONFIG_HOME.
       - run: |
           export HOME="$HOME_T" XDG_CONFIG_HOME="$HOME_T/.config"
-          git config --global --includes --list --show-origin
-          test "$(git config --global --includes --get user.name)" = alxjrvs
-          test -z "$(git config --global --includes --get commit.gpgSign)"
-          test "$(git config --global --includes --get-all credential.https://github.com.helper | tail -1)" = '!gh auth git-credential'
+          git config --global --list --show-origin
+          test "$(git config --global --get user.name)" = alxjrvs
+          test -z "$(git config --global --get commit.gpgSign)"
+          test "$(git config --global --get-all credential.https://github.com.helper | tail -1)" = '!gh auth git-credential'

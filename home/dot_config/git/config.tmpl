@@ -1,13 +1,23 @@
-[include]
-	# macOS only: signing and the keychain helper. Absent on Linux; git ignores a missing include.
-	path = darwin.gitconfig
+# ~/.config/git/config, one template. The Mac-only block comes first so the github.com helper
+# below can sever it: an empty helper resets the list, and gh alone serves GitHub.
+{{ if eq .chezmoi.os "darwin" -}}
+# macOS: commits and tags signed with the 1Password SSH key, behind Touch ID; hosts other than
+# GitHub use the login keychain. A container signs nothing and has no keychain.
+[commit]
+	gpgSign = true
+[tag]
+	gpgSign = true
+[gpg "ssh"]
+	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+[credential]
+	helper = osxkeychain
 
+{{ end -}}
 [alias]
   hist = log --oneline --graph --decorate
   sw = switch
   st = status -sb
   undo = reset HEAD~1 --mixed
-  gone = !git fetch && git branch -vv | awk '/: gone]/{print $1}' | xargs -r git branch -D
 
 [user]
 	name = alxjrvs
