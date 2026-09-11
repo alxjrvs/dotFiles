@@ -49,7 +49,8 @@
     "gninety@gnar": true,
     "typescript-lsp@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true
+    "frontend-design@claude-plugins-official": true,
+    "toolkit@gnar": true
   },
   "extraKnownMarketplaces": {
     "gnar": {

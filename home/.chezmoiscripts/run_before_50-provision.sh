@@ -22,7 +22,7 @@ fi
 
 # gh extensions, owner-qualified because same-named community forks exist.
 if gh auth status > /dev/null 2>&1; then
-  want=$'github/gh-stack\ndlvhdr/gh-dash\nmeiji163/gh-notify'
+  want=$'github/gh-stack\ndlvhdr/gh-dash\nmeiji163/gh-notify\nactions/gh-actions-cache'
   have=$(gh extension list 2> /dev/null | awk '{print $3}')
   for ext in $want; do
     printf '%s\n' "$have" | grep -qx "$ext" || gh extension install "$ext"
