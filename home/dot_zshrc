@@ -31,13 +31,9 @@ export SHARP_IGNORE_GLOBAL_LIBVIPS=1
 _zsh_plugin=$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 [[ -r $_zsh_plugin ]] && source $_zsh_plugin
 
-# --- completion --------------------------------------------------------------------------------
-[[ -d $HOMEBREW_PREFIX/share/zsh/site-functions ]] && fpath=($HOMEBREW_PREFIX/share/zsh/site-functions $fpath)
+# --- completion: brew shellenv (~/.zprofile) already put site-functions on fpath -------------
 autoload -Uz compinit
-# Skip the security audit (-C) while the dump is under a day old: ~240 ms otherwise.
-_zcompdump_fresh=(${ZDOTDIR:-$HOME}/.zcompdump(Nmh-24))
-if (( ${#_zcompdump_fresh} )); then compinit -C; else compinit; fi
-unset _zcompdump_fresh
+compinit
 zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
 zstyle ':completion:*:descriptions' format '[%d]'

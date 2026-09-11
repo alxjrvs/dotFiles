@@ -4,3 +4,4 @@
 .local/bin/op-sa
 .config/git/agent.gitconfig
 .config/karabiner/karabiner.json
+.ssh/allowed_signers
