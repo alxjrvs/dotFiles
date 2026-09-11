@@ -32,8 +32,9 @@ CLI, mise, gh extensions, plugins, MCP servers), then the files, then the Homebr
 macOS defaults when they change. [`home/.chezmoiignore`](home/.chezmoiignore) names what is
 Mac-only.
 
-Day to day: edit in the checkout, `chezmoi apply`, commit, PR. CI is the gate;
-`git config core.hooksPath .githooks` runs its static checks locally. Drift: `chezmoi verify`.
+Day to day: edit in the checkout, `chezmoi apply`, commit, PR. GitHub is the gate: the main
+ruleset requires a pull request and the `lint` check, and push protection stops a secret before
+it lands. Drift: `chezmoi verify`.
 Upgrades: `brew upgrade --formula`, `mise upgrade`; apply reconciles and never upgrades. Another
 machine: `chezmoi update`.
 
@@ -64,6 +65,10 @@ docs/GOTCHAS.md         traps still armed and the rule each forces; never applie
 ```
 
 ## Forking
+
+Three repo settings are not in the tree: secret scanning and push protection (Settings →
+Code security), and a ruleset on the default branch that requires a pull request and the `lint`
+status check.
 
 `git grep -ilE 'alxjrvs|claude-agent|GitHubSSH'` finds every file: git identity and signing key
 (`home/dot_config/git/config.tmpl`, `home/private_dot_ssh/allowed_signers`), the agent's author

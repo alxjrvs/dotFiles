@@ -1,6 +1,0 @@
-#!/bin/sh
-# Optional local mirror of CI's static checks. Once per clone: git config core.hooksPath .githooks
-set -e
-shellcheck -x home/.chezmoiscripts/* home/dot_local/bin/* .githooks/*
-for f in home/dot_zshrc home/dot_zprofile; do zsh -n "$f"; done
-for f in $(git ls-files '*.json'); do jq -e . "$f" > /dev/null; done

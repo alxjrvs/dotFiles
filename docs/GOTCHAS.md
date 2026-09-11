@@ -59,8 +59,8 @@ the PRs; when a subject is gone, delete its entry.
 
 - **The ruleset requires the check named `lint`; a job beside it merges red under auto-merge.**
   Every check lives inside that one job.
-- **`gitleaks/gitleaks-action` in a workflow makes GitHub schedule nothing:** no run, no error,
-  no annotation. The release tarball is one `curl`.
+- **Secret scanning and push protection are repo settings, not repo files:** a fork starts with
+  both off. The README's forking section names them; nothing in the tree can turn them on.
 
 ## Shell
 
