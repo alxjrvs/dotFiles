@@ -29,8 +29,9 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --one-shot alxjrvs/dotFiles
 ```
 
 Day to day: edit in the checkout, `chezmoi apply`, commit, PR. GitHub is the gate: the main
-ruleset requires a pull request and the `lint` check, and push protection stops a secret before
-it lands. Drift: `chezmoi verify`.
+ruleset requires a pull request and the `lint` check, push protection stops a secret before it
+lands, and [`.github/gate.sh`](.github/gate.sh) is those settings as a command. Drift:
+`chezmoi verify`.
 Upgrades: `brew upgrade --formula`, `mise upgrade`; apply reconciles and never upgrades. Another
 machine: `chezmoi update`.
 
@@ -54,6 +55,7 @@ security add-generic-password -a "$USER" -s ninety-pat -w
 
 ```
 .chezmoiroot            "home": the source state lives one directory down
+.github/gate.sh         the repo settings that are not files: ruleset, scanning, merge policy
 install.sh              chezmoi's generated container hook: install chezmoi if missing, init --apply from here
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/.chezmoiscripts/   machine setup: Homebrew (when absent), provision (every apply, before files), brew, mise and macOS defaults (onchange)
@@ -64,9 +66,13 @@ docs/GOTCHAS.md         traps still armed and the rule each forces; never applie
 
 ## Forking
 
-Three repo settings are not in the tree: secret scanning and push protection (Settings →
-Code security), and a ruleset on the default branch that requires a pull request and the `lint`
-status check.
+The repo settings that are not files, secret scanning, push protection and the default-branch
+ruleset (pull request only, squash, the `lint` check, no bypass), are one idempotent command,
+run once by the owner:
+
+```bash
+.github/gate.sh
+```
 
 `git grep -ilE 'alxjrvs|ninety-pat|GitHubSSH'` finds every file: git identity and signing key
 (`home/dot_config/git/config.tmpl`), the agent's author and the keychain item
