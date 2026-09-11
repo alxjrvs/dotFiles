@@ -69,8 +69,8 @@ Code security), and a ruleset on the default branch that requires a pull request
 status check.
 
 `git grep -ilE 'alxjrvs|ninety-pat|GitHubSSH'` finds every file: git identity and signing key
-(`home/dot_config/git/config.tmpl`, `home/private_dot_ssh/allowed_signers`), the agent's author
-and the keychain item (`home/dot_claude/settings.json`), and the SSH items in
+(`home/dot_config/git/config.tmpl`), the agent's author and the keychain item
+(`home/dot_claude/settings.json`), and the SSH items in
 `home/dot_config/1Password/ssh/agent.toml`.
 
 MIT — see [`LICENSE`](LICENSE).

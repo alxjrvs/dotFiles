@@ -1,16 +1,15 @@
-# ~/.config/git/config, one template. The Mac-only block comes first so the github.com helper
-# below can sever it: an empty helper resets the list, and gh alone serves GitHub.
+# ~/.config/git/config, one template. Apple's git already sets credential.helper=osxkeychain and
+# init.defaultBranch=main in its bundled gitconfig; the github.com helper below severs the
+# keychain for GitHub (an empty helper resets the list) so gh alone serves it.
 {{ if eq .chezmoi.os "darwin" -}}
-# macOS: commits and tags signed with the 1Password SSH key, behind Touch ID; hosts other than
-# GitHub use the login keychain. A container signs nothing and has no keychain.
+# macOS: commits and tags signed with the 1Password SSH key, behind Touch ID. A container signs
+# nothing.
 [commit]
 	gpgSign = true
 [tag]
 	gpgSign = true
 [gpg "ssh"]
 	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
-[credential]
-	helper = osxkeychain
 
 {{ end -}}
 [alias]
@@ -22,7 +21,7 @@
 [user]
 	name = alxjrvs
 	email = alxjrvs@gmail.com
-	# The public half of the 1Password "GitHubSSH" item; ~/.ssh/allowed_signers has it too.
+	# The public half of the 1Password "GitHubSSH" item.
 	signingkey = key::ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKjF9JmW396EbH0n1zWeU7eT+2VvMFZAn+A1WKAi4tqT
 # github.com through gh's token (what `gh auth setup-git` writes).
 [credential "https://github.com"]
@@ -58,6 +57,7 @@
 	hyperlinks = true
 [fetch]
 	prune = true
+	all = true
 	writeCommitGraph = true
 [gc]
 	# Agent worktrees churn daily; forget a hand-deleted one after a week, not three months.
@@ -77,11 +77,10 @@
 	autoSquash = true
 	autoStash = true
 	updateRefs = true
+	missingCommitsCheck = error
 [tag]
 	sort = version:refname
 [gpg]
 	format = ssh
-[gpg "ssh"]
-	allowedSignersFile = ~/.ssh/allowed_signers
 [help]
 	autocorrect = prompt
