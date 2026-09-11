@@ -15,8 +15,13 @@ defaults write com.apple.finder AppleShowAllFiles -bool true
 defaults write NSGlobalDomain AppleShowAllExtensions -bool true
 defaults write com.apple.finder _FXShowPosixPathInTitle -bool true
 
-# Trackpad tap-to-click; Dock hidden with no delay.
+# Trackpad tap-to-click: the built-in and Bluetooth trackpad domains plus the global behaviour
+# key, which is the set nix-darwin writes; any one alone is read as converged while doing nothing.
 defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
+defaults write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+# Dock hidden with no delay.
 defaults write com.apple.dock autohide -bool true
 defaults write com.apple.dock autohide-delay -float 0
 defaults write com.apple.dock autohide-time-modifier -float 0.3
