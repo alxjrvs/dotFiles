@@ -5,8 +5,9 @@
 **/.keep
 
 {{ if ne .chezmoi.os "darwin" -}}
-# macOS only: the package list, its scripts, the GUI apps' config, and the 1Password desktop
-# app's SSH agent (a Linux box gets a forwarded agent and signs nothing).
+# macOS only: Homebrew, the package list, its scripts, the GUI apps' config, and the 1Password
+# desktop app's SSH agent (a container gets a forwarded agent and signs nothing).
+.chezmoiscripts/00-homebrew.sh
 .chezmoiscripts/10-brew.sh
 .chezmoiscripts/40-macos-defaults.sh
 .config/homebrew
@@ -18,7 +19,7 @@
 Screenshots
 {{- end }}
 
-{{ if or (env "CLAUDE_CODE_REMOTE") (env "CODESPACES") (eq .chezmoi.username "root") -}}
+{{ if or (env "CLAUDE_CODE_REMOTE") (eq .chezmoi.username "root") -}}
 # Ephemeral container: nothing under ~/.ssh.
 .ssh
 .ssh/**

@@ -1,5 +1,6 @@
-# Rendered into ~/.config/chezmoi/chezmoi.toml by `chezmoi init`; run init again after editing.
-# sourceDir pins the checkout wherever `chezmoi init --source` put it.
+# Rendered into ~/.config/chezmoi/chezmoi.toml by `chezmoi init`; `chezmoi apply --init` after
+# editing. sourceDir pins the checkout wherever `init --source` put it, and is a no-op for the
+# plain one-liner. workingTree, not sourceDir: under `.chezmoiroot`, sourceDir is `home/`.
 sourceDir = {{ .chezmoi.workingTree | quote }}
 
 # An every-apply script is not drift.

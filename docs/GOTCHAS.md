@@ -51,6 +51,9 @@ the PRs; when a subject is gone, delete its entry.
 - **A run script cannot call `chezmoi`:** the outer apply holds the persistent-state lock, so
   the inner one times out and fails the apply. Scripts get `CHEZMOI_SOURCE_DIR` and
   `CHEZMOI_WORKING_TREE` in their environment instead.
+- **Under `.chezmoiroot`, `.chezmoi.sourceDir` is the `home/` subdirectory,** so the documented
+  `sourceDir = {{ .chezmoi.sourceDir }}` pin would make init look for `home/home`. The config
+  template pins `.chezmoi.workingTree`.
 - **Scripts sort by target path, so a subdirectory under `.chezmoiscripts` reorders them:**
   `darwin/10-brew` runs after `50-provision`. The directory stays flat; `.chezmoiignore` names
   the Mac-only scripts instead.
