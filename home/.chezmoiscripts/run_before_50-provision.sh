@@ -46,23 +46,12 @@ if command -v claude > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
   done
 
   # User-scoped MCP servers live only in ~/.claude.json, which nothing tracks, so they converge
-  # here. Absolute paths: the desktop app does not always hand spawned servers the login PATH.
+  # here. Absolute path: the desktop app does not always hand spawned servers the login PATH.
+  # GitHub has no MCP entry: gh is the one GitHub tool, on the one credential.
   op_mcp=/Applications/1Password.app/Contents/MacOS/1password-mcp
-  if [ -x "$op_mcp" ] && ! jq -e '.mcpServers["1password"]' "$HOME/.claude.json" > /dev/null 2>&1; then
+  if [ -x "$op_mcp" ] && ! claude mcp get 1password > /dev/null 2>&1; then
     claude mcp add --scope user 1password -- "$op_mcp"
   fi
-  # GitHub: the remote server, on gh's own token, so one identity for the human, the agent and
-  # the MCP. Claude Code runs headersHelper per connection, outside the Bash sandbox, and the
-  # token never sits in a file. Re-registered whenever the recorded entry differs from this one.
-  gh_bin=$(command -v gh || true)
-  if [ -n "$gh_bin" ]; then
-    helper="$gh_bin auth token | $(command -v jq) -R '{Authorization: (\"Bearer \" + .)}'"
-    want=$(jq -cn --arg helper "$helper" '{type: "http", url: "https://api.githubcopilot.com/mcp/",
-      headers: {"X-MCP-Toolsets": "context,repos,issues,pull_requests,actions"}, headersHelper: $helper}')
-    have=$(jq -c '.mcpServers.github // empty | {type, url, headers, headersHelper}' "$HOME/.claude.json" 2> /dev/null || true)
-    if [ "$have" != "$want" ]; then
-      claude mcp remove --scope user github > /dev/null 2>&1 || true
-      claude mcp add-json --scope user github "$want"
-    fi
-  fi
+  # Migration: delete this line once every machine has applied it.
+  claude mcp remove --scope user github > /dev/null 2>&1 || true
 fi

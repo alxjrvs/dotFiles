@@ -36,19 +36,18 @@ machine: `chezmoi update`.
 
 ## The agent
 
-The agent is you. `gh auth login` is the one GitHub credential; git and the GitHub MCP borrow
-it. Agent commits carry the `Claude` author and the co-author trailer. Branch protection and the
-never-push-main rule are the gate.
+The agent is you. `gh auth login` is the one GitHub credential and `gh` the one GitHub tool;
+git borrows the token. Agent commits carry the `Claude` author and the co-author trailer.
+Branch protection and the never-push-main rule are the gate.
 
-Plugin tokens that are not GitHub's come from a 1Password service account with `read_items` on
-the `claude-agent` vault, minted with `--expires-in` so its expiry is a date and not an
-incident. Once per Mac, put its token in the login keychain where `op-sa` reads it (`-w` last:
-it prompts, so the token never lands on argv or in history). A container has no token; its
-secrets are the environment's own. Project secrets are 1Password Environments, mounted, never
-on disk.
+A plugin token that is not GitHub's lives in the login keychain, where `gh` keeps its own, and
+reaches the plugin through its `*_COMMAND` setting. Once per Mac, `-w` last: it prompts, so the
+token never lands on argv or in history (a piped value is ignored; two bare Returns store an
+empty secret). A container has no token; its secrets are the environment's own. Project secrets
+are 1Password Environments, mounted, never on disk.
 
 ```bash
-security add-generic-password -a "$USER" -s op-claude-agent -w
+security add-generic-password -a "$USER" -s ninety-pat -w
 ```
 
 ## Layout
@@ -69,10 +68,9 @@ Three repo settings are not in the tree: secret scanning and push protection (Se
 Code security), and a ruleset on the default branch that requires a pull request and the `lint`
 status check.
 
-`git grep -ilE 'alxjrvs|claude-agent|GitHubSSH'` finds every file: git identity and signing key
+`git grep -ilE 'alxjrvs|ninety-pat|GitHubSSH'` finds every file: git identity and signing key
 (`home/dot_config/git/config.tmpl`, `home/private_dot_ssh/allowed_signers`), the agent's author
-(`home/dot_claude/settings.json`), the vault and keychain item (`settings.json`,
-`home/dot_local/bin/executable_op-sa`), and the SSH items in
+and the keychain item (`home/dot_claude/settings.json`), and the SSH items in
 `home/dot_config/1Password/ssh/agent.toml`.
 
 MIT — see [`LICENSE`](LICENSE).
