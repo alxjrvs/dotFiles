@@ -18,8 +18,6 @@ the PRs; when a subject is gone, delete its entry.
 - **A tool failing inside the sandbox reports it in its own vocabulary,** and looks like a
   broken repo: `brew bundle check` exits nonzero there while printing that the Brewfile is
   satisfied.
-- **A `PreToolUse` matcher matches a tool name, and an MCP tool is not `Bash`.** A boundary on
-  the MCP path is a `mcp__<server>__<tool>` entry in `permissions.deny`; none is set, by choice.
 - **User-scoped MCP servers live only in `~/.claude.json`,** which nothing tracks; the
   provision script converges them on every apply.
 - **`claude plugin install` rewrites `~/.claude/settings.json` in its own key order,** so a
@@ -50,8 +48,8 @@ the PRs; when a subject is gone, delete its entry.
 
 - **The ruleset requires the check named `lint`; a job beside it merges red under auto-merge.**
   `lint` is the summary job, and it fails unless every matrix leg succeeded.
-- **Secret scanning and push protection are repo settings, not repo files:** a fork starts with
-  both off. The README's forking section names them; nothing in the tree can turn them on.
+- **Secret scanning, push protection and the ruleset are repo settings, not repo files:** a
+  fork starts with none of them. `.github/gate.sh` sets them; nothing turns them on by itself.
 
 ## Shell
 
