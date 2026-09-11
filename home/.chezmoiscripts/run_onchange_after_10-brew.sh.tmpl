@@ -5,3 +5,5 @@
 set -euo pipefail
 eval "$(/opt/homebrew/bin/brew shellenv)"
 brew bundle --no-upgrade --file="{{ .chezmoi.sourceDir }}/dot_config/homebrew/Brewfile"
+# Installed but no longer declared: reported, never removed here.
+brew bundle cleanup --file="{{ .chezmoi.sourceDir }}/dot_config/homebrew/Brewfile" || true

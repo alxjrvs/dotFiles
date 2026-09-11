@@ -54,15 +54,15 @@ if command -v claude > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
   # GitHub: the remote server, on gh's own token, so one identity for the human, the agent and
   # the MCP. Claude Code runs headersHelper per connection, outside the Bash sandbox, and the
   # token never sits in a file. Re-registered whenever the recorded entry differs from this one.
-  want=$(jq -c . <<'EOF'
-{"type": "http", "url": "https://api.githubcopilot.com/mcp/",
- "headers": {"X-MCP-Toolsets": "context,repos,issues,pull_requests,actions"},
- "headersHelper": "gh auth token | jq -R '{Authorization: (\"Bearer \" + .)}'"}
-EOF
-  )
-  have=$(jq -c '.mcpServers.github // empty | {type, url, headers, headersHelper}' "$HOME/.claude.json" 2> /dev/null || true)
-  if [ "$have" != "$want" ]; then
-    claude mcp remove --scope user github > /dev/null 2>&1 || true
-    claude mcp add-json --scope user github "$want"
+  gh_bin=$(command -v gh || true)
+  if [ -n "$gh_bin" ]; then
+    helper="$gh_bin auth token | $(command -v jq) -R '{Authorization: (\"Bearer \" + .)}'"
+    want=$(jq -cn --arg helper "$helper" '{type: "http", url: "https://api.githubcopilot.com/mcp/",
+      headers: {"X-MCP-Toolsets": "context,repos,issues,pull_requests,actions"}, headersHelper: $helper}')
+    have=$(jq -c '.mcpServers.github // empty | {type, url, headers, headersHelper}' "$HOME/.claude.json" 2> /dev/null || true)
+    if [ "$have" != "$want" ]; then
+      claude mcp remove --scope user github > /dev/null 2>&1 || true
+      claude mcp add-json --scope user github "$want"
+    fi
   fi
 fi

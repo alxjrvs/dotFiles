@@ -13,3 +13,4 @@
 .claude/gh-config
 .claude/hooks/tests
 .gitconfig
+.config/git/darwin.gitconfig
