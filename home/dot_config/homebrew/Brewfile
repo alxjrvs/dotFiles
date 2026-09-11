@@ -25,6 +25,7 @@ brew "zsh-syntax-highlighting"
 # ── Git ───────────────────────────────────────────────────────────────
 brew "gh"
 brew "git-delta"
+brew "lefthook"
 
 # ── Files and text ────────────────────────────────────────────────────
 brew "bat"
