@@ -26,10 +26,10 @@ chezmoi init --source ~/Code/dotFiles --apply
 gh auth login
 ```
 
-`init` renders the config template, which pins the source to that checkout. `apply` lays down
-files, then runs [`home/.chezmoiscripts/`](home/.chezmoiscripts/): the Homebrew bundle and
-macOS defaults when they change, and provisioning every time (Claude Code CLI, mise, gh
-extensions, plugins, MCP servers). [`home/.chezmoiignore`](home/.chezmoiignore) names what is
+`init` renders the config template, which pins the source to that checkout. `apply` runs
+[`home/.chezmoiscripts/`](home/.chezmoiscripts/): provisioning first, every time (Claude Code
+CLI, mise, gh extensions, plugins, MCP servers), then the files, then the Homebrew bundle and
+macOS defaults when they change. [`home/.chezmoiignore`](home/.chezmoiignore) names what is
 Mac-only.
 
 Day to day: edit in the checkout, `chezmoi apply`, commit, PR. CI is the gate;
@@ -57,7 +57,7 @@ security add-generic-password -a "$USER" -s op-claude-agent -w
 ```
 .chezmoiroot            "home": the source state lives one directory down
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
-home/.chezmoiscripts/   machine setup: brew (onchange), macOS defaults (onchange), provision (every apply)
+home/.chezmoiscripts/   machine setup: provision (every apply, before files), brew and macOS defaults (onchange)
 home/dot_claude/        user-global Claude Code config
 home/.chezmoi*          chezmoi's own contract: config template, version floor, ignores, externals, removals
 docs/GOTCHAS.md         traps still armed and the rule each forces; never applied to a machine

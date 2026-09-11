@@ -24,6 +24,10 @@ the PRs; when a subject is gone, delete its entry.
   `permissions.deny` are the only thing between the agent and a release, a gist, or the token.
 - **User-scoped MCP servers live only in `~/.claude.json`,** which nothing tracks; the
   provision script converges them on every apply.
+- **`claude plugin install` rewrites `~/.claude/settings.json` in its own key order,** so a
+  managed copy written first is drift by the time apply ends. Anything that installs plugins
+  runs as a `run_before_` script; chezmoi's copy lands last. The same rewrite follows a
+  `/plugin` toggle in the TUI: edit the source, never the applied file.
 - **The desktop app runs its own bundled Claude Code, not `~/.local/bin/claude`,** and the two
   update on different schedules. A settings key is verified in a terminal and in the Code tab.
 
