@@ -7,7 +7,7 @@
 {{ if ne .chezmoi.os "darwin" -}}
 # macOS only: Homebrew, the package list, its scripts, the GUI apps' config, the 1Password
 # desktop app's SSH agent and everything under ~/.ssh (a container gets a forwarded agent and
-# signs nothing), and the service-account wrapper (a container's secrets are its environment's own).
+# signs nothing).
 .chezmoiscripts/00-homebrew.sh
 .chezmoiscripts/10-brew.sh
 .chezmoiscripts/40-macos-defaults.sh
@@ -15,7 +15,6 @@
 .config/karabiner
 .config/ghostty
 .config/1Password
-.local/bin/op-sa
 .ssh
 .ssh/**
 .hushlogin

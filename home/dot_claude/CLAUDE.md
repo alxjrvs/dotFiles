@@ -7,9 +7,7 @@ to refuse him.
 bun for JS. In an agent worktree, bind dev servers to the block
 `20000 + (cksum of the worktree name % 1000) * 10`, so parallel agents never share a port.
 
-**GitHub is one identity, alxjrvs's.** `gh` and the `github` MCP both run on the `gh auth login`
-token. Prefer the MCP for writes and `gh` where the MCP has no tool: reads,
-`gh pr checks --watch`, `gh pr merge --auto`, `gh stack`, `gh extension`.
+**GitHub is one identity, alxjrvs's, and one tool: `gh`** on the `gh auth login` token.
 
 ## Rules
 

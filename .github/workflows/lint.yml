@@ -30,14 +30,14 @@ jobs:
       - if: runner.os == 'Linux'
         run: sudo apt-get install -y -q shellcheck zsh jq
       - if: runner.os == 'Linux'
-        run: shellcheck -x home/.chezmoiscripts/* home/dot_local/bin/* install.sh
+        run: shellcheck -x home/.chezmoiscripts/* install.sh
       # shfmt is not on the runner image; a pinned release binary, bumped by hand. install.sh is
       # chezmoi-generated (tabs) and stays as generated; the scripts are ours.
       - if: runner.os == 'Linux'
         run: |
           curl -fsSL "https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_linux_amd64" -o "$RUNNER_TEMP/shfmt"
           chmod +x "$RUNNER_TEMP/shfmt"
-          "$RUNNER_TEMP/shfmt" -d -i 2 -ci -sr home/.chezmoiscripts/ home/dot_local/bin/
+          "$RUNNER_TEMP/shfmt" -d -i 2 -ci -sr home/.chezmoiscripts/
       - if: runner.os == 'Linux'
         run: for f in home/dot_zshrc home/dot_zprofile; do zsh -n "$f"; done
       - if: runner.os == 'Linux'

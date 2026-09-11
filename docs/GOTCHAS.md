@@ -10,37 +10,26 @@ the PRs; when a subject is gone, delete its entry.
   `sandbox.network.allowMachLookup` names that one service and nothing else.
   `enableWeakerNetworkIsolation` is documented for MITM proxies, and `excludedCommands` is
   skipped for a command inside a shell loop. Linux has no trustd and no such failure.
-- **The sandbox is not the whole control for secrets.** The keychain is reachable inside it and
-  a `gh alias` body runs unsandboxed, so `op-sa`, `security find-*`, `gh auth token` and
-  `gh alias` are text-denied in `permissions.deny`.
+- **The sandbox is not the whole control for secrets.** The login keychain is reachable inside
+  it and a `gh alias` body runs unsandboxed, so `security find-generic-password`,
+  `gh auth token` and `git credential` are text-denied in `permissions.deny`. A text-deny
+  matches the whole command text, subshells and heredocs included, so a command that merely
+  mentions a denied string is denied: anchor on a verb, never a path.
 - **A tool failing inside the sandbox reports it in its own vocabulary,** and looks like a
   broken repo: `brew bundle check` exits nonzero there while printing that the Brewfile is
   satisfied.
-- **A Bash permission rule matches the whole command text,** subshells and heredocs included: a
-  command that merely mentions a denied string is denied. Anchor on a verb, never a path.
 - **A `PreToolUse` matcher matches a tool name, and an MCP tool is not `Bash`.** A boundary on
-  the MCP path is a `mcp__github__<tool>` entry in `permissions.deny`; none is set, by choice.
-- **`gh` is the one GitHub credential, and the agent holds it.** The `gh` verb rules in
-  `permissions.deny` are the only thing between the agent and a release, a gist, or the token.
+  the MCP path is a `mcp__<server>__<tool>` entry in `permissions.deny`; none is set, by choice.
 - **User-scoped MCP servers live only in `~/.claude.json`,** which nothing tracks; the
   provision script converges them on every apply.
 - **`claude plugin install` rewrites `~/.claude/settings.json` in its own key order,** so a
   managed copy written first is drift by the time apply ends. Anything that installs plugins
-  runs as a `run_before_` script; chezmoi's copy lands last. The same rewrite follows a
-  `/plugin` toggle in the TUI: edit the source, never the applied file.
+  runs as a `run_before_` script; chezmoi's copy lands last. chezmoi calls a `run_before_` that
+  touches a managed target undefined behaviour; it works because chezmoi rewrites the target
+  afterwards, and nothing else converges. The same rewrite follows a `/plugin` toggle in the
+  TUI: edit the source, never the applied file.
 - **The desktop app runs its own bundled Claude Code, not `~/.local/bin/claude`,** and the two
   update on different schedules. A settings key is verified in a terminal and in the Code tab.
-
-## 1Password
-
-- **Item titles in the agent vault are kebab-case:** every consumer re-parses an `op://` ref
-  through `sh -c`, and a space word-splits it silently.
-- **A service-account token minted without `--expires-in` never expires,** and nothing shows
-  that. Pass `--expires-in`; a plugin that suddenly has no token is then a date, not a mystery.
-- **`op run --environment` and `op run --env-file` work for an agent only through `op-sa`:**
-  the desktop integration needs Touch ID, is bound to a tty, and is revoked when the app locks.
-- **`security … -w` with no value cannot be scripted:** it reads `/dev/tty`, ignores a piped
-  value under an interactive shell, and two bare Returns store an empty secret.
 
 ## chezmoi
 
@@ -55,12 +44,12 @@ the PRs; when a subject is gone, delete its entry.
   template pins `.chezmoi.workingTree`.
 - **Scripts sort by target path, so a subdirectory under `.chezmoiscripts` reorders them:**
   `darwin/10-brew` runs after `50-provision`. The directory stays flat; `.chezmoiignore` names
-  the Mac-only scripts instead.
+  the Mac-only scripts instead (a template gate on line 1 would also break CI's shellcheck).
 
 ## GitHub
 
 - **The ruleset requires the check named `lint`; a job beside it merges red under auto-merge.**
-  Every check lives inside that one job.
+  `lint` is the summary job, and it fails unless every matrix leg succeeded.
 - **Secret scanning and push protection are repo settings, not repo files:** a fork starts with
   both off. The README's forking section names them; nothing in the tree can turn them on.
 

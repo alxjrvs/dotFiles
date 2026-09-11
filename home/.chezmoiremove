@@ -1,16 +1,5 @@
 # Targets chezmoi must remove from ~: apply only writes, so a deleted source leaves its target.
 # Delete an entry once every machine has applied it.
 
-.claude/hooks/repo-scope-guard.sh
-.claude/hooks/guard-lib.sh
-.claude/hooks/verify-gate.sh
-.config/gitleaks/gitleaks.toml
-.claude/rules/claude-settings.md
-.config/zsh/claude.zsh
-.config/zsh/plugins
-.claude/rules/guards.md
-.claude/bin/gh-ci
-.claude/gh-config
-.claude/hooks/tests
-.gitconfig
-.config/git/darwin.gitconfig
+.local/bin/op-sa
+.config/git/agent.gitconfig
