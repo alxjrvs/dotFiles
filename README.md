@@ -41,9 +41,11 @@ it. Agent commits carry the `Claude` author and the co-author trailer. Branch pr
 never-push-main rule are the gate.
 
 Plugin tokens that are not GitHub's come from a 1Password service account with `read_items` on
-the `claude-agent` vault. Once per machine, put its token where `op-sa` reads it: the login
-keychain on a Mac (`-w` last: it prompts, so the token never lands on argv or in history), or
-`~/.config/op-sa/token`, mode 0600, on Linux.
+the `claude-agent` vault, minted with `--expires-in` so its expiry is a date and not an
+incident. Once per Mac, put its token in the login keychain where `op-sa` reads it (`-w` last:
+it prompts, so the token never lands on argv or in history). A container has no token; its
+secrets are the environment's own. Project secrets are 1Password Environments, mounted, never
+on disk.
 
 ```bash
 security add-generic-password -a "$USER" -s op-claude-agent -w

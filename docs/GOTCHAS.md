@@ -35,11 +35,10 @@ the PRs; when a subject is gone, delete its entry.
 
 - **Item titles in the agent vault are kebab-case:** every consumer re-parses an `op://` ref
   through `sh -c`, and a space word-splits it silently.
-- **Service-account tokens have no visible expiry** anywhere. Mint with the default lifetime
-  and revoke on incident; a scheduled rotation has nothing to observe. A plugin that suddenly
-  has no token is the only signal.
-- **`op run --env-file` works for an agent only through `op-sa`:** the desktop integration
-  needs Touch ID and is revoked when the app locks.
+- **A service-account token minted without `--expires-in` never expires,** and nothing shows
+  that. Pass `--expires-in`; a plugin that suddenly has no token is then a date, not a mystery.
+- **`op run --environment` and `op run --env-file` work for an agent only through `op-sa`:**
+  the desktop integration needs Touch ID, is bound to a tty, and is revoked when the app locks.
 - **`security … -w` with no value cannot be scripted:** it reads `/dev/tty`, ignores a piped
   value under an interactive shell, and two bare Returns store an empty secret.
 
