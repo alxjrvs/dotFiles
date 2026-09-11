@@ -26,7 +26,7 @@
       "Bash(*gh alias*)",
       "Bash(*gh auth token*)",
       "Bash(*--show-token*)",
-      "Bash(*op-sa*)",
+      "Bash(*op-sa *)",
       "Bash(*security find-generic-password*)",
       "Bash(*security find-internet-password*)",
       "Bash(*git credential*)",
