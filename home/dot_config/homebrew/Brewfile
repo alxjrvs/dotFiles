@@ -54,16 +54,12 @@ cask "discord"
 cask "font-fira-code-nerd-font"
 cask "ghostty"
 cask "google-chrome"
-# Caps Lock → Control; config at home/dot_config/karabiner/. Karabiner rewrites that file when
-# edited in its UI: `chezmoi re-add ~/.config/karabiner/karabiner.json` afterwards.
-cask "karabiner-elements"
 cask "notunes"
 cask "devutils"      # offline developer toolbox (JSON/JWT/regex/diff)
 cask "gcloud-cli"
 cask "ngrok"
 cask "obs"
-cask "raycast"
-cask "rectangle"
+cask "raycast"       # launcher and window management
 cask "slack"
 cask "tuple"
 cask "visual-studio-code"

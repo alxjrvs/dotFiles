@@ -11,8 +11,8 @@
 .chezmoiscripts/00-homebrew.sh
 .chezmoiscripts/10-brew.sh
 .chezmoiscripts/40-macos-defaults.sh
+.chezmoiscripts/60-capslock.sh
 .config/homebrew
-.config/karabiner
 .config/ghostty
 .config/1Password
 .ssh
