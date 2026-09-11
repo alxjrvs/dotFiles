@@ -51,17 +51,18 @@ if command -v claude > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
   if [ -x "$op_mcp" ] && ! jq -e '.mcpServers["1password"]' "$HOME/.claude.json" > /dev/null 2>&1; then
     claude mcp add --scope user 1password -- "$op_mcp"
   fi
-  # GitHub on gh's own token: one identity for the human, the agent and the MCP. Re-registered
-  # whenever the recorded entry differs from this one.
-  mcp=$(command -v github-mcp-server || true)
-  gh_bin=$(command -v gh || true)
-  if [ -n "$mcp" ] && [ -n "$gh_bin" ]; then
-    cmd="GITHUB_PERSONAL_ACCESS_TOKEN=\"\$($gh_bin auth token)\" exec $mcp stdio --toolsets context,repos,issues,pull_requests,actions"
-    want=$(jq -cn --arg cmd "$cmd" '{type: "stdio", command: "/bin/sh", args: ["-c", $cmd]}')
-    have=$(jq -c '.mcpServers.github // empty | {type, command, args}' "$HOME/.claude.json" 2> /dev/null || true)
-    if [ "$have" != "$want" ]; then
-      [ -z "$have" ] || claude mcp remove --scope user github
-      claude mcp add-json --scope user github "$want"
-    fi
+  # GitHub: the remote server, on gh's own token, so one identity for the human, the agent and
+  # the MCP. Claude Code runs headersHelper per connection, outside the Bash sandbox, and the
+  # token never sits in a file. Re-registered whenever the recorded entry differs from this one.
+  want=$(jq -c . <<'EOF'
+{"type": "http", "url": "https://api.githubcopilot.com/mcp/",
+ "headers": {"X-MCP-Toolsets": "context,repos,issues,pull_requests,actions"},
+ "headersHelper": "gh auth token | jq -R '{Authorization: (\"Bearer \" + .)}'"}
+EOF
+  )
+  have=$(jq -c '.mcpServers.github // empty | {type, url, headers, headersHelper}' "$HOME/.claude.json" 2> /dev/null || true)
+  if [ "$have" != "$want" ]; then
+    claude mcp remove --scope user github > /dev/null 2>&1 || true
+    claude mcp add-json --scope user github "$want"
   fi
 fi
