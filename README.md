@@ -16,8 +16,8 @@ gh auth login && chezmoi apply
 `init` clones into `~/Code/dotFiles`, renders the config template, which pins the source there,
 and applies. `apply` runs [`home/.chezmoiscripts/`](home/.chezmoiscripts/): Homebrew when it is
 absent (the one password prompt: its installer needs sudo), then the files, then the Homebrew
-bundle, mise runtimes and macOS defaults when their inputs change, and provisioning every time
-(Claude Code CLI, gh extensions, the plugins `settings.json` declares). The steps behind
+bundle, mise runtimes, macOS defaults and the Caps Lock agent when their inputs change, and
+provisioning every time (Claude Code CLI, gh extensions, the plugins `settings.json` declares). The steps behind
 `gh auth login` converge on the second apply.
 [`home/.chezmoiignore`](home/.chezmoiignore) names what is Mac-only.
 
@@ -55,9 +55,9 @@ Environments, mounted, never on disk.
 .github/gate.sh         the repo settings that are not files: ruleset, scanning, merge policy
 install.sh              chezmoi's generated container hook: install chezmoi if missing, init --apply from here
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
-home/.chezmoiscripts/   machine setup: Homebrew (when absent), brew, mise and macOS defaults (onchange), provision (every apply)
+home/.chezmoiscripts/   machine setup: Homebrew (when absent), brew, mise, macOS defaults, Caps Lock (onchange), provision (every apply)
 home/dot_claude/        user-global Claude Code config
-home/.chezmoi*          chezmoi's own contract: config template, version floor, ignores, externals, removals
+home/.chezmoi*          chezmoi's own contract: config template, version floor, ignores, externals, removals, templates
 docs/GOTCHAS.md         traps still armed and the rule each forces; never applied to a machine
 ```
 
@@ -71,9 +71,10 @@ run once by the owner:
 .github/gate.sh
 ```
 
-`git grep -ilE 'alxjrvs|gninety|GitHubSSH'` finds every file: git identity and signing key
-(`home/dot_config/git/config.tmpl`), the agent's author and the 1Password item
-(`home/.chezmoitemplates/claude-settings.json`), and the SSH items in
-`home/dot_config/1Password/ssh/agent.toml`.
+`git grep -ilE 'alxjrvs|gninety|GitHubSSH'` finds every file to change: git identity and signing
+key (`home/dot_config/git/config.tmpl`); the marketplace, plugin, co-author trailer and
+1Password item (`home/.chezmoitemplates/claude-settings.json`); the SSH items
+(`home/dot_config/1Password/ssh/agent.toml`); the launchd label (the plist under `home/Library`
+and its script); and the persona (`home/dot_claude/CLAUDE.md`).
 
 MIT — see [`LICENSE`](LICENSE).

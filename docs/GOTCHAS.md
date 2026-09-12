@@ -20,7 +20,7 @@ the PRs; when a subject is gone, delete its entry.
   broken repo: `brew bundle check` exits nonzero there while printing that the Brewfile is
   satisfied.
 - **Claude Code rewrites `~/.claude/settings.json` in its own key order,** so a whole-file copy
-  is drift by the next session. The target is a `modify_` script: the declared keys converge,
+  is drift by the next session. The source is a `modify_` script: the declared keys converge,
   keys the app adds stay, and the on-disk order is kept, so a rewrite is not drift. A `/plugin`
   toggle of a declared plugin is undone by the next apply; an undeclared one it keeps. Edit the
   source, never the applied file.
@@ -33,8 +33,7 @@ the PRs; when a subject is gone, delete its entry.
 - **`run_onchange_` records its hash even when the script exits 0 early.** Anything that may
   need to retry (behind `gh auth login`) belongs in the every-apply script.
 - **A run script cannot call `chezmoi`:** the outer apply holds the persistent-state lock, so
-  the inner one times out and fails the apply. Scripts get `CHEZMOI_SOURCE_DIR` and
-  `CHEZMOI_WORKING_TREE` in their environment instead.
+  the inner one times out and fails the apply.
 - **Under `.chezmoiroot`, `.chezmoi.sourceDir` is the `home/` subdirectory,** so the documented
   `sourceDir = {{ .chezmoi.sourceDir }}` pin would make init look for `home/home`. The config
   template pins `.chezmoi.workingTree`.
@@ -48,6 +47,14 @@ the PRs; when a subject is gone, delete its entry.
   `lint` is the summary job, and it fails unless both jobs behind it succeeded.
 - **Secret scanning, push protection and the ruleset are repo settings, not repo files:** a
   fork starts with none of them. `.github/gate.sh` sets them; nothing turns them on by itself.
+
+## macOS
+
+- **`defaults write` to a key the app does not read is converged and does nothing.** Finder's
+  POSIX-path title is `_FXShowPosixPathInTitle`; the misspelling `…InWindowTitle` sat in this
+  repo for years. Tap-to-click is four writes (the built-in and Bluetooth trackpad domains plus
+  the global `com.apple.mouse.tapBehavior`, once more for the current host), which is the set
+  nix-darwin writes; any one alone reads as converged.
 
 ## Shell
 
