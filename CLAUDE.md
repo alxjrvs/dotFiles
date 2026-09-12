@@ -30,6 +30,6 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
   tidy a key away without reading why it is there.
 - Secrets: `op://` references only, never a plaintext token, and nothing here prints one.
 - A source file's mode comes from its name (`executable_`, `private_`), never from the checkout.
-- CI's `lint` job is the one required check, a summary over an ubuntu + macos matrix; every
-  check lives behind it. The repo settings that are not files are `.github/gate.sh`.
+- CI's `lint` job is the one required check, a summary over static checks on ubuntu and an
+  apply on macOS; every check lives behind it. The repo settings that are not files are `.github/gate.sh`.
 - Traps still armed and the rule each forces: `docs/GOTCHAS.md`. History is the PRs.
