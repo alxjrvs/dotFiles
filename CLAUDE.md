@@ -26,7 +26,7 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 - Machine setup is `home/.chezmoiscripts/`, flat: guarded every-apply scripts for Homebrew and
   provisioning, `onchange` on the Brewfile and mise config hashes and on the macOS defaults.
 - One GitHub identity: `gh auth login`, keychain-backed, never `--insecure-storage`.
-- nvim is plugin-free. `home/dot_claude/settings.json` carries divergences from defaults; don't
+- nvim is plugin-free. `home/.chezmoitemplates/claude-settings.json` carries divergences from defaults; don't
   tidy a key away without reading why it is there.
 - Secrets: `op://` references only, never a plaintext token, and nothing here prints one.
 - A source file's mode comes from its name (`executable_`, `private_`), never from the checkout.

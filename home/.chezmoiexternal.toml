@@ -1,5 +1,5 @@
 # The Claude Code statusline: two scripts from a tag tarball, straight onto PATH under the names
-# dot_claude/settings.json calls. Bump the tag and the checksum together after reading what changed:
+# .chezmoitemplates/claude-settings.json calls. Bump the tag and the checksum together after reading what changed:
 #   curl -fsSL <url> | shasum -a 256
 
 [".local/bin/claude-statusline"]

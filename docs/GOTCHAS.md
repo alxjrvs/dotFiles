@@ -20,12 +20,11 @@ the PRs; when a subject is gone, delete its entry.
   satisfied.
 - **User-scoped MCP servers live only in `~/.claude.json`,** which nothing tracks; the
   provision script converges them on every apply.
-- **`claude plugin install` rewrites `~/.claude/settings.json` in its own key order,** so a
-  managed copy written first is drift by the time apply ends. Anything that installs plugins
-  runs as a `run_before_` script; chezmoi's copy lands last. chezmoi calls a `run_before_` that
-  touches a managed target undefined behaviour; it works because chezmoi rewrites the target
-  afterwards, and nothing else converges. The same rewrite follows a `/plugin` toggle in the
-  TUI: edit the source, never the applied file.
+- **Claude Code rewrites `~/.claude/settings.json` in its own key order,** so a whole-file copy
+  is drift by the next session. The target is a `modify_` script: the declared keys converge,
+  keys the app adds stay, and the on-disk order is kept, so a rewrite is not drift. A `/plugin`
+  toggle of a declared plugin is undone by the next apply; an undeclared one it keeps. Edit the
+  source, never the applied file.
 - **The desktop app runs its own bundled Claude Code, not `~/.local/bin/claude`,** and the two
   update on different schedules. A settings key is verified in a terminal and in the Code tab.
 
