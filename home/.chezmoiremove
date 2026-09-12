@@ -1,7 +1,13 @@
 # Targets chezmoi must remove from ~: apply only writes, so a deleted source leaves its target.
-# Delete an entry once every machine has applied it.
+# Each entry names the PR and date that made it and is deleted in the next PR that touches this
+# file after 60 days, applied or not: a machine that missed the window runs the one-liner again,
+# and an entry whose target ever returns as a source fails every apply. The provision script's
+# migration lines follow the same rule.
 
+# #361 2026-09-10
 .local/bin/op-sa
 .config/git/agent.gitconfig
+# #363 2026-09-10
 .config/karabiner/karabiner.json
+# #364 2026-09-10
 .ssh/allowed_signers
