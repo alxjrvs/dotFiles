@@ -1,11 +1,10 @@
 #!/bin/bash
-# Every-apply provisioning of what chezmoi cannot own, run before files land: `claude plugin
-# install` rewrites ~/.claude/settings.json in its own key order, so it goes first and chezmoi's
-# copy lands last. No hash gate: a step waiting on `gh auth login` on a fresh machine converges on
-# the next apply. Idempotent and cheap when converged; every tool is guarded.
+# Every-apply provisioning of what chezmoi cannot own. No hash gate: a step waiting on `gh auth
+# login` on a fresh machine converges on the next apply. Idempotent and cheap when converged;
+# every tool is guarded.
 set -euo pipefail
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
-settings="$CHEZMOI_SOURCE_DIR/dot_claude/settings.json"
+settings="$CHEZMOI_SOURCE_DIR/.chezmoitemplates/claude-settings.json"
 
 # Claude Code CLI via the native installer, which self-updates; never brew or npm.
 command -v claude > /dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash
