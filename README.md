@@ -39,7 +39,8 @@ machine: `chezmoi update`.
 ## The agent
 
 The agent is you. `gh auth login` is the one GitHub credential and `gh` the one GitHub tool;
-git borrows the token. Agent commits carry the `Claude` author and the co-author trailer.
+git borrows the token. Agent commits carry the `Claude` author and the co-author trailer on the
+branch; the squash rewrites both, so on `main` the PR is the record.
 Branch protection and the never-push-main rule are the gate.
 
 A plugin token that is not GitHub's is a 1Password item, read when the plugin starts through its
