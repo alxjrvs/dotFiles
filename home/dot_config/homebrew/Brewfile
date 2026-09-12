@@ -1,6 +1,6 @@
 # ~/.config/homebrew/Brewfile — the CLIs and apps on the machine. Runtimes (node, bun) and the
 # npm-built language servers are mise's, in ~/.config/mise/config.toml, so no formula here
-# drags in a second node. The Claude Code CLI is the native installer (run_before_50) and git
+# drags in a second node. The Claude Code CLI is the native installer (run_after_50) and git
 # is Xcode's.
 #
 # `chezmoi apply` reconciles (`brew bundle --no-upgrade`) and never upgrades: a cask upgrade
@@ -48,7 +48,7 @@ cask "1password-cli"
 cask "1password"
 
 # ── Apps ──────────────────────────────────────────────────────────────
-# The Claude desktop app. The Claude Code CLI is the native installer (run_before_50), never brew.
+# The Claude desktop app. The Claude Code CLI is the native installer (run_after_50), never brew.
 cask "claude"
 cask "discord"
 cask "font-fira-code-nerd-font"

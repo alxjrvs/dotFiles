@@ -19,8 +19,6 @@ the PRs; when a subject is gone, delete its entry.
 - **A tool failing inside the sandbox reports it in its own vocabulary,** and looks like a
   broken repo: `brew bundle check` exits nonzero there while printing that the Brewfile is
   satisfied.
-- **User-scoped MCP servers live only in `~/.claude.json`,** which nothing tracks; the
-  provision script converges them on every apply.
 - **Claude Code rewrites `~/.claude/settings.json` in its own key order,** so a whole-file copy
   is drift by the next session. The target is a `modify_` script: the declared keys converge,
   keys the app adds stay, and the on-disk order is kept, so a rewrite is not drift. A `/plugin`
