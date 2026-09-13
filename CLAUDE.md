@@ -30,8 +30,10 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 - One GitHub identity: `gh auth login`, keychain-backed, never `--insecure-storage`.
 - nvim is `$EDITOR` and nothing more: no plugins, no language servers.
 - The terminal owns the palette: a tool names a theme or an ANSI color, never a hex code.
-- `home/dot_claude/settings.json.tmpl` carries divergences from defaults, in the app's own key
-  order so its rewrites are not drift; don't tidy a key away without reading why it is there.
+- `home/dot_claude/private_settings.json.tmpl` carries divergences from defaults plus every key
+  the app writes on its own, in the order the CLI's writer emits (which is not the docs' order:
+  `sandbox` is enabled, network, filesystem, credentials) so its rewrites are not drift; don't
+  tidy a key away without reading why it is there.
 - Employer config is the employer's marketplace, installed by its tooling; nothing here enables it.
 - Secrets: `op://` references only, never a plaintext token, and nothing here prints one.
 - A source file's mode comes from its name (`executable_`, `private_`), never from the checkout.

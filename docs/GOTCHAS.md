@@ -17,6 +17,13 @@ there, not here; when a subject is gone, delete its entry. History is in the PRs
   a path.
 - **The desktop app runs its own bundled Claude Code, not `~/.local/bin/claude`,** and the two
   update on different schedules. A settings key is verified in a terminal and in the Code tab.
+- **Two writers rewrite `~/.claude/settings.json`.** The CLI preserves the mode and re-emits
+  the file in its own key order with a trailing newline; the desktop shell writes it itself for
+  its UI actions (plugin toggles, output style, workflow consent), mode 0600, key appended
+  last, no trailing newline. The source is `private_`, carries every key either writer adds,
+  and keeps its newline; a desktop-UI write is red by one byte until the next CLI write or
+  apply. A choice saved by the CLI that the template does not declare lasts until the next
+  apply; `chezmoi diff` shows what would go.
 - **On Linux the sandbox needs bubblewrap and socat, and without them runs unsandboxed** after
   a warning. In a devcontainer the outer boundary is the sandbox; on a Linux desktop, install
   both.

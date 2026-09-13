@@ -44,17 +44,17 @@
   "outputStyle": "Proactive",
   "sandbox": {
     "enabled": true,
-    "filesystem": {
-      "allowWrite": [
-        "~/Library/Caches/mise"
-      ]
-    },
     "network": {
       "allowUnixSockets": [
         "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
       ],
       "allowMachLookup": [
         "com.apple.trustd.agent"
+      ]
+    },
+    "filesystem": {
+      "allowWrite": [
+        "~/Library/Caches/mise"
       ]
     },
     "credentials": {
@@ -72,6 +72,7 @@
   },
   "askUserQuestionTimeout": "10m",
   "autoMemoryEnabled": false,
+  "skipWorkflowUsageWarning": true,
   "theme": "auto",
   "editorMode": "vim",
   "vimInsertModeRemaps": {
