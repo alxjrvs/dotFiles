@@ -42,7 +42,7 @@ zstyle ':completion:*:git-checkout:*' sort false
 
 # --- tools -------------------------------------------------------------------------------------
 if (( $+commands[fzf] )); then
-  export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40% --color=bg+:#3b4252,bg:#2e3440,spinner:#81a1c1,hl:#a3be8c,fg:#d8dee9,header:#a3be8c,info:#ebcb8b,pointer:#81a1c1,marker:#81a1c1,prompt:#81a1c1'
+  export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40%'
   export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow'
   export FZF_CTRL_T_OPTS="--preview 'bat --color=always {}' --preview-window right:50%"
   export FZF_ALT_C_OPTS="--preview 'eza --icons -T {} | head -20'"
@@ -66,20 +66,5 @@ alias ..='cd ..'
 
 # --- syntax highlighting: last, because it wraps the ZLE widgets defined above ----------------
 _zsh_plugin=$_zsh_plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-if [[ -r $_zsh_plugin ]]; then
-  source $_zsh_plugin
-  ZSH_HIGHLIGHT_STYLES[command]='fg=#4db8cc'
-  ZSH_HIGHLIGHT_STYLES[alias]='fg=#4db8cc'
-  ZSH_HIGHLIGHT_STYLES[builtin]='fg=#4db8cc'
-  ZSH_HIGHLIGHT_STYLES[function]='fg=#d06cb8'
-  ZSH_HIGHLIGHT_STYLES[reserved-word]='fg=#d06cb8'
-  ZSH_HIGHLIGHT_STYLES[precommand]='fg=#d06cb8,underline'
-  ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=#e05050'
-  ZSH_HIGHLIGHT_STYLES[single-quoted-argument]='fg=#d4b84a'
-  ZSH_HIGHLIGHT_STYLES[double-quoted-argument]='fg=#d4b84a'
-  ZSH_HIGHLIGHT_STYLES[single-hyphen-option]='fg=#8b949e'
-  ZSH_HIGHLIGHT_STYLES[double-hyphen-option]='fg=#8b949e'
-  ZSH_HIGHLIGHT_STYLES[comment]='fg=#8b949e,italic'
-  ZSH_HIGHLIGHT_STYLES[path]='fg=#e6edf3,underline'
-fi
+[[ -r $_zsh_plugin ]] && source $_zsh_plugin
 unset _zsh_plugin _zsh_plugins
