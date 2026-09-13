@@ -1,8 +1,4 @@
-# Target paths chezmoi skips on this host; evaluated as a template on every run. `chezmoi ignored`
-# prints the result.
-
-# Directory placeholders: the directory is created, the marker is not.
-**/.keep
+# Target paths chezmoi skips on this host; evaluated as a template on every run.
 
 {{ if ne .chezmoi.os "darwin" -}}
 # macOS only: Homebrew, the package list, its scripts, the GUI apps' config, the launchd agent,

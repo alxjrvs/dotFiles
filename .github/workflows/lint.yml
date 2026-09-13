@@ -3,9 +3,7 @@ name: lint
 # `lint` is the status check the main ruleset requires, so it is the summary job; the work runs
 # in two jobs behind it. Static checks on ubuntu, where the tools are packaged; then the source
 # rendered, applied and verified on macOS, the target, with the applied shell and git config
-# exercised. Linux is best-effort and nothing here proves it. No `brew bundle` here:
-# five to nine minutes of casks prove nothing the render step does not. Secrets are GitHub's
-# push protection, on the repo, not a step here.
+# exercised. Linux is best-effort and nothing here proves it.
 
 on:
   push:

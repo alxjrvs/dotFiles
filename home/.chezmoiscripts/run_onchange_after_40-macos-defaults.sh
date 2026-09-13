@@ -8,12 +8,13 @@ defaults write NSGlobalDomain KeyRepeat -int 2
 defaults write NSGlobalDomain InitialKeyRepeat -int 15
 defaults write NSGlobalDomain ApplePressAndHoldEnabled -bool false
 
-# Finder: everything visible, POSIX path in the title (the key Finder reads: docs/GOTCHAS.md).
+# Finder: everything visible, POSIX path in the title (`_FXShowPosixPathInTitle` is the key
+# Finder reads; a near miss converges and does nothing).
 defaults write com.apple.finder AppleShowAllFiles -bool true
 defaults write NSGlobalDomain AppleShowAllExtensions -bool true
 defaults write com.apple.finder _FXShowPosixPathInTitle -bool true
 
-# Trackpad tap-to-click: all four writes, or it does nothing (docs/GOTCHAS.md).
+# Trackpad tap-to-click: all four writes; any one alone reads as converged and does nothing.
 defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
 defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
 defaults write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
