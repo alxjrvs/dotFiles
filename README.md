@@ -6,16 +6,23 @@ macOS and Linux dotfiles for [alxjrvs](https://github.com/alxjrvs), managed by
 
 ## Fresh machine
 
-Two lines, the second of which is a login:
+One line, then a login in a new terminal (the applied `~/.zprofile` is what puts `gh` and
+`chezmoi` on PATH):
 
 ```bash
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply --source ~/Code/dotFiles alxjrvs/dotFiles
+```
+
+```bash
 gh auth login && chezmoi apply
 ```
 
 The first apply asks for a password once (Homebrew's installer, on a Mac); what waits on
-`gh auth login` converges on the second. A devcontainer points VS Code's `dotfiles.repository`
-at this repo, which runs [`install.sh`](install.sh).
+`gh auth login` converges on the second. On a Mac, between the two: sign in to 1Password and
+turn on Settings › Developer › Use the SSH Agent, Integrate with 1Password CLI and Integrate
+with MCP clients (the first commit signs through the agent); run `claude` once to log in; log
+out once for the keyboard defaults. A devcontainer points VS Code's `dotfiles.repository` at
+this repo, which runs [`install.sh`](install.sh).
 
 ## Day to day
 
@@ -39,7 +46,7 @@ credential, `gh` the one tool, git borrows the token, and the squash-merged PR i
 .github/gate.sh         the repo settings that are not files: ruleset, scanning, merge policy
 install.sh              chezmoi's generated devcontainer hook
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
-home/.chezmoiscripts/   machine setup: Homebrew and its apps (Mac), mise with every CLI (both), macOS defaults, provisioning, Caps Lock
+home/.chezmoiscripts/   machine setup: Homebrew (Mac), mise with every CLI (both), macOS defaults, provisioning, the Mac's apps, Caps Lock
 home/dot_claude/        user-global Claude Code config, and the standing loop a bare `/loop` runs
 home/.chezmoi*          chezmoi's own contract: config template, version floor (the oldest chezmoi that reads archive-file externals), ignores, externals
 docs/GOTCHAS.md         traps still armed and the rule each forces

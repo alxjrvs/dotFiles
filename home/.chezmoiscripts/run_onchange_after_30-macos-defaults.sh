@@ -1,6 +1,6 @@
 #!/bin/bash
 # macOS defaults. Re-runs only when this script changes (its own content is the hash), then
-# restarts the apps that read these keys at launch.
+# restarts Dock, Finder and SystemUIServer; the keyboard keys are read at the next login.
 set -euo pipefail
 
 # Keyboard: fast repeat, no press-and-hold accent popover.

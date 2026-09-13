@@ -1,6 +1,7 @@
 #!/bin/bash
 # Homebrew bundle, re-run when the Brewfile changes. `--no-upgrade`: apply reconciles, never
-# upgrades. `after`: files land first, so a bundle that stops on a prompt leaves the shell usable.
+# upgrades. Last but one: one failing cask stops every later script, so the CLIs, the defaults
+# and provisioning land before the apps do, and a bundle that stops leaves a usable shell.
 # Brewfile hash: {{ include "dot_config/homebrew/Brewfile" | sha256sum }}
 set -euo pipefail
 eval "$(/opt/homebrew/bin/brew shellenv)"

@@ -3,8 +3,8 @@
 {{ if ne .chezmoi.os "darwin" -}}
 # A Mac has Homebrew, its apps, the launchd agent and the 1Password app; a container has none.
 .chezmoiscripts/00-homebrew.sh
-.chezmoiscripts/10-brew.sh
 .chezmoiscripts/30-macos-defaults.sh
+.chezmoiscripts/45-brew.sh
 .chezmoiscripts/50-capslock.sh
 .config/homebrew
 .config/ghostty
