@@ -35,5 +35,8 @@ there, not here; when a subject is gone, delete its entry. History is in the PRs
 
 ## macOS
 
+- **op-ssh-sign waits on the 1Password app's authorization dialog.** A locked app blocks a
+  human `git commit` from an unattended terminal; agents are unaffected, their settings env
+  sets `commit.gpgSign=false`.
 - **`defaults write` to a key the app does not read is converged and does nothing.** Check the
   key name against what the app reads, not against a blog post.
