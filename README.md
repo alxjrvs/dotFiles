@@ -46,10 +46,9 @@ git borrows the token. Agent commits carry the `Claude` author and the co-author
 branch; the squash rewrites both, so on `main` the PR is the record.
 Branch protection and the never-push-main rule are the gate.
 
-A plugin token that is not GitHub's is a 1Password item, read when the plugin starts through its
-`*_COMMAND` setting (`op read op://…`); the item exists once and every Mac has it. A
-container has no token; its secrets are the environment's own. Project secrets are 1Password
-Environments, mounted, never on disk.
+A container has no token; its secrets are the environment's own. Project secrets are 1Password
+Environments, mounted, never on disk. Employer config is the employer's marketplace, installed by
+its own tooling; nothing here enables it.
 
 ## Layout
 
@@ -74,9 +73,9 @@ run once by the owner:
 .github/gate.sh
 ```
 
-`git grep -ilE 'alxjrvs|gninety|GitHubSSH'` finds every file to change: git identity and signing
-key (`home/dot_config/git/config.tmpl`); the marketplace, plugin, co-author trailer and
-1Password item (`home/dot_claude/settings.json.tmpl`); the SSH items
+`git grep -ilE 'alxjrvs|GitHubSSH'` finds every file to change: git identity and signing
+key (`home/dot_config/git/config.tmpl`); the marketplace, plugin and co-author trailer
+(`home/dot_claude/settings.json.tmpl`); the SSH items
 (`home/dot_config/1Password/ssh/agent.toml`); the launchd label (the plist under `home/Library`
 and its script); and the persona (`home/dot_claude/CLAUDE.md`).
 

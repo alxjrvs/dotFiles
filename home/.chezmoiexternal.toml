@@ -1,25 +1,6 @@
 # Pinned tarballs from GitHub. Bump a tag and its checksum together after reading what changed:
 #   curl -fsSL <url> | shasum -a 256
 #
-# The Claude Code statusline: two scripts, straight onto PATH under the names
-# dot_claude/settings.json.tmpl calls.
-
-[".local/bin/claude-statusline"]
-    type = "archive-file"
-    url = "https://github.com/TheGnarCo/claude-statusline/archive/refs/tags/v1.1.1.tar.gz"
-    checksum.sha256 = "4cb70a81065effd55e2bdc598efd0fdc81b3c431e9bde5bb656366f416e015c7"
-    stripComponents = 1
-    path = "statusline.sh"
-    executable = true
-
-[".local/bin/claude-subagent-statusline"]
-    type = "archive-file"
-    url = "https://github.com/TheGnarCo/claude-statusline/archive/refs/tags/v1.1.1.tar.gz"
-    checksum.sha256 = "4cb70a81065effd55e2bdc598efd0fdc81b3c431e9bde5bb656366f416e015c7"
-    stripComponents = 1
-    path = "subagent-statusline.sh"
-    executable = true
-
 # The two zsh plugins: scripts, not binaries. autosuggestions is one file; syntax-highlighting
 # reads its highlighters/ directory at load.
 [".local/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"]
