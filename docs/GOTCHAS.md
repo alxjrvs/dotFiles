@@ -20,6 +20,12 @@ there, not here; when a subject is gone, delete its entry. History is in the PRs
   a path.
 - **The desktop app runs its own bundled Claude Code, not `~/.local/bin/claude`,** and the two
   update on different schedules. A settings key is verified in a terminal and in the Code tab.
+- **`chezmoi apply` cannot run inside the Bash sandbox:** its write scope is the working
+  directory and `$TMPDIR`, every target and the state db are under `~`, and the `~/.claude`
+  targets are paths no `allowWrite` can exempt. `sandbox.excludedCommands` runs `apply` and
+  `update` unsandboxed; an agent passes `--force`, because after an app rewrite of
+  settings.json chezmoi asks on a TTY it does not have. `verify`, `status` and `diff` run
+  sandboxed.
 - **Two writers rewrite `~/.claude/settings.json`.** The CLI preserves the mode and re-emits
   the file in its own key order with a trailing newline; the desktop shell writes it itself for
   its UI actions (plugin toggles, output style, workflow consent), mode 0600, key appended
