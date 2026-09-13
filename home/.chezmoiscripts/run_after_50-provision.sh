@@ -30,7 +30,4 @@ if command -v claude > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
     printf '%s\n' "$have" | grep -qx "$plugin" ||
       claude plugin install "$plugin" || echo "provision: could not install $plugin" >&2
   done
-  # Migrations: dated, and deleted after 60 days whether or not every machine has applied them.
-  claude mcp remove --scope user github > /dev/null 2>&1 || true    # #351 2026-09-10
-  claude mcp remove --scope user 1password > /dev/null 2>&1 || true # #368 2026-09-12
 fi
