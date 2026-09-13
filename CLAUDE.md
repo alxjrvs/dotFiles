@@ -28,7 +28,7 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
   provisioning, `onchange` on the Brewfile, mise config and Caps Lock plist hashes and on the macOS
   defaults. mise installs itself.
 - One GitHub identity: `gh auth login`, keychain-backed, never `--insecure-storage`.
-- nvim is plugin-free. `home/dot_claude/settings.json.tmpl` carries divergences from defaults,
+- nvim is `$EDITOR` and nothing more: no plugins, no language servers. `home/dot_claude/settings.json.tmpl` carries divergences from defaults,
   in the app's own key order so its rewrites are not drift; don't tidy a key away without
   reading why it is there.
 - Secrets: `op://` references only, never a plaintext token, and nothing here prints one.

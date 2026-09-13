@@ -3,8 +3,6 @@
 [tools]
 node = "lts"
 bun = "latest"
-"npm:bash-language-server" = "latest"
-"npm:typescript-language-server" = "latest"
 
 # Shell
 atuin = "latest"
@@ -15,7 +13,6 @@ zoxide = "latest"
 # Git
 gh = "latest"
 delta = "latest"
-lefthook = "latest"
 
 # Files and text
 bat = "latest"
@@ -24,11 +21,7 @@ fd = "latest"
 jq = "latest"
 ripgrep = "latest"
 
-# Editor and language servers
+# Editor, and the two linters CI runs
 neovim = "latest"
-biome = "latest"
-marksman = "latest"
-rust-analyzer = "latest"
 shellcheck = "latest"
 shfmt = "latest"
-taplo = "latest"
