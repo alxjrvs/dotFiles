@@ -60,10 +60,15 @@ jobs:
       - if: runner.os == 'Linux'
         run: test "$(chezmoi $CHEZMOI_ARGS managed --include scripts | sort | tr '\n' ' ')" = '.chezmoiscripts/20-mise.sh .chezmoiscripts/40-provision.sh '
       # Every tool the applied mise config names resolves and installs; once, on the cheap leg.
+      # The action caches the installs; the key is ours because the config is not at a name it
+      # hashes by default.
       - if: runner.os == 'Linux'
-        run: |
-          curl -fsSL https://mise.run | sh
-          MISE_GLOBAL_CONFIG_FILE="$HOME_T/.config/mise/config.toml" MISE_YES=1 "$HOME/.local/bin/mise" install
+        uses: jdx/mise-action@v4
+        with:
+          cache_key: mise-${{ runner.os }}-${{ hashFiles('home/dot_config/mise/config.toml') }}
+        env:
+          MISE_GLOBAL_CONFIG_FILE: ${{ env.HOME_T }}/.config/mise/config.toml
+          MISE_YES: 1
 
   lint:
     needs: [static, apply]
