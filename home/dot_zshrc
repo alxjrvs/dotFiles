@@ -61,7 +61,6 @@ fi
 # --- aliases -----------------------------------------------------------------------------------
 alias gs='git status' gp='git push' gpr='git pull --rebase' gco='git checkout' gd='git diff'
 alias ..='cd ..'
-(( $+commands[eza] )) && alias ls='eza --icons --group-directories-first'
 (( $+commands[nvim] )) && alias vim='nvim'
 
 # --- syntax highlighting: last, because it wraps the ZLE widgets defined above ----------------
