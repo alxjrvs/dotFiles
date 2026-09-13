@@ -4,7 +4,6 @@ font-family = FiraCode Nerd Font
 font-thicken = true
 font-size = 14
 
-# Ghostty 1.2.0 disabled `dlig` only; liga/calt remain on by default.
 font-feature = +dlig
 adjust-cell-height = -1
 

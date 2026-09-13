@@ -1,4 +1,4 @@
-# fd's global ignore (~/.fdignore is parent-walked and stops at a repo root, so it never applied).
+# fd's global ignore.
 # .git/ because the fzf commands in ~/.zshrc pass --hidden; ripgrep's half is in ~/.ripgreprc.
 .git/
 node_modules

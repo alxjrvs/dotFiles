@@ -1,62 +1,35 @@
 # Gotchas still armed
 
-Traps that cost a day once: one mechanism and the rule it forces, in one place. History is in
-the PRs; when a subject is gone, delete its entry.
+Traps that cost a day once, each with the rule it forces. A trap explained beside its code lives
+there, not here; when a subject is gone, delete its entry. History is in the PRs.
 
 ## Claude Code
 
 - **Go binaries cannot verify TLS inside the Bash sandbox on macOS** (`gh`, `op`, `chezmoi`):
   Seatbelt denies the `com.apple.trustd.agent` Mach lookup that Go's `crypto/x509` needs.
-  `sandbox.network.allowMachLookup` names that one service and nothing else.
-  `enableWeakerNetworkIsolation` is documented for MITM proxies, and `excludedCommands` is
-  skipped for a command inside a shell loop. Linux has no trustd and no such failure.
+  `sandbox.network.allowMachLookup` names that one service and nothing else. Linux has no
+  trustd and no such failure.
 - **The sandbox is not the whole control for secrets.** The login keychain is reachable inside
   it (`gh` keeps its token there) and a `gh alias` body runs unsandboxed, so
   `security find-generic-password`, `gh auth token` and `git credential` are text-denied in
   `permissions.deny`. A text-deny matches the whole command text, subshells and heredocs
   included, so a command that merely mentions a denied string is denied: anchor on a verb, never
   a path.
-- **A tool failing inside the sandbox reports it in its own vocabulary,** and looks like a
-  broken repo: `brew bundle check` exits nonzero there while printing that the Brewfile is
-  satisfied.
-- **Claude Code rewrites `~/.claude/settings.json` in its own key order,** so a whole-file copy
-  is drift by the next session. The source is a `modify_` script: the declared keys converge,
-  keys the app adds stay, and the on-disk order is kept, so a rewrite is not drift. A `/plugin`
-  toggle of a declared plugin is undone by the next apply; an undeclared one it keeps. Edit the
-  source, never the applied file.
 - **The desktop app runs its own bundled Claude Code, not `~/.local/bin/claude`,** and the two
   update on different schedules. A settings key is verified in a terminal and in the Code tab.
 
 ## chezmoi
 
-- **Nothing removes a target whose source was deleted.** `.chezmoiremove` is the one mechanism.
-- **`run_onchange_` records its hash even when the script exits 0 early.** Anything that may
-  need to retry (behind `gh auth login`) belongs in the every-apply script.
+- **Apply never removes a target whose source was deleted.** `.chezmoiremove` names it.
+- **`run_onchange_` records its hash whenever the script exits 0, an early guard included.**
+  Anything that may need a retry (behind `gh auth login`) is a `run_` script.
 - **A run script cannot call `chezmoi`:** the outer apply holds the persistent-state lock, so
   the inner one times out and fails the apply.
-- **Under `.chezmoiroot`, `.chezmoi.sourceDir` is the `home/` subdirectory,** so the documented
-  `sourceDir = {{ .chezmoi.sourceDir }}` pin would make init look for `home/home`. The config
-  template pins `.chezmoi.workingTree`.
-- **Scripts sort by target path, so a subdirectory under `.chezmoiscripts` reorders them:**
-  `darwin/10-brew` runs after `50-provision`. The directory stays flat; `.chezmoiignore` names
-  the Mac-only scripts instead (a template gate on line 1 would also break CI's shellcheck).
-
-## GitHub
-
-- **The ruleset requires the check named `lint`; a job beside it merges red under auto-merge.**
-  `lint` is the summary job, and it fails unless both jobs behind it succeeded.
-- **Secret scanning, push protection and the ruleset are repo settings, not repo files:** a
-  fork starts with none of them. `.github/gate.sh` sets them; nothing turns them on by itself.
+- **`.chezmoiscripts` stays flat.** Scripts run in ASCII order of their target path, so a
+  subdirectory reorders them; a template gate on line 1 instead would break CI's shellcheck on
+  the raw source.
 
 ## macOS
 
-- **`defaults write` to a key the app does not read is converged and does nothing.** Finder's
-  POSIX-path title is `_FXShowPosixPathInTitle`; the misspelling `…InWindowTitle` sat in this
-  repo for years. Tap-to-click is four writes (the built-in and Bluetooth trackpad domains plus
-  the global `com.apple.mouse.tapBehavior`, once more for the current host), which is the set
-  nix-darwin writes; any one alone reads as converged.
-
-## Shell
-
-- **`/etc/zprofile` runs `path_helper`, which rebuilds PATH from scratch.** PATH additions go in
-  `.zprofile`, after it.
+- **`defaults write` to a key the app does not read is converged and does nothing.** Check the
+  key name against what the app reads, not against a blog post.
