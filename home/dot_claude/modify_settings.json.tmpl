@@ -12,8 +12,8 @@ command -v jq > /dev/null 2>&1 || {
   printf '%s\n' "$mine"
   exit 0
 }
-{{ if ne .chezmoi.os "darwin" -}}
-# The 1Password MCP is the desktop app's; a container has no app.
-mine=$(printf '%s\n' "$mine" | jq 'del(.enabledPlugins["1password-mcp@oberon"])')
+{{ if not .opSign -}}
+# No 1Password app: no 1Password MCP, and no plugin whose token it reads.
+mine=$(printf '%s\n' "$mine" | jq 'del(.enabledPlugins["1password-mcp@oberon"], .enabledPlugins["gninety@gnar"], .env.NINETY_API_TOKEN_COMMAND)')
 {{ end -}}
 jq -s --argjson mine "$mine" '(add // {}) * $mine'

@@ -1,6 +1,13 @@
 Host *
+{{- if eq .chezmoi.os "darwin" }}
   # Keys live in 1Password; touch to sign. Needs "SSH agent" on in 1Password → Developer.
   IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+{{- else if .opSign }}
+  # Keys live in 1Password. Needs "SSH agent" on in 1Password → Developer.
+  IdentityAgent ~/.1password/agent.sock
+{{- else }}
+  # No 1Password app: SSH_AUTH_SOCK, the agent a container forwards.
+{{- end }}
 
   ServerAliveInterval 60
   ServerAliveCountMax 3

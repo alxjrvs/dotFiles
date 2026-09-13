@@ -1,20 +1,19 @@
 # Target paths chezmoi skips on this host; evaluated as a template on every run.
 
 {{ if ne .chezmoi.os "darwin" -}}
-# macOS only: Homebrew, the package list, its scripts, the GUI apps' config, the launchd agent,
-# the 1Password desktop app's SSH agent and everything under ~/.ssh (a container gets a forwarded
-# agent and signs nothing).
+# macOS only: Homebrew, the package list, its scripts, the GUI apps' config, the launchd agent.
 .chezmoiscripts/00-homebrew.sh
 .chezmoiscripts/10-brew.sh
 .chezmoiscripts/40-macos-defaults.sh
 .chezmoiscripts/60-capslock.sh
 .config/homebrew
 .config/ghostty
-.config/1Password
-.ssh
-.ssh/**
 Library
 Library/**
 .hushlogin
 Screenshots
+{{- end }}
+{{ if not .opSign -}}
+# No 1Password app: nothing to tell its SSH agent.
+.config/1Password
 {{- end }}
