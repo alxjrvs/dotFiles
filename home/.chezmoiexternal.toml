@@ -2,7 +2,7 @@
 #   curl -fsSL <url> | shasum -a 256
 #
 # The Claude Code statusline: two scripts, straight onto PATH under the names
-# .chezmoitemplates/claude-settings.json calls.
+# dot_claude/settings.json.tmpl calls.
 
 [".local/bin/claude-statusline"]
     type = "archive-file"

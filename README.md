@@ -57,7 +57,7 @@ install.sh              chezmoi's generated container hook: install chezmoi if m
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/.chezmoiscripts/   machine setup: Homebrew (when absent), brew, mise, macOS defaults, Caps Lock (onchange), provision (every apply)
 home/dot_claude/        user-global Claude Code config
-home/.chezmoi*          chezmoi's own contract: config template, version floor, ignores, externals, templates
+home/.chezmoi*          chezmoi's own contract: config template, version floor, ignores, externals
 docs/GOTCHAS.md         traps still armed and the rule each forces; never applied to a machine
 ```
 
@@ -73,7 +73,7 @@ run once by the owner:
 
 `git grep -ilE 'alxjrvs|gninety|GitHubSSH'` finds every file to change: git identity and signing
 key (`home/dot_config/git/config.tmpl`); the marketplace, plugin, co-author trailer and
-1Password item (`home/.chezmoitemplates/claude-settings.json`); the SSH items
+1Password item (`home/dot_claude/settings.json.tmpl`); the SSH items
 (`home/dot_config/1Password/ssh/agent.toml`); the launchd label (the plist under `home/Library`
 and its script); and the persona (`home/dot_claude/CLAUDE.md`).
 
