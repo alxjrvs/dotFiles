@@ -41,15 +41,10 @@ The agent is you. `gh auth login` is the one GitHub credential and `gh` the one 
 git borrows the token. Agent commits carry the `Claude` author and the co-author trailer.
 Branch protection and the never-push-main rule are the gate.
 
-A plugin token that is not GitHub's lives in the login keychain, where `gh` keeps its own, and
-reaches the plugin through its `*_COMMAND` setting. Once per Mac, `-w` last: it prompts, so the
-token never lands on argv or in history (a piped value is ignored; two bare Returns store an
-empty secret). A container has no token; its secrets are the environment's own. Project secrets
-are 1Password Environments, mounted, never on disk.
-
-```bash
-security add-generic-password -a "$USER" -s ninety-pat -w
-```
+A plugin token that is not GitHub's is a 1Password item, read when the plugin starts through its
+`*_COMMAND` setting (`op read op://…`); the item exists once and every Mac has it. A
+container has no token; its secrets are the environment's own. Project secrets are 1Password
+Environments, mounted, never on disk.
 
 ## Layout
 
@@ -74,8 +69,8 @@ run once by the owner:
 .github/gate.sh
 ```
 
-`git grep -ilE 'alxjrvs|ninety-pat|GitHubSSH'` finds every file: git identity and signing key
-(`home/dot_config/git/config.tmpl`), the agent's author and the keychain item
+`git grep -ilE 'alxjrvs|gninety|GitHubSSH'` finds every file: git identity and signing key
+(`home/dot_config/git/config.tmpl`), the agent's author and the 1Password item
 (`home/.chezmoitemplates/claude-settings.json`), and the SSH items in
 `home/dot_config/1Password/ssh/agent.toml`.
 

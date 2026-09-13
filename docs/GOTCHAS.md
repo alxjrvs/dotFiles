@@ -11,10 +11,11 @@ the PRs; when a subject is gone, delete its entry.
   `enableWeakerNetworkIsolation` is documented for MITM proxies, and `excludedCommands` is
   skipped for a command inside a shell loop. Linux has no trustd and no such failure.
 - **The sandbox is not the whole control for secrets.** The login keychain is reachable inside
-  it and a `gh alias` body runs unsandboxed, so `security find-generic-password`,
-  `gh auth token` and `git credential` are text-denied in `permissions.deny`. A text-deny
-  matches the whole command text, subshells and heredocs included, so a command that merely
-  mentions a denied string is denied: anchor on a verb, never a path.
+  it (`gh` keeps its token there) and a `gh alias` body runs unsandboxed, so
+  `security find-generic-password`, `gh auth token` and `git credential` are text-denied in
+  `permissions.deny`. A text-deny matches the whole command text, subshells and heredocs
+  included, so a command that merely mentions a denied string is denied: anchor on a verb, never
+  a path.
 - **A tool failing inside the sandbox reports it in its own vocabulary,** and looks like a
   broken repo: `brew bundle check` exits nonzero there while printing that the Brewfile is
   satisfied.
