@@ -12,12 +12,16 @@ there, not here; when a subject is gone, delete its entry. History is in the PRs
 - **`op` reaches the 1Password app over XPC, not a socket:** the Mach service
   `2BUA8C4S2C.com.1password.browser-helper` is the other name in `allowMachLookup`. The app's
   own authorization prompt remains the gate.
-- **The sandbox is not the whole control for secrets.** The login keychain is reachable inside
-  it (`gh` keeps its token there) and a `gh alias` body runs unsandboxed, so
-  `security find-generic-password`, `gh auth token` and `git credential` are text-denied in
-  `permissions.deny`. A text-deny matches the whole command text, subshells and heredocs
-  included, so a command that merely mentions a denied string is denied: anchor on a verb, never
-  a path.
+- **The sandbox contains writes, not secrets.** `WebFetch(domain:*)` opens every host to
+  sandboxed Bash (only the `domain:` form feeds the sandbox; a bare `WebFetch` looks the same
+  and silently restores per-host prompts), the login keychain and every tool's login file
+  (`~/.convex`, `~/.expo`, netlify, wrangler) are readable inside it, and there is no built-in
+  credential deny list. In auto mode the classifier is the exfiltration control, guaranteed by
+  `classifyAllShell`; in manual mode there are only the `permissions.deny` text patterns, which
+  are a floor and incomplete (`gh auth status -t` matches none). A text-deny matches the whole
+  command text, subshells and heredocs included: anchor on a verb, never a path. A real
+  boundary for unattended runs would be `sandbox.network.allowedDomains` with
+  `strictAllowlist` and no `WebFetch(domain:*)`.
 - **The desktop app runs its own bundled Claude Code, not `~/.local/bin/claude`,** and the two
   update on different schedules. A settings key is verified in a terminal and in the Code tab.
 - **An auto-mode denial is visible only in `/permissions` › Recently denied** (or a
