@@ -5,8 +5,14 @@ permission on mechanical steps.
 
 1. Green the build: run the repo's checks, fix what fails, re-run.
 2. Rebase on a freshly fetched default branch; resolve conflicts.
-3. Commit, push, open a PR if none exists, then `gh pr merge --auto --squash` so
-   GitHub's gate lands it when checks are clear.
+3. Commit, push, open a PR if none exists. If its base is the default branch
+   (`gh pr view --json baseRefName`), `gh pr merge --auto --squash` so GitHub's
+   gate lands it when checks are clear. Otherwise it is a layer of a stack: never
+   `gh pr merge` it (on an unprotected sibling base `--auto` merges at once and
+   collapses the chain). A stack is `gh stack`, never hand-stacked with `--base`:
+   `gh stack link` the layers if they are not one, `gh pr checks --watch` each
+   (an immediate "no checks reported" is GitHub not having registered the run,
+   not an attempt), then `gh stack merge --squash --yes`.
 4. Tend the open PR: failed CI, review comments, merge conflicts.
 
 Stop when the PR is merged, or after 3 failed attempts at the same failure —
