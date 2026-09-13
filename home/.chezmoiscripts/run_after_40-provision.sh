@@ -1,8 +1,6 @@
 #!/bin/bash
-# Every-apply provisioning of what chezmoi cannot own: the Claude Code CLI, gh extensions, and
-# the marketplaces and plugins ~/.claude/settings.json declares (declaring one does not install
-# it). No hash gate: a step waiting on `gh auth login` on a fresh machine converges on the next
-# apply. Idempotent and cheap when converged; every tool is guarded.
+# What chezmoi cannot own: the Claude Code CLI, the gh extension, and the marketplaces and
+# plugins settings.json declares. Every apply, so a step behind `gh auth login` converges next time.
 set -euo pipefail
 export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 

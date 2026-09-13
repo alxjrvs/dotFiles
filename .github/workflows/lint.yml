@@ -58,7 +58,7 @@ jobs:
           [ "$RUNNER_OS" = macOS ] && grep -q 'Group Containers' "$HOME_T/.ssh/config" || ! grep -q IdentityAgent "$HOME_T/.ssh/config"
       # The Mac-only scripts are ignored by target name; only Linux exercises that.
       - if: runner.os == 'Linux'
-        run: test "$(chezmoi $CHEZMOI_ARGS managed --include scripts | sort | tr '\n' ' ')" = '.chezmoiscripts/30-mise.sh .chezmoiscripts/50-provision.sh '
+        run: test "$(chezmoi $CHEZMOI_ARGS managed --include scripts | sort | tr '\n' ' ')" = '.chezmoiscripts/20-mise.sh .chezmoiscripts/40-provision.sh '
       # Every tool the applied mise config names resolves and installs; once, on the cheap leg.
       - if: runner.os == 'Linux'
         run: |
