@@ -27,8 +27,9 @@ export GH_PAGER=delta # env, not gh's config.yml: gh rewrites that file, so it i
 # sharp: force its prebuilt binary; a stray global libvips makes the from-source build fail.
 export SHARP_IGNORE_GLOBAL_LIBVIPS=1
 
-# --- plugins: two, from brew; `source` is the plugin manager ---------------------------------
-_zsh_plugin=$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+# --- plugins: two, chezmoi externals; `source` is the plugin manager --------------------------
+_zsh_plugins=$HOME/.local/share/zsh/plugins
+_zsh_plugin=$_zsh_plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 [[ -r $_zsh_plugin ]] && source $_zsh_plugin
 
 # --- completion: brew shellenv (~/.zprofile) already put site-functions on fpath -------------
@@ -64,7 +65,7 @@ alias ..='cd ..'
 (( $+commands[nvim] )) && alias vim='nvim'
 
 # --- syntax highlighting: last, because it wraps the ZLE widgets defined above ----------------
-_zsh_plugin=$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+_zsh_plugin=$_zsh_plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 if [[ -r $_zsh_plugin ]]; then
   source $_zsh_plugin
   ZSH_HIGHLIGHT_STYLES[command]='fg=#4db8cc'
@@ -81,4 +82,4 @@ if [[ -r $_zsh_plugin ]]; then
   ZSH_HIGHLIGHT_STYLES[comment]='fg=#8b949e,italic'
   ZSH_HIGHLIGHT_STYLES[path]='fg=#e6edf3,underline'
 fi
-unset _zsh_plugin
+unset _zsh_plugin _zsh_plugins
