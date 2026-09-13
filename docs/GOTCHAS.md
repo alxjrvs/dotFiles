@@ -17,6 +17,9 @@ there, not here; when a subject is gone, delete its entry. History is in the PRs
   a path.
 - **The desktop app runs its own bundled Claude Code, not `~/.local/bin/claude`,** and the two
   update on different schedules. A settings key is verified in a terminal and in the Code tab.
+- **On Linux the sandbox needs bubblewrap and socat, and without them runs unsandboxed** after
+  a warning. In a devcontainer the outer boundary is the sandbox; on a Linux desktop, install
+  both.
 
 ## chezmoi
 

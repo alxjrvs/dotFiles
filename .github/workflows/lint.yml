@@ -2,8 +2,8 @@ name: lint
 
 # `lint` is the status check the main ruleset requires, so it is the summary job; the work runs
 # in two jobs behind it. Static checks on ubuntu, where the tools are packaged; then the source
-# rendered, applied and verified on macOS, the target, with the applied shell and git config
-# exercised. Linux is best-effort and nothing here proves it.
+# rendered, applied and verified on each target OS, with the applied shell and git config
+# exercised.
 
 on:
   push:
@@ -26,12 +26,17 @@ jobs:
       - run: for f in $(git ls-files '*.json'); do jq -e . "$f" > /dev/null; done
 
   apply:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     env:
       HOME_T: ${{ github.workspace }}/../home
       CHEZMOI_ARGS: --config ${{ github.workspace }}/../chezmoi.toml --persistent-state ${{ github.workspace }}/../chezmoi.db --destination ${{ github.workspace }}/../home
     steps:
       - uses: actions/checkout@v7
+      - if: runner.os == 'Linux'
+        run: sudo apt-get install -y -q zsh
       - run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: mkdir -p "$HOME_T"
       # init renders home/.chezmoi.toml.tmpl; apply lays down every file, externals included.
@@ -41,11 +46,15 @@ jobs:
       # The applied shell must start with none of the guarded tools present.
       - run: HOME="$HOME_T" zsh -l -i -c 'echo shell ok'
       # What verify cannot check: git parses the rendered XDG file, gh is the last github.com
-      # helper in it, and the template took its darwin branch.
+      # helper in it, and the template took this OS's branch: darwin signs, a container does not.
       - run: |
           export HOME="$HOME_T" XDG_CONFIG_HOME="$HOME_T/.config"
           test "$(git config --global --get-all credential.https://github.com.helper | tail -1)" = '!gh auth git-credential'
-          test "$(git config --global --get commit.gpgSign)" = true
+          [ "$RUNNER_OS" = macOS ] && want=true || want=
+          test "$(git config --global --get commit.gpgSign)" = "$want"
+      # The Mac-only scripts are ignored by target name; only Linux exercises that.
+      - if: runner.os == 'Linux'
+        run: test "$(chezmoi $CHEZMOI_ARGS managed --include scripts | sort | tr '\n' ' ')" = '.chezmoiscripts/30-mise.sh .chezmoiscripts/50-provision.sh '
 
   lint:
     needs: [static, apply]
