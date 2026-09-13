@@ -1,15 +1,15 @@
 # ~/.config/git/config, one template. Apple's git sets credential.helper=osxkeychain in its
 # bundled gitconfig; the github.com helper below severs the keychain for GitHub (an empty helper
 # resets the list) so gh alone serves it.
-{{ if eq .chezmoi.os "darwin" -}}
-# macOS: commits and tags signed with the 1Password SSH key, behind Touch ID. A container signs
-# nothing.
+{{ if .opSign -}}
+# With the 1Password app: commits and tags signed with its SSH key, behind Touch ID or the app's
+# prompt. Without the app a machine signs nothing.
 [commit]
 	gpgSign = true
 [tag]
 	gpgSign = true
 [gpg "ssh"]
-	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+	program = {{ .opSign }}
 
 {{ end -}}
 [alias]
