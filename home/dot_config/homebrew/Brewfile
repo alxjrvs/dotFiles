@@ -1,11 +1,9 @@
 # ~/.config/homebrew/Brewfile — the Mac's apps. Every CLI and runtime is mise's, in
-# ~/.config/mise/config.toml; chezmoi is here until its own installer owns it. Git is Xcode's.
+# ~/.config/mise/config.toml; chezmoi is its own installer's, in ~/.local/bin; git is Xcode's.
 #
 # `chezmoi apply` reconciles (`brew bundle --no-upgrade`) and never upgrades: a cask upgrade
 # replaces the .app and quits the running program. Upgrading an app is `brew upgrade --cask
 # <name>` when it genuinely needs moving.
-
-brew "chezmoi"
 
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"
