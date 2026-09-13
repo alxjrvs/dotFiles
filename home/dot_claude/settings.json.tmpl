@@ -11,8 +11,7 @@
     "GIT_CONFIG_KEY_1": "url.https://github.com/.insteadOf",
     "GIT_CONFIG_VALUE_1": "git@github.com:",
     "GIT_CONFIG_KEY_2": "url.https://github.com/.insteadOf",
-    "GIT_CONFIG_VALUE_2": "ssh://git@github.com/"{{ if .opSign }},
-    "NINETY_API_TOKEN_COMMAND": "op read --account my.1password.com op://claude-agent/gninety/credential"{{ end }}
+    "GIT_CONFIG_VALUE_2": "ssh://git@github.com/"
   },
   "attribution": {
     "commit": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>",
@@ -33,31 +32,14 @@
       "Bash(*git credential*)"
     ]
   },
-  "statusLine": {
-    "type": "command",
-    "command": "~/.local/bin/claude-statusline",
-    "refreshInterval": 10
-  },
-  "subagentStatusLine": {
-    "type": "command",
-    "command": "~/.local/bin/claude-subagent-statusline"
-  },
   "enabledPlugins": {
     "agent-friendly-repo@oberon": true,
     "typescript-lsp@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true,
-    "toolkit@gnar": true{{ if .opSign }},
-    "gninety@gnar": true,
+    "frontend-design@claude-plugins-official": true{{ if .opSign }},
     "1password-mcp@oberon": true{{ end }}
   },
   "extraKnownMarketplaces": {
-    "gnar": {
-      "source": {
-        "source": "github",
-        "repo": "TheGnarCo/agent-skills"
-      }
-    },
     "oberon": {
       "source": {
         "source": "github",
