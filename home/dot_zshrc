@@ -22,7 +22,8 @@ zle -N zle-line-init
 # --- environment -------------------------------------------------------------------------------
 # LANG: what the terminal set, else the UTF-8 locale every libc ships (en_US is absent from
 # most images, and zsh's setlocale fails silently).
-export EDITOR=nvim VISUAL=nvim LANG=${LANG:-C.UTF-8} LESS='-RFX'
+# BAT_THEME is what delta, MANPAGER and the fzf preview read; bat's config file is not.
+export EDITOR=nvim VISUAL=nvim LANG=${LANG:-C.UTF-8} LESS='-RFX' BAT_THEME=Nord BAT_PAGING=never
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 export GH_PAGER=delta # env, not gh's config.yml: gh rewrites that file, so it is not managed
 (( $+commands[bat] )) && export MANPAGER="bat -plman"
