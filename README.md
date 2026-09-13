@@ -40,9 +40,8 @@ Another machine: `chezmoi update`.
 ## The agent
 
 The agent is you. `gh auth login` is the one GitHub credential and `gh` the one GitHub tool;
-git borrows the token. Agent commits carry the `Claude` author and the co-author trailer on the
-branch; the squash rewrites both, so on `main` the PR is the record.
-Branch protection and the never-push-main rule are the gate.
+git borrows the token. Agent commits are alxjrvs's, with Claude Code's own co-author trailer;
+the squash-merged PR is the record. Branch protection and the never-push-main rule are the gate.
 
 A container has no token; its secrets are the environment's own. Project secrets are 1Password
 Environments, mounted, never on disk. Employer config is the employer's marketplace, installed by
@@ -72,7 +71,7 @@ run once by the owner:
 ```
 
 `git grep -ilE 'alxjrvs|GitHubSSH'` finds every file to change: git identity and signing
-key (`home/dot_config/git/config.tmpl`); the marketplace, plugin and co-author trailer
+key (`home/dot_config/git/config.tmpl`); the marketplace and plugin
 (`home/dot_claude/settings.json.tmpl`); the SSH items
 (`home/dot_config/1Password/ssh/agent.toml`); the launchd label (the plist under `home/Library`
 and its script); and the persona (`home/dot_claude/CLAUDE.md`).
