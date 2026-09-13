@@ -20,12 +20,12 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 
 - `home/dot_claude/` is the **user-global** Claude config (`~/.claude/`). The repo-root
   `.claude/` is this repo's project scope. Don't conflate them.
-- CLIs and apps are Brewfile lines, Mac only; mise holds node, bun and the npm-built language
-  servers; the Claude Code CLI is the native installer and git is the system's. `chezmoi apply`
-  reconciles and never upgrades.
+- Every CLI and runtime is a mise tool, on both OSes; a Mac's apps are Brewfile casks; the
+  Claude Code CLI is the native installer and git is the system's. `chezmoi apply` reconciles
+  and never upgrades.
 - Machine setup is `home/.chezmoiscripts/`, flat: guarded every-apply scripts for Homebrew and
   provisioning, `onchange` on the Brewfile, mise config and Caps Lock plist hashes and on the macOS
-  defaults.
+  defaults. mise installs itself.
 - One GitHub identity: `gh auth login`, keychain-backed, never `--insecure-storage`.
 - nvim is plugin-free. `home/.chezmoitemplates/claude-settings.json` carries divergences from
   defaults; don't tidy a key away without reading why it is there.

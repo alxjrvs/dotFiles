@@ -1,8 +1,34 @@
-# ~/.config/mise/config.toml: language runtimes, and the two npm-built language servers, so the
-# machine has one node. Every other CLI is a Brewfile line. A project pins its own versions in
-# its own mise file.
+# ~/.config/mise/config.toml: every CLI and runtime, on every machine. A Mac's apps are
+# Brewfile casks; a project pins its own versions in its own mise file. `mise upgrade` upgrades.
 [tools]
 node = "lts"
 bun = "latest"
 "npm:bash-language-server" = "latest"
 "npm:typescript-language-server" = "latest"
+
+# Shell
+atuin = "latest"
+fzf = "latest"
+starship = "latest"
+zoxide = "latest"
+
+# Git
+gh = "latest"
+delta = "latest"
+lefthook = "latest"
+
+# Files and text
+bat = "latest"
+eza = "latest"
+fd = "latest"
+jq = "latest"
+ripgrep = "latest"
+
+# Editor and language servers
+neovim = "latest"
+biome = "latest"
+marksman = "latest"
+rust-analyzer = "latest"
+shellcheck = "latest"
+shfmt = "latest"
+taplo = "latest"

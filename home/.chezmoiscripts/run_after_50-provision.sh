@@ -4,7 +4,7 @@
 # it). No hash gate: a step waiting on `gh auth login` on a fresh machine converges on the next
 # apply. Idempotent and cheap when converged; every tool is guarded.
 set -euo pipefail
-export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 
 # Claude Code CLI via the native installer, which self-updates.
 command -v claude > /dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash

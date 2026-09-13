@@ -5,5 +5,5 @@
 typeset -U path PATH
 path=("$HOME/.local/bin" $path)
 # Shims for programs that never read ~/.zshrc (editors, agents); ~/.zshrc activates for the
-# interactive shell on top. mise's documented split.
+# interactive shell on top. mise's documented split. Every CLI is a mise tool, so this is PATH.
 (( $+commands[mise] )) && eval "$(mise activate zsh --shims)"
