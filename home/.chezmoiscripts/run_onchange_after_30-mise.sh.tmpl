@@ -1,10 +1,10 @@
 #!/bin/bash
-# Runtimes and the npm-built language servers, re-run when the mise config changes. prune drops
-# versions no config names any more and rebuilds the shims, so a retired tool cannot shadow brew's.
-# Guarded: a host without mise (a container) has its runtimes from elsewhere.
+# Every CLI and runtime, re-run when the mise config changes. mise installs itself when absent
+# (its own installer, into ~/.local/bin, on either OS); prune drops versions no config names any
+# more and rebuilds the shims, so a retired tool cannot shadow another.
 # mise config hash: {{ include "dot_config/mise/config.toml" | sha256sum }}
 set -euo pipefail
-export PATH="/opt/homebrew/bin:$PATH"
-command -v mise > /dev/null 2>&1 || exit 0
+export PATH="$HOME/.local/bin:$PATH"
+command -v mise > /dev/null 2>&1 || curl -fsSL https://mise.run | sh
 mise install --yes
 mise prune --yes

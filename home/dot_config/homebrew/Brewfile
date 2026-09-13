@@ -1,41 +1,11 @@
-# ~/.config/homebrew/Brewfile — the CLIs and apps on the machine. Runtimes (node, bun) and the
-# npm-built language servers are mise's, in ~/.config/mise/config.toml, so no formula here
-# drags in a second node. Git is Xcode's.
+# ~/.config/homebrew/Brewfile — the Mac's apps. Every CLI and runtime is mise's, in
+# ~/.config/mise/config.toml; chezmoi is here until its own installer owns it. Git is Xcode's.
 #
 # `chezmoi apply` reconciles (`brew bundle --no-upgrade`) and never upgrades: a cask upgrade
-# replaces the .app and quits the running program. Upgrading is `brew upgrade --formula`, and
-# `brew upgrade --cask <name>` when an app genuinely needs moving.
+# replaces the .app and quits the running program. Upgrading an app is `brew upgrade --cask
+# <name>` when it genuinely needs moving.
 
-# ── Bootstraps ────────────────────────────────────────────────────────
-brew "mise"
 brew "chezmoi"
-
-# ── Shell ─────────────────────────────────────────────────────────────
-brew "atuin"
-brew "fzf"
-brew "starship"
-brew "zoxide"
-
-# ── Git ───────────────────────────────────────────────────────────────
-brew "gh"
-brew "git-delta"
-brew "lefthook"
-
-# ── Files and text ────────────────────────────────────────────────────
-brew "bat"
-brew "eza"
-brew "fd"
-brew "jq"
-brew "ripgrep"
-
-# ── Editor and language servers ───────────────────────────────────────
-brew "neovim"
-brew "biome"
-brew "marksman"
-brew "rust-analyzer"
-brew "shellcheck"
-brew "shfmt"
-brew "taplo"
 
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"

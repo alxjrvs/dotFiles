@@ -16,7 +16,7 @@ gh auth login && chezmoi apply
 `init` clones into `~/Code/dotFiles`, renders the config template, which pins the source there,
 and applies. `apply` runs [`home/.chezmoiscripts/`](home/.chezmoiscripts/): Homebrew when it is
 absent (the one password prompt: its installer needs sudo), then the files, then the Homebrew
-bundle, mise runtimes, macOS defaults and the Caps Lock agent when their inputs change, and
+bundle, mise (every CLI and runtime), macOS defaults and the Caps Lock agent when their inputs change, and
 provisioning every time (Claude Code CLI, gh extensions, the plugins `settings.json` declares). The steps behind
 `gh auth login` converge on the second apply.
 [`home/.chezmoiignore`](home/.chezmoiignore) names what is Mac-only.
@@ -33,7 +33,7 @@ Day to day: edit in the checkout, `chezmoi apply`, commit, PR. GitHub is the gat
 ruleset requires a pull request and the `lint` check, push protection stops a secret before it
 lands, and [`.github/gate.sh`](.github/gate.sh) is those settings as a command. Drift:
 `chezmoi verify`.
-Upgrades: `brew upgrade --formula`, `mise upgrade`; apply reconciles and never upgrades. Another
+Upgrades: `mise upgrade`, `brew upgrade --cask <app>`; apply reconciles and never upgrades. Another
 machine: `chezmoi update`.
 
 ## The agent
