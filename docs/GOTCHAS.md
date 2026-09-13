@@ -45,7 +45,7 @@ the PRs; when a subject is gone, delete its entry.
 ## GitHub
 
 - **The ruleset requires the check named `lint`; a job beside it merges red under auto-merge.**
-  `lint` is the summary job, and it fails unless every matrix leg succeeded.
+  `lint` is the summary job, and it fails unless both jobs behind it succeeded.
 - **Secret scanning, push protection and the ruleset are repo settings, not repo files:** a
   fork starts with none of them. `.github/gate.sh` sets them; nothing turns them on by itself.
 
