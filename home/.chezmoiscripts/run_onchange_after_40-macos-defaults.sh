@@ -8,19 +8,17 @@ defaults write NSGlobalDomain KeyRepeat -int 2
 defaults write NSGlobalDomain InitialKeyRepeat -int 15
 defaults write NSGlobalDomain ApplePressAndHoldEnabled -bool false
 
-# Finder: everything visible, POSIX path in the title. `_FXShowPosixPathInTitle` is the key
-# Finder reads; it was misspelled `…InWindowTitle` for years and read as converged while doing
-# nothing.
+# Finder: everything visible, POSIX path in the title (the key Finder reads: docs/GOTCHAS.md).
 defaults write com.apple.finder AppleShowAllFiles -bool true
 defaults write NSGlobalDomain AppleShowAllExtensions -bool true
 defaults write com.apple.finder _FXShowPosixPathInTitle -bool true
 
-# Trackpad tap-to-click: the built-in and Bluetooth trackpad domains plus the global behaviour
-# key, which is the set nix-darwin writes; any one alone is read as converged while doing nothing.
+# Trackpad tap-to-click: all four writes, or it does nothing (docs/GOTCHAS.md).
 defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
 defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
 defaults write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
 defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+
 # Dock hidden with no delay.
 defaults write com.apple.dock autohide -bool true
 defaults write com.apple.dock autohide-delay -float 0
