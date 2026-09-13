@@ -20,7 +20,8 @@ there, not here; when a subject is gone, delete its entry. History is in the PRs
 
 ## chezmoi
 
-- **Apply never removes a target whose source was deleted.** `.chezmoiremove` names it.
+- **Apply never removes a target whose source was deleted.** The PR that deletes a source names
+  the `rm` for each machine; `.chezmoiremove` is for a removal too big to type.
 - **`run_onchange_` records its hash whenever the script exits 0, an early guard included.**
   Anything that may need a retry (behind `gh auth login`) is a `run_` script.
 - **A run script cannot call `chezmoi`:** the outer apply holds the persistent-state lock, so

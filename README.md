@@ -57,7 +57,7 @@ install.sh              chezmoi's generated container hook: install chezmoi if m
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/.chezmoiscripts/   machine setup: Homebrew (when absent), brew, mise, macOS defaults, Caps Lock (onchange), provision (every apply)
 home/dot_claude/        user-global Claude Code config
-home/.chezmoi*          chezmoi's own contract: config template, version floor, ignores, externals, removals, templates
+home/.chezmoi*          chezmoi's own contract: config template, version floor, ignores, externals, templates
 docs/GOTCHAS.md         traps still armed and the rule each forces; never applied to a machine
 ```
 
