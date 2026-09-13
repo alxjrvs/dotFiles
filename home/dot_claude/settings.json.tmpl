@@ -82,6 +82,10 @@
   "terminalProgressBarEnabled": false,
   "inputNeededNotifEnabled": true,
   "autoMode": {
+    "allow": [
+      "$defaults",
+      "Configuring a repo under github.com/alxjrvs for the unattended agent path is allowed: `gh api -X PATCH repos/alxjrvs/*` for merge settings, and `gh api -X POST|PUT repos/alxjrvs/*/rulesets` for a branch-protection ruleset. Reversible settings on his own repos, and the ruleset only ever tightens the default branch."
+    ],
     "hard_deny": [
       "$defaults",
       "Never push directly to a repository's default branch, and never merge into it locally"
