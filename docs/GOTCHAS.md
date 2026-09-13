@@ -40,6 +40,11 @@ there, not here; when a subject is gone, delete its entry. History is in the PRs
   and keeps its newline; a desktop-UI write is red by one byte until the next CLI write or
   apply. A choice saved by the CLI that the template does not declare lasts until the next
   apply; `chezmoi diff` shows what would go.
+- **A test or agent that sets `git config user.*` does it in its own temp repo** (`git -C
+  "$tmp"`) or through `GIT_CONFIG_KEY_n`, never bare in a checkout: the source checkout's
+  `.git/config` is shared by every worktree, is not a chezmoi target so `verify` cannot see it,
+  and since #388 nothing in the settings env masks `user.*`. A fixture identity authored real
+  commits this way twice.
 - **On Linux the sandbox needs bubblewrap and socat, and without them runs unsandboxed** after
   a warning. In a devcontainer the outer boundary is the sandbox; on a Linux desktop, install
   both.
