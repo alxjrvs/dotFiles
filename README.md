@@ -33,7 +33,7 @@ this repo, which runs [`install.sh`](install.sh).
 | drift | `chezmoi verify` |
 | upgrade | `mise upgrade`, `chezmoi upgrade`, `brew upgrade --cask <app>`; apply never upgrades |
 | the config template changed | `chezmoi apply --init` |
-| the repo settings | [`.github/gate.sh`](.github/gate.sh), once, by the owner |
+| the repo settings | [`.github/gate.sh`](.github/gate.sh), once per repo, by the owner: here and [`alxjrvs/oberon`](https://github.com/alxjrvs/oberon), which every fresh bootstrap installs from |
 
 GitHub is the gate: `main` takes squash-merged pull requests with the `lint` check green, and
 push protection stops a secret before it lands. The agent is you: `gh auth login` is the one
