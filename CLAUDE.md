@@ -21,6 +21,8 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 
 - `home/dot_claude/` is the **user-global** Claude config (`~/.claude/`). The repo-root
   `.claude/` is this repo's project scope. Don't conflate them.
+- `~/Code/dotFiles` is chezmoi's source and stays on `main`; only `chezmoi update` moves it. A
+  change is made in a worktree and applied from there with `--source "$PWD"`.
 - Every CLI and runtime is a mise tool, on both OSes; a Mac's apps are Brewfile casks; chezmoi,
   mise and the Claude Code CLI are their own installers' (`~/.local/bin`) and git is the
   system's. `chezmoi apply` reconciles and never upgrades.

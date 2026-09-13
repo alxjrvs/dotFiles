@@ -42,6 +42,12 @@ there, not here; when a subject is gone, delete its entry. History is in the PRs
 
 ## chezmoi
 
+- **`apply` renders whatever branch the source checkout is on and says nothing.** A session in
+  any repo can `git switch` there (Claude Code's worktree isolation guards only the repo it was
+  launched from); `update` then fails on a branch with no upstream, and `verify` compares the
+  machine against not-main. The rule: the checkout stays on `main`.
+- **Never `--init` with `--source` from a worktree:** the config template pins `sourceDir` to
+  the working tree it was rendered from, and the app deletes that directory with the worktree.
 - **Apply never removes a target whose source was deleted.** The PR that deletes a source names
   the `rm` for each machine; `.chezmoiremove` is for a removal too big to type.
 - **`run_onchange_` records its hash whenever the script exits 0, an early guard included.**

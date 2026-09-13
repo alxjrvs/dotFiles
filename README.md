@@ -21,10 +21,10 @@ at this repo, which runs [`install.sh`](install.sh).
 
 | | |
 |---|---|
-| change something | edit the checkout, `chezmoi apply`, commit, PR |
+| change something | in a worktree: edit, `chezmoi apply --source "$PWD"` from its root, commit, PR |
+| a PR landed, here or elsewhere | `chezmoi update` |
 | drift | `chezmoi verify` |
 | upgrade | `mise upgrade`, `chezmoi upgrade`, `brew upgrade --cask <app>`; apply never upgrades |
-| another machine | `chezmoi update` |
 | the config template changed | `chezmoi apply --init` |
 | the repo settings | [`.github/gate.sh`](.github/gate.sh), once, by the owner |
 
