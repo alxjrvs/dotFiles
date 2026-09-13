@@ -11,3 +11,5 @@
 .config/karabiner/karabiner.json
 # #364 2026-09-10
 .ssh/allowed_signers
+# #372 2026-09-12
+.config/tealdeer

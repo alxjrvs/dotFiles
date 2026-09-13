@@ -33,7 +33,6 @@ brew "eza"
 brew "fd"
 brew "jq"
 brew "ripgrep"
-brew "tealdeer"
 
 # ── Editor and language servers ───────────────────────────────────────
 brew "neovim"

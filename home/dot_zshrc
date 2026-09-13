@@ -41,8 +41,6 @@ zstyle ':completion:*:git-checkout:*' sort false
 
 # --- tools -------------------------------------------------------------------------------------
 if (( $+commands[fzf] )); then
-  # Empty so fzf skips its Ctrl-R binding and atuin's wins; vicmd gets atuin's explicitly below.
-  export FZF_CTRL_R_COMMAND=
   export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40% --color=bg+:#3b4252,bg:#2e3440,spinner:#81a1c1,hl:#a3be8c,fg:#d8dee9,header:#a3be8c,info:#ebcb8b,pointer:#81a1c1,marker:#81a1c1,prompt:#81a1c1'
   export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow'
   export FZF_CTRL_T_OPTS="--preview 'bat --color=always {}' --preview-window right:50%"
@@ -51,7 +49,8 @@ if (( $+commands[fzf] )); then
   eval "$(fzf --zsh)"
 fi
 if (( $+commands[atuin] )); then
-  # --disable-up-arrow keeps Up/Down as plain history navigation.
+  # --disable-up-arrow keeps Up/Down as plain history navigation. atuin's init takes Ctrl-R from
+  # fzf in emacs and viins; in vicmd it binds `/`, so Ctrl-R there is ours.
   eval "$(atuin init zsh --disable-up-arrow)"
   bindkey -M vicmd '^R' atuin-search
 fi
