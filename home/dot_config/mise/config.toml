@@ -8,7 +8,6 @@ bun = "latest"
 atuin = "latest"
 fzf = "latest"
 starship = "latest"
-zoxide = "latest"
 
 # Git
 gh = "latest"

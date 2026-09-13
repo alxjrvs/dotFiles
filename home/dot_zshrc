@@ -56,11 +56,10 @@ if (( $+commands[atuin] )); then
   eval "$(atuin init zsh --disable-up-arrow)"
   bindkey -M vicmd '^R' atuin-search
 fi
-(( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
 (( $+commands[starship] )) && eval "$(starship init zsh)"
 
 # --- aliases -----------------------------------------------------------------------------------
-alias gs='git status' gp='git push' gpr='git pull --rebase' gco='git checkout' gd='git diff'
+alias gs='git status' gp='git push' gpr='git pull --rebase' gco='git checkout'
 alias ..='cd ..'
 (( $+commands[nvim] )) && alias vim='nvim'
 
