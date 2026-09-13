@@ -11,8 +11,9 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 
 - Native over special: deleting custom code for a built-in is the highest-value change.
 - Guilty until proven load-bearing: every dependency, wrapper, and line earns its weight.
-- One source, every machine: `.chezmoiignore` names what is Mac-only, `.opSign` names what
-  needs the 1Password app, and no by-hand step remains that `chezmoi apply` could converge.
+- One source, two hosts: a Mac has everything; Linux is a container with no 1Password app, no
+  signing and no sudo. `.chezmoiignore` names what is Mac-only, and templates branch on
+  `.chezmoi.os` alone. No by-hand step remains that `chezmoi apply` could converge.
 - Standard, and agentic-enabled: 1Password, git, ssh, `gh`, MCP stay stock, wired for agents.
 - Keep it legible: one line on the decision, nothing on the mechanism.
 
