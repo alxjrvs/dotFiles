@@ -29,7 +29,11 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 - Machine setup is `home/.chezmoiscripts/`, flat: guarded every-apply scripts for Homebrew and
   provisioning, `onchange` on the Brewfile, mise config and Caps Lock plist hashes and on the macOS
   defaults. mise installs itself.
-- One GitHub identity: `gh auth login`, keychain-backed, never `--insecure-storage`.
+- One GitHub identity: `gh auth login`; the login keychain on a Mac, a plaintext
+  `~/.config/gh/hosts.yml` in a container, where the container is the boundary (gh warns,
+  cli/cli#10108). Never `--insecure-storage` on a Mac.
+- `home/dot_claude/loop.md` is what a bare `/loop` runs in any repo without its own
+  `.claude/loop.md`; `/loop <prompt>` ignores it.
 - nvim is `$EDITOR` and nothing more: no plugins, no language servers.
 - The terminal owns the palette: a tool names a theme or an ANSI color, never a hex code.
 - `home/dot_claude/private_settings.json.tmpl` carries divergences from defaults plus every key

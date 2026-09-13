@@ -40,8 +40,8 @@ credential, `gh` the one tool, git borrows the token, and the squash-merged PR i
 install.sh              chezmoi's generated devcontainer hook
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/.chezmoiscripts/   machine setup: Homebrew and its apps (Mac), mise with every CLI (both), macOS defaults, provisioning, Caps Lock
-home/dot_claude/        user-global Claude Code config
-home/.chezmoi*          chezmoi's own contract: config template, version floor, ignores, externals
+home/dot_claude/        user-global Claude Code config, and the standing loop a bare `/loop` runs
+home/.chezmoi*          chezmoi's own contract: config template, version floor (the oldest chezmoi that reads archive-file externals), ignores, externals
 docs/GOTCHAS.md         traps still armed and the rule each forces
 ```
 

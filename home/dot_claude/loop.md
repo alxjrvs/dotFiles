@@ -1,4 +1,4 @@
-# Standing loop
+# Standing loop: what a bare `/loop` runs
 
 Keep working the current branch to a landed state. Do not stop to ask for
 permission on mechanical steps.
