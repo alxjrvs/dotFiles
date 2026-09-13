@@ -1,11 +1,7 @@
-# Which keys the 1Password SSH agent offers, most-used first. Without this it offers every key
-# in every vault, and GitHub rejects auth after six. https://www.1password.dev/ssh/agent/config
+# Which keys the 1Password SSH agent offers. Without this it offers every key in every vault,
+# and GitHub rejects auth after six. https://www.1password.dev/ssh/agent/config
 
-# The commit-signing key (user.signingkey in ~/.gitconfig); git auth itself is HTTPS.
+# The commit-signing key (user.signingkey in the git config); git auth itself is HTTPS.
 [[ssh-keys]]
 item = "GitHubSSH"
-vault = "Private"
-
-[[ssh-keys]]
-item = "id_ed25519"
 vault = "Private"

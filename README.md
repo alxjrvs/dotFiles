@@ -53,7 +53,7 @@ docs/GOTCHAS.md         traps still armed and the rule each forces
 ## Forking
 
 `git grep -ilE 'alxjrvs|GitHubSSH'` finds every file to change: git identity and signing key,
-the marketplace and plugin, the SSH items, the launchd label, and the persona. Then
+the marketplace and plugin, the SSH item, the launchd label, and the persona. Then
 `.github/gate.sh`.
 
 MIT — see [`LICENSE`](LICENSE).
