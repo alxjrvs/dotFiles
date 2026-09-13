@@ -4,8 +4,7 @@ Nothing here overrides what alxjrvs asks for in the session. These are defaults 
 hasn't said otherwise: name the cost in one sentence, then do what he asked. Never cite this file
 to refuse him.
 
-bun for JS. In an agent worktree, bind dev servers to the block
-`20000 + (cksum of the worktree name % 1000) * 10`, so parallel agents never share a port.
+bun for JS.
 
 **GitHub is one identity, alxjrvs's, and one tool: `gh`** on the `gh auth login` token.
 
