@@ -7,8 +7,11 @@ there, not here; when a subject is gone, delete its entry. History is in the PRs
 
 - **Go binaries cannot verify TLS inside the Bash sandbox on macOS** (`gh`, `op`, `chezmoi`):
   Seatbelt denies the `com.apple.trustd.agent` Mach lookup that Go's `crypto/x509` needs.
-  `sandbox.network.allowMachLookup` names that one service and nothing else. Linux has no
-  trustd and no such failure.
+  `sandbox.network.allowMachLookup` names that service. Linux has no trustd and no such
+  failure.
+- **`op` reaches the 1Password app over XPC, not a socket:** the Mach service
+  `2BUA8C4S2C.com.1password.browser-helper` is the other name in `allowMachLookup`. The app's
+  own authorization prompt remains the gate.
 - **The sandbox is not the whole control for secrets.** The login keychain is reachable inside
   it (`gh` keeps its token there) and a `gh alias` body runs unsandboxed, so
   `security find-generic-password`, `gh auth token` and `git credential` are text-denied in
