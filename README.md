@@ -14,13 +14,8 @@ gh auth login && chezmoi apply
 ```
 
 The first apply asks for a password once (Homebrew's installer, on a Mac); what waits on
-`gh auth login` converges on the second. An ephemeral container (a Claude Code cloud
-environment's setup script) takes one line and leaves nothing behind; a devcontainer points VS
-Code's `dotfiles.repository` at this repo, which runs [`install.sh`](install.sh).
-
-```bash
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --one-shot alxjrvs/dotFiles
-```
+`gh auth login` converges on the second. A devcontainer points VS Code's `dotfiles.repository`
+at this repo, which runs [`install.sh`](install.sh).
 
 ## Day to day
 
