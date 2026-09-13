@@ -1,7 +1,5 @@
 #!/bin/bash
-# Loads the Caps Lock launchd agent (Library/LaunchAgents/com.alxjrvs.capslock.plist, managed),
-# re-run when the plist changes. Mac-only by .chezmoiignore. bootout first so a changed plist is
-# re-read; RunAtLoad applies the mapping now.
+# Loads the Caps Lock launchd agent when its plist changes; bootout first so the change is read.
 # plist hash: {{ include "Library/LaunchAgents/com.alxjrvs.capslock.plist" | sha256sum }}
 set -euo pipefail
 label=com.alxjrvs.capslock

@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- Caps Lock → Control with the OS's own remapper, re-applied at login because a hidutil
      mapping does not survive a reboot. Apple TN2450 usage IDs: 0x39 caps lock, 0xE0 left control.
-     Loaded by .chezmoiscripts/60-capslock.sh when this file changes. -->
+     Loaded by .chezmoiscripts/50-capslock.sh when this file changes. -->
 <plist version="1.0">
 <dict>
   <key>Label</key>

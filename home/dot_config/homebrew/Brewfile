@@ -1,16 +1,12 @@
-# ~/.config/homebrew/Brewfile — the Mac's apps. Every CLI and runtime is mise's, in
-# ~/.config/mise/config.toml; chezmoi is its own installer's, in ~/.local/bin; git is Xcode's.
-#
-# `chezmoi apply` reconciles (`brew bundle --no-upgrade`) and never upgrades: a cask upgrade
-# replaces the .app and quits the running program. Upgrading an app is `brew upgrade --cask
-# <name>` when it genuinely needs moving.
+# The Mac's apps. CLIs are mise's; chezmoi is its own installer's; git is Xcode's. Apply never
+# upgrades (a cask upgrade quits the running app): `brew upgrade --cask <name>` when it must.
 
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"
 cask "1password"
 
 # ── Apps ──────────────────────────────────────────────────────────────
-# The Claude desktop app. The Claude Code CLI is the native installer (run_after_50), never brew.
+# The Claude desktop app. The Claude Code CLI is the native installer (40-provision), never brew.
 cask "claude"
 cask "discord"
 cask "font-fira-code-nerd-font"

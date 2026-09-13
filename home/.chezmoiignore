@@ -4,8 +4,8 @@
 # A Mac has Homebrew, its apps, the launchd agent and the 1Password app; a container has none.
 .chezmoiscripts/00-homebrew.sh
 .chezmoiscripts/10-brew.sh
-.chezmoiscripts/40-macos-defaults.sh
-.chezmoiscripts/60-capslock.sh
+.chezmoiscripts/30-macos-defaults.sh
+.chezmoiscripts/50-capslock.sh
 .config/homebrew
 .config/ghostty
 .config/1Password
