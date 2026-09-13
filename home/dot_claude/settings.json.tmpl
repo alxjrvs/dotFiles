@@ -11,8 +11,8 @@
     "GIT_CONFIG_KEY_1": "url.https://github.com/.insteadOf",
     "GIT_CONFIG_VALUE_1": "git@github.com:",
     "GIT_CONFIG_KEY_2": "url.https://github.com/.insteadOf",
-    "GIT_CONFIG_VALUE_2": "ssh://git@github.com/",
-    "NINETY_API_TOKEN_COMMAND": "op read --account my.1password.com op://claude-agent/gninety/credential"
+    "GIT_CONFIG_VALUE_2": "ssh://git@github.com/"{{ if .opSign }},
+    "NINETY_API_TOKEN_COMMAND": "op read --account my.1password.com op://claude-agent/gninety/credential"{{ end }}
   },
   "attribution": {
     "commit": "Co-Authored-By: alxjrvs <alxjrvs@gmail.com>",
@@ -44,12 +44,12 @@
   },
   "enabledPlugins": {
     "agent-friendly-repo@oberon": true,
-    "gninety@gnar": true,
     "typescript-lsp@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
-    "toolkit@gnar": true,
-    "1password-mcp@oberon": true
+    "toolkit@gnar": true{{ if .opSign }},
+    "gninety@gnar": true,
+    "1password-mcp@oberon": true{{ end }}
   },
   "extraKnownMarketplaces": {
     "gnar": {

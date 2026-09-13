@@ -43,6 +43,8 @@ jobs:
       - run: chezmoi init --source "$GITHUB_WORKSPACE" $CHEZMOI_ARGS
       - run: chezmoi $CHEZMOI_ARGS apply --exclude scripts
       - run: chezmoi $CHEZMOI_ARGS verify --exclude scripts
+      # The settings template renders to JSON on either branch of its conditionals.
+      - run: jq -e . "$HOME_T/.claude/settings.json" > /dev/null
       # The applied shell must start with none of the guarded tools present.
       - run: HOME="$HOME_T" zsh -l -i -c 'echo shell ok'
       # What verify cannot check: git parses the rendered XDG file, gh is the last github.com
