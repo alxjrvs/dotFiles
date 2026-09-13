@@ -1,6 +1,6 @@
-# ~/.config/git/config, one template. Apple's git sets credential.helper=osxkeychain in its
-# bundled gitconfig; the github.com helper below severs the keychain for GitHub (an empty helper
-# resets the list) so gh alone serves it.
+# ~/.config/git/config, one template. On a Mac the empty helper resets the list Apple's bundled
+# gitconfig starts with osxkeychain, for every host: gh alone serves github.com, and inside the
+# Claude Code sandbox git no longer offers the proxy's credentials to a keychain it cannot write.
 {{ if eq .chezmoi.os "darwin" -}}
 # A Mac signs with the 1Password app's SSH key, behind Touch ID; a container signs nothing.
 [commit]
@@ -9,6 +9,8 @@
 	gpgSign = true
 [gpg "ssh"]
 	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+[credential]
+	helper =
 
 {{ end -}}
 [user]
@@ -18,10 +20,8 @@
 	signingkey = key::ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKjF9JmW396EbH0n1zWeU7eT+2VvMFZAn+A1WKAi4tqT
 # github.com through gh's token (what `gh auth setup-git` writes).
 [credential "https://github.com"]
-	helper =
 	helper = !gh auth git-credential
 [credential "https://gist.github.com"]
-	helper =
 	helper = !gh auth git-credential
 [core]
 	editor = nvim
