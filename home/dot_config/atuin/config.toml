@@ -7,13 +7,12 @@ inline_height = 20
 workspaces = true
 search_mode = "daemon-fuzzy"
 
-# Drop typed secrets before they are stored: zsh's HIST_IGNORE_SPACE does not reach atuin's
-# hook, and the default secrets_filter misses the `key: value` form. Top-level, not [history].
+# secrets_filter (default on) already drops known token formats (GitHub, AWS, Slack, Stripe,
+# npm, ...) and leading-space commands; these are the two it misses: the generic `key: value`
+# form and sk- (OpenAI, Anthropic) keys. Top-level, not [history].
 history_filter = [
   "(?i)(password|secret|token|apikey|api[_-]?key|pat)\\s*[:=]\\s*\\S+",
-  "gh[oprsu]_[A-Za-z0-9]{20,}",
   "sk-[A-Za-z0-9_-]{20,}",
-  "AKIA[0-9A-Z]{16}",
 ]
 
 [daemon]
