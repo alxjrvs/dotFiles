@@ -20,6 +20,9 @@ there, not here; when a subject is gone, delete its entry. History is in the PRs
   a path.
 - **The desktop app runs its own bundled Claude Code, not `~/.local/bin/claude`,** and the two
   update on different schedules. A settings key is verified in a terminal and in the Code tab.
+- **An auto-mode denial is visible only in `/permissions` › Recently denied** (or a
+  PermissionDenied hook); the denial log hook is gone, so "no denials in the log" proves
+  nothing.
 - **`chezmoi apply` cannot run inside the Bash sandbox:** its write scope is the working
   directory and `$TMPDIR`, every target and the state db are under `~`, and the `~/.claude`
   targets are paths no `allowWrite` can exempt. `sandbox.excludedCommands` runs `apply` and
