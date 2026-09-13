@@ -1,2 +1,37 @@
-# starship prompt: the default, on one line.
+# starship prompt: bold cwd, then muted-bracketed git chips, on one line. ASCII throughout so
+# it survives a terminal without the nerd font.
+
 add_newline = false
+format = "$directory$git_branch$git_state$git_status $character"
+
+# repo_root_style muted so a worktree path stays readable beside the bold part.
+[directory]
+truncation_length = 4
+style = "bold white"
+repo_root_style = "bright-black"
+read_only = " "
+
+# `symbol` is a bare space, not the default glyph; `directory` already trails a space.
+[git_branch]
+symbol = " "
+style = "blue"
+format = '[\[](bright-black)[$symbol$branch]($style)[\]](bright-black)'
+
+# `style` omitted: starship's default is already bold yellow.
+[git_state]
+format = '[\[](bright-black)[$state]($style)[\]](bright-black)'
+
+# One glyph and count per state. The whole chip vanishes on a clean tree.
+[git_status]
+format = '([\[](bright-black)$conflicted$staged$modified$deleted$renamed$untracked$stashed$ahead_behind[\]](bright-black))'
+conflicted = '[~$count](bold red)'
+staged     = '[+$count](green)'
+modified   = '[!$count](yellow)'
+deleted    = '[-$count](red)'
+renamed    = '[»$count](purple)'
+untracked  = '[?$count](cyan)'
+stashed    = '[*$count](purple)'
+# Consumed through `$ahead_behind` in the format string; an unmapped name renders as nothing.
+ahead      = '[^$count](green)'
+behind     = '[v$count](red)'
+diverged   = '[^$ahead_count](green)[v$behind_count](red)'
