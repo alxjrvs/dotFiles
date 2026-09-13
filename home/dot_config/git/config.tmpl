@@ -1,6 +1,6 @@
-# ~/.config/git/config, one template. Apple's git already sets credential.helper=osxkeychain and
-# init.defaultBranch=main in its bundled gitconfig; the github.com helper below severs the
-# keychain for GitHub (an empty helper resets the list) so gh alone serves it.
+# ~/.config/git/config, one template. Apple's git sets credential.helper=osxkeychain in its
+# bundled gitconfig; the github.com helper below severs the keychain for GitHub (an empty helper
+# resets the list) so gh alone serves it.
 {{ if eq .chezmoi.os "darwin" -}}
 # macOS: commits and tags signed with the 1Password SSH key, behind Touch ID. A container signs
 # nothing.

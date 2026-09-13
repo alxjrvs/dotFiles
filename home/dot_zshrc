@@ -20,12 +20,12 @@ zle -N zle-keymap-select
 zle -N zle-line-init
 
 # --- environment -------------------------------------------------------------------------------
-export EDITOR=nvim VISUAL=nvim LANG=en_US.UTF-8 LESS='-RFX'
+# LANG: what the terminal set, else the UTF-8 locale every libc ships (en_US is absent from
+# most images, and zsh's setlocale fails silently).
+export EDITOR=nvim VISUAL=nvim LANG=${LANG:-C.UTF-8} LESS='-RFX'
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 export GH_PAGER=delta # env, not gh's config.yml: gh rewrites that file, so it is not managed
-(( $+commands[bat] )) && export MANPAGER="sh -c 'col -bx | bat -l man -p'"
-# sharp: force its prebuilt binary; a stray global libvips makes the from-source build fail.
-export SHARP_IGNORE_GLOBAL_LIBVIPS=1
+(( $+commands[bat] )) && export MANPAGER="bat -plman"
 
 # --- plugins: two, chezmoi externals; `source` is the plugin manager --------------------------
 _zsh_plugins=$HOME/.local/share/zsh/plugins
