@@ -9,11 +9,9 @@ export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 # Claude Code CLI via the native installer, which self-updates.
 command -v claude > /dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash
 
-# gh extensions, owner-qualified because same-named community forks exist.
+# The one gh extension, owner-qualified because same-named community forks exist.
 if command -v gh > /dev/null 2>&1 && gh auth status > /dev/null 2>&1; then
-  for ext in github/gh-stack dlvhdr/gh-dash meiji163/gh-notify; do
-    gh extension list 2> /dev/null | awk '{print $3}' | grep -qx "$ext" || gh extension install "$ext"
-  done
+  gh extension list 2> /dev/null | awk '{print $3}' | grep -qx github/gh-stack || gh extension install github/gh-stack
 fi
 
 if command -v claude > /dev/null 2>&1 && command -v jq > /dev/null 2>&1; then
