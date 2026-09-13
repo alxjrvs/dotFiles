@@ -15,8 +15,6 @@ brew "atuin"
 brew "fzf"
 brew "starship"
 brew "zoxide"
-brew "zsh-autosuggestions"
-brew "zsh-syntax-highlighting"
 
 # ── Git ───────────────────────────────────────────────────────────────
 brew "gh"

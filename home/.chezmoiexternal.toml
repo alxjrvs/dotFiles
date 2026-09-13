@@ -1,7 +1,8 @@
-# The Claude Code statusline: two scripts from a tag tarball, straight onto PATH under the names
-# .chezmoitemplates/claude-settings.json calls. Bump the tag and the checksum together after
-# reading what changed:
+# Pinned tarballs from GitHub. Bump a tag and its checksum together after reading what changed:
 #   curl -fsSL <url> | shasum -a 256
+#
+# The Claude Code statusline: two scripts, straight onto PATH under the names
+# .chezmoitemplates/claude-settings.json calls.
 
 [".local/bin/claude-statusline"]
     type = "archive-file"
@@ -18,3 +19,20 @@
     stripComponents = 1
     path = "subagent-statusline.sh"
     executable = true
+
+# The two zsh plugins: scripts, not binaries. autosuggestions is one file; syntax-highlighting
+# reads its highlighters/ directory at load.
+[".local/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"]
+    type = "archive-file"
+    url = "https://github.com/zsh-users/zsh-autosuggestions/archive/refs/tags/v0.7.1.tar.gz"
+    checksum.sha256 = "0df7affff21cd87ed298e6a3970ed08a1dd66a6efa676454ee5b091ad503badf"
+    stripComponents = 1
+    path = "zsh-autosuggestions.zsh"
+
+[".local/share/zsh/plugins/zsh-syntax-highlighting"]
+    type = "archive"
+    url = "https://github.com/zsh-users/zsh-syntax-highlighting/archive/refs/tags/0.8.0.tar.gz"
+    checksum.sha256 = "5981c19ebaab027e356fe1ee5284f7a021b89d4405cc53dc84b476c3aee9cc32"
+    stripComponents = 1
+    # Directory members must match too, or their files have nowhere to land.
+    include = ["*/zsh-syntax-highlighting.zsh", "*/highlighters", "*/highlighters/*", "*/highlighters/*/*-highlighter.zsh", "*/.version", "*/.revision-hash"]
