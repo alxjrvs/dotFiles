@@ -3,12 +3,6 @@
 # plain one-liner. workingTree, not sourceDir: under `.chezmoiroot`, sourceDir is `home/`.
 sourceDir = {{ .chezmoi.workingTree | quote }}
 
-# The 1Password desktop app's signer, where its installer puts it; a Mac always has the app (a
-# Brewfile cask), a Linux box has it when its installer ran, a container never. Everything that
-# needs the app (ssh agent, signing, its MCP, a token it reads) keys on this, not on the OS.
-[data]
-    opSign = {{ if eq .chezmoi.os "darwin" }}"/Applications/1Password.app/Contents/MacOS/op-ssh-sign"{{ else if stat "/opt/1Password/op-ssh-sign" }}"/opt/1Password/op-ssh-sign"{{ else }}""{{ end }}
-
 # An every-apply script is not drift.
 [verify]
     exclude = ["always"]

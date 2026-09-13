@@ -36,7 +36,7 @@
     "agent-friendly-repo@oberon": true,
     "typescript-lsp@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true{{ if .opSign }},
+    "frontend-design@claude-plugins-official": true{{ if eq .chezmoi.os "darwin" }},
     "1password-mcp@oberon": true{{ end }}
   },
   "extraKnownMarketplaces": {
@@ -52,8 +52,7 @@
     "enabled": true,
     "network": {
       "allowUnixSockets": [
-        "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock",
-        "~/.1password/agent.sock"
+        "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
       ],
       "allowMachLookup": [
         "com.apple.trustd.agent"

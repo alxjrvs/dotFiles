@@ -14,15 +14,13 @@ gh auth login && chezmoi apply
 ```
 
 The first line installs chezmoi into `~/.local/bin` (`chezmoi upgrade` maintains it), clones
-into `~/Code/dotFiles`, renders the config template, which pins the source there and records
-whether the 1Password app is present, and applies. `apply` runs
+into `~/Code/dotFiles`, renders the config template, which pins the source there, and applies. `apply` runs
 [`home/.chezmoiscripts/`](home/.chezmoiscripts/): on a Mac, Homebrew when it is absent (the one
 password prompt: its installer needs sudo) and then the Homebrew bundle of apps; on either OS,
 mise (installing itself first) with every CLI and runtime; macOS defaults and the Caps Lock agent
 when their inputs change; and provisioning every time (Claude Code CLI, gh extensions, the
 plugins `settings.json` declares). The steps behind `gh auth login` converge on the second
-apply. [`home/.chezmoiignore`](home/.chezmoiignore) names what is Mac-only. On Linux, zsh is not
-the login shell until `chsh -s "$(command -v zsh)"`, once.
+apply. [`home/.chezmoiignore`](home/.chezmoiignore) names what is Mac-only; Linux is a container.
 
 An ephemeral container (a Claude Code cloud environment's setup script) takes one line, which
 leaves neither source nor binary behind; a devcontainer points VS Code's `dotfiles.repository`
@@ -59,7 +57,7 @@ install.sh              chezmoi's generated container hook: install chezmoi if m
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/.chezmoiscripts/   machine setup: Homebrew and its apps (Mac), mise with every CLI (both), macOS defaults, Caps Lock, provision
 home/dot_claude/        user-global Claude Code config
-home/.chezmoi*          chezmoi's own contract: config template (source path, 1Password predicate), version floor, ignores, externals
+home/.chezmoi*          chezmoi's own contract: config template (source path), version floor, ignores, externals
 docs/GOTCHAS.md         traps still armed and the rule each forces; never applied to a machine
 ```
 
