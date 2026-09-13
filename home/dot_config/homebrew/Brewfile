@@ -21,7 +21,8 @@ cask "devutils"      # offline developer toolbox (JSON/JWT/regex/diff)
 cask "gcloud-cli"
 cask "ngrok"
 cask "obs"
-cask "raycast"       # launcher and window management
+cask "raycast"       # launcher
+cask "rectangle"     # window management
 cask "slack"
 cask "tuple"
 cask "visual-studio-code"
