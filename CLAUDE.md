@@ -32,6 +32,10 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
   Brewfile casks; chezmoi, mise and the Claude Code CLI are their own installers' (`~/.local/bin`)
   and git is the system's. `chezmoi apply` reconciles and never upgrades, and what the Brewfile
   does not name it uninstalls, so a Homebrew formula shadowing a mise tool cannot accumulate.
+- `~/Code/.metadata_never_index` is a chezmoi target, so Spotlight indexes no repo on this
+  machine. It is one empty file and it earns its place: 58G and forty-odd `node_modules`
+  under `~/Code`, plus every agent worktree, kept `mds_stores` from ever settling. Code is
+  searched with `rg` and `fd`, which read the disk and not the index.
 - A worktree is the unit of work, either kind: Claude Code cuts its own under
   `.claude/worktrees/`, `git worktree add` is the by-hand one, and both apply from the worktree
   root with `--source "$PWD"`. Never `--init` from either.
