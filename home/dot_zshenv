@@ -1,0 +1,6 @@
+# ~/.zshenv: read by every zsh, including the ones no shell parents — launchd, cron, an editor's
+# task runner. The literal shims path, not `mise activate --shims`: no process per script.
+typeset -U path PATH
+path=("$HOME/.local/bin" "$HOME/.local/share/mise/shims" $path)
+# Ubuntu's /etc/zsh/zshrc runs compinit before ~/.zshrc; that file names this as the opt-out.
+skip_global_compinit=1

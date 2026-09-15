@@ -1,23 +1,28 @@
-# ~/.zshrc: interactive shells. Login-shell PATH lives in ~/.zprofile. Every tool is guarded, so
-# the same file degrades to a plain prompt on a host that has none of them.
+# ~/.zshrc: interactive shells. PATH starts in ~/.zshenv, re-prepended in ~/.zprofile. Every
+# tool is guarded, so the same file degrades to a plain prompt on a host that has none of them.
 
 (( $+commands[mise] )) && eval "$(mise activate zsh)"
 
 # --- options -----------------------------------------------------------------------------------
 setopt CORRECT EXTENDED_GLOB INTERACTIVE_COMMENTS NO_BEEP NO_FLOWCONTROL
-# History: atuin is the source of truth; the native file covers arrow-key recall only.
+# History: atuin is the source of truth and the only cross-session index, so append, never
+# share. zsh has no default HISTFILE and Ubuntu's /etc/zsh supplies none, so Linux kept none.
+HISTFILE=${ZDOTDIR:-$HOME}/.zsh_history
 HISTSIZE=10000
 SAVEHIST=10000
-setopt SHARE_HISTORY HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE HIST_VERIFY EXTENDED_HISTORY HIST_REDUCE_BLANKS
+setopt INC_APPEND_HISTORY HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE HIST_VERIFY EXTENDED_HISTORY HIST_REDUCE_BLANKS
 
 # --- vi mode -----------------------------------------------------------------------------------
 bindkey -v
 KEYTIMEOUT=1
 # Cursor: steady block in normal mode, blinking bar in insert (DECSCUSR 2 / 5).
 zle-keymap-select() { if [[ $KEYMAP == vicmd ]]; then print -n '\e[2 q'; else print -n '\e[5 q'; fi }
-zle-line-init() { print -n '\e[5 q'; }
+# smkx first: without application mode Home and End send sequences nothing is bound to.
+zle-line-init()   { (( ${+terminfo[smkx]} )) && printf '%s' ${terminfo[smkx]}; print -n '\e[5 q'; }
+zle-line-finish() { (( ${+terminfo[rmkx]} )) && printf '%s' ${terminfo[rmkx]} }
 zle -N zle-keymap-select
 zle -N zle-line-init
+zle -N zle-line-finish
 
 # --- environment -------------------------------------------------------------------------------
 # LANG: what the terminal set, else the UTF-8 locale every libc ships (en_US is absent from
@@ -25,7 +30,6 @@ zle -N zle-line-init
 # BAT_THEME is what delta, MANPAGER and the fzf preview read; bat's config file is not.
 export EDITOR=nvim VISUAL=nvim LANG=${LANG:-C.UTF-8} LESS='-RFX' BAT_THEME=Nord BAT_PAGING=never
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
-export GH_PAGER=delta # env, not gh's config.yml: gh rewrites that file, so it is not managed
 (( $+commands[bat] )) && export MANPAGER="bat -plman"
 
 # --- plugins: two, chezmoi externals; `source` is the plugin manager --------------------------
@@ -35,7 +39,7 @@ _zsh_plugin=$_zsh_plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # --- completion: brew shellenv (~/.zprofile) already put site-functions on fpath -------------
 autoload -Uz compinit
-compinit
+compinit -i # an insecure site-functions directory must not block every new shell on y/n
 zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
 zstyle ':completion:*:descriptions' format '[%d]'
@@ -48,7 +52,8 @@ if (( $+commands[fzf] )); then
   export FZF_CTRL_T_OPTS="--preview 'bat --color=always {}' --preview-window right:50%"
   export FZF_ALT_C_OPTS="--preview 'eza --icons -T {} | head -20'"
   export FZF_ALT_C_COMMAND='fd --type d --hidden --follow'
-  eval "$(fzf --zsh)"
+  # --zsh arrived in fzf 0.48; an older build on PATH must not print to every prompt.
+  eval "$(fzf --zsh 2> /dev/null)"
 fi
 if (( $+commands[atuin] )); then
   # --disable-up-arrow keeps Up/Down as plain history navigation. atuin's init takes Ctrl-R from
