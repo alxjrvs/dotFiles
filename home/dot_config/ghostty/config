@@ -23,6 +23,9 @@ macos-option-as-alt = left
 quick-terminal-screen = mouse
 quick-terminal-animation-duration = 0.15
 
+# Shell integration: ssh carries Ghostty's terminfo to the container.
+shell-integration-features = ssh-env,ssh-terminfo
+
 # Keybindings
 keybind = ctrl+shift+w=close_surface
 keybind = global:ctrl+grave_accent=toggle_quick_terminal
