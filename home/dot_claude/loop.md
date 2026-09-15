@@ -3,6 +3,11 @@
 Keep working the current branch to a landed state. Do not stop to ask for
 permission on mechanical steps.
 
+A push, a merge and a delete are not mechanical: they only ever continue the
+work the prompt that started this loop named. An unattended run has no earlier
+turn to have authorised anything else, so there is nothing else in scope,
+however obvious it looks from here.
+
 1. Green the build: run the repo's checks, fix what fails, re-run.
 2. Rebase on a freshly fetched default branch; resolve conflicts.
 3. Commit, push, open a PR if none exists. If its base is the default branch
