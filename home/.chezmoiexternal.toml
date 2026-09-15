@@ -15,5 +15,7 @@
     url = "https://github.com/zsh-users/zsh-syntax-highlighting/archive/refs/tags/0.8.0.tar.gz"
     checksum.sha256 = "5981c19ebaab027e356fe1ee5284f7a021b89d4405cc53dc84b476c3aee9cc32"
     stripComponents = 1
+    # Exact, or the files a tag bump drops stay behind forever.
+    exact = true
     # Directory members must match too, or their files have nowhere to land.
     include = ["*/zsh-syntax-highlighting.zsh", "*/highlighters", "*/highlighters/*", "*/highlighters/*/*-highlighter.zsh", "*/.version", "*/.revision-hash"]

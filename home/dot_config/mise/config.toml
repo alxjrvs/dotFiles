@@ -1,5 +1,6 @@
 # ~/.config/mise/config.toml: every CLI and runtime, on every machine. A Mac's apps are
-# Brewfile casks; a project pins its own versions in its own mise file. `mise upgrade` upgrades.
+# Brewfile casks; a project pins its own versions in its own mise file. `mise upgrade` upgrades:
+# `latest` is the decision, nothing here is pinned, and drift between the two hosts is accepted.
 [tools]
 node = "lts"
 bun = "latest"
