@@ -9,6 +9,8 @@
 *.swo
 *~
 
-# Claude Code's machine-local state: settings.local.json, worktrees/, .cc-writes/. Nothing
-# under here is a property of the repo, so the whole directory goes.
-.claude/
+# Claude Code's machine-local state, named path by path: git does not descend into an excluded
+# directory, so `.claude/` plus a negation would put this repo's project scope out of reach.
+.claude/worktrees/
+.claude/settings.local.json
+.claude/.cc-writes/
