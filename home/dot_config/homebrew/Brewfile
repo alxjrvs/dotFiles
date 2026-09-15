@@ -1,5 +1,11 @@
-# The Mac's apps. CLIs are mise's; chezmoi is its own installer's; git is Xcode's. Apply never
-# upgrades (a cask upgrade quits the running app): `brew upgrade --cask <name>` when it must.
+# The Mac's apps and its one service. CLIs are mise's; chezmoi and mise are their own
+# installers' (~/.local/bin); git is Xcode's. Apply never upgrades (a cask upgrade quits the
+# running app): `brew upgrade --cask <name>` when it must. What this file does not name, apply
+# uninstalls, so a formula kept by hand is a formula lost.
+
+# ── Services ──────────────────────────────────────────────────────────
+# A launchd service, not a CLI: brew runs it, mise would only put it on PATH.
+brew "postgresql@17"
 
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"

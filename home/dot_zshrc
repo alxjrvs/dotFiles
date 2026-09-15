@@ -62,6 +62,8 @@ if (( $+commands[atuin] )); then
   bindkey -M vicmd '^R' atuin-search
 fi
 (( $+commands[starship] )) && eval "$(starship init zsh)"
+# zoxide adds `z` and `zi` and a chpwd hook; `cd` stays zsh's, so the two never compete.
+(( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
 
 # --- aliases -----------------------------------------------------------------------------------
 alias gs='git status' gp='git push' gpr='git pull --rebase' gco='git checkout'

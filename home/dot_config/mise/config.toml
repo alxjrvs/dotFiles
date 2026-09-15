@@ -9,10 +9,12 @@ bun = "latest"
 atuin = "latest"
 fzf = "latest"
 starship = "latest"
+zoxide = "latest"
 
 # Git
 gh = "latest"
 delta = "latest"
+lefthook = "latest"
 
 # Files and text
 bat = "latest"
@@ -20,8 +22,16 @@ eza = "latest"
 fd = "latest"
 jq = "latest"
 ripgrep = "latest"
+tealdeer = "latest"
 
 # Editor, and the two linters CI runs
 neovim = "latest"
 shellcheck = "latest"
 shfmt = "latest"
+
+# What projects under ~/Code invoke; nvim reads none of them, its rule above still holds.
+# marksman is one markdown LSP in one project's editor config and nothing here calls it:
+# the next reader to confirm that is the one who deletes the line.
+biome = "latest"
+taplo = "latest"
+marksman = "latest"

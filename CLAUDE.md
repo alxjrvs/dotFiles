@@ -27,9 +27,11 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
   so an agent asks `chezmoi source-path`. A change is made in a worktree and applied from there
   with `--source "$PWD"`.
 - Every CLI and runtime is a mise tool, on both OSes, bar the `1password-cli` and `gcloud-cli`
-  casks (the latter's `python@3.14` dependency puts a second `python3` on a Mac's PATH); a Mac's
-  apps are Brewfile casks; chezmoi, mise and the Claude Code CLI are their own installers'
-  (`~/.local/bin`) and git is the system's. `chezmoi apply` reconciles and never upgrades.
+  casks (the latter's `python@3.14` dependency puts a second `python3` on a Mac's PATH) and
+  `postgresql@17`, a launchd service brew runs and mise would only put on PATH; a Mac's apps are
+  Brewfile casks; chezmoi, mise and the Claude Code CLI are their own installers' (`~/.local/bin`)
+  and git is the system's. `chezmoi apply` reconciles and never upgrades, and what the Brewfile
+  does not name it uninstalls, so a Homebrew formula shadowing a mise tool cannot accumulate.
 - A worktree is the unit of work, either kind: Claude Code cuts its own under
   `.claude/worktrees/`, `git worktree add` is the by-hand one, and both apply from the worktree
   root with `--source "$PWD"`. Never `--init` from either.
