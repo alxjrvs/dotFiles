@@ -7,3 +7,17 @@ sourceDir = {{ .chezmoi.workingTree | quote }}
     exclude = ["always"]
 [status]
     exclude = ["always"]
+[diff]
+    exclude = ["always"]
+
+# The checkout stays on `main`: apply renders whatever branch it is on and says nothing. `git`,
+# never `chezmoi` — the outer command holds the persistent-state lock. A worktree passes
+# `--source`; CI has no branch to protect; a source that is not a git checkout is not ours.
+[hooks.read-source-state.pre]
+    command = "sh"
+    args = ["-c", """
+case " $CHEZMOI_ARGS " in *" --source "*) exit 0 ;; esac
+[ -n "${CI:-}${GITHUB_ACTIONS:-}" ] && exit 0
+b=$(git -C "${CHEZMOI_WORKING_TREE:-.}" symbolic-ref --quiet --short HEAD 2> /dev/null) || exit 0
+[ "$b" = main ] || { echo "chezmoi: source checkout is on $b, not main" >&2; exit 1; }
+"""]
