@@ -88,6 +88,12 @@ there, not here; when a subject is gone, delete its entry. History is in the PRs
   the `rm` for each machine; `.chezmoiremove` is for a removal too big to type.
 - **`run_onchange_` records its hash whenever the script exits 0, an early guard included.**
   Anything that may need a retry (behind `gh auth login`) is a `run_` script.
+- **`run_onchange_` on a file's hash converges that file, not the machine it describes.**
+  45-brew re-runs only when the Brewfile changes, so its `brew bundle cleanup --force` cannot
+  see a `brew install` made by hand until someone next edits the Brewfile. `brew leaves` is the
+  check. A formula shadowing a mise tool wins nothing on PATH (the shims come first) and is
+  still not harmless: Homebrew's atuin ran as the daemon, migrated `history.db` forward, and
+  left mise's older atuin failing on every prompt.
 - **A run script cannot call `chezmoi`:** the outer apply holds the persistent-state lock, so
   the inner one times out and fails the apply.
 - **`.chezmoiscripts` stays flat.** Scripts run in ASCII order of their target path, so a
