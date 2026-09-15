@@ -23,12 +23,14 @@
       "Bash(*gh gist create*)",
       "Bash(*gh auth token*)",
       "Bash(*security find-generic-password*)",
-      "Bash(*git credential*)"
+      "Bash(*git credential*)",
+      "Bash(*op read*)",
+      "Bash(*op item get*)",
+      "Bash(*op inject*)"
     ]
   },
   "enabledPlugins": {
     "agent-friendly-repo@oberon": true,
-    "typescript-lsp@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true{{ if eq .chezmoi.os "darwin" }},
     "1password-mcp@oberon": true{{ end }}
@@ -56,7 +58,9 @@
     "filesystem": {
       "allowWrite": [
         "~/Library/Caches/mise",
-        "~/.local/state/mise"
+        "~/.cache/mise",
+        "~/.local/state/mise",
+        "~/.local/share/mise"
       ]
     },
     "excludedCommands": [
@@ -64,7 +68,6 @@
       "chezmoi update *"
     ]
   },
-  "askUserQuestionTimeout": "10m",
   "autoMemoryEnabled": false,
   "skipWorkflowUsageWarning": true,
   "theme": "auto",
@@ -88,7 +91,8 @@
     ],
     "environment": [
       "$defaults",
-      "Source control: github.com/alxjrvs and every repository under it, plus the GitHub organizations he administers: RANDSUM, SalvageUnion-io, BinfiniteLLC, EmpokNor, ThirdShap. Pushes to a non-default branch of any of these are his own work landing through pull requests; the default-branch rule above still holds."
+      "Source control: github.com/alxjrvs and every repository under it, plus the GitHub organizations he administers: RANDSUM, SalvageUnion-io, BinfiniteLLC, EmpokNor, ThirdShap. Pushes to a non-default branch of any of these are his own work landing through pull requests; the default-branch rule above still holds.",
+      "Host containment: Claude Code also runs in containers he does not own the lifetime of \u2014 Claude Code on the web, and devcontainers. The only identity there is the `gh auth login` token for github.com/alxjrvs, in a plaintext ~/.config/gh/hosts.yml; there is no cloud metadata endpoint and no other credential to reach. Reading that file is the container reading its own credential, not an escalation."
     ],
     "classifyAllShell": true
   }
