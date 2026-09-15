@@ -13,7 +13,8 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 - Guilty until proven load-bearing: every dependency, wrapper, and line earns its weight.
 - One source, two hosts: a Mac has everything; Linux is a container with no 1Password app, no
   signing and no sudo. `.chezmoiignore` names what is Mac-only, and templates branch on
-  `.chezmoi.os` alone. No by-hand step remains that `chezmoi apply` could converge.
+  `.chezmoi.os` alone. No by-hand step remains that `chezmoi apply` could converge, except the
+  removals and the external bumps, which cost more to converge than to do.
 - Standard, and agentic-enabled: 1Password, git, ssh, `gh`, MCP stay stock, wired for agents.
 - Keep it legible: one line on the decision, nothing on the mechanism.
 
@@ -21,17 +22,25 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 
 - `home/dot_claude/` is the **user-global** Claude config (`~/.claude/`). The repo-root
   `.claude/` is this repo's project scope. Don't conflate them.
-- `~/Code/dotFiles` is chezmoi's source and stays on `main`; only `chezmoi update` moves it. A
-  change is made in a worktree and applied from there with `--source "$PWD"`.
-- Every CLI and runtime is a mise tool, on both OSes; a Mac's apps are Brewfile casks; chezmoi,
-  mise and the Claude Code CLI are their own installers' (`~/.local/bin`) and git is the
-  system's. `chezmoi apply` reconciles and never upgrades.
+- `~/Code/dotFiles` is chezmoi's source on a machine bootstrapped by hand and stays on `main`;
+  only `chezmoi update` moves it. In a container the source is wherever `install.sh` was cloned,
+  so an agent asks `chezmoi source-path`. A change is made in a worktree and applied from there
+  with `--source "$PWD"`.
+- Every CLI and runtime is a mise tool, on both OSes, bar the `1password-cli` and `gcloud-cli`
+  casks (the latter's `python@3.14` dependency puts a second `python3` on a Mac's PATH); a Mac's
+  apps are Brewfile casks; chezmoi, mise and the Claude Code CLI are their own installers'
+  (`~/.local/bin`) and git is the system's. `chezmoi apply` reconciles and never upgrades.
+- A worktree is the unit of work, either kind: Claude Code cuts its own under
+  `.claude/worktrees/`, `git worktree add` is the by-hand one, and both apply from the worktree
+  root with `--source "$PWD"`. Never `--init` from either.
 - Machine setup is `home/.chezmoiscripts/`, flat: guarded every-apply scripts for Homebrew and
   provisioning, `onchange` on the Brewfile, mise config and Caps Lock plist hashes and on the macOS
   defaults. mise installs itself.
+- The macOS defaults are applied, not converged: `verify` runs no script and never sees them.
 - One GitHub identity: `gh auth login`; the login keychain on a Mac, a plaintext
-  `~/.config/gh/hosts.yml` in a container, where the container is the boundary (gh warns,
-  cli/cli#10108). Never `--insecure-storage` on a Mac.
+  `~/.config/gh/hosts.yml` in a container, where the container is the boundary around a token
+  scoped `repo`, `read:org`, `gist` and `workflow` across his account and the five organizations
+  he administers (gh warns, cli/cli#10108). Never `--insecure-storage` on a Mac.
 - `home/dot_claude/loop.md` is what a bare `/loop` runs in any repo without its own
   `.claude/loop.md`; `/loop <prompt>` ignores it.
 - nvim is `$EDITOR` and nothing more: no plugins, no language servers.

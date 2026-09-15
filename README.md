@@ -14,15 +14,18 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply --source ~/
 ```
 
 ```bash
-gh auth login && chezmoi apply
+gh auth login --scopes workflow && chezmoi apply
 ```
 
 The first apply asks for a password once (Homebrew's installer, on a Mac); what waits on
-`gh auth login` converges on the second. On a Mac, between the two: sign in to 1Password and
-turn on Settings › Developer › Use the SSH Agent, Integrate with 1Password CLI and Integrate
+`gh auth login` converges on the second. `workflow` is the scope a push touching
+`.github/workflows/` needs and the login flow never asks for; a machine already logged in gets it
+with `gh auth refresh -h github.com -s workflow`. On a Mac, between the two: sign in to 1Password
+and turn on Settings › Developer › Use the SSH Agent, Integrate with 1Password CLI and Integrate
 with MCP clients (the first commit signs through the agent); run `claude` once to log in; log
-out once for the keyboard defaults. A devcontainer points VS Code's `dotfiles.repository` at
-this repo, which runs [`install.sh`](install.sh).
+out once for the keyboard defaults. A Codespace or a remote devcontainer runs
+[`install.sh`](install.sh); pointing VS Code's `dotfiles.repository` at this repo is by hand, and
+nothing here sets it.
 
 ## Day to day
 
@@ -31,9 +34,13 @@ this repo, which runs [`install.sh`](install.sh).
 | change something | in a worktree: edit, `chezmoi apply --source "$PWD"` from its root, commit, PR |
 | a PR landed, here or elsewhere | `chezmoi update` |
 | drift | `chezmoi verify` |
-| upgrade | `mise upgrade`, `chezmoi upgrade`, `brew upgrade --cask <app>`; apply never upgrades |
-| the config template changed | `chezmoi apply --init` |
+| upgrade | `mise upgrade`, `chezmoi upgrade`, `brew outdated --cask --greedy` then `brew upgrade --cask <app>` (most casks self-update, so a bare `outdated` is silent); apply never upgrades |
+| the config template changed | `chezmoi apply --init`, from `~/Code/dotFiles` and never a worktree |
 | the repo settings | [`.github/gate.sh`](.github/gate.sh), once per repo, by the owner: here and [`alxjrvs/oberon`](https://github.com/alxjrvs/oberon), which every fresh bootstrap installs from |
+
+An unattended run happens on both surfaces and each stops its own way: on the Mac, idle sleep
+or a closed lid ends a `/loop` mid-flight and leaves a pushed branch with no merge; on the web,
+an expired claude.ai login stalls it until the next `/login`.
 
 GitHub is the gate: `main` takes squash-merged pull requests with the `lint` check green, and
 push protection stops a secret before it lands. The agent is you: `gh auth login` is the one
