@@ -29,7 +29,9 @@ neovim = "latest"
 shellcheck = "latest"
 shfmt = "latest"
 
-# What projects under ~/Code invoke. marksman is VS Code's language server, not nvim's.
+# What projects under ~/Code invoke; nvim reads none of them, its rule above still holds.
+# marksman is one markdown LSP in one project's editor config and nothing here calls it:
+# the next reader to confirm that is the one who deletes the line.
 biome = "latest"
 taplo = "latest"
 marksman = "latest"
