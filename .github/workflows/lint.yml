@@ -4,11 +4,21 @@ name: lint
 # in two jobs behind it. Static checks on ubuntu, where the tools are packaged; then the source
 # rendered, applied and verified on each target OS, with the applied shell and git config
 # exercised.
+#
+# The actions float on a major tag: this workflow only reads the repo, names no secret, and
+# Dependabot watches them. The externals pin tag and checksum because they land in `~` unwatched.
 
 on:
   push:
     branches: [main]
   pull_request:
+
+# A superseded pull request run is cancelled; two pushes to main are two states of main, so
+# both finish. Every job takes a timeout with room to spare: the default is six hours, and a
+# hung fetch holds the check `--auto` merges on for every one of them.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -16,13 +26,14 @@ permissions:
 jobs:
   static:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - run: sudo apt-get install -y -q shellcheck shfmt zsh jq
       - run: shellcheck -x home/.chezmoiscripts/* .github/gate.sh install.sh
       # install.sh is chezmoi-generated (tabs) and stays as generated; the scripts are ours.
       - run: shfmt -d -i 2 -ci -sr home/.chezmoiscripts/ .github/gate.sh
-      - run: for f in home/dot_zshrc home/dot_zprofile; do zsh -n "$f"; done
+      - run: for f in $(git ls-files 'home/dot_z*'); do zsh -n "$f"; done
       - run: for f in $(git ls-files '*.json'); do jq -e . "$f" > /dev/null; done
 
   apply:
@@ -30,6 +41,7 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     env:
       HOME_T: ${{ github.workspace }}/../home
       CHEZMOI_ARGS: --config ${{ github.workspace }}/../chezmoi.toml --persistent-state ${{ github.workspace }}/../chezmoi.db --destination ${{ github.workspace }}/../home
@@ -43,8 +55,19 @@ jobs:
       - run: chezmoi init --source "$GITHUB_WORKSPACE" $CHEZMOI_ARGS
       - run: chezmoi $CHEZMOI_ARGS apply --exclude scripts
       - run: chezmoi $CHEZMOI_ARGS verify --exclude scripts
-      # The settings template renders to JSON on either branch of its conditionals.
-      - run: jq -e . "$HOME_T/.claude/settings.json" > /dev/null
+      # Both hosts are long-lived and CI's home is not, so apply a second time over the first.
+      # This proves idempotence only: verify reads the source, so an orphan is invisible to it.
+      - run: |
+          chezmoi $CHEZMOI_ARGS apply --exclude scripts
+          chezmoi $CHEZMOI_ARGS verify --exclude scripts
+      # The settings template renders to JSON on either branch of its conditionals, in the two
+      # shapes run_after_40-provision.sh drives its loops from, with every git pair counted in.
+      - run: |
+          settings="$HOME_T/.claude/settings.json"
+          jq -e '.extraKnownMarketplaces[].source.repo' "$settings" > /dev/null
+          jq -e '.enabledPlugins|to_entries|map(select(.value))|length > 0' "$settings" > /dev/null
+          keys=$(jq '[.env|keys[]|select(startswith("GIT_CONFIG_KEY_"))]|length' "$settings")
+          test "$(jq -r '.env.GIT_CONFIG_COUNT' "$settings")" = "$keys"
       # The applied shell must start with none of the guarded tools present.
       - run: HOME="$HOME_T" zsh -l -i -c 'echo shell ok'
       # What verify cannot check: git parses the rendered XDG file, gh is the last github.com
@@ -52,10 +75,28 @@ jobs:
       - run: |
           export HOME="$HOME_T" XDG_CONFIG_HOME="$HOME_T/.config"
           test "$(git config --global --get-all credential.https://github.com.helper | tail -1)" = '!gh auth git-credential'
-          [ "$RUNNER_OS" = macOS ] && want=true || want=
-          test "$(git config --global --get commit.gpgSign)" = "$want"
-          # ssh: the Mac socket on darwin; no IdentityAgent line without the app.
-          [ "$RUNNER_OS" = macOS ] && grep -q 'Group Containers' "$HOME_T/.ssh/config" || ! grep -q IdentityAgent "$HOME_T/.ssh/config"
+          # A branch each, never `a && b || c`: that runs c when b fails, so the Mac's one
+          # assertion passed on the regression it catches. Nothing lints this, SC2015 included.
+          if [ "$RUNNER_OS" = macOS ]; then
+            test "$(git config --global --get commit.gpgSign)" = true
+            # ssh: the Mac socket on darwin; no IdentityAgent line without the app.
+            grep -q 'Group Containers' "$HOME_T/.ssh/config"
+          else
+            test -z "$(git config --global --get commit.gpgSign)"
+            ! grep -q IdentityAgent "$HOME_T/.ssh/config"
+          fi
+      # The git env pairs settings.json hands every agent session, read back through git. After
+      # the assertions on the file, not before: GIT_CONFIG_VALUE_0 is `false` and wins over it.
+      - run: |
+          export HOME="$HOME_T" XDG_CONFIG_HOME="$HOME_T/.config"
+          eval "$(jq -r '.env|to_entries[]|select(.key|startswith("GIT_CONFIG_"))|
+            "export \(.key)=\(.value|@sh)"' "$HOME_T/.claude/settings.json")"
+          test "$(git config --get commit.gpgSign)" = false
+      # Every script renders: `--exclude scripts` filters by target name before the template
+      # runs, so a moved source file leaves the applies above green and fails the first apply.
+      - run: |
+          chezmoi $CHEZMOI_ARGS managed --include scripts |
+            xargs -I{} chezmoi $CHEZMOI_ARGS cat "$HOME_T/{}" > /dev/null
       # The Mac-only scripts are ignored by target name; only Linux exercises that.
       - if: runner.os == 'Linux'
         run: test "$(chezmoi $CHEZMOI_ARGS managed --include scripts | sort | tr '\n' ' ')" = '.chezmoiscripts/20-mise.sh .chezmoiscripts/40-provision.sh '
@@ -74,5 +115,6 @@ jobs:
     needs: [static, apply]
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - run: test "${{ needs.static.result }}" = success && test "${{ needs.apply.result }}" = success
