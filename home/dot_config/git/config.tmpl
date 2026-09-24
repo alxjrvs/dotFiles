@@ -44,7 +44,6 @@
 	rebase = true
 [rerere]
 	enabled = true
-	autoupdate = true
 [interactive]
 	diffFilter = delta --color-only
 [delta]
@@ -79,3 +78,14 @@
 	sort = version:refname
 [help]
 	autocorrect = prompt
+
+# A repo in a work org (.chezmoidata.toml) commits as work. hasconfig matches case-sensitively,
+# so each org is listed as written and in lower case.
+{{- range .workOrgs }}
+{{- range list . (lower .) | uniq }}
+[includeIf "hasconfig:remote.*.url:https://github.com/{{ . }}/**"]
+	path = work
+[includeIf "hasconfig:remote.*.url:git@github.com:{{ . }}/**"]
+	path = work
+{{- end }}
+{{- end }}
