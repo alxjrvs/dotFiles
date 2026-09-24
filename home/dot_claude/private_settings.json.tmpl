@@ -15,13 +15,13 @@
   "permissions": {
     "allow": [
       "Artifact",
-      "WebSearch",
-      "WebFetch(domain:*)"
+      "WebSearch"
     ],
     "deny": [
       "Bash(*gh release create*)",
       "Bash(*gh gist create*)",
       "Bash(*gh auth token*)",
+      "Bash(*--show-token*)",
       "Bash(*security find-generic-password*)",
       "Bash(*git credential*)",
       "Bash(*op read*)",
@@ -48,8 +48,23 @@
   "sandbox": {
     "enabled": true,
     "network": {
-      "allowUnixSockets": [
-        "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+      "allowedDomains": [
+        "github.com",
+        "api.github.com",
+        "codeload.github.com",
+        "objects.githubusercontent.com",
+        "raw.githubusercontent.com",
+        "ghcr.io",
+        "pkg-containers.githubusercontent.com",
+        "formulae.brew.sh",
+        "mise-versions.jdx.dev",
+        "nodejs.org",
+        "registry.npmjs.org",
+        "pypi.org",
+        "files.pythonhosted.org",
+        "crates.io",
+        "static.crates.io",
+        "rubygems.org"
       ],
       "allowMachLookup": [
         "com.apple.trustd.agent",
@@ -65,7 +80,6 @@
       ]
     },
     "excludedCommands": [
-      "chezmoi apply *",
       "chezmoi update *"
     ]
   },
@@ -83,17 +97,17 @@
   "autoMode": {
     "allow": [
       "$defaults",
-      "Configuring a repo under github.com/alxjrvs for the unattended agent path is allowed: `gh api -X PATCH repos/alxjrvs/*` for merge settings, and `gh api -X POST|PUT repos/alxjrvs/*/rulesets` for a branch-protection ruleset. Reversible settings on his own repos, and the ruleset only ever tightens the default branch.",
-      "`chezmoi apply` and `chezmoi update` (with `--force`) are allowed: they converge this machine's home directory to the alxjrvs/dotFiles source, which is his own reviewed config, and they run outside the sandbox by design."
+      "`chezmoi update --force` is allowed: it applies main of alxjrvs/dotFiles, which only changes through a merged pull request, and it runs outside the sandbox by design."
     ],
     "hard_deny": [
       "$defaults",
-      "Never push directly to a repository's default branch, and never merge into it locally"
+      "Never push directly to a repository's default branch, and never merge into it locally",
+      "Never apply a chezmoi source to the real home directory other than through `chezmoi update` (no `chezmoi apply --source`, no `chezmoi init --apply`), and never edit files under `chezmoi source-path`: that runs unreviewed scripts and rewrites the agent's own settings outside the sandbox. An apply into a temporary `--destination` is a test and is fine.",
+      "Never change a repository's own settings, rulesets or branch protection (`gh repo edit`, `gh api` writes to `repos/OWNER/REPO` itself, `.../rulesets` or `.../branches/*/protection`): the gate is the owner's, and an agent blocked by it does not get to loosen it. Issues, pull requests and comments are not settings."
     ],
     "environment": [
       "$defaults",
-      "Source control: github.com/alxjrvs and every repository under it, plus the GitHub organizations he administers: RANDSUM, SalvageUnion-io, BinfiniteLLC, EmpokNor, ThirdShap. Pushes to a non-default branch of any of these are his own work landing through pull requests; the default-branch rule above still holds.",
-      "Host containment: Claude Code also runs in containers he does not own the lifetime of \u2014 Claude Code on the web, and devcontainers. The only identity there is the `gh auth login` token for github.com/alxjrvs, in a plaintext ~/.config/gh/hosts.yml; there is no cloud metadata endpoint and no other credential to reach. Reading that file is the container reading its own credential, not an escalation."
+      "Source control: github.com/alxjrvs and every repository under it, plus the GitHub organizations he administers: RANDSUM, SalvageUnion-io, BinfiniteLLC, EmpokNor, ThirdShap. Pushes to a non-default branch of any of these are his own work landing through pull requests; the default-branch rule above still holds."
     ],
     "classifyAllShell": true
   }
