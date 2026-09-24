@@ -3,7 +3,8 @@
 Run the standing loop in `~/.claude/loop.md` with the facts that are this
 repo's own. It is named rather than copied, so there is one loop to keep right.
 
-1. Prove a change with `mise run lint apply-check` before opening the PR.
+1. Prove a change with `mise run lint` and `mise run apply-check` before opening
+   the PR.
    `apply-check` applies the source into a temporary home; never apply a
    worktree to the real one.
 2. `main` takes squash-merged pull requests with `lint` green and no bypass, so
