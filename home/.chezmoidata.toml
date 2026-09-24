@@ -1,0 +1,3 @@
+# GitHub orgs whose repos commit as the work identity (~/.config/git/work); every other repo
+# commits as alxjrvs@gmail.com. Adding an org is one entry here.
+workOrgs = ["Criterium", "massgov", "TheGnarCo"]

@@ -3,7 +3,6 @@
 # and ssh both go through the 1Password agent. brew shellenv also exports FPATH.
 [[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv)"
 typeset -U path PATH
-path=("$HOME/.local/bin" $path)
-# Shims for programs that never read ~/.zshrc (editors, agents); ~/.zshrc activates for the
-# interactive shell on top. mise's documented split. Every CLI is a mise tool, so this is PATH.
-(( $+commands[mise] )) && eval "$(mise activate zsh --shims)"
+# mise's shims, for programs that never read ~/.zshrc (editors, agents); ~/.zshrc activates for
+# the interactive shell on top. The literal path, as in ~/.zshenv: no process per login.
+path=("$HOME/.local/bin" "$HOME/.local/share/mise/shims" $path)

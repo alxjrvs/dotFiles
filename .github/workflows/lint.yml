@@ -1,9 +1,8 @@
 name: lint
 
 # `lint` is the status check the main ruleset requires, so it is the summary job; the work runs
-# in two jobs behind it. Static checks on ubuntu, where the tools are packaged; then the source
-# rendered, applied and verified on each target OS, with the applied shell and git config
-# exercised.
+# in two jobs behind it, each one `mise run` of a task in the repo's mise.toml, which pins the
+# tools. An agent runs the same two tasks before a PR.
 #
 # The actions float on a major tag: this workflow only reads the repo, names no secret, and
 # Dependabot watches them. The externals pin tag and checksum because they land in `~` unwatched.
@@ -23,18 +22,20 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+
 jobs:
   static:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - run: sudo apt-get install -y -q shellcheck shfmt zsh jq
-      - run: shellcheck -x home/.chezmoiscripts/* .github/gate.sh install.sh
-      # install.sh is chezmoi-generated (tabs) and stays as generated; the scripts are ours.
-      - run: shfmt -d -i 2 -ci -sr home/.chezmoiscripts/ .github/gate.sh
-      - run: for f in $(git ls-files 'home/dot_z*'); do zsh -n "$f"; done
-      - run: for f in $(git ls-files '*.json'); do jq -e . "$f" > /dev/null; done
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update -q && sudo apt-get install -y -q zsh
+      - uses: jdx/mise-action@v4
+      - run: mise run lint
 
   apply:
     strategy:
@@ -42,74 +43,24 @@ jobs:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
-    env:
-      HOME_T: ${{ github.workspace }}/../home
-      CHEZMOI_ARGS: --config ${{ github.workspace }}/../chezmoi.toml --persistent-state ${{ github.workspace }}/../chezmoi.db --destination ${{ github.workspace }}/../home
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - if: runner.os == 'Linux'
-        run: sudo apt-get install -y -q zsh
-      - run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - run: mkdir -p "$HOME_T"
-      # init renders home/.chezmoi.toml.tmpl; apply lays down every file, externals included.
-      - run: chezmoi init --source "$GITHUB_WORKSPACE" $CHEZMOI_ARGS
-      - run: chezmoi $CHEZMOI_ARGS apply --exclude scripts
-      - run: chezmoi $CHEZMOI_ARGS verify --exclude scripts
-      # Both hosts are long-lived and CI's home is not, so apply a second time over the first.
-      # This proves idempotence only: verify reads the source, so an orphan is invisible to it.
-      - run: |
-          chezmoi $CHEZMOI_ARGS apply --exclude scripts
-          chezmoi $CHEZMOI_ARGS verify --exclude scripts
-      # The settings template renders to JSON on either branch of its conditionals, in the two
-      # shapes run_after_40-provision.sh drives its loops from, with every git pair counted in.
-      - run: |
-          settings="$HOME_T/.claude/settings.json"
-          jq -e '.extraKnownMarketplaces[].source.repo' "$settings" > /dev/null
-          jq -e '.enabledPlugins|to_entries|map(select(.value))|length > 0' "$settings" > /dev/null
-          keys=$(jq '[.env|keys[]|select(startswith("GIT_CONFIG_KEY_"))]|length' "$settings")
-          test "$(jq -r '.env.GIT_CONFIG_COUNT' "$settings")" = "$keys"
-      # The applied shell must start with none of the guarded tools present.
-      - run: HOME="$HOME_T" zsh -l -i -c 'echo shell ok'
-      # What verify cannot check: git parses the rendered XDG file, gh is the last github.com
-      # helper in it, and the template took this OS's branch: darwin signs, a container does not.
-      - run: |
-          export HOME="$HOME_T" XDG_CONFIG_HOME="$HOME_T/.config"
-          test "$(git config --global --get-all credential.https://github.com.helper | tail -1)" = '!gh auth git-credential'
-          # A branch each, never `a && b || c`: that runs c when b fails, so the Mac's one
-          # assertion passed on the regression it catches. Nothing lints this, SC2015 included.
-          if [ "$RUNNER_OS" = macOS ]; then
-            test "$(git config --global --get commit.gpgSign)" = true
-            # ssh: the Mac socket on darwin; no IdentityAgent line without the app.
-            grep -q 'Group Containers' "$HOME_T/.ssh/config"
-          else
-            test -z "$(git config --global --get commit.gpgSign)"
-            ! grep -q IdentityAgent "$HOME_T/.ssh/config"
-          fi
-      # The git env pairs settings.json hands every agent session, read back through git. After
-      # the assertions on the file, not before: GIT_CONFIG_VALUE_0 is `false` and wins over it.
-      - run: |
-          export HOME="$HOME_T" XDG_CONFIG_HOME="$HOME_T/.config"
-          eval "$(jq -r '.env|to_entries[]|select(.key|startswith("GIT_CONFIG_"))|
-            "export \(.key)=\(.value|@sh)"' "$HOME_T/.claude/settings.json")"
-          test "$(git config --get commit.gpgSign)" = false
-      # Every script renders: `--exclude scripts` filters by target name before the template
-      # runs, so a moved source file leaves the applies above green and fails the first apply.
-      - run: |
-          chezmoi $CHEZMOI_ARGS managed --include scripts |
-            xargs -I{} chezmoi $CHEZMOI_ARGS cat "$HOME_T/{}" > /dev/null
-      # The Mac-only scripts are ignored by target name; only Linux exercises that.
-      - if: runner.os == 'Linux'
-        run: test "$(chezmoi $CHEZMOI_ARGS managed --include scripts | sort | tr '\n' ' ')" = '.chezmoiscripts/20-mise.sh .chezmoiscripts/40-provision.sh '
-      # Every tool the applied mise config names resolves and installs; once, on the cheap leg.
-      # The action caches the installs; the key is ours because the config is not at a name it
-      # hashes by default.
+        run: sudo apt-get update -q && sudo apt-get install -y -q zsh
+      - if: runner.os == 'macOS'
+        uses: jdx/mise-action@v4
+      # Linux also installs every tool the machine-wide mise config names, so a renamed or
+      # vanished tool fails here and not on the next apply. The key is ours because that config
+      # is not at a name the action hashes.
       - if: runner.os == 'Linux'
         uses: jdx/mise-action@v4
         with:
-          cache_key: mise-${{ runner.os }}-${{ hashFiles('home/dot_config/mise/config.toml') }}
+          cache_key: mise-${{ runner.os }}-${{ hashFiles('mise.toml', 'home/dot_config/mise/config.toml') }}
         env:
-          MISE_GLOBAL_CONFIG_FILE: ${{ env.HOME_T }}/.config/mise/config.toml
-          MISE_YES: 1
+          MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/home/dot_config/mise/config.toml
+      - run: mise run apply-check
 
   lint:
     needs: [static, apply]
@@ -117,4 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - run: test "${{ needs.static.result }}" = success && test "${{ needs.apply.result }}" = success
+      - env:
+          STATIC: ${{ needs.static.result }}
+          APPLY: ${{ needs.apply.result }}
+        run: test "$STATIC" = success && test "$APPLY" = success

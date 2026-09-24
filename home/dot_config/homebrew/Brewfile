@@ -4,8 +4,9 @@
 # uninstalls, so a formula kept by hand is a formula lost.
 
 # ── Services ──────────────────────────────────────────────────────────
-# A launchd service, not a CLI: brew runs it, mise would only put it on PATH.
-brew "postgresql@17"
+# A launchd service, not a CLI: apply starts it and restarts it when the formula changes, and
+# `link` puts the keg-only psql on PATH.
+brew "postgresql@17", restart_service: :changed, link: true
 
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"
@@ -23,6 +24,7 @@ cask "devutils"      # offline developer toolbox (JSON/JWT/regex/diff)
 cask "gcloud-cli"
 cask "ngrok"
 cask "obs"
+cask "orbstack"      # containers: Docker's engine and CLI, for devcontainers and testcontainers
 cask "raycast"       # launcher
 cask "rectangle"     # window management
 cask "slack"

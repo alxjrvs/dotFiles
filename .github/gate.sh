@@ -3,7 +3,8 @@
 #   .github/gate.sh [owner/repo]     (defaults to the checkout's repo)
 # GitHub is the gate: the default branch takes pull requests only, squash-merged once the check
 # named `lint` passes on an up-to-date branch, with no bypass for anyone, the owner included.
-# Secret scanning and push protection stop a token before it lands. Rulesets on a private repo
+# The squash commit carries the PR's body, and a branch that fell behind can be updated from the
+# PR. Secret scanning and push protection stop a token before it lands. Rulesets on a private repo
 # need a paid plan; everything here is free on a public one.
 set -euo pipefail
 repo=${1:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}
@@ -15,8 +16,9 @@ gh api -X PATCH "repos/$repo" --input - > /dev/null << 'EOF'
   "allow_squash_merge": true,
   "allow_merge_commit": false,
   "allow_rebase_merge": false,
+  "allow_update_branch": true,
   "squash_merge_commit_title": "PR_TITLE",
-  "squash_merge_commit_message": "COMMIT_MESSAGES",
+  "squash_merge_commit_message": "PR_BODY",
   "security_and_analysis": {
     "secret_scanning": { "status": "enabled" },
     "secret_scanning_push_protection": { "status": "enabled" }
@@ -35,7 +37,6 @@ ruleset=$(
   "rules": [
     { "type": "deletion" },
     { "type": "non_fast_forward" },
-    { "type": "required_linear_history" },
     { "type": "required_status_checks", "parameters": {
         "strict_required_status_checks_policy": true,
         "do_not_enforce_on_create": false,

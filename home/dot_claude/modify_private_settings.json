@@ -1,0 +1,23 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- /*
+  ~/.claude/settings.json is also written by Claude Code and the desktop app, so chezmoi owns
+  only the keys declared in .chezmoitemplates/claude-settings.json and leaves the rest. A
+  declared top-level key is replaced whole, except the two maps the app adds entries to, which
+  are merged entry by entry. A file already holding every declared value is left byte for byte.
+*/ -}}
+{{- $want := includeTemplate "claude-settings.json" . | fromJson -}}
+{{- $have := dict -}}
+{{- if .chezmoi.stdin }}{{ $have = fromJson .chezmoi.stdin }}{{ end -}}
+{{- $next := deepCopy $have -}}
+{{- range $key, $value := $want -}}
+{{-   if and (has $key (list "enabledPlugins" "extraKnownMarketplaces")) (kindIs "map" (get $next $key)) -}}
+{{-     range $entry, $entryValue := $value }}{{ $_ := set (get $next $key) $entry $entryValue }}{{ end -}}
+{{-   else -}}
+{{-     $_ := set $next $key $value -}}
+{{-   end -}}
+{{- end -}}
+{{- if eq (toJson $next) (toJson $have) -}}
+{{-   .chezmoi.stdin -}}
+{{- else -}}
+{{-   toPrettyJson "  " $next }}
+{{ end -}}

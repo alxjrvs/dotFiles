@@ -5,6 +5,7 @@
 # container has none of them.
 .chezmoiscripts/00-homebrew.sh
 .chezmoiscripts/30-macos-defaults.sh
+.chezmoiscripts/35-sleep.sh
 .chezmoiscripts/45-brew.sh
 .chezmoiscripts/50-capslock.sh
 .config/homebrew
