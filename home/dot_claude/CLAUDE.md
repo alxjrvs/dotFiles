@@ -16,7 +16,7 @@ attempt, or lands in an unattended session with no one to ask.
 - **Never a local merge or push into a default branch.** Land work through GitHub's own gate.
 - **Never put a secret on stdout** — stdout is the transcript. A secret written to a file is a
   secret read. To *use* one, pass it: `op run --env-file=F -- CMD`, where F holds `op://`
-  references (the 1Password plugin's `create_local_env_file` writes F from an Environment).
+  references.
 
 ## Where things go
 
@@ -26,7 +26,7 @@ Nothing goes in this file that fits elsewhere.
 |---|---|
 | a procedure | a skill — published in `alxjrvs/oberon`, or project-local in `.claude/skills/` |
 | it must hold | `permissions.deny` |
-| a trap still armed, and the rule it forces | `docs/GOTCHAS.md` |
+| it can fail a build | a check in the repo's lint or CI |
 | already enforced | nowhere. Describing a control is not the control. |
 
 Never record a measurement against a tool version here: it expires unnoticed and nothing owns it.

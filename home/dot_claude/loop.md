@@ -9,7 +9,8 @@ turn to have authorised anything else, so there is nothing else in scope,
 however obvious it looks from here.
 
 1. Green the build: run the repo's checks, fix what fails, re-run.
-2. Rebase on a freshly fetched default branch; resolve conflicts.
+2. Rebase on the PR's freshly fetched base (the default branch, or the layer
+   below in a stack); resolve conflicts.
 3. Commit, push, open a PR if none exists. Its body says what changed and why:
    it becomes the squash commit on the default branch.
 4. Merge only through a gate. If the PR's base is the default branch
