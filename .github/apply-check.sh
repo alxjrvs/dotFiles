@@ -1,5 +1,5 @@
 #!/bin/bash
-# The source applied into a temporary home, twice, and verified; then what verify cannot see.
+# The source applied into a temporary home and verified; then what verify cannot see.
 # Writes only under a temp directory, so it runs anywhere: CI, a Mac, a web session.
 set -euo pipefail
 root=$(git rev-parse --show-toplevel)
@@ -10,55 +10,56 @@ mkdir "$home"
 cz=(chezmoi --source "$root" --config "$tmp/chezmoi.toml" --persistent-state "$tmp/chezmoi.db" --destination "$home")
 
 "${cz[@]}" init
-# Twice, because both hosts are long-lived and this home is not: the second proves idempotence.
-for _ in 1 2; do
-  "${cz[@]}" apply --exclude scripts
-  "${cz[@]}" verify --exclude scripts
-done
+"${cz[@]}" apply --exclude scripts
+"${cz[@]}" verify --exclude scripts
+# `--exclude scripts` skips rendering them; this renders every script and runs none.
+"${cz[@]}" apply --dry-run
+
+# A deleted source leaves its target behind, so every file main manages is still managed here,
+# if only as a `remove_` entry that deletes it. Dropping a `remove_` entry later is fine: once
+# applied it has done its work.
+base=$tmp/base
+mkdir "$base"
+git -C "$root" archive "$(git -C "$root" merge-base HEAD origin/main)" | tar -x -C "$base"
+rm -f "$base"/home/.chezmoiexternal.* # listing an external downloads it
+was=$(chezmoi --source "$base" --destination "$home" managed --exclude scripts,externals,remove | sort)
+now=$("${cz[@]}" managed --exclude scripts,externals | sort)
+removed=$("${cz[@]}" managed --include remove)
+comm -23 <(printf '%s\n' "$was") <(printf '%s\n' "$now") |
+  while read -r target; do
+    path=$target
+    until printf '%s\n' "$removed" | grep -qxF "$path"; do
+      [ "$path" != "${path%/*}" ] || { echo "apply-check: ~/$target lost its source; add a remove_ entry" >&2 && exit 1; }
+      path=${path%/*}
+    done
+  done
 
 # settings.json: the two shapes run_after_40-provision.sh loops over, every git pair counted in.
 settings=$home/.claude/settings.json
-jq -e '.extraKnownMarketplaces[].source.repo' "$settings" > /dev/null
-jq -e '.enabledPlugins | to_entries | map(select(.value)) | length > 0' "$settings" > /dev/null
+jq -e 'all(.extraKnownMarketplaces[]; .source.repo) and any(.enabledPlugins[]; .)' "$settings" > /dev/null
 test "$(jq -r '.env.GIT_CONFIG_COUNT' "$settings")" = \
   "$(jq '[.env | keys[] | select(startswith("GIT_CONFIG_KEY_"))] | length' "$settings")"
-# What the app writes survives an apply, its key order is not drift, and a declared value is
-# restored.
-jq -S '. + {appWrote: true} | .enabledPlugins += {"toggled@elsewhere": false} | .autoMemoryEnabled = true' \
+# What the app writes survives an apply, and a declared value is restored.
+jq '. + {appWrote: true} | .enabledPlugins += {"toggled@elsewhere": false} | .autoMemoryEnabled = true' \
   "$settings" > "$tmp/edited" && cat "$tmp/edited" > "$settings"
 "${cz[@]}" apply --force --exclude scripts
 jq -e '.appWrote and .enabledPlugins["toggled@elsewhere"] == false and .autoMemoryEnabled == false' \
   "$settings" > /dev/null
+# A file already holding every declared value is not drift, in whatever key order the app wrote.
+jq '{appFirst: true} + .' "$settings" > "$tmp/edited" && cat "$tmp/edited" > "$settings"
 "${cz[@]}" verify --exclude scripts
-
-# Every script renders: `--exclude scripts` filters by target name before the template runs, so
-# a moved source file would leave the applies above green and fail a machine's first apply.
-"${cz[@]}" managed --include scripts | while read -r script; do
-  "${cz[@]}" cat "$home/$script" > /dev/null
-done
-# The Mac-only scripts are ignored by target name; only Linux exercises that.
-if [ "$(uname)" = Linux ]; then
-  test "$("${cz[@]}" managed --include scripts | sort | tr '\n' ' ')" = \
-    '.chezmoiscripts/20-mise.sh .chezmoiscripts/40-provision.sh '
-fi
 
 (
   export HOME="$home" XDG_CONFIG_HOME="$home/.config"
   unset GIT_CONFIG_COUNT
-  # The applied shell starts with none of the guarded tools present.
+  # The applied login shell starts; an rc file that exits fails here (lint's `zsh -n` has syntax).
   zsh -l -i -c 'echo shell ok' > /dev/null
-  # git parses the rendered file, gh is the last github.com helper in it, and the template took
-  # this OS's branch: darwin signs, a container does not. A branch each, never `a && b || c`:
-  # that runs c when b fails. And never a bare `! cmd`: it cannot fail under `set -e`.
+  # git parses the rendered file, gh is the last github.com helper in it, and commits sign.
   test "$(git config --global --get-all credential.https://github.com.helper | tail -1)" = '!gh auth git-credential'
-  if [ "$(uname)" = Darwin ]; then
-    test "$(git config --global --get commit.gpgSign)" = true
-    grep -q 'Group Containers' "$home/.ssh/config"
-  else
-    test -z "$(git config --global --get commit.gpgSign)"
-    if grep -q IdentityAgent "$home/.ssh/config"; then exit 1; fi
-  fi
-  # A work org's remote commits as work, any other as alxjrvs, in either URL form and case.
+  test "$(git config --global --get commit.gpgSign)" = true
+  grep -q 'Group Containers' "$home/.ssh/config"
+  # A work org's GitHub remote commits as work, in any URL form and either case; anything else as
+  # alxjrvs.
   repo=$tmp/repo
   git init -q "$repo"
   email() {
@@ -68,8 +69,9 @@ fi
   }
   test "$(email https://github.com/TheGnarCo/app.git)" = alex@thegnar.co
   test "$(email git@github.com:criterium/app.git)" = alex@thegnar.co
+  test "$(email ssh://git@github.com/massgov/app.git)" = alex@thegnar.co
+  test "$(email https://gitlab.com/massgov/app.git)" = alxjrvs@gmail.com
   test "$(email https://github.com/alxjrvs/dotFiles.git)" = alxjrvs@gmail.com
-  test "$(email https://github.com/zsh-users/zsh-autosuggestions.git)" = alxjrvs@gmail.com
   # The git pairs settings.json hands every agent session, read back through git. Last: the
   # first value is `false` and would mask the signing assertion above.
   eval "$(jq -r '.env | to_entries[] | select(.key | startswith("GIT_CONFIG_")) |

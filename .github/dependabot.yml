@@ -1,6 +1,5 @@
-# Only the actions in .github/workflows: nothing else here is a dependency Dependabot
-# understands. The tags in home/.chezmoiexternal.toml move by hand. A week's cooldown lets a
-# compromised release be caught before it is proposed.
+# Only the actions in .github/workflows, pinned by commit: nothing else here is a dependency
+# Dependabot understands. A week's cooldown lets a compromised release be caught first.
 version: 2
 updates:
   - package-ecosystem: github-actions

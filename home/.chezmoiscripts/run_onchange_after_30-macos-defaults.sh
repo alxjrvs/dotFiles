@@ -1,6 +1,8 @@
 #!/bin/bash
 # macOS defaults. Re-runs only when this script changes (its own content is the hash), then
 # restarts Dock, Finder and SystemUIServer; the keyboard keys are read at the next login.
+# A write to a key the app does not read succeeds and does nothing: check each key against what
+# the app reads.
 set -euo pipefail
 
 # Keyboard: fast repeat, no press-and-hold accent popover.

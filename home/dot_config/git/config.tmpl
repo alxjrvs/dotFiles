@@ -1,32 +1,26 @@
-# ~/.config/git/config, one template. On a Mac the empty helper resets the list Apple's bundled
-# gitconfig starts with osxkeychain, for every host: gh alone serves github.com, and inside the
-# Claude Code sandbox git no longer offers the proxy's credentials to a keychain it cannot write.
-{{ if eq .chezmoi.os "darwin" -}}
-# A Mac signs with the 1Password app's SSH key, authorised once per application per unlock;
-# a container signs nothing.
-[commit]
-	gpgSign = true
-[tag]
-	gpgSign = true
-[gpg]
-	format = ssh
-[gpg "ssh"]
-	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
-[user]
-	# The public half of the 1Password "GitHubSSH" item.
-	signingkey = key::ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKjF9JmW396EbH0n1zWeU7eT+2VvMFZAn+A1WKAi4tqT
+# The empty helper drops the osxkeychain helper Apple's system gitconfig starts with, so gh's
+# token is the only credential git keeps.
 [credential]
 	helper =
-
-{{ end -}}
-[user]
-	name = alxjrvs
-	email = alxjrvs@gmail.com
-# github.com through gh's token (what `gh auth setup-git` writes).
 [credential "https://github.com"]
 	helper = !gh auth git-credential
 [credential "https://gist.github.com"]
 	helper = !gh auth git-credential
+[user]
+	name = alxjrvs
+	email = alxjrvs@gmail.com
+	# The public half of the 1Password "GitHubSSH" item.
+	signingkey = key::ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKjF9JmW396EbH0n1zWeU7eT+2VvMFZAn+A1WKAi4tqT
+[gpg]
+	format = ssh
+[gpg "ssh"]
+	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+[commit]
+	gpgSign = true
+	verbose = true
+[tag]
+	gpgSign = true
+	sort = version:refname
 [core]
 	editor = nvim
 	pager = delta
@@ -34,8 +28,6 @@
 
 [init]
 	defaultBranch = main
-[commit]
-	verbose = true
 [push]
 	autoSetupRemote = true
 	followTags = true
@@ -74,18 +66,16 @@
 	autoStash = true
 	updateRefs = true
 	missingCommitsCheck = error
-[tag]
-	sort = version:refname
 [help]
 	autocorrect = prompt
 
-# A repo in a work org (.chezmoidata.toml) commits as work. hasconfig matches case-sensitively,
-# so each org is listed as written and in lower case.
+# A repo in a work org (.chezmoidata.toml) commits as work, over any GitHub URL form. hasconfig
+# matches case-sensitively, so each org is listed as written and in lower case.
 {{- range .workOrgs }}
 {{- range list . (lower .) | uniq }}
-[includeIf "hasconfig:remote.*.url:https://github.com/{{ . }}/**"]
+[includeIf "hasconfig:remote.*.url:**/*github.com/{{ . }}/**"]
 	path = work
-[includeIf "hasconfig:remote.*.url:git@github.com:{{ . }}/**"]
+[includeIf "hasconfig:remote.*.url:*github.com:{{ . }}/**"]
 	path = work
 {{- end }}
 {{- end }}
