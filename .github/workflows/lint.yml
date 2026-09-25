@@ -1,20 +1,11 @@
 name: lint
 
-# `lint` is the status check the main ruleset requires, so it is the summary job; the work runs
-# in two jobs behind it, each one `mise run` of a task in the repo's mise.toml, which pins the
-# tools. An agent runs the same two tasks before a PR.
-#
-# The actions float on a major tag: this workflow only reads the repo, names no secret, and
-# Dependabot watches them. The externals pin tag and checksum because they land in `~` unwatched.
-
+# `lint` is the check the ruleset requires. The Mac is the one host, so CI is a Mac.
 on:
   push:
     branches: [main]
   pull_request:
 
-# A superseded pull request run is cancelled; two pushes to main are two states of main, so
-# both finish. Every job takes a timeout with room to spare: the default is six hours, and a
-# hung fetch holds the check `--auto` merges on for every one of them.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -22,53 +13,20 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
-
 jobs:
-  static:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - run: sudo apt-get update -q && sudo apt-get install -y -q zsh
-      - uses: jdx/mise-action@v4
-      - run: mise run lint
-
-  apply:
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+  lint:
+    runs-on: macos-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - if: runner.os == 'Linux'
-        run: sudo apt-get update -q && sudo apt-get install -y -q zsh
-      - if: runner.os == 'macOS'
-        uses: jdx/mise-action@v4
-      # Linux also installs every tool the machine-wide mise config names, so a renamed or
-      # vanished tool fails here and not on the next apply. The key is ours because that config
-      # is not at a name the action hashes.
-      - if: runner.os == 'Linux'
-        uses: jdx/mise-action@v4
+      # Also installs every tool the machine's mise config names, so a renamed tool fails here and
+      # not on the next apply.
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          cache_key: mise-${{ runner.os }}-${{ hashFiles('mise.toml', 'home/dot_config/mise/config.toml') }}
+          cache_key: mise-${{ hashFiles('mise.toml', 'home/dot_config/mise/config.toml') }}
         env:
           MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/home/dot_config/mise/config.toml
+      - run: mise run lint
       - run: mise run apply-check
-
-  lint:
-    needs: [static, apply]
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - env:
-          STATIC: ${{ needs.static.result }}
-          APPLY: ${{ needs.apply.result }}
-        run: test "$STATIC" = success && test "$APPLY" = success

@@ -1,5 +1,4 @@
-# This repo's own tools, pinned, and its two checks. CI runs both tasks; so does an agent before
-# a PR. Not part of the source state: `.chezmoiroot` puts that in home/.
+# This repo's own tools, pinned, and its two checks. `.chezmoiroot` keeps it out of the source state.
 [tools]
 chezmoi = "2.72.2"
 shellcheck = "0.11.0"
@@ -8,14 +7,14 @@ actionlint = "1.7.12"
 zizmor = "1.30.1"
 
 [tasks.lint]
-description = "Shell, zsh syntax, JSON and workflow checks"
+description = "Shell, zsh, JSON, TOML and workflow checks"
 run = [
-  "shellcheck -x home/.chezmoiscripts/* .github/*.sh .claude/*.sh install.sh",
-  # install.sh is chezmoi's generated hook (tabs) and stays as generated.
-  "shfmt -d -i 2 -ci -sr home/.chezmoiscripts/ .github/*.sh .claude/*.sh",
+  "shellcheck -x home/.chezmoiscripts/* .github/*.sh .claude/*.sh",
+  "shfmt -d -i 2 -ci -sr home/.chezmoiscripts/* .github/*.sh .claude/*.sh",
   "for f in $(git ls-files 'home/dot_z*'); do zsh -n \"$f\" || exit 1; done",
   # The JSON under home/ is templates; apply-check parses what they render.
   "for f in $(git ls-files '*.json' ':!home/'); do jq -e . \"$f\" > /dev/null || exit 1; done",
+  "for f in $(git ls-files '*.toml'); do chezmoi execute-template \"{{ include \\\"$PWD/$f\\\" | fromToml }}\" > /dev/null || exit 1; done",
   "actionlint",
   "zizmor --offline .github/",
 ]

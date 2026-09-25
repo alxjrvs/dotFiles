@@ -1,7 +1,0 @@
-# Actions float on a major tag (see workflows/lint.yml): the workflow reads the repo, names no
-# secret, and Dependabot moves the tags.
-rules:
-  unpinned-uses:
-    config:
-      policies:
-        "*": ref-pin
