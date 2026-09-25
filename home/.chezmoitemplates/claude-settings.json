@@ -37,11 +37,19 @@
     ]
   },
   "enabledPlugins": {
+    "1password@1password": true,
     "agent-friendly-repo@oberon": true,
     "commit-commands@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
+    "1password": {
+      "source": {
+        "source": "github",
+        "repo": "1Password/1password-claude-plugin"
+      },
+      "autoUpdate": true
+    },
     "oberon": {
       "source": {
         "source": "github",
