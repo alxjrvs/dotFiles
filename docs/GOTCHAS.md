@@ -1,28 +1,23 @@
 # Gotchas still armed
 
-Each entry is a trap that cost real time, and the rule it forces. A trap explained next to its
-code lives there instead. Delete an entry when its subject is gone.
+Each entry is a trap and the rule it forces. A trap explained next to its code lives there
+instead. Delete an entry when its subject is gone.
 
 ## Claude Code
 
-- **On macOS, Go binaries (`gh`, `op`, `chezmoi`) cannot verify TLS inside the Bash sandbox.**
-  They need the `com.apple.trustd.agent` Mach service, so `sandbox.network.allowMachLookup`
-  names it. Linux has no such failure.
+- **Go binaries (`gh`, `op`, `chezmoi`) cannot verify TLS inside the Bash sandbox** without the
+  `com.apple.trustd.agent` Mach service, so `sandbox.network.allowMachLookup` names it.
 - **`op` reaches the 1Password app over XPC, not a socket.** Its Mach service
   (`2BUA8C4S2C.com.1password.browser-helper`) is the other name in `allowMachLookup`. The app's
   own authorization prompt is still the gate.
-- **The sandbox limits writes, not reads.** The login keychain and every tool's login file
-  (`~/.convex`, `~/.expo`, netlify, wrangler) are readable inside it. In auto mode the
-  classifier is what stops exfiltration: `classifyAllShell` sends every shell command through
-  it, and WebFetch has no allow rule, so the classifier sees that too. A strict network
-  allowlist was considered and declined: the sandbox does nothing on Linux, and a strict list
-  hard-fails every host it has not measured.
-- **`permissions.deny` is a floor, and it matches text.** A pattern matches anywhere in the
-  command, so `*op read*` also denies `grep "loop read"`. Anchor on a verb, never on a path.
-  On Linux the gh token is one `cat` away, and no pattern changes that.
+- **The sandbox confines writes; reads are open unless named.** The login keychain and tool
+  login files (`~/.convex`, `~/.expo`, netlify, wrangler) are readable inside it. In auto mode
+  the classifier is what stops exfiltration: `classifyAllShell` sends every shell command
+  through it, and WebFetch has no allow rule, so it sees that too.
+- **`permissions.deny` matches text anywhere in the command**, so `*op read*` also denies
+  `grep "loop read"`. Anchor on a verb, never on a path. It is a floor, not a wall.
 - **Session transcripts are plaintext** under `~/.claude/projects/`, and they hold every file
-  an agent read. They are kept for thirty days. Never set `cleanupPeriodDays` to `0`: that
-  stops writing transcripts instead of deleting them.
+  an agent read, for thirty days.
 - **The desktop app runs its own bundled Claude Code, not `~/.local/bin/claude`.** The two
   update on different schedules, so check a settings key in both a terminal and the Code tab.
 - **An auto-mode denial shows up only in `/permissions` › Recently denied.**
@@ -34,26 +29,23 @@ code lives there instead. Delete an entry when its subject is gone.
   otherwise asks on a terminal the agent does not have.
 - **Set `git config user.*` only in a throwaway repo** (`git -C "$tmp"`) or through
   `GIT_CONFIG_KEY_n`, never bare in a checkout. Every worktree shares the checkout's
-  `.git/config`, and `verify` cannot see it. A test identity has authored real commits this way.
+  `.git/config`, and `verify` cannot see it.
 - **A push that changes `.github/workflows/` needs the `workflow` scope**, which `gh auth
-  login` does not request. The rejection reads like branch protection. Agents always push over
-  HTTPS (the `insteadOf` pair in the settings), so the fix is
+  login` does not request, and the rejection reads like branch protection. Agents push over
+  HTTPS (the `insteadOf` pairs in the settings), so the fix is
   `gh auth refresh -h github.com -s workflow`, once, by hand.
-- **On Linux the sandbox needs bubblewrap and socat; without them it runs unsandboxed** after a
-  warning. Devcontainers and Claude Code on the web have neither, so the container is the
-  boundary there. Never set `failIfUnavailable`: Claude Code would refuse to start on every
-  Linux host here.
+- **On the web, an expired claude.ai login stalls a `/loop`** until the next `/login`.
 
 ## chezmoi
 
-- **Apply never removes a target whose source was deleted.** The PR that deletes a source lists
-  the `rm` for each machine; `.chezmoiremove` is for a removal too big to type.
+- **Apply never removes a target whose source was deleted.** The PR that deletes a source says
+  what to `rm` on the Mac.
 - **A `run_onchange_` script records its hash whenever it exits 0, even from an early guard.**
   Anything that may need a retry (for example, behind `gh auth login`) is a `run_` script.
 - **`run_onchange_` on a file's hash re-runs when the file changes, not when the machine
   does.** A `brew install` by hand survives until the Brewfile next changes; `brew leaves`
-  shows it. A Homebrew copy of a mise tool is not harmless: Homebrew's atuin once migrated the
-  history database and broke mise's older atuin on every prompt.
+  shows it. A Homebrew copy of a mise tool is not harmless: the two can migrate shared state,
+  such as atuin's history database, out from under each other.
 - **A run script cannot call `chezmoi`:** the outer apply holds the state lock, so the inner
   one times out and fails the apply.
 - **`.chezmoiscripts` stays flat.** Scripts run in ASCII order of their target path, so a
@@ -64,7 +56,7 @@ code lives there instead. Delete an entry when its subject is gone.
 ## macOS
 
 - **op-ssh-sign waits on the 1Password app's authorization dialog.** A locked app blocks a
-  person's `git commit` from an unattended terminal. Agents are unaffected: their settings
-  set `commit.gpgSign=false`.
+  person's `git commit` or `git tag` from an unattended terminal. Agents' settings turn off
+  `commit.gpgSign` only, so an agent's `git tag` waits on it too.
 - **`defaults write` to a key the app does not read succeeds and does nothing.** Check the key
   name against what the app reads, not against a blog post.
