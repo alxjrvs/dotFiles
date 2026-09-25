@@ -13,7 +13,7 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 - Guilty until proven load-bearing: every dependency, wrapper, and line earns its weight.
 - One host, the Mac. A Claude Code web session is Linux and gets this repo, never `~`: the checks
   run there and nothing applies. No by-hand step remains that `chezmoi apply` could converge,
-  except removals and external bumps.
+  except external bumps.
 - Standard, and agentic-enabled: 1Password, git, ssh, `gh`, MCP stay stock, wired for agents.
 - Keep it legible: one line on the decision, nothing on the mechanism.
 
@@ -43,7 +43,7 @@ merges it; an agent leaves it open at green.
 - This repo's own linters are pinned in the root `mise.toml`, not installed machine-wide.
 - `chezmoi apply` never upgrades anything. When the Brewfile changes, it also uninstalls every
   Homebrew package the Brewfile does not name.
-- Machine setup is `home/.chezmoiscripts/`, kept flat. Homebrew, sleep and provisioning run on
+- Machine setup is `home/.chezmoiscripts/`. Homebrew, sleep and provisioning run on
   every apply behind a guard. mise, the Caps Lock plist and the Brewfile re-run when their file
   changes (the Brewfile last), and the macOS defaults re-run when the script itself changes.
 - The macOS defaults are applied, not converged: `verify` runs no script and never sees them.
@@ -55,10 +55,9 @@ merges it; an agent leaves it open at green.
 - `home/dot_claude/loop.md` is what a bare `/loop` runs in any repo without its own
   `.claude/loop.md`; `/loop <prompt>` ignores it.
 - nvim is `$EDITOR` and nothing more: no plugins, no language servers.
-- The terminal owns the palette: a tool names a theme or an ANSI color, never a hex code.
 - Employer config is the employer's marketplace, installed by its tooling; nothing here enables
   it.
 - Secrets: `op://` references only, never a plaintext token, and nothing here prints one.
-- A source file's mode comes from its name (`executable_`, `private_`), never from the checkout.
 - The repo settings that are not files are `.github/gate.sh`, which the owner runs.
-- Traps still armed, and the rule each forces: `docs/GOTCHAS.md`. History is the PRs.
+- A rule that can fail the build is a check in `mise.toml` or `.github/apply-check.sh`, not a
+  line here. What is left to move: `docs/GOTCHAS.md`. History is the PRs.

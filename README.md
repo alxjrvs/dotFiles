@@ -40,7 +40,9 @@ To hack on this repo, clone it to `~/Code/dotFiles`; chezmoi keeps its own copy.
 | the repo settings | [`.github/gate.sh`](.github/gate.sh), run by the owner |
 
 A Mac on power never idles to sleep, so an unattended `/loop` keeps running; closing the lid
-still stops it.
+still stops it. On the web, an expired claude.ai login stalls a loop until the next `/login`.
+A push that changes `.github/workflows/` needs the `workflow` scope; its rejection reads like
+branch protection.
 
 GitHub is the gate: `main` takes only squash-merged pull requests with the `lint` check green,
 and push protection stops a secret before it lands. Agents act as you: `gh auth login` is the one
@@ -58,7 +60,7 @@ home/.chezmoiscripts/   machine setup: Homebrew, mise, Caps Lock, macOS defaults
 home/.chezmoitemplates/ the declared keys of ~/.claude/settings.json
 home/dot_claude/        user-global Claude Code config, and the loop a bare `/loop` runs
 home/.chezmoi*          chezmoi's own files: config template, data (work orgs), version floor, externals
-docs/GOTCHAS.md         traps still armed and the rule each forces
+docs/GOTCHAS.md         the Claude settings' reasons, until they live in the template
 ```
 
 ## Forking
