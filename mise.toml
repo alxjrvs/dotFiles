@@ -1,5 +1,4 @@
-# This repo's own tools, pinned, and its two checks. CI runs both tasks; so does an agent before
-# a PR. Not part of the source state: `.chezmoiroot` puts that in home/.
+# This repo's own tools, pinned, and its two checks. `.chezmoiroot` keeps it out of the source state.
 [tools]
 chezmoi = "2.72.2"
 shellcheck = "0.11.0"
@@ -8,14 +7,24 @@ actionlint = "1.7.12"
 zizmor = "1.30.1"
 
 [tasks.lint]
-description = "Shell, zsh syntax, JSON and workflow checks"
+description = "Shell, zsh, JSON, TOML and workflow checks"
 run = [
-  "shellcheck -x home/.chezmoiscripts/* .github/*.sh .claude/*.sh install.sh",
-  # install.sh is chezmoi's generated hook (tabs) and stays as generated.
-  "shfmt -d -i 2 -ci -sr home/.chezmoiscripts/ .github/*.sh .claude/*.sh",
+  "shellcheck -x home/.chezmoiscripts/* .github/*.sh .claude/*.sh",
+  "shfmt -d -i 2 -ci -sr home/.chezmoiscripts/* .github/*.sh .claude/*.sh",
   "for f in $(git ls-files 'home/dot_z*'); do zsh -n \"$f\" || exit 1; done",
   # The JSON under home/ is templates; apply-check parses what they render.
   "for f in $(git ls-files '*.json' ':!home/'); do jq -e . \"$f\" > /dev/null || exit 1; done",
+  # raw: mise renders task scripts with Tera, and this one is a chezmoi template.
+  "{% raw %}for f in $(git ls-files '*.toml'); do chezmoi execute-template \"{{ include \\\"$PWD/$f\\\" | fromToml }}\" > /dev/null || exit 1; done{% endraw %}",
+  # Rules that would otherwise be prose: a mode comes from the source name, never the checkout;
+  # the terminal owns the palette, so no hex colour; scripts stay flat and never call chezmoi
+  # (the outer apply holds its lock); a run_onchange_ script never exits early (exit 0 records
+  # its hash, so it would never retry).
+  "test -z \"$(git ls-files -s home | awk '$1 != 100644')\"",
+  "! git grep -nE '#[0-9a-fA-F]{6}\\b' -- home",
+  "test -z \"$(find home/.chezmoiscripts -mindepth 1 -type d)\"",
+  "! grep -nE '^[^#]*\\bchezmoi\\b' home/.chezmoiscripts/*",
+  "! grep -n 'exit 0' home/.chezmoiscripts/run_onchange_*",
   "actionlint",
   "zizmor --offline .github/",
 ]

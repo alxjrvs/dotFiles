@@ -1,16 +1,4 @@
-# macOS
-.DS_Store
-._*
-.Spotlight-V100
-.Trashes
-
-# Editors
-*.swp
-*.swo
-*~
-
-# Claude Code's machine-local state, named path by path: git does not descend into an excluded
-# directory, so `.claude/` plus a negation would put this repo's project scope out of reach.
+# Claude Code's machine-local state; the rest of .claude/ is this repo's project scope.
 .claude/worktrees/
 .claude/settings.local.json
 .claude/.cc-writes/

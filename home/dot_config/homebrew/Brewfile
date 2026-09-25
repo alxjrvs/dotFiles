@@ -1,7 +1,7 @@
-# The Mac's apps and its one service. CLIs are mise's; chezmoi and mise are their own
-# installers' (~/.local/bin); git is Xcode's. Apply never upgrades (a cask upgrade quits the
-# running app): `brew upgrade --cask <name>` when it must. What this file does not name, apply
-# uninstalls, so a formula kept by hand is a formula lost.
+# The Mac's apps, its one service, and three CLIs kept as casks (1password-cli, gcloud-cli and
+# ngrok); every other CLI is mise's. chezmoi and mise are their own installers' (~/.local/bin);
+# git is Xcode's. Apply never upgrades (a cask upgrade quits the running app): `brew upgrade
+# --cask <name>` when it must. When this file changes, apply uninstalls whatever it does not name.
 
 # ── Services ──────────────────────────────────────────────────────────
 # A launchd service, not a CLI: apply starts it and restarts it when the formula changes, and
@@ -16,7 +16,7 @@ cask "1password"
 # The Claude desktop app. The Claude Code CLI is the native installer (40-provision), never brew.
 cask "claude"
 cask "discord"
-cask "font-fira-code-nerd-font"
+cask "font-fira-code"
 cask "ghostty"
 cask "google-chrome"
 cask "notunes"
@@ -26,7 +26,6 @@ cask "ngrok"
 cask "obs"
 cask "orbstack"      # containers: Docker's engine and CLI, for devcontainers and testcontainers
 cask "raycast"       # launcher
-cask "rectangle"     # window management
 cask "slack"
 cask "tuple"
 cask "visual-studio-code"

@@ -1,14 +1,9 @@
 #!/bin/bash
 # Homebrew bundle, re-run when the Brewfile changes. `--no-upgrade`: apply reconciles, never
-# upgrades. Last but one: one failing cask stops every later script, so the CLIs, the defaults
-# and provisioning land before the apps do, and a bundle that stops leaves a usable shell.
+# upgrades. Last, so a failing cask stops no other script.
 # Brewfile hash: {{ include "dot_config/homebrew/Brewfile" | sha256sum }}
 set -euo pipefail
 eval "$(/opt/homebrew/bin/brew shellenv)"
 brew bundle --no-upgrade --file="$HOME/.config/homebrew/Brewfile"
-# Installed but not declared is drift, and `--force` removes it rather than reporting it to a
-# log nobody reads. The cost: a `brew install` to try something out does not survive the next
-# apply unless it lands in the Brewfile first. `--force` answers brew's own prompt and not the
-# one a cask's uninstaller can raise, so stdin stays closed; non-fatal because 50-capslock
-# follows, and a driver that needs an admin it cannot ask for must not cost the Caps Lock remap.
-brew bundle cleanup --force --file="$HOME/.config/homebrew/Brewfile" < /dev/null || true
+# Installed but not declared is drift, and removed. stdin is closed: a cask uninstaller may prompt.
+brew bundle cleanup --force --file="$HOME/.config/homebrew/Brewfile" < /dev/null

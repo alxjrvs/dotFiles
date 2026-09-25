@@ -1,5 +1,5 @@
 # fd's global ignore.
-# .git/ because the fzf commands in ~/.zshrc pass --hidden; ripgrep's half is in ~/.ripgreprc.
+# .git/ for `fd --hidden`; ripgrep's half is in ~/.ripgreprc.
 .git/
 node_modules
 .pytest_cache
