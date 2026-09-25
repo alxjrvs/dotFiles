@@ -60,7 +60,6 @@ home/.chezmoiscripts/   machine setup: Homebrew, mise, Caps Lock, macOS defaults
 home/.chezmoitemplates/ the declared keys of ~/.claude/settings.json
 home/dot_claude/        user-global Claude Code config, and the loop a bare `/loop` runs
 home/.chezmoi*          chezmoi's own files: config template, data (work orgs), version floor, externals
-docs/GOTCHAS.md         the Claude settings' reasons, until they live in the template
 ```
 
 ## Forking

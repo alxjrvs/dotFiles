@@ -59,5 +59,5 @@ merges it; an agent leaves it open at green.
   it.
 - Secrets: `op://` references only, never a plaintext token, and nothing here prints one.
 - The repo settings that are not files are `.github/gate.sh`, which the owner runs.
-- A rule that can fail the build is a check in `mise.toml` or `.github/apply-check.sh`, not a
-  line here. What is left to move: `docs/GOTCHAS.md`. History is the PRs.
+- A rule that can fail the build is a check in `mise.toml` or `.github/apply-check.sh`, and a
+  rule an agent must obey is a setting; neither is a line here. History is the PRs.
