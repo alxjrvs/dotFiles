@@ -1,13 +1,10 @@
 theme = Nord
 
-font-family = FiraCode Nerd Font
+font-family = Fira Code
 font-thicken = true
 font-size = 14
-
-font-feature = +dlig
 adjust-cell-height = -1
 
-# Cursor
 mouse-hide-while-typing = true
 
 # Window
@@ -15,16 +12,11 @@ window-padding-x = 0
 window-padding-y = 0
 macos-titlebar-style = native
 window-save-state = always
-quit-after-last-window-closed = true
 macos-option-as-alt = left
 
-
-# Quick terminal: a drop-down visor on a global hotkey.
+# Quick terminal: a drop-down visor on a global hotkey, live while Ghostty runs.
 quick-terminal-screen = mouse
 quick-terminal-animation-duration = 0.15
-
-# Shell integration: ssh carries Ghostty's terminfo to the container.
-shell-integration-features = ssh-env,ssh-terminfo
 
 # Keybindings
 keybind = ctrl+shift+w=close_surface

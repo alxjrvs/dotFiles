@@ -1,7 +1,5 @@
-# ~/.config/mise/config.toml: every CLI and runtime, on every machine. A Mac's apps are
-# Brewfile casks; a project pins its own tools in its own mise.toml, this repo's linters
-# included. `mise upgrade` upgrades: `latest` is the decision, nothing here is pinned, and drift
-# between the two hosts is accepted.
+# Every CLI and runtime; a project pins its own in its own mise.toml. `latest` is the decision:
+# nothing here is pinned, and `mise upgrade` upgrades.
 [tools]
 node = "lts"
 bun = "latest"
@@ -19,9 +17,7 @@ gh = "latest"
 delta = "latest"
 
 # Files and text
-ast-grep = "latest"
 bat = "latest"
-eza = "latest"
 fd = "latest"
 jq = "latest"
 ripgrep = "latest"

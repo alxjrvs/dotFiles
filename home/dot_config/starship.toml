@@ -1,13 +1,8 @@
-# starship prompt: the container name, bold cwd, then muted-bracketed git chips, on one line.
-# ASCII throughout so it survives a terminal without the nerd font.
+# starship prompt: bold cwd, then muted-bracketed git chips, on one line. Plain characters, no
+# nerd-font glyphs.
 
 add_newline = false
-format = "$container$directory$git_branch$git_state$git_status $character"
-
-# Red, and never on the Mac: this is the side with no sudo, no 1Password app and no signing.
-[container]
-format = '[\[$name\]]($style) '
-style = "bold red"
+format = "$directory$git_branch$git_state$git_status $character"
 
 # repo_root_style muted so a worktree path stays readable beside the bold part.
 [directory]
@@ -16,11 +11,9 @@ style = "bold white"
 repo_root_style = "bright-black"
 read_only = " "
 
-# `symbol` is a bare space, not the default glyph; `directory` already trails a space.
 [git_branch]
-symbol = " "
 style = "blue"
-format = '[\[](bright-black)[$symbol$branch]($style)[\]](bright-black)'
+format = '[\[](bright-black)[$branch]($style)[\]](bright-black)'
 
 # `style` omitted: starship's default is already bold yellow.
 [git_state]

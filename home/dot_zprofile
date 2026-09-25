@@ -1,8 +1,4 @@
-# Login shells. PATH goes here, after /etc/zprofile's path_helper has rebuilt it from scratch.
-# No GitHub token and no SSH_AUTH_SOCK: gh and git resolve credentials on demand, and signing
-# and ssh both go through the 1Password agent. brew shellenv also exports FPATH.
+# Login shells. /etc/zprofile's path_helper rebuilds PATH after ~/.zshenv, so the two tool
+# directories go back in front; brew shellenv also exports FPATH.
 [[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv)"
-typeset -U path PATH
-# mise's shims, for programs that never read ~/.zshrc (editors, agents); ~/.zshrc activates for
-# the interactive shell on top. The literal path, as in ~/.zshenv: no process per login.
 path=("$HOME/.local/bin" "$HOME/.local/share/mise/shims" $path)

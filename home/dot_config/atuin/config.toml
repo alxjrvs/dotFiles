@@ -1,20 +1,14 @@
 # Atuin: only divergences from defaults. https://docs.atuin.sh/configuration/config/
 
 keymap_mode = "vim-normal"
-style = "compact"
 inline_height = 20
-# Scope search to the current repo; the daemon's in-memory index keeps that cheap.
+# Adds the current repo to the filter modes Ctrl-R cycles through.
 workspaces = true
-search_mode = "daemon-fuzzy"
 
 # secrets_filter (default on) already drops known token formats (GitHub, AWS, Slack, Stripe,
-# npm, ...) and leading-space commands; these are the two it misses: the generic `key: value`
-# form and sk- (OpenAI, Anthropic) keys. Top-level, not [history].
+# npm, ...); these are the two it misses: the generic `key: value` form and sk- (OpenAI,
+# Anthropic) keys. Top-level, not [history].
 history_filter = [
-  "(?i)(password|secret|token|apikey|api[_-]?key|pat)\\s*[:=]\\s*\\S+",
+  "(?i)(password|secret|token|apikey|api[_-]?key)\\s*[:=]\\s*\\S+",
   "sk-[A-Za-z0-9_-]{20,}",
 ]
-
-[daemon]
-enabled = true
-autostart = true

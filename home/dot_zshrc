@@ -1,36 +1,31 @@
-# ~/.zshrc: interactive shells. PATH starts in ~/.zshenv, re-prepended in ~/.zprofile. Every
-# tool is guarded, so the same file degrades to a plain prompt on a host that has none of them.
+# ~/.zshrc: interactive shells. PATH is ~/.zshenv's. Every tool is guarded, so a machine that
+# lacks one still gets a working prompt.
 
 (( $+commands[mise] )) && eval "$(mise activate zsh)"
 
 # --- options -----------------------------------------------------------------------------------
-setopt CORRECT EXTENDED_GLOB INTERACTIVE_COMMENTS NO_BEEP NO_FLOWCONTROL
+setopt AUTO_CD CORRECT EXTENDED_GLOB INTERACTIVE_COMMENTS NO_BEEP NO_FLOWCONTROL
 # History: atuin is the source of truth and the only cross-session index, so append, never
-# share. zsh has no default HISTFILE and Ubuntu's /etc/zsh supplies none, so Linux kept none.
-HISTFILE=${ZDOTDIR:-$HOME}/.zsh_history
+# share. macOS's /etc/zshrc names the file.
 HISTSIZE=10000
 SAVEHIST=10000
-setopt INC_APPEND_HISTORY HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE HIST_VERIFY EXTENDED_HISTORY HIST_REDUCE_BLANKS
+setopt INC_APPEND_HISTORY_TIME HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE HIST_VERIFY EXTENDED_HISTORY HIST_REDUCE_BLANKS
 
 # --- vi mode -----------------------------------------------------------------------------------
 bindkey -v
 KEYTIMEOUT=1
-# Cursor: steady block in normal mode, blinking bar in insert (DECSCUSR 2 / 5).
-zle-keymap-select() { if [[ $KEYMAP == vicmd ]]; then print -n '\e[2 q'; else print -n '\e[5 q'; fi }
-# smkx first: without application mode Home and End send sequences nothing is bound to.
-zle-line-init()   { (( ${+terminfo[smkx]} )) && printf '%s' ${terminfo[smkx]}; print -n '\e[5 q'; }
+# Application mode on, so Home and End send the sequences their terminfo bindings expect.
+zle-line-init()   { (( ${+terminfo[smkx]} )) && printf '%s' ${terminfo[smkx]} }
 zle-line-finish() { (( ${+terminfo[rmkx]} )) && printf '%s' ${terminfo[rmkx]} }
-zle -N zle-keymap-select
 zle -N zle-line-init
 zle -N zle-line-finish
 
 # --- environment -------------------------------------------------------------------------------
-# LANG: what the terminal set, else the UTF-8 locale every libc ships (en_US is absent from
-# most images, and zsh's setlocale fails silently).
 # BAT_THEME is what delta, MANPAGER and the fzf preview read; bat's config file is not.
-export EDITOR=nvim VISUAL=nvim LANG=${LANG:-C.UTF-8} LESS='-RFX' BAT_THEME=Nord BAT_PAGING=never
+export EDITOR=nvim BAT_THEME=Nord BAT_PAGING=never
 export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
-(( $+commands[bat] )) && export MANPAGER="bat -plman"
+# col strips mandoc's overstrikes; man pages page even though bat itself does not.
+(( $+commands[bat] )) && export MANPAGER="sh -c 'col -bx | bat -plman --paging=always'"
 
 # --- plugins: two, chezmoi externals; `source` is the plugin manager --------------------------
 _zsh_plugins=$HOME/.local/share/zsh/plugins
@@ -48,17 +43,13 @@ zstyle ':completion:*:git-checkout:*' sort false
 # --- tools -------------------------------------------------------------------------------------
 if (( $+commands[fzf] )); then
   export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40%'
-  export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow'
-  export FZF_CTRL_T_OPTS="--preview 'bat --color=always {}' --preview-window right:50%"
-  export FZF_ALT_C_OPTS="--preview 'eza --icons -T {} | head -20'"
-  export FZF_ALT_C_COMMAND='fd --type d --hidden --follow'
-  # --zsh arrived in fzf 0.48; an older build on PATH must not print to every prompt.
-  eval "$(fzf --zsh 2> /dev/null)"
+  export FZF_CTRL_T_OPTS="--walker=file,follow,hidden --preview 'bat --color=always {}' --preview-window right:50%"
+  eval "$(fzf --zsh)"
 fi
 if (( $+commands[atuin] )); then
-  # --disable-up-arrow keeps Up/Down as plain history navigation. atuin's init takes Ctrl-R from
-  # fzf in emacs and viins; in vicmd it binds `/`, so Ctrl-R there is ours.
-  eval "$(atuin init zsh --disable-up-arrow)"
+  # Up/Down stay plain history, and `?` stays a character. In vicmd atuin binds `/`, so Ctrl-R
+  # there is ours.
+  eval "$(atuin init zsh --disable-up-arrow --disable-ai)"
   bindkey -M vicmd '^R' atuin-search
 fi
 (( $+commands[starship] )) && eval "$(starship init zsh)"
@@ -67,7 +58,6 @@ fi
 
 # --- aliases -----------------------------------------------------------------------------------
 alias gs='git status' gp='git push' gpr='git pull --rebase' gco='git checkout'
-alias ..='cd ..'
 (( $+commands[nvim] )) && alias vim='nvim'
 
 # --- syntax highlighting: last, because it wraps the ZLE widgets defined above ----------------
