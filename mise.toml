@@ -14,7 +14,8 @@ run = [
   "for f in $(git ls-files 'home/dot_z*'); do zsh -n \"$f\" || exit 1; done",
   # The JSON under home/ is templates; apply-check parses what they render.
   "for f in $(git ls-files '*.json' ':!home/'); do jq -e . \"$f\" > /dev/null || exit 1; done",
-  "for f in $(git ls-files '*.toml'); do chezmoi execute-template \"{{ include \\\"$PWD/$f\\\" | fromToml }}\" > /dev/null || exit 1; done",
+  # raw: mise renders task scripts with Tera, and this one is a chezmoi template.
+  "{% raw %}for f in $(git ls-files '*.toml'); do chezmoi execute-template \"{{ include \\\"$PWD/$f\\\" | fromToml }}\" > /dev/null || exit 1; done{% endraw %}",
   "actionlint",
   "zizmor --offline .github/",
 ]
