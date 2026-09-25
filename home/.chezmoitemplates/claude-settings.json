@@ -1,13 +1,15 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
-    "GIT_CONFIG_COUNT": "3",
+    "GIT_CONFIG_COUNT": "4",
     "GIT_CONFIG_KEY_0": "commit.gpgSign",
     "GIT_CONFIG_VALUE_0": "false",
     "GIT_CONFIG_KEY_1": "url.https://github.com/.insteadOf",
     "GIT_CONFIG_VALUE_1": "git@github.com:",
     "GIT_CONFIG_KEY_2": "url.https://github.com/.insteadOf",
-    "GIT_CONFIG_VALUE_2": "ssh://git@github.com/"
+    "GIT_CONFIG_VALUE_2": "ssh://git@github.com/",
+    "GIT_CONFIG_KEY_3": "tag.gpgSign",
+    "GIT_CONFIG_VALUE_3": "false"
   },
   "attribution": {
     "sessionUrl": false
@@ -21,19 +23,23 @@
       "Bash(*gh release create*)",
       "Bash(*gh gist create*)",
       "Bash(*gh auth token*)",
-      "Bash(*--show-token*)",
+      "Bash(*gh auth status*)",
+      "Bash(*gh auth git-credential*)",
       "Bash(*security find-generic-password*)",
+      "Bash(*security dump-keychain*)",
       "Bash(*git credential*)",
       "Bash(*op read*)",
       "Bash(*op item get*)",
-      "Bash(*op inject*)"
+      "Bash(*op inject*)",
+      "Bash(*op document get*)",
+      "Bash(*--no-masking*)",
+      "Bash(*git config user.*)"
     ]
   },
   "enabledPlugins": {
     "agent-friendly-repo@oberon": true,
     "commit-commands@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true{{ if eq .chezmoi.os "darwin" }},
-    "1password-mcp@oberon": true{{ end }}
+    "frontend-design@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "oberon": {
@@ -47,6 +53,7 @@
   "outputStyle": "Proactive",
   "sandbox": {
     "enabled": true,
+    "enableWeakerNetworkIsolation": true,
     "network": {
       "allowedDomains": [
         "github.com",
@@ -67,20 +74,18 @@
         "rubygems.org"
       ],
       "allowMachLookup": [
-        "com.apple.trustd.agent",
         "2BUA8C4S2C.com.1password.browser-helper"
       ]
     },
     "filesystem": {
       "allowWrite": [
         "~/Library/Caches/mise",
-        "~/.cache/mise",
         "~/.local/state/mise",
         "~/.local/share/mise"
       ]
     },
     "excludedCommands": [
-      "chezmoi update *"
+      "chezmoi update --force"
     ]
   },
   "autoMemoryEnabled": false,
