@@ -20,6 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # apply-check compares the managed targets with main's.
+          fetch-depth: 0
           persist-credentials: false
       # Also installs every tool the machine's mise config names, so a renamed tool fails here and
       # not on the next apply.

@@ -16,6 +16,15 @@ run = [
   "for f in $(git ls-files '*.json' ':!home/'); do jq -e . \"$f\" > /dev/null || exit 1; done",
   # raw: mise renders task scripts with Tera, and this one is a chezmoi template.
   "{% raw %}for f in $(git ls-files '*.toml'); do chezmoi execute-template \"{{ include \\\"$PWD/$f\\\" | fromToml }}\" > /dev/null || exit 1; done{% endraw %}",
+  # Rules that would otherwise be prose: a mode comes from the source name, never the checkout;
+  # the terminal owns the palette, so no hex colour; scripts stay flat and never call chezmoi
+  # (the outer apply holds its lock); a run_onchange_ script never exits early (exit 0 records
+  # its hash, so it would never retry).
+  "test -z \"$(git ls-files -s home | awk '$1 != 100644')\"",
+  "! git grep -nE '#[0-9a-fA-F]{6}\\b' -- home",
+  "test -z \"$(find home/.chezmoiscripts -mindepth 1 -type d)\"",
+  "! grep -nE '^[^#]*\\bchezmoi\\b' home/.chezmoiscripts/*",
+  "! grep -n 'exit 0' home/.chezmoiscripts/run_onchange_*",
   "actionlint",
   "zizmor --offline .github/",
 ]

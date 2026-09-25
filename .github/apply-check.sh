@@ -15,6 +15,25 @@ cz=(chezmoi --source "$root" --config "$tmp/chezmoi.toml" --persistent-state "$t
 # `--exclude scripts` skips rendering them; this renders every script and runs none.
 "${cz[@]}" apply --dry-run
 
+# A deleted source leaves its target behind, so every file main manages is still managed here,
+# if only as a `remove_` entry that deletes it. Dropping a `remove_` entry later is fine: once
+# applied it has done its work.
+base=$tmp/base
+mkdir "$base"
+git -C "$root" archive "$(git -C "$root" merge-base HEAD origin/main)" | tar -x -C "$base"
+rm -f "$base"/home/.chezmoiexternal.* # listing an external downloads it
+was=$(chezmoi --source "$base" --destination "$home" managed --exclude scripts,externals,remove | sort)
+now=$("${cz[@]}" managed --exclude scripts,externals | sort)
+removed=$("${cz[@]}" managed --include remove)
+comm -23 <(printf '%s\n' "$was") <(printf '%s\n' "$now") |
+  while read -r target; do
+    path=$target
+    until printf '%s\n' "$removed" | grep -qxF "$path"; do
+      [ "$path" != "${path%/*}" ] || { echo "apply-check: ~/$target lost its source; add a remove_ entry" >&2 && exit 1; }
+      path=${path%/*}
+    done
+  done
+
 # settings.json: the two shapes run_after_40-provision.sh loops over, every git pair counted in.
 settings=$home/.claude/settings.json
 jq -e 'all(.extraKnownMarketplaces[]; .source.repo) and any(.enabledPlugins[]; .)' "$settings" > /dev/null
