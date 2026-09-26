@@ -29,7 +29,9 @@ however obvious it looks from here.
    that fell behind its base (`mergeStateStatus` is `BEHIND`: `gh pr
    update-branch`), which auto-merge waits on forever.
 
-Stop when the PR is merged, or after 3 failed attempts at the same failure —
-then report what blocked you and what you tried.
+Stop when the PR is merged, or after 3 failed attempts at the same failure.
+Either way, end with three headings: **Blocked on me** (what blocked you and
+what you tried), **Changed**, and **Found** (anything out of scope you noticed
+and left alone).
 
 Never force-push without `--force-with-lease`.
