@@ -1,0 +1,69 @@
+#!/bin/bash
+# One Claude desktop app per extra account in .chezmoidata.toml's claudeProfiles. A stopgap: when
+# Claude desktop signs in to several accounts itself, this script and that key go.
+# Each app is the stock binary with its own --user-data-dir, where the account's session lives,
+# and the stock icon recoloured on this machine, so no copy of Claude's logo is committed. Re-runs
+# when the profiles change or a Claude update changes the icon; after the Brewfile installs Claude.
+# stock icon: {{ with stat "/Applications/Claude.app/Contents/Resources/electron.icns" }}{{ .modTime }}{{ end }}
+set -euo pipefail
+export PATH="$HOME/.local/share/mise/shims:$PATH"
+profiles='{{ .claudeProfiles | toJson }}'
+stock=/Applications/Claude.app/Contents
+lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+
+jq -r '.[] | [.name, .hue, .saturation] | @tsv' <<< "$profiles" |
+  while IFS=$'\t' read -r name hue saturation; do
+    id=$(tr '[:upper:]' '[:lower:]' <<< "$name")
+    app="$HOME/Applications/Claude $name.app"
+    mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+    # A script has no Mach-O arch for macOS to read: without `arch` and the arm64 priority below,
+    # Claude runs under Rosetta and warns that it will not work on Intel Macs.
+    cat > "$app/Contents/MacOS/launch" << EOF
+#!/bin/sh
+exec /usr/bin/arch -arm64 "$stock/MacOS/Claude" \\
+  --user-data-dir="$HOME/Library/Application Support/Claude-$id"
+EOF
+    chmod +x "$app/Contents/MacOS/launch"
+    cat > "$app/Contents/Info.plist" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>Claude $name</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.{{ .github }}.claude-$id</string>
+  <key>CFBundleExecutable</key>
+  <string>launch</string>
+  <key>CFBundleIconFile</key>
+  <string>app.icns</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>LSArchitecturePriority</key>
+  <array><string>arm64</string></array>
+  <key>LSRequiresNativeExecution</key>
+  <true/>
+</dict>
+</plist>
+EOF
+    # Pillow reads the largest rendition and writes every size from it.
+    uv run --quiet --no-project --with pillow python - "$stock/Resources/electron.icns" \
+      "$app/Contents/Resources/app.icns" "$hue" "$saturation" << 'EOF'
+import sys
+from PIL import Image
+
+stock, out = sys.argv[1:3]
+hue, saturation = map(float, sys.argv[3:])
+icon = Image.open(stock).convert("RGBA")
+# White has no saturation, so the glyph stays white and only the plate changes colour.
+h, s, v = icon.convert("RGB").convert("HSV").split()
+h = h.point(lambda x: (x + round(hue / 360 * 256)) % 256)
+s = s.point(lambda x: min(255, round(x * saturation)))
+tinted = Image.merge("HSV", (h, s, v)).convert("RGB")
+tinted.putalpha(icon.getchannel("A"))
+tinted.save(out)
+EOF
+    # Finder and the Dock cache a bundle's icon until it is touched and registered again.
+    touch "$app"
+    "$lsregister" -f "$app"
+  done

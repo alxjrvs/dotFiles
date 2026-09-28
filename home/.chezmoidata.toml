@@ -12,3 +12,7 @@ signingItem = { item = "GitHubSSH", vault = "Private" }
 # email. Adding an org is one entry here; workEmail may equal email.
 workOrgs = ["Criterium", "massgov", "TheGnarCo"]
 workEmail = "alex@thegnar.co"
+# Claude desktop accounts beyond the one the stock app holds, until Claude desktop signs in to
+# several itself. Each becomes "~/Applications/Claude <name>.app", its icon the stock one with the
+# hue turned `hue` degrees and the saturation times `saturation`. One account: [].
+claudeProfiles = [{ name = "Binfinite", hue = -21, saturation = 1.3 }]

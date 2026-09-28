@@ -49,7 +49,9 @@ widens the `permissions`, `sandbox`, `autoMode` or `env` blocks of
   and upkeep does the same nightly.
 - Machine setup is `home/.chezmoiscripts/`. Homebrew, sleep and provisioning run on
   every apply behind a guard. mise, the launchd agents and the Brewfile re-run when their files
-  change (the Brewfile last), and the macOS defaults re-run when the script itself changes.
+  change, and the macOS defaults when the script itself changes. Last, the extra Claude desktop
+  apps re-run when `claudeProfiles` or Claude's icon changes; they go once Claude desktop holds
+  several accounts itself.
 - The macOS defaults are applied, not converged: `verify` runs no script and never sees them.
 - `~/Code/.metadata_never_index` keeps Spotlight out of every repo; its indexer never settled
   under `~/Code`. Search code with `rg` and `fd`.

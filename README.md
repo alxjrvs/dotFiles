@@ -57,7 +57,8 @@ mise.toml               this repo's pinned linters and its two checks, lint and 
 .github/                CI, apply-check.sh, and gate.sh (the repo settings that are not files)
 .claude/                this repo's Claude Code config: the loop, the monthly bump and a web-session setup hook
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
-home/.chezmoiscripts/   machine setup: Homebrew, mise, launchd agents, macOS defaults, sleep, provisioning, apps
+home/.chezmoiscripts/   machine setup: Homebrew, mise, launchd agents, macOS defaults, sleep, provisioning, apps, and
+                        one Claude desktop app per extra account
 home/.chezmoitemplates/ the declared keys of ~/.claude/settings.json
 home/dot_claude/        user-global Claude Code config, and the loop a bare `/loop` runs
 home/.chezmoi*          chezmoi's own files: config template, data (work orgs), version floor, remove list
