@@ -1,5 +1,3 @@
---max-columns=200
---max-columns-preview
 --smart-case
 --hidden
 # --hidden alone walks the object store; rg has no global ignore file, so it lives here.
