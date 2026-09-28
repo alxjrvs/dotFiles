@@ -16,13 +16,16 @@ command -v shellcheck > /dev/null || uv tool install -q "shellcheck-py==$(pin sh
 command -v zizmor > /dev/null || uv tool install -q "zizmor==$(pin zizmor)"
 command -v shfmt > /dev/null || go install "mvdan.cc/sh/v3/cmd/shfmt@v$(pin shfmt)"
 command -v actionlint > /dev/null || go install "github.com/rhysd/actionlint/cmd/actionlint@v$(pin actionlint)"
-# chezmoi's go.mod has `exclude` directives, which `go install pkg@version` refuses; build it as
-# the main module instead.
-command -v chezmoi > /dev/null || (
-  v=$(pin chezmoi)
-  cd "$(go mod download -json "github.com/twpayne/chezmoi/v2@v$v" | jq -r .Dir)"
-  go build -ldflags "-X main.version=$v" -o "$GOBIN/chezmoi" .
-)
+# chezmoi's go.mod has `exclude` directives, which `go install pkg@version` refuses, so it builds
+# as the main module. Only apply-check needs it, so it builds in the background (a minute); an `||`
+# in place of the `if` would keep the hook's stdout open, and the session would wait for it.
+if ! command -v chezmoi > /dev/null; then
+  (
+    v=$(pin chezmoi)
+    cd "$(go mod download -json "github.com/twpayne/chezmoi/v2@v$v" | jq -r .Dir)"
+    go build -ldflags "-X main.version=$v" -o "$GOBIN/chezmoi" .
+  ) > /dev/null 2>&1 &
+fi
 mise trust --quiet
 
 {
