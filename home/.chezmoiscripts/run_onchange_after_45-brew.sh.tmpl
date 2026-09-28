@@ -1,6 +1,7 @@
 #!/bin/bash
 # Homebrew bundle, re-run when the Brewfile changes; upkeep removes a hand install nightly.
-# `--no-upgrade`: apply reconciles, never upgrades. Last, so a failing cask stops no other script.
+# `--no-upgrade`: apply reconciles, never upgrades. Last but the Claude profiles, which need its
+# Claude cask, so a failing cask stops no other script.
 # Brewfile hash: {{ include "dot_config/homebrew/Brewfile" | sha256sum }}
 set -euo pipefail
 eval "$(/opt/homebrew/bin/brew shellenv)"
