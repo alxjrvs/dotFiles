@@ -24,7 +24,10 @@ that needs `gh auth login` lands on the second. The `workflow` scope lets a push
 Between the two commands:
 
 - Sign in to 1Password. Under Settings › Developer, turn on Use the SSH Agent and Integrate with
-  1Password CLI. Commits sign through the agent.
+  1Password CLI. Commits sign through the agent. Registering its key on GitHub needs
+  `admin:ssh_signing_key`, a scope that could mint Verified commits as you: grant it for that one
+  `gh ssh-key add --type signing` (`gh auth refresh -s admin:ssh_signing_key`), then drop it
+  (`gh auth refresh -r admin:ssh_signing_key`).
 - Run `claude` once to log in.
 - Log out and back in once, for the keyboard defaults.
 
