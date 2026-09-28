@@ -1,0 +1,9 @@
+#!/bin/bash
+# Loads the launchd agents when a plist changes; bootout first so the change is read.
+# capslock: {{ include "Library/LaunchAgents/com.alxjrvs.capslock.plist" | sha256sum }}
+# upkeep: {{ include "Library/LaunchAgents/com.alxjrvs.upkeep.plist" | sha256sum }}
+set -euo pipefail
+for label in com.alxjrvs.capslock com.alxjrvs.upkeep; do
+  launchctl bootout "gui/$(id -u)/$label" 2> /dev/null || true
+  launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/$label.plist"
+done

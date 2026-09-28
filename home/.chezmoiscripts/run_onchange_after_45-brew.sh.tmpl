@@ -1,7 +1,9 @@
 #!/bin/bash
-# Homebrew bundle, re-run when the Brewfile changes. `--no-upgrade`: apply reconciles, never
+# Homebrew bundle, re-run when the Brewfile or the installed formulae change. `--no-upgrade`: apply reconciles, never
 # upgrades. Last, so a failing cask stops no other script.
 # Brewfile hash: {{ include "dot_config/homebrew/Brewfile" | sha256sum }}
+# Also re-runs when a formula is installed by hand, so cleanup catches it on the next apply.
+# installed: {{ if stat "/opt/homebrew/bin/brew" }}{{ output "/opt/homebrew/bin/brew" "leaves" | sha256sum }}{{ end }}
 set -euo pipefail
 eval "$(/opt/homebrew/bin/brew shellenv)"
 brew bundle --no-upgrade --file="$HOME/.config/homebrew/Brewfile"

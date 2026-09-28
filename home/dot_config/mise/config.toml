@@ -30,3 +30,19 @@ tealdeer = "latest"
 
 # Editor
 neovim = "latest"
+
+# What apply never does, run nightly by the upkeep LaunchAgent: converge, then upgrade. Casks stay
+# by hand, because a cask upgrade quits the running app.
+[tasks.upkeep]
+description = "Converge to main, then upgrade chezmoi, mise, its tools, gh extensions and formulae"
+run = [
+  # Drift is reported, never overwritten.
+  "chezmoi verify || { chezmoi diff --no-pager; exit 1; }",
+  "chezmoi update --force",
+  "chezmoi upgrade",
+  "mise self-update --yes",
+  "mise upgrade --yes",
+  "gh extension upgrade --all",
+  "brew update --quiet",
+  "brew upgrade --formula --quiet",
+]
