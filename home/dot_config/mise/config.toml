@@ -1,5 +1,10 @@
 # Every CLI and runtime; a project pins its own in its own mise.toml. `latest` is the decision:
 # nothing here is pinned, and `mise upgrade` upgrades.
+[settings]
+# Client repos pin with .ruby-version and .nvmrc, which mise stopped reading in 2025.10.0. Python
+# pins are uv's.
+idiomatic_version_file_enable_tools = ["node", "ruby"]
+
 [tools]
 node = "lts"
 bun = "latest"

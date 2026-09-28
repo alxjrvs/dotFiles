@@ -1,3 +1,6 @@
+# OrbStack re-adds this line on every update; declared, it is not drift. A missing file is skipped.
+Include ~/.orbstack/ssh/config
+
 Host *
   # Keys live in 1Password; touch to sign. Needs "SSH agent" on in 1Password → Developer.
   IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
