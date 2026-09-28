@@ -1,13 +1,13 @@
-# ~/.zshrc: interactive shells, where mise activate takes over from ~/.zshenv's shims. Every tool
-# is guarded, so a machine that lacks one still gets a working prompt.
-# A non-interactive shell that sources this (Claude Code's shell snapshot) stops here: it would
-# freeze PATH as activated for one directory, and the shims already resolve per directory.
+# ~/.zshrc: interactive shells. ~/.zshenv's mise shims serve every shell, this one included: the
+# desktop app reads its agents' PATH from an interactive login shell, so a `mise activate` here
+# would pin every agent to one directory's versions. Every tool is guarded, so a machine that lacks
+# one still gets a working prompt. A non-interactive shell that sources this stops here.
 [[ -o interactive ]] || return
-
-(( $+commands[mise] )) && eval "$(mise activate zsh)"
 
 # --- options -----------------------------------------------------------------------------------
 setopt AUTO_CD CORRECT INTERACTIVE_COMMENTS NO_BEEP NO_FLOWCONTROL
+# `cd RANDSUM` from anywhere: every repo lives under ~/Code.
+cdpath=(~/Code)
 # History: atuin is the source of truth and the only cross-session index, so append, never
 # share. macOS's /etc/zshrc names the file.
 HISTSIZE=10000
@@ -17,7 +17,7 @@ setopt INC_APPEND_HISTORY_TIME HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE HIST_VERIF
 _history_filter() {
   setopt local_options extended_glob
   [[ $1 != (#i)*(password|secret|token|apikey|api(|_|-)key)[[:space:]]#[:=]* &&
-    $1 != (|*[^[:alnum:]_])sk-[[:alnum:]_-](#c20,)* ]] || return 2
+    $1 != (|*[^[:alnum:]_])(sk|ops)[-_][[:alnum:]_-](#c20,)* ]] || return 2
 }
 autoload -Uz add-zsh-hook && add-zsh-hook zshaddhistory _history_filter
 
@@ -39,10 +39,7 @@ zle -N zle-line-init
 zle -N zle-line-finish
 
 # --- environment -------------------------------------------------------------------------------
-# BAT_THEME is what delta, MANPAGER and the fzf preview read; bat's config file is not.
-export EDITOR=nvim BAT_THEME=Nord BAT_PAGING=never
-# col strips mandoc's overstrikes; man pages page even though bat itself does not.
-(( $+commands[bat] )) && export MANPAGER="sh -c 'col -bx | bat -plman --paging=always'"
+export EDITOR=nvim
 
 # --- plugins: two Brewfile formulae; `source` is the plugin manager ---------------------------
 _zsh_plugins=/opt/homebrew/share
@@ -51,7 +48,9 @@ _zsh_plugin=$_zsh_plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 ZSH_AUTOSUGGEST_MANUAL_REBIND=1
 [[ -r $_zsh_plugin ]] && source $_zsh_plugin
 
-# --- completion: brew shellenv (~/.zprofile) already put site-functions on fpath -------------
+# --- completion: Homebrew's site-functions, which only a login shell's brew shellenv adds -----
+typeset -U fpath
+fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
 autoload -Uz compinit
 compinit -i # an insecure site-functions directory must not block every new shell on y/n
 zstyle ':completion:*' menu select
@@ -64,7 +63,7 @@ if (( $+commands[fzf] )); then
   export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40%'
   # fzf's walker ignores .gitignore, so fd lists; the walker is the fallback without fd.
   (( $+commands[fd] )) && export FZF_CTRL_T_COMMAND='fd --type f --hidden --follow'
-  export FZF_CTRL_T_OPTS="--walker=file,follow,hidden --preview 'bat --color=always {}' --preview-window right:50%"
+  export FZF_CTRL_T_OPTS="--walker=file,follow,hidden"
   eval "$(fzf --zsh)"
 fi
 if (( $+commands[atuin] )); then
@@ -74,13 +73,9 @@ if (( $+commands[atuin] )); then
   bindkey -M vicmd '^R' atuin-search-vicmd
 fi
 (( $+commands[starship] )) && eval "$(starship init zsh)"
-# zoxide adds `z` and `zi` and a chpwd hook; `cd` stays zsh's, so the two never compete.
-(( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
 
 # --- aliases -----------------------------------------------------------------------------------
 alias gs='git status' gp='git push' gpr='git pull --rebase' gco='git checkout'
-# Long lines are cut for a person's screen only; an agent's rg sees every match.
-alias rg='rg --max-columns=200 --max-columns-preview'
 (( $+commands[nvim] )) && alias vim='nvim'
 
 # --- syntax highlighting: last, because it wraps the ZLE widgets defined above ----------------

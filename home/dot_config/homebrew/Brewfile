@@ -1,13 +1,7 @@
-# The Mac's apps, its one service, the two zsh plugins, the everyday CLIs, and three more CLIs kept
-# as casks (1password-cli, gcloud-cli and ngrok). Runtimes are mise's; chezmoi and mise are their
+# The Mac's apps, the two zsh plugins, the everyday CLIs, and three more CLIs kept as casks (1password-cli, gcloud-cli and ngrok). Runtimes are mise's; chezmoi and mise are their
 # own installers' (~/.local/bin); git is Xcode's. Apply never upgrades; upkeep does, nightly, leaving
 # apps that update themselves to it and quitting none. When this file changes, apply uninstalls
 # whatever it does not name.
-
-# ── Services ──────────────────────────────────────────────────────────
-# A launchd service, not a CLI: apply starts it and restarts it when the formula changes, and
-# `link` puts the keg-only psql on PATH.
-brew "postgresql@17", restart_service: :changed, link: true
 
 # ── zsh plugins ───────────────────────────────────────────────────────
 # Scripts, not CLIs: ~/.zshrc sources them from /opt/homebrew/share.
@@ -17,17 +11,13 @@ brew "zsh-syntax-highlighting"
 # ── CLIs ──────────────────────────────────────────────────────────────
 # Formulae, for the zsh completions and man pages that mise's installs lack.
 brew "atuin"
-brew "bat"
 brew "fd"
 brew "fzf"
 brew "gh"
-brew "git-delta"
 brew "jq"
 brew "neovim"
 brew "ripgrep"
 brew "starship"
-brew "tealdeer"
-brew "zoxide"
 
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"
@@ -41,7 +31,6 @@ cask "font-fira-code"
 cask "ghostty"
 cask "google-chrome"
 cask "notunes"
-cask "devutils"      # offline developer toolbox (JSON/JWT/regex/diff)
 cask "gcloud-cli"
 cask "ngrok"
 cask "obs"

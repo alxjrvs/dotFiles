@@ -21,10 +21,5 @@ macos-titlebar-style = native
 window-save-state = always
 macos-option-as-alt = left
 
-# Quick terminal: a drop-down visor on a global hotkey, live while Ghostty runs.
-quick-terminal-screen = mouse
-quick-terminal-animation-duration = 0.15
-
 # Keybindings
 keybind = ctrl+shift+w=close_surface
-keybind = global:ctrl+grave_accent=toggle_quick_terminal

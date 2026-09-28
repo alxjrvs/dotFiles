@@ -1,9 +1,11 @@
-# The runtimes; a project pins its own in its own mise.toml, and the CLIs are Brewfile formulae.
-# `latest` is the decision: nothing here is pinned, and `mise upgrade` upgrades.
+# The runtimes; a project pins its own with mise.toml or an idiomatic file, and the CLIs are
+# Brewfile formulae. `latest` is the decision: nothing here is pinned, and `mise upgrade` upgrades.
 [settings]
-# Client repos pin with .ruby-version and .nvmrc, which mise stopped reading in 2025.10.0. Python
-# pins are uv's.
-idiomatic_version_file_enable_tools = ["node", "ruby"]
+# Repos pin with .ruby-version, .nvmrc and .bun-version, which mise stopped reading in 2025.10.0.
+# Python pins are uv's.
+idiomatic_version_file_enable_tools = ["node", "ruby", "bun"]
+# Precompiled rubies only: a source build links Homebrew kegs that brew cleanup later removes.
+ruby.compile = false
 # A week-old release, the cooldown Dependabot keeps, so a compromised release is caught first.
 minimum_release_age = "7d"
 
@@ -14,6 +16,10 @@ ruby = "latest"
 bun = "latest"
 # Python and `uvx`, which many MCP servers launch with.
 uv = "latest"
+# The binary the typescript-lsp plugin, the most-used one, runs; without it TS edits get no
+# diagnostics.
+"npm:typescript-language-server" = "latest"
+"npm:typescript" = "latest"
 
 # What apply never does, run nightly by the upkeep LaunchAgent: each upgrade, then the converge.
 # One that fails stops neither the rest nor the converge, and still fails the run into its issue.

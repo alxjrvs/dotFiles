@@ -43,17 +43,18 @@ asked for it. The workflow never switches those on, and lint bans templates that
   `home/.chezmoitemplates/claude-settings.json` and leaves every other key to the app.
 - Every runtime is a mise tool (`home/dot_config/mise/config.toml`), and every CLI a Brewfile
   formula, so its completions and man pages come with it; `1password-cli`, `gcloud-cli` and
-  `ngrok` are casks. The Brewfile also holds `postgresql@17`, a service brew runs, the two zsh
-  plugins and the apps. chezmoi, mise and the Claude Code CLI come from their own installers into
-  `~/.local/bin`; git is the system's.
+  `ngrok` are casks. The Brewfile also holds the two zsh plugins and the apps. chezmoi, mise and
+  the Claude Code CLI come from their own installers into `~/.local/bin`; git is the system's.
+- `~/.local/bin` and `~/Library/LaunchAgents` are exact: apply deletes whatever they hold beyond
+  what this repo declares and `.chezmoiignore` leaves to its owner.
 - This repo's own linters are pinned in the root `mise.toml`, not installed machine-wide.
 - `chezmoi apply` never upgrades anything; `mise run upkeep` does, nightly, and a failure opens an
   issue here. It converges only a main whose `lint` passed on Actions, then installs main's linter
   pins and runs `gate.sh --check` over every owned repo. When the Brewfile changes, apply
   uninstalls every Homebrew package it does not name, and upkeep does the same nightly, on a
   personal Mac only: `personal` is asked once at init, and a work Mac keeps its employer's.
-- Machine setup is `home/.chezmoiscripts/`. Homebrew, sleep and provisioning run on
-  every apply behind a guard. mise, the launchd agents and the Brewfile re-run when their files
+- Machine setup is `home/.chezmoiscripts/`. Homebrew and provisioning run on every apply behind a
+  guard. mise, the launchd agents and the Brewfile re-run when their files
   change, and the macOS defaults when the script itself changes. Last, the extra Claude desktop
   apps re-run when `claudeProfiles` or Claude's icon changes; they go once Claude desktop holds
   several accounts itself.
@@ -63,8 +64,6 @@ asked for it. The workflow never switches those on, and lint bans templates that
 - One GitHub login: `gh auth login`, stored in the login keychain. Never `--insecure-storage`.
 - Who this is (name, emails, signing key, GitHub user and orgs) lives in `home/.chezmoidata.toml`
   alone; repos in its work orgs commit as the work email.
-- `home/dot_claude/loop.md` is what a bare `/loop` runs in any repo without its own
-  `.claude/loop.md`; `/loop <prompt>` ignores it.
 - nvim is `$EDITOR` and nothing more: no plugins, no language servers.
 - Employer config is the employer's marketplace, installed by its tooling; nothing here enables
   it.

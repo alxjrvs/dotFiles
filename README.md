@@ -45,8 +45,8 @@ To hack on this repo, clone it to `~/Code/dotFiles`; chezmoi keeps its own copy.
 | add a work org | one entry in `home/.chezmoidata.toml` |
 | the repo settings | [`.github/gate.sh`](.github/gate.sh), run by the owner; upkeep names any drift |
 
-A Mac on power never idles to sleep, so an unattended `/loop` keeps running; closing the lid
-still stops it. On the web, an expired claude.ai login stalls a loop until the next `/login`.
+The Claude app keeps the Mac awake while a session works; closing the lid still sleeps it. On the
+web, an expired claude.ai login stalls a session until the next `/login`.
 A push that changes `.github/workflows/` needs the `workflow` scope; its rejection reads like
 branch protection.
 
@@ -60,13 +60,13 @@ credential and `gh` is the one tool.
 .chezmoiroot            "home": the source state lives one directory down
 mise.toml               this repo's pinned linters and its two checks, lint and apply-check
 .github/                CI, apply-check.sh, gate.sh (the repo settings that are not files), main-green.sh
-.claude/                this repo's Claude Code config: the loop, the monthly bump and a web-session setup hook
+.claude/                this repo's Claude Code config: the monthly bump and a web-session setup hook
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
-home/.chezmoiscripts/   machine setup: Homebrew, mise, launchd agents, macOS defaults, sleep, provisioning, apps, and
-                        one Claude desktop app per extra account
+home/.chezmoiscripts/   machine setup: Homebrew, mise, launchd agents, macOS defaults, provisioning, apps, and one
+                        Claude desktop app per extra account
 home/.chezmoitemplates/ the declared keys of ~/.claude/settings.json
-home/dot_claude/        user-global Claude Code config, and the loop a bare `/loop` runs
-home/.chezmoi*          chezmoi's own files: config template, data (work orgs), version floor, remove list
+home/dot_claude/        user-global Claude Code config and skills
+home/.chezmoi*          chezmoi's own files: config template, data (who and which orgs), version floor, ignore and remove lists
 ```
 
 ## Forking

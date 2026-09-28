@@ -1,0 +1,9 @@
+# The two exact_ directories keep only what this repo declares, less what these own:
+# brew services, Steam and Google's updater write LaunchAgents of their own,
+Library/LaunchAgents/sh.brew.*
+Library/LaunchAgents/com.valvesoftware.*
+Library/LaunchAgents/com.google.GoogleUpdater.*
+# and chezmoi, mise and the Claude Code CLI are their own installers'.
+.local/bin/chezmoi
+.local/bin/mise
+.local/bin/claude
