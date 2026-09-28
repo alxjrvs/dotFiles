@@ -9,13 +9,12 @@ zizmor = "1.30.1"
 [tasks.lint]
 description = "Shell, zsh, JSON, TOML and workflow checks"
 run = [
-  "shellcheck -x home/.chezmoiscripts/* .github/*.sh .claude/*.sh",
-  "shfmt -d -i 2 -ci -sr home/.chezmoiscripts/* .github/*.sh .claude/*.sh",
+  "shellcheck -x home/.chezmoiscripts/* .github/*.sh .claude/hooks/*.sh",
+  "shfmt -d -i 2 -ci -sr home/.chezmoiscripts/* .github/*.sh .claude/hooks/*.sh",
   "for f in $(git ls-files 'home/dot_z*'); do zsh -n \"$f\" || exit 1; done",
   # The JSON under home/ is templates; apply-check parses what they render.
   "for f in $(git ls-files '*.json' ':!home/'); do jq -e . \"$f\" > /dev/null || exit 1; done",
-  # raw: mise renders task scripts with Tera, and this one is a chezmoi template.
-  "{% raw %}for f in $(git ls-files '*.toml'); do chezmoi execute-template \"{{ include \\\"$PWD/$f\\\" | fromToml }}\" > /dev/null || exit 1; done{% endraw %}",
+  "for f in $(git ls-files '*.toml'); do mise config get --file \"$f\" > /dev/null || exit 1; done",
   # Rules that would otherwise be prose: a mode comes from the source name, never the checkout;
   # the terminal owns the palette, so no hex colour, with or without Ghostty's bare `RRGGBB`;
   # scripts stay flat and never call chezmoi (the outer apply holds its lock); a run_onchange_
