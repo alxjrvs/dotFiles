@@ -5,11 +5,12 @@
 # Claude cask, so a failing cask stops no other script.
 # Brewfile hash: {{ include "dot_config/homebrew/Brewfile" | sha256sum }}
 set -euo pipefail
-personal='{{ .personal }}'
+# Unset until the next `chezmoi init` renders the config: a Mac is personal unless it said no.
+personal='{{ get . "personal" }}'
 eval "$(/opt/homebrew/bin/brew shellenv)"
 brew bundle --no-upgrade --file="$HOME/.config/homebrew/Brewfile"
 # Installed but not declared is drift, removed on a personal Mac; a work Mac keeps its employer's.
 # stdin is closed: a cask uninstaller may prompt.
-if [ "$personal" = true ]; then
+if [ "$personal" != false ]; then
   brew bundle cleanup --force --file="$HOME/.config/homebrew/Brewfile" < /dev/null
 fi
