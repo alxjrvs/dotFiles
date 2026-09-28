@@ -39,7 +39,7 @@ run = [
   "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --no-quit --quiet",
   # A formula installed by hand is drift, removed on a personal Mac. stdin is closed: an
   # uninstaller may prompt.
-  "if chezmoi data | jq -e .personal > /dev/null; then brew bundle cleanup --force --file=$HOME/.config/homebrew/Brewfile < /dev/null; fi",
+  "if chezmoi data | jq -e '.personal != false' > /dev/null; then brew bundle cleanup --force --file=$HOME/.config/homebrew/Brewfile < /dev/null; fi",
 ]
 
 [tasks.upkeep]
