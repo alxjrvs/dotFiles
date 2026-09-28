@@ -9,7 +9,7 @@ macOS dotfiles for [alxjrvs](https://github.com/alxjrvs), managed by
 Run this, then open a new terminal (the applied `~/.zprofile` puts `gh` and `chezmoi` on PATH):
 
 ```bash
-sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply alxjrvs/dotFiles
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply --use-builtin-git=true alxjrvs/dotFiles
 ```
 
 ```bash
@@ -35,7 +35,7 @@ To hack on this repo, clone it to `~/Code/dotFiles`; chezmoi keeps its own copy.
 | change something | in a worktree: edit, `mise run lint`, `mise run apply-check`, commit, PR |
 | a PR landed | `chezmoi update` |
 | drift | `chezmoi verify` |
-| upgrade | nightly: `mise run upkeep`, and a failure opens an issue here; casks by hand: `brew outdated --greedy --cask` then `brew upgrade <name>` |
+| upgrade | nightly: `mise run upkeep`, and a failure opens an issue here that pings your phone; apps update themselves (gcloud: `gcloud components update`) |
 | a pin or external | monthly: a Routine follows [`.claude/bump.md`](.claude/bump.md) |
 | add a work org | one entry in `home/.chezmoidata.toml` |
 | the repo settings | [`.github/gate.sh`](.github/gate.sh), run by the owner |

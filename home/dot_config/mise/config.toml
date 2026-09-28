@@ -4,9 +4,13 @@
 # Client repos pin with .ruby-version and .nvmrc, which mise stopped reading in 2025.10.0. Python
 # pins are uv's.
 idiomatic_version_file_enable_tools = ["node", "ruby"]
+# A week-old release, the cooldown Dependabot keeps, so a compromised release is caught first.
+minimum_release_age = "7d"
 
 [tools]
 node = "lts"
+# A shim for a client repo's .ruby-version to resolve through; without one, ruby is /usr/bin's.
+ruby = "latest"
 bun = "latest"
 # Python and `uvx`, which many MCP servers launch with.
 uv = "latest"
@@ -31,18 +35,20 @@ tealdeer = "latest"
 # Editor
 neovim = "latest"
 
-# What apply never does, run nightly by the upkeep LaunchAgent: converge, then upgrade. Casks stay
-# by hand, because a cask upgrade quits the running app.
+# What apply never does, run nightly by the upkeep LaunchAgent: upgrade, then converge. Apps that
+# update themselves are left to it, and no running app is quit.
 [tasks.upkeep]
-description = "Converge to main, then upgrade chezmoi, mise, its tools, gh extensions and formulae"
+description = "Upgrade chezmoi, mise, its tools, gh extensions, formulae and casks, then converge"
 run = [
-  # Drift is reported, never overwritten.
-  "chezmoi verify || { chezmoi diff --no-pager; exit 1; }",
-  "chezmoi update --force",
   "chezmoi upgrade",
   "mise self-update --yes",
   "mise upgrade --yes",
   "gh extension upgrade --all",
   "brew update --quiet",
-  "brew upgrade --formula --quiet",
+  "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --no-quit --quiet",
+  # Never a main whose lint failed; a merge with no run yet (a Dependabot squash) goes through.
+  "cd \"$(chezmoi source-path)\" && test \"$(gh api 'repos/{owner}/{repo}/commits/main/check-runs?check_name=lint' --jq '.check_runs[0].conclusion')\" != failure",
+  # Last, so drift blocks no upgrade: a file edited by hand is skipped and fails the run by name,
+  # and everything else lands. --init re-renders a changed .chezmoi.toml.tmpl.
+  "chezmoi update --init --keep-going --no-tty",
 ]
