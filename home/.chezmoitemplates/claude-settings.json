@@ -2,22 +2,17 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
     "CLAUDE_CODE_PLUGIN_PREFER_HTTPS": "1",
-    "GIT_CONFIG_COUNT": "4",
+    "GIT_CONFIG_COUNT": "2",
     "GIT_CONFIG_KEY_0": "commit.gpgSign",
     "GIT_CONFIG_VALUE_0": "false",
-    "GIT_CONFIG_KEY_1": "url.https://github.com/.insteadOf",
-    "GIT_CONFIG_VALUE_1": "git@github.com:",
-    "GIT_CONFIG_KEY_2": "url.https://github.com/.insteadOf",
-    "GIT_CONFIG_VALUE_2": "ssh://git@github.com/",
-    "GIT_CONFIG_KEY_3": "tag.gpgSign",
-    "GIT_CONFIG_VALUE_3": "false"
+    "GIT_CONFIG_KEY_1": "tag.gpgSign",
+    "GIT_CONFIG_VALUE_1": "false"
   },
   "attribution": {
     "sessionUrl": false
   },
   "permissions": {
     "allow": [
-      "Artifact",
       "WebSearch"
     ],
     "deny": [
@@ -26,15 +21,16 @@
       "Bash(*gh auth token*)",
       "Bash(*gh auth status*)",
       "Bash(*gh auth git-credential*)",
-      "Bash(*security find-generic-password*)",
-      "Bash(*security dump-keychain*)",
+      "Bash(*find-*-password*)",
+      "Bash(*dump-keychain*)",
       "Bash(*git credential*)",
       "Bash(*op read*)",
       "Bash(*op item get*)",
       "Bash(*op inject*)",
       "Bash(*op document get*)",
       "Bash(*--no-masking*)",
-      "Bash(*git config user.*)"
+      "Bash(*git config user.*)",
+      "Edit(~/.local/share/chezmoi/**)"
     ]
   },
   "enabledPlugins": {
@@ -60,6 +56,7 @@
   "outputStyle": "Proactive",
   "sandbox": {
     "enabled": true,
+    "autoAllowBashIfSandboxed": false,
     "enableWeakerNetworkIsolation": true,
     "network": {
       "allowedDomains": [
@@ -88,8 +85,7 @@
     "filesystem": {
       "allowWrite": [
         "~/Library/Caches/mise",
-        "~/.local/state/mise",
-        "~/.local/share/mise"
+        "~/.local/state/mise"
       ]
     },
     "excludedCommands": [
@@ -113,18 +109,23 @@
   "autoMode": {
     "allow": [
       "$defaults",
-      "`chezmoi update --force` is allowed: it applies main of alxjrvs/dotFiles, which only changes through a merged pull request, and it runs outside the sandbox by design.",
-      "Turning on auto-merge (`gh pr merge --auto --squash`, `gh stack merge --squash`) for a pull request in a repository named under Source control is allowed when its base branch requires a status check: GitHub merges only after that check passes, so the ruleset is the gate, not a human approval."
+      "`chezmoi update --force` is allowed: it applies main of {{ .github }}/dotFiles, which only changes through a merged pull request, and it runs outside the sandbox by design.",
+      "Turning on auto-merge (`gh pr merge --auto --squash`, `gh stack merge --squash`) for a pull request the agent opened, or whose branch it is working on, in a repository named under Source control is allowed when its base branch requires a status check: GitHub merges only after that check passes, so the ruleset is the gate, not a human approval. A pull request someone else opened stays under the default rule.",
+      "Force-pushing with a lease (`git push --force-with-lease`, or `gh stack sync`, `gh stack rebase` or `gh stack push`) to a non-default branch of a pull request the agent opened, in a repository named under Source control, is allowed: it rewrites only the agent's own unmerged work, and the lease refuses to overwrite a push it has not seen."
+    ],
+    "soft_deny": [
+      "$defaults",
+      "Landing this Mac's own config unasked: committing or pushing, in this chezmoi source repo ({{ .github }}/dotFiles or a fork of it), a change the user's own messages did not ask for that widens the `permissions`, `sandbox`, `autoMode` or `env` blocks of `home/.chezmoitemplates/claude-settings.json`, or adds or changes a script under `home/.chezmoiscripts/`, a LaunchAgent under `home/Library/LaunchAgents/` or a task in `home/dot_config/mise/config.toml`: `chezmoi update` applies them to ~/.claude/settings.json, launchd and the nightly upkeep, outside the sandbox."
     ],
     "hard_deny": [
       "$defaults",
       "Never push directly to a repository's default branch, and never merge into it locally",
       "Never apply a chezmoi source to the real home directory other than through `chezmoi update` (no `chezmoi apply --source`, no `chezmoi init --apply`), and never edit files under `chezmoi source-path`: that runs unreviewed scripts and rewrites the agent's own settings outside the sandbox. An apply into a temporary `--destination` is a test and is fine.",
-      "Never change a repository's own settings, rulesets or branch protection (`gh repo edit`, `gh api` writes to `repos/OWNER/REPO` itself, `.../rulesets` or `.../branches/*/protection`): the gate is the owner's, and an agent blocked by it does not get to loosen it. Issues, pull requests and comments are not settings."
+      "Never change a repository's own settings, rulesets or branch protection (`gh repo edit`, `gh api` writes to `repos/OWNER/REPO` itself, `.../rulesets` or `.../branches/*/protection`): the gate is the owner's, and an agent blocked by it does not get to loosen it. Nor does it bypass push protection (a blocked push's bypass link, or `gh api` writes to `.../secret-scanning/push-protection-bypasses`). Issues, pull requests and comments are not settings."
     ],
     "environment": [
       "$defaults",
-      "Source control: github.com/alxjrvs and every repository under it, plus the GitHub organizations he administers: RANDSUM, SalvageUnion-io, BinfiniteLLC, EmpokNor, ThirdShap. Pushes to a non-default branch of any of these are his own work landing through pull requests; the default-branch rule above still holds."
+      "Source control: github.com/{{ .github }} and every repository under it{{ with .ownedOrgs }}, plus the GitHub organizations the user administers: {{ join ", " . }}{{ end }}. Pushes to a non-default branch of any of these are the user's own work landing through pull requests; the default-branch rule above still holds."
     ],
     "classifyAllShell": true
   }

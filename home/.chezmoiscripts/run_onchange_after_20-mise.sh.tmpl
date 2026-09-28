@@ -1,7 +1,7 @@
 #!/bin/bash
-# Every CLI and runtime, re-run when the mise config changes. mise installs itself when absent
-# (its own installer, into ~/.local/bin, on either OS); prune drops versions no config names any
-# more and rebuilds the shims, so a retired tool cannot shadow another.
+# The runtimes, re-run when the mise config changes. mise installs itself when absent (its own
+# installer, into ~/.local/bin); prune drops versions no config names any more and rebuilds the
+# shims, so a retired tool cannot shadow another.
 # mise config hash: {{ include "dot_config/mise/config.toml" | sha256sum }}
 set -euo pipefail
 export PATH="$HOME/.local/bin:$PATH"

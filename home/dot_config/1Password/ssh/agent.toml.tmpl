@@ -3,5 +3,5 @@
 
 # The commit-signing key (user.signingkey in the git config); git auth itself is HTTPS.
 [[ssh-keys]]
-item = "GitHubSSH"
-vault = "Private"
+item = {{ .signingItem.item | quote }}
+vault = {{ .signingItem.vault | quote }}

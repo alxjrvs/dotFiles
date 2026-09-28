@@ -1,3 +1,14 @@
-# GitHub orgs whose repos commit as the work identity (~/.config/git/work); every other repo
-# commits as alxjrvs@gmail.com. Adding an org is one entry here.
+# Who this machine is: a fork edits this file and nothing else. Every key is required.
+name = "alxjrvs"
+email = "alxjrvs@gmail.com"
+# GitHub: the user, and the organizations they administer. Agents treat repositories under
+# either as the user's own source control (autoMode.environment).
+github = "alxjrvs"
+ownedOrgs = ["RANDSUM", "SalvageUnion-io", "BinfiniteLLC", "EmpokNor", "ThirdShap"]
+# Commits sign with an SSH key held in 1Password: its public half, and the item that holds it.
+signingKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKjF9JmW396EbH0n1zWeU7eT+2VvMFZAn+A1WKAi4tqT"
+signingItem = { item = "GitHubSSH", vault = "Private" }
+# GitHub orgs whose repos commit as workEmail (~/.config/git/work); every other repo commits as
+# email. Adding an org is one entry here; workEmail may equal email.
 workOrgs = ["Criterium", "massgov", "TheGnarCo"]
+workEmail = "alex@thegnar.co"

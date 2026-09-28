@@ -4,6 +4,9 @@
 # upkeep: {{ include "Library/LaunchAgents/com.alxjrvs.upkeep.plist" | sha256sum }}
 set -euo pipefail
 for label in com.alxjrvs.capslock com.alxjrvs.upkeep; do
+  # A job that boots itself out dies before its bootstrap (upkeep applying a plist change): leave
+  # a running job alone, and the next login loads the new plist.
+  [[ $(launchctl print "gui/$(id -u)/$label" 2> /dev/null) == *"state = running"* ]] && continue
   launchctl bootout "gui/$(id -u)/$label" 2> /dev/null || true
   launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/$label.plist"
 done

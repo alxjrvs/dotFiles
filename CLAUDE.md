@@ -27,10 +27,10 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 4. After it merges, `chezmoi update` applies it. chezmoi's own source is
    `~/.local/share/chezmoi`, and nothing else moves it.
 
-Never apply a worktree to the real home directory. An agent merges its own green PR here, except
-one touching `home/.chezmoiscripts/` or the `permissions`, `sandbox`, `autoMode` or `env` blocks
-of `home/.chezmoitemplates/claude-settings.json`: those run unsandboxed on the next update or move
-the agent's own floor, so a person merges it and the agent leaves it open at green.
+Never apply a worktree to the real home directory. An agent merges its own green PR here. One that
+widens the `permissions`, `sandbox`, `autoMode` or `env` blocks of
+`home/.chezmoitemplates/claude-settings.json`, or changes a script, LaunchAgent or mise task under
+`home/`, lands only when the owner asked for it: `chezmoi update` runs it outside the sandbox.
 
 ## Local facts
 
@@ -38,14 +38,15 @@ the agent's own floor, so a person merges it and the agent leaves it open at gre
   `.claude/` is this repo's project scope. Don't conflate them.
 - `~/.claude/settings.json` is a modify template: chezmoi enforces the keys declared in
   `home/.chezmoitemplates/claude-settings.json` and leaves every other key to the app.
-- Every CLI and runtime is a mise tool (`home/dot_config/mise/config.toml`). The exceptions are
-  the `1password-cli`, `gcloud-cli` and `ngrok` casks, `postgresql@17`, a service brew runs, and
-  the two zsh plugins, which are scripts. The apps are Brewfile casks. chezmoi, mise and the Claude Code CLI come from their
-  own installers into `~/.local/bin`; git is the system's.
+- Every runtime is a mise tool (`home/dot_config/mise/config.toml`), and every CLI a Brewfile
+  formula, so its completions and man pages come with it; `1password-cli`, `gcloud-cli` and
+  `ngrok` are casks. The Brewfile also holds `postgresql@17`, a service brew runs, the two zsh
+  plugins and the apps. chezmoi, mise and the Claude Code CLI come from their own installers into
+  `~/.local/bin`; git is the system's.
 - This repo's own linters are pinned in the root `mise.toml`, not installed machine-wide.
 - `chezmoi apply` never upgrades anything; `mise run upkeep` does, nightly, and a failure opens an
-  issue here. When the Brewfile changes, or a formula is installed by hand, apply uninstalls every
-  Homebrew package the Brewfile does not name.
+  issue here. When the Brewfile changes, apply uninstalls every Homebrew package it does not name,
+  and upkeep does the same nightly.
 - Machine setup is `home/.chezmoiscripts/`. Homebrew, sleep and provisioning run on
   every apply behind a guard. mise, the launchd agents and the Brewfile re-run when their files
   change (the Brewfile last), and the macOS defaults re-run when the script itself changes.
@@ -53,8 +54,8 @@ the agent's own floor, so a person merges it and the agent leaves it open at gre
 - `~/Code/.metadata_never_index` keeps Spotlight out of every repo; its indexer never settled
   under `~/Code`. Search code with `rg` and `fd`.
 - One GitHub login: `gh auth login`, stored in the login keychain. Never `--insecure-storage`.
-- Commits use `alxjrvs@gmail.com`, except in the work orgs listed in `home/.chezmoidata.toml`,
-  which use the work email.
+- Who this is (name, emails, signing key, GitHub user and orgs) lives in `home/.chezmoidata.toml`
+  alone; repos in its work orgs commit as the work email.
 - `home/dot_claude/loop.md` is what a bare `/loop` runs in any repo without its own
   `.claude/loop.md`; `/loop <prompt>` ignores it.
 - nvim is `$EDITOR` and nothing more: no plugins, no language servers.

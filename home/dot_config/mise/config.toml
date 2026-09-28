@@ -1,5 +1,5 @@
-# Every CLI and runtime; a project pins its own in its own mise.toml. `latest` is the decision:
-# nothing here is pinned, and `mise upgrade` upgrades.
+# The runtimes; a project pins its own in its own mise.toml, and the CLIs are Brewfile formulae.
+# `latest` is the decision: nothing here is pinned, and `mise upgrade` upgrades.
 [settings]
 # Client repos pin with .ruby-version and .nvmrc, which mise stopped reading in 2025.10.0. Python
 # pins are uv's.
@@ -15,27 +15,6 @@ bun = "latest"
 # Python and `uvx`, which many MCP servers launch with.
 uv = "latest"
 
-# The CLIs are Brewfile formulae too, for their completions and man pages; these copies come first.
-# Shell
-atuin = "latest"
-fzf = "latest"
-starship = "latest"
-zoxide = "latest"
-
-# Git
-gh = "latest"
-delta = "latest"
-
-# Files and text
-bat = "latest"
-fd = "latest"
-jq = "latest"
-ripgrep = "latest"
-tealdeer = "latest"
-
-# Editor
-neovim = "latest"
-
 # What apply never does, run nightly by the upkeep LaunchAgent: upgrade, then converge. Apps that
 # update themselves are left to it, and no running app is quit.
 [tasks.upkeep]
@@ -47,6 +26,8 @@ run = [
   "gh extension upgrade --all",
   "brew update --quiet",
   "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --no-quit --quiet",
+  # A formula installed by hand is drift, removed here. stdin is closed: an uninstaller may prompt.
+  "brew bundle cleanup --force --file=$HOME/.config/homebrew/Brewfile < /dev/null",
   # Never a main whose lint failed; a merge with no run yet (a Dependabot squash) goes through.
   "cd \"$(chezmoi source-path)\" && test \"$(gh api 'repos/{owner}/{repo}/commits/main/check-runs?check_name=lint' --jq '.check_runs[0].conclusion')\" != failure",
   # Last, so drift blocks no upgrade: a file edited by hand is skipped and fails the run by name,
