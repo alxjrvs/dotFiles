@@ -9,14 +9,18 @@ turn to have authorised anything else, so there is nothing else in scope,
 however obvious it looks from here.
 
 1. Green the build: run the repo's checks, fix what fails, re-run.
-2. Rebase on the PR's freshly fetched base (the default branch, or the layer
-   below in a stack); resolve conflicts.
+2. Only when the PR conflicts with its base (`mergeStateStatus` is `DIRTY`):
+   merge the freshly fetched base in, resolve, push; the squash drops the merge
+   commit, so nothing is force-pushed. A stack layer takes `gh stack rebase`
+   instead, or `gh stack sync` once a layer below merged: gh-stack needs linear
+   layers. A PR that is merely behind is left alone: a push restarts its CI,
+   and step 5 covers a base that requires it up to date.
 3. Commit, push, open a PR if none exists. Its body says what changed and why:
    it becomes the squash commit on the default branch.
 4. Merge only through a gate. If the PR's base is the default branch
    (`gh pr view --json baseRefName`) and that branch requires a status check
-   (`gh api repos/{owner}/{repo}/rules/branches/{base}` lists a
-   `required_status_checks` rule, or `gh api repos/{owner}/{repo}/branches/{base}`
+   (`gh api repos/{owner}/{repo}/rules/branches/<base>` lists a
+   `required_status_checks` rule, or `gh api repos/{owner}/{repo}/branches/<base>`
    has `.protection.required_status_checks`), `gh pr merge --auto --squash`.
    Otherwise stop at a green, open PR and say so: with nothing required, gh
    merges at once, before CI has run.
@@ -27,7 +31,8 @@ however obvious it looks from here.
    not an attempt), then `gh stack merge --squash --yes`.
 5. Tend the open PR: failed CI, review comments, merge conflicts, and a branch
    that fell behind its base (`mergeStateStatus` is `BEHIND`: `gh pr
-   update-branch`), which auto-merge waits on forever.
+   update-branch`, or `gh stack rebase` for a stack layer), which auto-merge
+   waits on forever.
 
 Stop when the PR is merged, or after 3 failed attempts at the same failure.
 Either way, end with three headings: **Blocked on me** (what blocked you and

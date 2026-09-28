@@ -2,5 +2,5 @@
 Include ~/.orbstack/ssh/config
 
 Host *
-  # Keys live in 1Password; touch to sign. Needs "SSH agent" on in 1Password → Developer.
+  # Keys live in 1Password, approved once per app per unlock. Needs "SSH agent" on (Developer).
   IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
