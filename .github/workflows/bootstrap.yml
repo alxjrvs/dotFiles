@@ -37,7 +37,8 @@ jobs:
         run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
       - name: The first apply, from this checkout
         run: ~/.local/bin/chezmoi init --apply --no-tty --promptBool personal=false --source "$GITHUB_WORKSPACE"
+      # `init --source` records no source, so every later command names it.
       - name: A second apply changes nothing, and verify agrees
         run: |
-          ~/.local/bin/chezmoi apply --no-tty
-          ~/.local/bin/chezmoi verify
+          ~/.local/bin/chezmoi apply --no-tty --source "$GITHUB_WORKSPACE"
+          ~/.local/bin/chezmoi verify --source "$GITHUB_WORKSPACE"
