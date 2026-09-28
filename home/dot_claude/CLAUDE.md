@@ -24,7 +24,7 @@ Nothing goes in this file that fits elsewhere.
 
 | | |
 |---|---|
-| a procedure | a skill — published in `alxjrvs/oberon`, or project-local in `.claude/skills/` |
+| a procedure | a skill: user-wide in dotFiles' `home/dot_claude/skills/`, or project-local in `.claude/skills/` |
 | it must hold | `permissions.deny` |
 | it can fail a build | a check in the repo's lint or CI |
 | already enforced | nowhere. Describing a control is not the control. |
