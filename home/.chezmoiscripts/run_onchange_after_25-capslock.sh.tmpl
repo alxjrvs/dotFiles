@@ -1,7 +1,0 @@
-#!/bin/bash
-# Loads the Caps Lock launchd agent when its plist changes; bootout first so the change is read.
-# plist hash: {{ include "Library/LaunchAgents/com.alxjrvs.capslock.plist" | sha256sum }}
-set -euo pipefail
-label=com.alxjrvs.capslock
-launchctl bootout "gui/$(id -u)/$label" 2> /dev/null || true
-launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/$label.plist"
