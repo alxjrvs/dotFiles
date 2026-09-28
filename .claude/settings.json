@@ -12,17 +12,6 @@
       }
     ]
   },
-  "extraKnownMarketplaces": {
-    "oberon": {
-      "source": {
-        "source": "github",
-        "repo": "alxjrvs/oberon"
-      }
-    }
-  },
-  "enabledPlugins": {
-    "agent-friendly-repo@oberon": true
-  },
   "attribution": {
     "sessionUrl": false
   }
