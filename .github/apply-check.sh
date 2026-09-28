@@ -3,7 +3,7 @@
 # Writes only under a temp directory, so it is safe anywhere: a Mac, CI and a web session.
 set -euo pipefail
 root=$(git rev-parse --show-toplevel)
-tmp=$(mktemp -d)
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/apply-check.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
 home=$tmp/home
 mkdir "$home"
@@ -53,8 +53,9 @@ jq '{appFirst: true} + .' "$settings" > "$tmp/edited" && cat "$tmp/edited" > "$s
 mise config get --file "$home/.config/1Password/ssh/agent.toml" > /dev/null
 
 # On a Mac: the LaunchAgents parse and every Brewfile entry resolves, so a typo fails here and not
-# halfway through an apply.
+# halfway through an apply. Homebrew's cache goes under $tmp, which a sandboxed session can write.
 if [ "$(uname -s)" = Darwin ]; then
+  export HOMEBREW_CACHE=$tmp/brew HOMEBREW_NO_ANALYTICS=1
   plutil -lint -s "$home"/Library/LaunchAgents/*.plist
   brewfile=$home/.config/homebrew/Brewfile
   brew bundle list --formula --file="$brewfile" | xargs brew info --formula --json=v2 > /dev/null

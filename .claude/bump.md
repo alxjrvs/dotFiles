@@ -9,6 +9,9 @@ upgrade owns the zsh plugins.
    JSON API for shellcheck-py and zizmor, the Go proxy's `@latest` for shfmt, actionlint and
    chezmoi). Bump each pin in `mise.toml` that moved, read its release notes (its changelog through
    raw.githubusercontent.com; chezmoi's live only on GitHub release pages, which a web session
-   cannot open, so link them), and open one PR that names each bump. CI is its check: in the
-   session, `mise run lint` still runs the pre-bump binaries. It merges on green like any other.
+   cannot open, so link them), and open one PR that names each bump, then
+   `gh pr merge --auto --squash` it. CI is its check: in the session, `mise run lint` still runs
+   the pre-bump binaries.
 3. Nothing moved: say so and stop. No PR and no issue.
+4. Anything above failed: open an issue titled `bump failed` with what failed and why. The
+   upkeep-alert workflow mentions the owner on it, which reaches the phone.

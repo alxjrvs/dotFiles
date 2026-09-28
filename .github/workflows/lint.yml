@@ -28,5 +28,7 @@ jobs:
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         env:
           MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/home/dot_config/mise/config.toml
+          # Anonymous GitHub API calls hit the rate limit and turned main red; contents: read only.
+          MISE_GITHUB_TOKEN: ${{ github.token }}
       - run: mise run lint
       - run: mise run apply-check

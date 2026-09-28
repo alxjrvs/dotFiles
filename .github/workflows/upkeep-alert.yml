@@ -12,7 +12,8 @@ jobs:
   mention:
     if: >-
       github.event.issue.user.login == github.repository_owner &&
-      startsWith(github.event.issue.title, 'upkeep failed')
+      (startsWith(github.event.issue.title, 'upkeep failed') ||
+      startsWith(github.event.issue.title, 'bump failed'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

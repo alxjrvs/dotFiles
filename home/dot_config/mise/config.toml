@@ -15,22 +15,49 @@ bun = "latest"
 # Python and `uvx`, which many MCP servers launch with.
 uv = "latest"
 
-# What apply never does, run nightly by the upkeep LaunchAgent: upgrade, then converge. Apps that
-# update themselves are left to it, and no running app is quit.
-[tasks.upkeep]
-description = "Upgrade chezmoi, mise, its tools, gh extensions, formulae and casks, then converge"
+# What apply never does, run nightly by the upkeep LaunchAgent: each upgrade, then the converge.
+# One that fails stops neither the rest nor the converge, and still fails the run into its issue.
+# Apps that update themselves are left to it, and no running app is quit.
+[tasks."upkeep:chezmoi"]
+hide = true
+run = "chezmoi upgrade"
+
+[tasks."upkeep:mise"]
+hide = true
+# mise itself waits out the same week as its tools. Formulae and chezmoi ride homebrew-core's
+# review and chezmoi's own releases, with no age gate.
+run = ["mise self-update \"$(mise latest aqua:jdx/mise)\" --yes", "mise upgrade --yes"]
+
+[tasks."upkeep:gh"]
+hide = true
+run = "gh extension upgrade --all"
+
+[tasks."upkeep:brew"]
+hide = true
 run = [
-  "chezmoi upgrade",
-  "mise self-update --yes",
-  "mise upgrade --yes",
-  "gh extension upgrade --all",
   "brew update --quiet",
   "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --no-quit --quiet",
-  # A formula installed by hand is drift, removed here. stdin is closed: an uninstaller may prompt.
-  "brew bundle cleanup --force --file=$HOME/.config/homebrew/Brewfile < /dev/null",
-  # Never a main whose lint failed; a merge with no run yet (a Dependabot squash) goes through.
-  "cd \"$(chezmoi source-path)\" && test \"$(gh api 'repos/{owner}/{repo}/commits/main/check-runs?check_name=lint' --jq '.check_runs[0].conclusion')\" != failure",
-  # Last, so drift blocks no upgrade: a file edited by hand is skipped and fails the run by name,
-  # and everything else lands. --init re-renders a changed .chezmoi.toml.tmpl.
-  "chezmoi update --init --keep-going --no-tty",
+  # A formula installed by hand is drift, removed on a personal Mac. stdin is closed: an
+  # uninstaller may prompt.
+  "if chezmoi data | jq -e .personal > /dev/null; then brew bundle cleanup --force --file=$HOME/.config/homebrew/Brewfile < /dev/null; fi",
 ]
+
+[tasks.upkeep]
+description = "Upgrade chezmoi, mise, its tools, gh extensions, formulae and casks, then converge"
+run = """
+failed=
+for task in upkeep:chezmoi upkeep:mise upkeep:gh upkeep:brew; do
+  mise run "$task" || failed="$failed $task"
+done
+source=$(chezmoi source-path)
+# Never a main whose lint did not pass on Actions. A file edited by hand is skipped and fails the
+# run by name, and everything else lands; --init re-renders a changed .chezmoi.toml.tmpl.
+(cd "$source" && ../.github/main-green.sh) && chezmoi update --init --keep-going --no-tty ||
+  failed="$failed converge"
+# main's own linter pins, installed here outside the sandbox, so an agent's `mise run lint` runs.
+mise -C "$source/.." install --yes || failed="$failed pins"
+# Results, not files: every gated repo still matches gate.sh, and drift names its `!` fix.
+chezmoi data | jq -r '.github, .ownedOrgs[]' | xargs "$source/../.github/gate.sh" --check ||
+  failed="$failed gate"
+[ -z "$failed" ] || { echo "upkeep failed:$failed" >&2 && exit 1; }
+"""

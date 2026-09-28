@@ -20,10 +20,14 @@ run = [
   # scripts stay flat and never call chezmoi (the outer apply holds its lock); a run_onchange_
   # script never exits early (an early exit records its hash, so it would never retry).
   "test -z \"$(git ls-files -s home | awk '$1 != 100644')\"",
-  "! git grep -nE '#[0-9a-fA-F]{6}\\b|^[a-z-]+ *= *([0-9]+=)?[0-9a-fA-F]{6} *$' -- home",
+  "! git grep -nE '#[0-9a-fA-F]{6}([^0-9a-fA-F]|$)|^[a-z-]+ *= *([0-9]+=)?[0-9a-fA-F]{6} *$' -- home",
   "test -z \"$(find home/.chezmoiscripts -mindepth 1 -type d)\"",
   "! grep -nE '^[^#]*\\bchezmoi\\b' home/.chezmoiscripts/*",
   "! grep -nE '^[^#]*\\bexit( +0)?( *;|$| *#)' home/.chezmoiscripts/run_onchange_*",
+  # The floor is what makes a program run at apply: only the files CLAUDE.md names may, so no
+  # template executes a command and chezmoi runs no hook.
+  "! git grep -nE '\\{\\{[^}]*[[:space:](|](exec|output|outputList|onepassword[A-Za-z]*)[[:space:]})]' -- home",
+  "! grep -n '^\\[hooks' home/.chezmoi.toml.tmpl",
   "actionlint",
   "zizmor --offline .github/",
 ]
