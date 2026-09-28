@@ -65,7 +65,10 @@ home/.chezmoi*          chezmoi's own files: config template, data (work orgs), 
 
 ## Forking
 
-`git grep -ilE 'alxjrvs|GitHubSSH|thegnar'` lists every file to change. Then run
-`.github/gate.sh`.
+Fork it, turn on its Actions (GitHub leaves a fork's workflows off), and edit
+`home/.chezmoidata.toml`: who you are lives there alone. Then run `.github/gate.sh` from your
+clone, and the Fresh Mac command with your fork's name. The monthly bump is a Routine on your own
+account: `/schedule` one whose prompt is `Follow .claude/bump.md`. Keep LICENSE's copyright line;
+MIT requires it.
 
 MIT — see [`LICENSE`](LICENSE).

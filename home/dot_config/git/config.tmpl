@@ -1,16 +1,19 @@
 # The empty helper drops the osxkeychain helper Apple's system gitconfig starts with, so gh's
-# token is the only credential git keeps.
+# token is the only credential git keeps, for every form of GitHub URL.
 [credential]
 	helper =
 [credential "https://github.com"]
 	helper = !gh auth git-credential
 [credential "https://gist.github.com"]
 	helper = !gh auth git-credential
+[url "https://github.com/"]
+	insteadOf = git@github.com:
+	insteadOf = ssh://git@github.com/
 [user]
-	name = alxjrvs
-	email = alxjrvs@gmail.com
-	# The public half of the 1Password "GitHubSSH" item.
-	signingkey = key::ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKjF9JmW396EbH0n1zWeU7eT+2VvMFZAn+A1WKAi4tqT
+	name = {{ .name }}
+	email = {{ .email }}
+	# The public half of the 1Password "{{ .signingItem.item }}" item.
+	signingkey = key::{{ .signingKey }}
 [gpg]
 	format = ssh
 [gpg "ssh"]

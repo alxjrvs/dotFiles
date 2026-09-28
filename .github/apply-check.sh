@@ -10,6 +10,9 @@ mkdir "$home"
 cz=(chezmoi --source "$root" --config "$tmp/chezmoi.toml" --persistent-state "$tmp/chezmoi.db" --destination "$home")
 
 "${cz[@]}" init
+data=$("${cz[@]}" data --format json)
+personal=$(jq -r .email <<< "$data")
+work=$(jq -r .workEmail <<< "$data")
 "${cz[@]}" apply --exclude scripts
 "${cz[@]}" verify --exclude scripts
 # `--exclude scripts` skips rendering them; this renders every script and runs none.
@@ -46,6 +49,8 @@ jq -e '.appWrote and .enabledPlugins["toggled@elsewhere"] == false and .autoMemo
 # A file already holding every declared value is not drift, in whatever key order the app wrote.
 jq '{appFirst: true} + .' "$settings" > "$tmp/edited" && cat "$tmp/edited" > "$settings"
 "${cz[@]}" verify --exclude scripts
+# Rendered TOML parses: lint parses only the plain .toml sources, not templates.
+mise config get --file "$home/.config/1Password/ssh/agent.toml" > /dev/null
 
 # On a Mac: the LaunchAgents parse and every Brewfile entry resolves, so a typo fails here and not
 # halfway through an apply.
@@ -67,8 +72,8 @@ fi
   test "$(git config --global --get-all credential.https://github.com.helper | tail -1)" = '!gh auth git-credential'
   test "$(git config --global --get commit.gpgSign)" = true
   grep -q 'Group Containers' "$home/.ssh/config"
-  # A work org's GitHub remote commits as work, in any URL form and either case; anything else as
-  # alxjrvs.
+  # Every work org's GitHub remote commits as workEmail, in any URL form and either case; anything
+  # else as email.
   repo=$tmp/repo
   git init -q "$repo"
   email() {
@@ -76,11 +81,13 @@ fi
     git -C "$repo" remote add origin "$1"
     git -C "$repo" config user.email
   }
-  test "$(email https://github.com/TheGnarCo/app.git)" = alex@thegnar.co
-  test "$(email git@github.com:criterium/app.git)" = alex@thegnar.co
-  test "$(email ssh://git@github.com/massgov/app.git)" = alex@thegnar.co
-  test "$(email https://gitlab.com/massgov/app.git)" = alxjrvs@gmail.com
-  test "$(email https://github.com/alxjrvs/dotFiles.git)" = alxjrvs@gmail.com
+  for org in $(jq -r '.workOrgs[]' <<< "$data"); do
+    test "$(email "https://github.com/$org/app.git")" = "$work"
+    test "$(email "git@github.com:$(tr '[:upper:]' '[:lower:]' <<< "$org")/app.git")" = "$work"
+    test "$(email "ssh://git@github.com/$org/app.git")" = "$work"
+    test "$(email "https://gitlab.com/$org/app.git")" = "$personal"
+  done
+  test "$(email "https://github.com/$(jq -r .github <<< "$data")/dotFiles.git")" = "$personal"
   # The git pairs settings.json hands every agent session, read back through git. Last: the
   # first value is `false` and would mask the signing assertion above.
   eval "$(jq -r '.env | to_entries[] | select(.key | startswith("GIT_CONFIG_")) |
