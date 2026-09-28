@@ -1,12 +1,18 @@
-# The Mac's apps, its one service, and three CLIs kept as casks (1password-cli, gcloud-cli and
-# ngrok); every other CLI is mise's. chezmoi and mise are their own installers' (~/.local/bin);
-# git is Xcode's. Apply never upgrades; upkeep does, nightly, leaving apps that update themselves
-# to it and quitting none. When this file changes, apply uninstalls whatever it does not name.
+# The Mac's apps, its one service, the two zsh plugins, and three CLIs kept as casks (1password-cli,
+# gcloud-cli and ngrok); every other CLI is mise's. chezmoi and mise are their own installers'
+# (~/.local/bin); git is Xcode's. Apply never upgrades; upkeep does, nightly, leaving apps that
+# update themselves to it and quitting none. When this file changes, apply uninstalls whatever it
+# does not name.
 
 # ── Services ──────────────────────────────────────────────────────────
 # A launchd service, not a CLI: apply starts it and restarts it when the formula changes, and
 # `link` puts the keg-only psql on PATH.
 brew "postgresql@17", restart_service: :changed, link: true
+
+# ── zsh plugins ───────────────────────────────────────────────────────
+# Scripts, not CLIs: ~/.zshrc sources them from /opt/homebrew/share.
+brew "zsh-autosuggestions"
+brew "zsh-syntax-highlighting"
 
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"

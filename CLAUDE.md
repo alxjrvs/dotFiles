@@ -11,10 +11,10 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 
 - Native over special: deleting custom code for a built-in is the highest-value change.
 - Guilty until proven load-bearing: every dependency, wrapper, and line earns its weight.
-- One host, the Mac. A Claude Code web session is Linux and gets this repo, never `~`: lint runs
-  there, apply-check is CI's, and nothing applies. No by-hand step remains that `chezmoi apply`
-  could converge. Upgrades are the nightly `mise run upkeep`; pins and externals are the monthly
-  Routine that follows `.claude/bump.md`.
+- One host, the Mac. A Claude Code web session is Linux and gets this repo, never `~`: lint and
+  apply-check run there, and nothing applies. No by-hand step remains that `chezmoi apply` could
+  converge. Upgrades are the nightly `mise run upkeep`; pins are the monthly Routine that follows
+  `.claude/bump.md`.
 - Standard, and agentic-enabled: 1Password, git, ssh, `gh`, MCP stay stock, wired for agents.
 - Keep it legible: one line on the decision, nothing on the mechanism.
 
@@ -39,8 +39,8 @@ the agent's own floor, so a person merges it and the agent leaves it open at gre
 - `~/.claude/settings.json` is a modify template: chezmoi enforces the keys declared in
   `home/.chezmoitemplates/claude-settings.json` and leaves every other key to the app.
 - Every CLI and runtime is a mise tool (`home/dot_config/mise/config.toml`). The exceptions are
-  the `1password-cli`, `gcloud-cli` and `ngrok` casks, and `postgresql@17`, a service brew runs.
-  The apps are Brewfile casks. chezmoi, mise and the Claude Code CLI come from their
+  the `1password-cli`, `gcloud-cli` and `ngrok` casks, `postgresql@17`, a service brew runs, and
+  the two zsh plugins, which are scripts. The apps are Brewfile casks. chezmoi, mise and the Claude Code CLI come from their
   own installers into `~/.local/bin`; git is the system's.
 - This repo's own linters are pinned in the root `mise.toml`, not installed machine-wide.
 - `chezmoi apply` never upgrades anything; `mise run upkeep` does, nightly, and a failure opens an

@@ -1,7 +1,6 @@
 #!/bin/bash
 # The source applied into a temporary home and verified; then what verify cannot see.
-# Writes only under a temp directory, so it is safe anywhere. It runs on a Mac and in CI; a web
-# session cannot download the externals, so there lint is the check.
+# Writes only under a temp directory, so it is safe anywhere: a Mac, CI and a web session.
 set -euo pipefail
 root=$(git rev-parse --show-toplevel)
 tmp=$(mktemp -d)

@@ -2,7 +2,7 @@
 # Claude Code on the web starts without this repo's tools, and its proxy blocks mise.run and the
 # GitHub API that mise resolves releases through. So mise comes from npm and the pins in mise.toml
 # from PyPI and the Go proxy, which a cloud session always reaches; mise is told to leave those
-# five to PATH. `mise run lint` runs there; apply-check downloads GitHub archives, so it is CI's.
+# five to PATH. `mise run lint` and `mise run apply-check` both run there.
 # A failing SessionStart hook is reported and never blocks the session.
 set -euo pipefail
 [ "${CLAUDE_CODE_REMOTE:-}" = true ] || exit 0

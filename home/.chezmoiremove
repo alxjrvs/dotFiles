@@ -1,0 +1,2 @@
+# The zsh plugins' old home, from when they were chezmoi externals; Homebrew carries them now.
+.local/share/zsh
