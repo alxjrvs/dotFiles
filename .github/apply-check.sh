@@ -46,6 +46,13 @@ jq '. + {appWrote: true} | .enabledPlugins += {"toggled@elsewhere": false} | .au
 "${cz[@]}" apply --force --exclude scripts
 jq -e '.appWrote and .enabledPlugins["toggled@elsewhere"] == false and .autoMemoryEnabled == false' \
   "$settings" > /dev/null
+# A declared null retires its entry: a marketplace the app still lists is removed, and never
+# written back as null.
+jq '.extraKnownMarketplaces += {"1password": {"source": {"source": "github", "repo": "x/y"}}}' \
+  "$settings" > "$tmp/edited" && cat "$tmp/edited" > "$settings"
+"${cz[@]}" apply --force --exclude scripts
+jq -e '.extraKnownMarketplaces | has("1password") | not' "$settings" > /dev/null
+jq -e '[.. | select(. == null)] | length == 0' "$settings" > /dev/null
 # A file already holding every declared value is not drift, in whatever key order the app wrote.
 jq '{appFirst: true} + .' "$settings" > "$tmp/edited" && cat "$tmp/edited" > "$settings"
 "${cz[@]}" verify --exclude scripts
