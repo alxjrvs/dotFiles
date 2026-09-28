@@ -2,4 +2,4 @@
 
 Run the standing loop in `home/dot_claude/loop.md`, with CLAUDE.md's "How a change lands" as
 this repo's checks and merge rule. Where `gh` is absent (a web session), do the same steps with
-the GitHub MCP tools.
+the GitHub MCP tools, run `mise run lint`, and let CI's apply-check be the gate.

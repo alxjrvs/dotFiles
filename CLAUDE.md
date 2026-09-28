@@ -11,8 +11,8 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 
 - Native over special: deleting custom code for a built-in is the highest-value change.
 - Guilty until proven load-bearing: every dependency, wrapper, and line earns its weight.
-- One host, the Mac. A Claude Code web session is Linux and gets this repo, never `~`: the checks
-  run there and nothing applies. No by-hand step remains that `chezmoi apply` could converge,
+- One host, the Mac. A Claude Code web session is Linux and gets this repo, never `~`: lint runs
+  there, apply-check is CI's, and nothing applies. No by-hand step remains that `chezmoi apply` could converge,
   except external bumps.
 - Standard, and agentic-enabled: 1Password, git, ssh, `gh`, MCP stay stock, wired for agents.
 - Keep it legible: one line on the decision, nothing on the mechanism.

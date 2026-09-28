@@ -27,6 +27,8 @@ jobs:
       # not on the next apply.
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
+          # The newest mise that is a week old, the same cooldown Dependabot keeps.
+          minimum_release_age: 7d
           cache_key: mise-${{ hashFiles('mise.toml', 'home/dot_config/mise/config.toml') }}
         env:
           MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/home/dot_config/mise/config.toml

@@ -1,6 +1,7 @@
 #!/bin/bash
 # The source applied into a temporary home and verified; then what verify cannot see.
-# Writes only under a temp directory, so it runs anywhere: CI, a Mac, a web session.
+# Writes only under a temp directory, so it is safe anywhere. It runs on a Mac and in CI; a web
+# session cannot download the externals, so there lint is the check.
 set -euo pipefail
 root=$(git rev-parse --show-toplevel)
 tmp=$(mktemp -d)
@@ -48,6 +49,15 @@ jq -e '.appWrote and .enabledPlugins["toggled@elsewhere"] == false and .autoMemo
 # A file already holding every declared value is not drift, in whatever key order the app wrote.
 jq '{appFirst: true} + .' "$settings" > "$tmp/edited" && cat "$tmp/edited" > "$settings"
 "${cz[@]}" verify --exclude scripts
+
+# On a Mac: the LaunchAgents parse and every Brewfile entry resolves, so a typo fails here and not
+# halfway through an apply.
+if [ "$(uname -s)" = Darwin ]; then
+  plutil -lint -s "$home"/Library/LaunchAgents/*.plist
+  brewfile=$home/.config/homebrew/Brewfile
+  brew bundle list --formula --file="$brewfile" | xargs brew info --formula --json=v2 > /dev/null
+  brew bundle list --cask --file="$brewfile" | xargs brew info --cask --json=v2 > /dev/null
+fi
 
 (
   export HOME="$home" XDG_CONFIG_HOME="$home/.config"
