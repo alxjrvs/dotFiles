@@ -9,8 +9,9 @@
 # the check. The squash commit carries the PR's body, a branch that fell behind can be updated from
 # the PR, and Issues stay on for upkeep's failure reports. Actions tokens read by default, never
 # approve a pull request, and run only SHA-pinned actions. Secret scanning and push protection stop
-# a token before it lands, and Dependabot's security updates skip its version cooldown. Rulesets
-# on a private repo need a paid plan; everything here is free on a public one.
+# a token before it lands, a reporter can file a vulnerability privately, and Dependabot's security
+# updates skip its version cooldown. Rulesets on a private repo need a paid plan; everything here is
+# free on a public one.
 set -euo pipefail
 
 settings='{
@@ -98,10 +99,14 @@ check() {
   holds "$(gh api "repos/$repo")" "$settings" || drift+=("merge settings")
   if [ "$(gh api "repos/$repo" --jq .visibility)" = public ]; then
     holds "$(gh api "repos/$repo")" "$security" || drift+=("push protection")
+    holds "$(gh api "repos/$repo/private-vulnerability-reporting")" '{"enabled": true}' ||
+      drift+=("private reporting")
   fi
   holds "$(gh api "repos/$repo/actions/permissions")" "$actions" || drift+=("action pinning")
   holds "$(gh api "repos/$repo/actions/permissions/workflow")" "$tokens" || drift+=("token permissions")
   gh api --silent "repos/$repo/vulnerability-alerts" 2> /dev/null || drift+=("Dependabot alerts")
+  holds "$(gh api "repos/$repo/automated-security-fixes")" '{"enabled": true, "paused": false}' ||
+    drift+=("security updates")
   [ ${#drift[@]} -eq 0 ] && return 0
   local IFS=,
   echo "gate: $repo drifted (${drift[*]}); fix: ! .github/gate.sh $repo \"$name\""
@@ -127,8 +132,10 @@ name=${2:-lint}
 
 gh api -X PATCH "repos/$repo" --input - <<< "$settings" > /dev/null
 # Free on a public repo only; a private one without Secret Protection answers 422.
-[ "$(gh api "repos/$repo" --jq .visibility)" != public ] ||
+if [ "$(gh api "repos/$repo" --jq .visibility)" = public ]; then
   gh api -X PATCH "repos/$repo" --input - <<< "$security" > /dev/null
+  gh api -X PUT "repos/$repo/private-vulnerability-reporting" > /dev/null
+fi
 gh api -X PUT "repos/$repo/vulnerability-alerts" > /dev/null
 gh api -X PUT "repos/$repo/automated-security-fixes" > /dev/null
 gh api -X PUT "repos/$repo/actions/permissions" --input - <<< "$actions" > /dev/null
