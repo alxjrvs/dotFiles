@@ -1,0 +1,43 @@
+name: bootstrap
+
+# A fresh Mac, rehearsed: the README's installer and first apply on a clean runner, then a second
+# apply and verify for idempotency. Weekly, and when machine setup changes. Not a required check: it
+# installs every cask and takes a while. The runner answers `personal` no, so Homebrew cleanup
+# leaves the runner image's own formulae alone.
+on:
+  schedule:
+    - cron: "17 10 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - home/.chezmoiscripts/**
+      - home/.chezmoi.toml.tmpl
+      - home/.chezmoidata.toml
+      - home/dot_config/homebrew/Brewfile
+      - home/dot_config/mise/**
+      - home/Library/**
+      - .github/workflows/bootstrap.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: The README's installer
+        run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+      - name: The first apply, from this checkout
+        run: ~/.local/bin/chezmoi init --apply --no-tty --promptBool personal=false --source "$GITHUB_WORKSPACE"
+      - name: A second apply changes nothing, and verify agrees
+        run: |
+          ~/.local/bin/chezmoi apply --no-tty
+          ~/.local/bin/chezmoi verify
