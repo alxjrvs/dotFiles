@@ -12,31 +12,55 @@
     "sessionUrl": false
   },
   "permissions": {
+    "defaultMode": "auto",
     "allow": [
       "WebSearch"
     ],
     "deny": [
-      "Bash(*gh release create*)",
-      "Bash(*gh gist create*)",
-      "Bash(*gh auth token*)",
-      "Bash(*gh auth status*)",
-      "Bash(*gh auth git-credential*)",
+      "Bash(op read *)",
+      "Bash(op * read *)",
+      "Bash(op item get *)",
+      "Bash(op inject *)",
+      "Bash(op document get *)",
+      "Bash(*--no-masking*)",
+      "Bash(gh auth token*)",
+      "Bash(gh auth status *-t*)",
+      "Bash(gh auth git-credential*)",
+      "Bash(git credential*)",
+      "Bash(git config *user.*)",
+      "Bash(gh release create*)",
+      "Bash(gh gist create*)",
       "Bash(*find-*-password*)",
       "Bash(*dump-keychain*)",
-      "Bash(*git credential*)",
-      "Bash(*op read*)",
-      "Bash(*op item get*)",
-      "Bash(*op inject*)",
-      "Bash(*op document get*)",
-      "Bash(*--no-masking*)",
-      "Bash(*git config user.*)",
       "Edit(~/.local/share/chezmoi/**)"
     ]
   },
   "enabledPlugins": {
-    "1password@1password": true,
+    "1password@1password": false,
     "commit-commands@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true
+    "frontend-design@claude-plugins-official": true,
+    "convex@claude-plugins-official": false,
+    "small-business@inline": false,
+    "productivity@inline": false,
+    "engineering@inline": false,
+    "cowork-plugin-management@inline": false,
+    "design@inline": false,
+    "finance@inline": false,
+    "data@inline": false,
+    "product-management@inline": false,
+    "marketing@inline": false,
+    "sales@inline": false,
+    "legal@inline": false,
+    "operations@inline": false,
+    "human-resources@inline": false,
+    "customer-support@inline": false,
+    "ip-legal@inline": false,
+    "privacy-legal@inline": false,
+    "regulatory-legal@inline": false,
+    "small-business@synced": false,
+    "productivity@synced": false,
+    "engineering@synced": false,
+    "cowork-plugin-management@synced": false
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -45,13 +69,7 @@
         "repo": "anthropics/claude-plugins-official"
       }
     },
-    "1password": {
-      "source": {
-        "source": "github",
-        "repo": "1Password/1password-claude-plugin"
-      },
-      "autoUpdate": true
-    }
+    "1password": null
   },
   "outputStyle": "Proactive",
   "sandbox": {
@@ -59,25 +77,6 @@
     "autoAllowBashIfSandboxed": false,
     "enableWeakerNetworkIsolation": true,
     "network": {
-      "allowedDomains": [
-        "github.com",
-        "api.github.com",
-        "codeload.github.com",
-        "objects.githubusercontent.com",
-        "release-assets.githubusercontent.com",
-        "raw.githubusercontent.com",
-        "ghcr.io",
-        "pkg-containers.githubusercontent.com",
-        "formulae.brew.sh",
-        "mise-versions.jdx.dev",
-        "nodejs.org",
-        "registry.npmjs.org",
-        "pypi.org",
-        "files.pythonhosted.org",
-        "crates.io",
-        "static.crates.io",
-        "rubygems.org"
-      ],
       "allowMachLookup": [
         "2BUA8C4S2C.com.1password.browser-helper"
       ]
@@ -115,7 +114,7 @@
     ],
     "soft_deny": [
       "$defaults",
-      "Landing this Mac's own config unasked: committing or pushing, in this chezmoi source repo ({{ .github }}/dotFiles or a fork of it), a change the user's own messages did not ask for that widens the `permissions`, `sandbox`, `autoMode` or `env` blocks of `home/.chezmoitemplates/claude-settings.json`, or adds or changes a script under `home/.chezmoiscripts/`, a LaunchAgent under `home/Library/LaunchAgents/` or a task in `home/dot_config/mise/config.toml`: `chezmoi update` applies them to ~/.claude/settings.json, launchd and the nightly upkeep, outside the sandbox."
+      "Landing this Mac's own config unasked: committing or pushing, in this chezmoi source repo ({{ .github }}/dotFiles or a fork of it), a change the user's own messages did not ask for that widens the `permissions`, `sandbox`, `autoMode` or `env` blocks of `home/.chezmoitemplates/claude-settings.json`, or makes a program run outside the sandbox: a script under `home/.chezmoiscripts/`, a LaunchAgent under `home/Library/`, a Brewfile package, a mise task, a shell startup file, a git key naming a program, the chezmoi config, or `.github/gate.sh` and `.github/main-green.sh`, which upkeep runs. `chezmoi update` and the nightly upkeep run them outside the sandbox."
     ],
     "hard_deny": [
       "$defaults",
@@ -125,7 +124,8 @@
     ],
     "environment": [
       "$defaults",
-      "Source control: github.com/{{ .github }} and every repository under it{{ with .ownedOrgs }}, plus the GitHub organizations the user administers: {{ join ", " . }}{{ end }}. Pushes to a non-default branch of any of these are the user's own work landing through pull requests; the default-branch rule above still holds."
+      "Source control: github.com/{{ .github }} and every repository under it{{ with .ownedOrgs }}, plus the GitHub organizations the user administers: {{ join ", " . }}{{ end }}. Pushes to a non-default branch of any of these are the user's own work landing through pull requests; the default-branch rule above still holds.",
+      "Secrets management: 1Password, through op:// references passed with `op run` and, for agents, ~/.config/claude-agent/.env when that mounted Environment exists; the gh token lives in the login keychain; vendor CLI logins live in their own config files (~/.convex, ~/.expo, netlify, wrangler, ngrok). An agent passes a secret to the program that consumes it, and never reads, prints, copies or re-encodes one."
     ],
     "classifyAllShell": true
   }

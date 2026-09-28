@@ -8,6 +8,9 @@ bun for JS.
 
 **GitHub is one identity, the user's, and one tool: `gh`** on the `gh auth login` token.
 
+After opening a PR, let its watcher carry it (the app's CI monitor with auto-fix; Auto-fix in a
+cloud session) instead of scheduling a check-in to poll it.
+
 ## Rules
 
 These are here because nothing else can deliver them in time: each is irreversible on first
@@ -15,7 +18,8 @@ attempt, or lands in an unattended session with no one to ask.
 
 - **Never put a secret on stdout** — stdout is the transcript. A secret written to a file is a
   secret read. To *use* one, pass it: `op run --env-file=F -- CMD`, where F holds `op://`
-  references.
+  references, or source `~/.config/claude-agent/.env` (a mounted 1Password Environment) into the
+  command that needs it.
 
 ## Where things go
 
@@ -24,7 +28,7 @@ Nothing goes in this file that fits elsewhere.
 | | |
 |---|---|
 | a procedure | a skill: user-wide in dotFiles' `home/dot_claude/skills/`, or project-local in `.claude/skills/` |
-| it must hold | `permissions.deny`, or `autoMode.hard_deny` where no command pattern can say it |
+| it must hold | the sandbox, or `autoMode.hard_deny`: a deny rule stops one spelling, not a program |
 | it can fail a build | a check in the repo's lint or CI |
 | already enforced | nowhere. Describing a control is not the control. |
 
