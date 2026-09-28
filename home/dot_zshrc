@@ -1,5 +1,8 @@
-# ~/.zshrc: interactive shells. PATH is ~/.zshenv's. Every tool is guarded, so a machine that
-# lacks one still gets a working prompt.
+# ~/.zshrc: interactive shells, where mise activate takes over from ~/.zshenv's shims. Every tool
+# is guarded, so a machine that lacks one still gets a working prompt.
+# A non-interactive shell that sources this (Claude Code's shell snapshot) stops here: it would
+# freeze PATH as activated for one directory, and the shims already resolve per directory.
+[[ -o interactive ]] || return
 
 (( $+commands[mise] )) && eval "$(mise activate zsh)"
 
@@ -43,6 +46,8 @@ zstyle ':completion:*:git-checkout:*' sort false
 # --- tools -------------------------------------------------------------------------------------
 if (( $+commands[fzf] )); then
   export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40%'
+  # fzf's walker ignores .gitignore, so fd lists; the walker is the fallback without fd.
+  (( $+commands[fd] )) && export FZF_CTRL_T_COMMAND='fd --type f --hidden --follow'
   export FZF_CTRL_T_OPTS="--walker=file,follow,hidden --preview 'bat --color=always {}' --preview-window right:50%"
   eval "$(fzf --zsh)"
 fi
@@ -58,6 +63,8 @@ fi
 
 # --- aliases -----------------------------------------------------------------------------------
 alias gs='git status' gp='git push' gpr='git pull --rebase' gco='git checkout'
+# Long lines are cut for a person's screen only; an agent's rg sees every match.
+alias rg='rg --max-columns=200 --max-columns-preview'
 (( $+commands[nvim] )) && alias vim='nvim'
 
 # --- syntax highlighting: last, because it wraps the ZLE widgets defined above ----------------
