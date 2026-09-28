@@ -30,8 +30,8 @@ export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 # col strips mandoc's overstrikes; man pages page even though bat itself does not.
 (( $+commands[bat] )) && export MANPAGER="sh -c 'col -bx | bat -plman --paging=always'"
 
-# --- plugins: two, chezmoi externals; `source` is the plugin manager --------------------------
-_zsh_plugins=$HOME/.local/share/zsh/plugins
+# --- plugins: two Brewfile formulae; `source` is the plugin manager ---------------------------
+_zsh_plugins=/opt/homebrew/share
 _zsh_plugin=$_zsh_plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 [[ -r $_zsh_plugin ]] && source $_zsh_plugin
 

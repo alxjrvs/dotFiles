@@ -36,7 +36,7 @@ To hack on this repo, clone it to `~/Code/dotFiles`; chezmoi keeps its own copy.
 | a PR landed | `chezmoi update` |
 | drift | `chezmoi verify` |
 | upgrade | nightly: `mise run upkeep`, and a failure opens an issue here that pings your phone; apps update themselves (gcloud: `gcloud components update`) |
-| a pin or external | monthly: a Routine follows [`.claude/bump.md`](.claude/bump.md) |
+| a pin | monthly: a Routine follows [`.claude/bump.md`](.claude/bump.md) |
 | add a work org | one entry in `home/.chezmoidata.toml` |
 | the repo settings | [`.github/gate.sh`](.github/gate.sh), run by the owner |
 
@@ -55,12 +55,12 @@ credential and `gh` is the one tool.
 .chezmoiroot            "home": the source state lives one directory down
 mise.toml               this repo's pinned linters and its two checks, lint and apply-check
 .github/                CI, apply-check.sh, and gate.sh (the repo settings that are not files)
-.claude/                this repo's Claude Code config: the loop and a web-session setup hook
+.claude/                this repo's Claude Code config: the loop, the monthly bump and a web-session setup hook
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/.chezmoiscripts/   machine setup: Homebrew, mise, launchd agents, macOS defaults, sleep, provisioning, apps
 home/.chezmoitemplates/ the declared keys of ~/.claude/settings.json
 home/dot_claude/        user-global Claude Code config, and the loop a bare `/loop` runs
-home/.chezmoi*          chezmoi's own files: config template, data (work orgs), version floor, externals
+home/.chezmoi*          chezmoi's own files: config template, data (work orgs), version floor, remove list
 ```
 
 ## Forking
