@@ -67,9 +67,24 @@ share the name). The ruleset above is already stack-ready:
 ## Dependabot auto-merge
 
 `dependabot.yml` has no automerge key, so one small workflow hands Dependabot's minor and patch
-PRs to `gh pr merge --auto`; copy dotFiles' `.github/workflows/dependabot-auto-merge.yml`, which
-is SHA-pinned, checks `pull_request.user.login` (an actor check can be spoofed) and passes
-`zizmor`. Before promising it:
+PRs to `gh pr merge --auto`. Call dotFiles' rather than copy it: it is SHA-pinned, checks
+`pull_request.user.login` (an actor check can be spoofed) and passes `zizmor`, and a fix lands in
+every repo at once. The caller is the whole file:
+
+```yaml
+name: dependabot-auto-merge
+on: pull_request
+permissions: {}
+jobs:
+  auto-merge:
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: alxjrvs/dotFiles/.github/workflows/dependabot-auto-merge.yml@main
+```
+
+`@main` is deliberate: the callee has no tags for Dependabot to bump, and the owner controls it, so
+a repo that runs `zizmor` allows `alxjrvs/*` in its `unpinned-uses` policy. Before promising it:
 
 - **`pull_request`, never `pull_request_target`**: the job never checks out PR code, and a
   Dependabot run's token takes the `permissions:` granted.
