@@ -21,7 +21,6 @@ cz=(chezmoi --source "$root" --config "$tmp/chezmoi.toml" --persistent-state "$t
 base=$tmp/base
 mkdir "$base"
 git -C "$root" archive "$(git -C "$root" merge-base HEAD origin/main)" | tar -x -C "$base"
-rm -f "$base"/home/.chezmoiexternal.* # listing an external downloads it
 was=$(chezmoi --source "$base" --destination "$home" managed --exclude scripts,externals,remove,dirs | sort)
 now=$("${cz[@]}" managed --exclude scripts,externals,dirs | sort)
 removed=$("${cz[@]}" managed --include remove)

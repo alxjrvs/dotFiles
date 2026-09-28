@@ -7,17 +7,32 @@
 (( $+commands[mise] )) && eval "$(mise activate zsh)"
 
 # --- options -----------------------------------------------------------------------------------
-setopt AUTO_CD CORRECT EXTENDED_GLOB INTERACTIVE_COMMENTS NO_BEEP NO_FLOWCONTROL
+setopt AUTO_CD CORRECT INTERACTIVE_COMMENTS NO_BEEP NO_FLOWCONTROL
 # History: atuin is the source of truth and the only cross-session index, so append, never
 # share. macOS's /etc/zshrc names the file.
 HISTSIZE=10000
 SAVEHIST=10000
 setopt INC_APPEND_HISTORY_TIME HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE HIST_VERIFY EXTENDED_HISTORY HIST_REDUCE_BLANKS
+# What atuin's history_filter keeps out of its database stays out of the history file too.
+_history_filter() {
+  setopt local_options extended_glob
+  [[ $1 != (#i)*(password|secret|token|apikey|api(|_|-)key)[[:space:]]#[:=]* &&
+    $1 != (|*[^[:alnum:]_])sk-[[:alnum:]_-](#c20,)* ]] || return 2
+}
+autoload -Uz add-zsh-hook && add-zsh-hook zshaddhistory _history_filter
 
 # --- vi mode -----------------------------------------------------------------------------------
 bindkey -v
 KEYTIMEOUT=1
-# Application mode on, so Home and End send the sequences their terminfo bindings expect.
+# /etc/zshrc binds Home, End and Delete in emacs mode only, so vi mode binds them here, in the
+# application-mode form below. Ghostty's macOS defaults send ^A/^E for Cmd-Left/Right, Esc-b/f for
+# Option-Left/Right and Esc-DEL for Option-Delete.
+for m (viins vicmd) {
+  (( ${+terminfo[khome]} )) && bindkey -M $m "$terminfo[khome]" beginning-of-line \
+    "$terminfo[kend]" end-of-line "$terminfo[kdch1]" delete-char
+  bindkey -M $m '^A' beginning-of-line '^E' end-of-line '^[b' backward-word '^[f' forward-word \
+    '^[^?' backward-kill-word
+}
 zle-line-init()   { (( ${+terminfo[smkx]} )) && printf '%s' ${terminfo[smkx]} }
 zle-line-finish() { (( ${+terminfo[rmkx]} )) && printf '%s' ${terminfo[rmkx]} }
 zle -N zle-line-init
@@ -26,13 +41,14 @@ zle -N zle-line-finish
 # --- environment -------------------------------------------------------------------------------
 # BAT_THEME is what delta, MANPAGER and the fzf preview read; bat's config file is not.
 export EDITOR=nvim BAT_THEME=Nord BAT_PAGING=never
-export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 # col strips mandoc's overstrikes; man pages page even though bat itself does not.
 (( $+commands[bat] )) && export MANPAGER="sh -c 'col -bx | bat -plman --paging=always'"
 
 # --- plugins: two Brewfile formulae; `source` is the plugin manager ---------------------------
 _zsh_plugins=/opt/homebrew/share
 _zsh_plugin=$_zsh_plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+# Bind once: syntax highlighting 0.8 hooks zle-line-pre-redraw and wraps no widget to outlive.
+ZSH_AUTOSUGGEST_MANUAL_REBIND=1
 [[ -r $_zsh_plugin ]] && source $_zsh_plugin
 
 # --- completion: brew shellenv (~/.zprofile) already put site-functions on fpath -------------
@@ -55,7 +71,7 @@ if (( $+commands[atuin] )); then
   # Up/Down stay plain history, and `?` stays a character. In vicmd atuin binds `/`, so Ctrl-R
   # there is ours.
   eval "$(atuin init zsh --disable-up-arrow --disable-ai)"
-  bindkey -M vicmd '^R' atuin-search
+  bindkey -M vicmd '^R' atuin-search-vicmd
 fi
 (( $+commands[starship] )) && eval "$(starship init zsh)"
 # zoxide adds `z` and `zi` and a chpwd hook; `cd` stays zsh's, so the two never compete.
@@ -70,4 +86,4 @@ alias rg='rg --max-columns=200 --max-columns-preview'
 # --- syntax highlighting: last, because it wraps the ZLE widgets defined above ----------------
 _zsh_plugin=$_zsh_plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 [[ -r $_zsh_plugin ]] && source $_zsh_plugin
-unset _zsh_plugin _zsh_plugins
+unset _zsh_plugin _zsh_plugins m
