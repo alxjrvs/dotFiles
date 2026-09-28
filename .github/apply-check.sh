@@ -23,8 +23,8 @@ base=$tmp/base
 mkdir "$base"
 git -C "$root" archive "$(git -C "$root" merge-base HEAD origin/main)" | tar -x -C "$base"
 rm -f "$base"/home/.chezmoiexternal.* # listing an external downloads it
-was=$(chezmoi --source "$base" --destination "$home" managed --exclude scripts,externals,remove | sort)
-now=$("${cz[@]}" managed --exclude scripts,externals | sort)
+was=$(chezmoi --source "$base" --destination "$home" managed --exclude scripts,externals,remove,dirs | sort)
+now=$("${cz[@]}" managed --exclude scripts,externals,dirs | sort)
 removed=$("${cz[@]}" managed --include remove)
 comm -23 <(printf '%s\n' "$was") <(printf '%s\n' "$now") |
   while read -r target; do
@@ -63,7 +63,9 @@ fi
   unset GIT_CONFIG_COUNT
   # The applied login shell starts; an rc file that exits fails here (lint's `zsh -n` has syntax).
   zsh -l -i -c 'echo shell ok' > /dev/null
-  # git parses the rendered file, gh is the last github.com helper in it, and commits sign.
+  # git parses the rendered file, its empty helper drops the system's osxkeychain, gh is the last
+  # github.com helper in it, and commits sign.
+  git config --global --get-all credential.helper | grep -qx ''
   test "$(git config --global --get-all credential.https://github.com.helper | tail -1)" = '!gh auth git-credential'
   test "$(git config --global --get commit.gpgSign)" = true
   grep -q 'Group Containers' "$home/.ssh/config"

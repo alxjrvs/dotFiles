@@ -22,7 +22,8 @@ jobs:
       - if: >-
           steps.meta.outputs.update-type == 'version-update:semver-minor' ||
           steps.meta.outputs.update-type == 'version-update:semver-patch'
-        run: gh pr merge --auto --squash "$PR_URL"
+        # The title alone: a Dependabot body is release notes, and gate.sh squashes with the body.
+        run: gh pr merge --auto --squash --body "" "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ github.token }}
