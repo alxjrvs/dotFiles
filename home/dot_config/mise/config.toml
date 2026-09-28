@@ -15,6 +15,7 @@ bun = "latest"
 # Python and `uvx`, which many MCP servers launch with.
 uv = "latest"
 
+# The CLIs are Brewfile formulae too, for their completions and man pages; these copies come first.
 # Shell
 atuin = "latest"
 fzf = "latest"
