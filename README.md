@@ -16,8 +16,10 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply --use-built
 gh auth login --scopes workflow && chezmoi apply
 ```
 
-The first apply asks for your password once, for Homebrew. Anything that needs `gh auth login`
-lands on the second. The `workflow` scope lets a push change `.github/workflows/`.
+The first apply asks for your password once, for Homebrew, and whether this is your personal Mac:
+a work Mac keeps the apps its employer installs, because Homebrew cleanup never runs there. Anything
+that needs `gh auth login` lands on the second. The `workflow` scope lets a push change
+`.github/workflows/`.
 
 Between the two commands:
 
@@ -32,13 +34,13 @@ To hack on this repo, clone it to `~/Code/dotFiles`; chezmoi keeps its own copy.
 
 | | |
 |---|---|
-| change something | in a worktree: edit, `mise run lint`, `mise run apply-check`, commit, PR |
+| change something | in a worktree: edit, `mise run lint`, `mise run apply-check`, commit, PR; an agent's `claude/` PR merges itself on green unless it touches the floor |
 | a PR landed | `chezmoi update` |
 | drift | `chezmoi verify` |
-| upgrade | nightly: `mise run upkeep`, and a failure opens an issue here that pings your phone; apps update themselves (gcloud: `gcloud components update`) |
+| upgrade | nightly: `mise run upkeep` upgrades, converges a green main and checks every gated repo against gate.sh; a failure opens an issue here that pings your phone. Apps update themselves (gcloud: `gcloud components update`) |
 | a pin | monthly: a Routine follows [`.claude/bump.md`](.claude/bump.md) |
 | add a work org | one entry in `home/.chezmoidata.toml` |
-| the repo settings | [`.github/gate.sh`](.github/gate.sh), run by the owner |
+| the repo settings | [`.github/gate.sh`](.github/gate.sh), run by the owner; upkeep names any drift |
 
 A Mac on power never idles to sleep, so an unattended `/loop` keeps running; closing the lid
 still stops it. On the web, an expired claude.ai login stalls a loop until the next `/login`.
@@ -54,7 +56,7 @@ credential and `gh` is the one tool.
 ```
 .chezmoiroot            "home": the source state lives one directory down
 mise.toml               this repo's pinned linters and its two checks, lint and apply-check
-.github/                CI, apply-check.sh, and gate.sh (the repo settings that are not files)
+.github/                CI, apply-check.sh, gate.sh (the repo settings that are not files), main-green.sh
 .claude/                this repo's Claude Code config: the loop, the monthly bump and a web-session setup hook
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/.chezmoiscripts/   machine setup: Homebrew, mise, launchd agents, macOS defaults, sleep, provisioning, apps, and

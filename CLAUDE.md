@@ -27,10 +27,13 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 4. After it merges, `chezmoi update` applies it. chezmoi's own source is
    `~/.local/share/chezmoi`, and nothing else moves it.
 
-Never apply a worktree to the real home directory. An agent merges its own green PR here. One that
-widens the `permissions`, `sandbox`, `autoMode` or `env` blocks of
-`home/.chezmoitemplates/claude-settings.json`, or changes a script, LaunchAgent or mise task under
-`home/`, lands only when the owner asked for it: `chezmoi update` runs it outside the sandbox.
+Never apply a worktree to the real home directory. An agent's PR from a `claude/` branch merges
+itself once `lint` passes (`agent-auto-merge.yml`). The floor is the exception: a PR that widens the
+`permissions`, `sandbox`, `autoMode` or `env` blocks of
+`home/.chezmoitemplates/claude-settings.json`, or makes a program run outside the sandbox (a
+script, LaunchAgent, package, mise task, shell startup file, git key naming a program, the chezmoi
+config, or `.github/gate.sh` and `main-green.sh`, which upkeep runs) lands only when the owner
+asked for it. The workflow never switches those on, and lint bans templates that run a command.
 
 ## Local facts
 
@@ -45,8 +48,10 @@ widens the `permissions`, `sandbox`, `autoMode` or `env` blocks of
   `~/.local/bin`; git is the system's.
 - This repo's own linters are pinned in the root `mise.toml`, not installed machine-wide.
 - `chezmoi apply` never upgrades anything; `mise run upkeep` does, nightly, and a failure opens an
-  issue here. When the Brewfile changes, apply uninstalls every Homebrew package it does not name,
-  and upkeep does the same nightly.
+  issue here. It converges only a main whose `lint` passed on Actions, then installs main's linter
+  pins and runs `gate.sh --check` over every owned repo. When the Brewfile changes, apply
+  uninstalls every Homebrew package it does not name, and upkeep does the same nightly, on a
+  personal Mac only: `personal` is asked once at init, and a work Mac keeps its employer's.
 - Machine setup is `home/.chezmoiscripts/`. Homebrew, sleep and provisioning run on
   every apply behind a guard. mise, the launchd agents and the Brewfile re-run when their files
   change, and the macOS defaults when the script itself changes. Last, the extra Claude desktop
@@ -64,6 +69,7 @@ widens the `permissions`, `sandbox`, `autoMode` or `env` blocks of
 - Employer config is the employer's marketplace, installed by its tooling; nothing here enables
   it.
 - Secrets: `op://` references only, never a plaintext token, and nothing here prints one.
-- The repo settings that are not files are `.github/gate.sh`, which the owner runs.
+- The repo settings that are not files are `.github/gate.sh`, which the owner runs and upkeep
+  checks read-only.
 - A rule that can fail the build is a check in `mise.toml` or `.github/apply-check.sh`, and a
   rule an agent must obey is a setting; neither is a line here. History is the PRs.

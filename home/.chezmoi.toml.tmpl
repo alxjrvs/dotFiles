@@ -1,3 +1,8 @@
+{{- /* A work Mac keeps what its employer installed: Homebrew cleanup runs on a personal Mac only.
+       Asked once, at an init with a terminal; the nightly apply has none and keeps the answer. */ -}}
+{{- $personal := true -}}
+{{- if hasKey . "personal" }}{{ $personal = .personal }}{{ end -}}
+{{- if stdinIsATTY }}{{ $personal = promptBoolOnce . "personal" "Is this your personal Mac (a work Mac keeps apps the Brewfile doesn't name)" $personal }}{{ end -}}
 # An every-apply script is not drift.
 [verify]
     exclude = ["always"]
@@ -5,3 +10,5 @@
     exclude = ["always"]
 [diff]
     exclude = ["always"]
+[data]
+    personal = {{ $personal }}

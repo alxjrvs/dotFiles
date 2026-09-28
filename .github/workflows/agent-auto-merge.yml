@@ -1,0 +1,39 @@
+name: agent-auto-merge
+
+# An agent's pull request merges itself once `lint` passes, so no agent has to remember to ask for
+# it: from a `claude/` branch of this repo, opened with the owner's token, into main, not a draft.
+# One that touches what `chezmoi update` or upkeep runs outside the sandbox (CLAUDE.md's floor) is
+# never switched on here, and a later push that adds such a file switches this workflow's own
+# auto-merge back off; an agent the owner asked may still turn it on.
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+
+permissions: {}
+
+jobs:
+  auto-merge:
+    if: >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.user.login == github.repository_owner &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'claude/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - run: |
+          floor='^(home/(\.chezmoiscripts/|Library/|\.chezmoitemplates/|dot_claude/modify_|dot_config/mise/config\.toml$|dot_config/homebrew/Brewfile$|dot_config/git/|dot_z|\.chezmoi\.toml\.tmpl$|\.chezmoiexternal)|\.github/(gate|main-green)\.sh$)'
+          if gh pr diff "$PR" --name-only | grep -qE "$floor"; then
+            echo "Touches the floor: it merges only when the owner asked."
+            by=$(gh pr view "$PR" --json autoMergeRequest --jq '.autoMergeRequest.enabledBy.login // ""')
+            if [[ $by == github-actions* ]]; then gh pr merge "$PR" --disable-auto; fi
+          else
+            gh pr merge "$PR" --auto --squash
+          fi
+        env:
+          PR: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ github.token }}
