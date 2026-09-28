@@ -5,3 +5,6 @@ typeset -U path PATH
 path=("$HOME/.local/bin" "$HOME/.local/share/mise/shims" /opt/homebrew/bin $path)
 # rg reads a config only through this variable, so every zsh exports it: an agent's rg too.
 export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
+# macOS man runs MANPAGER even when piped: col strips mandoc's overstrikes, so an agent reads clean
+# text, and less pages for a person (off a terminal it acts as cat).
+export MANPAGER="sh -c 'col -bx | less'"

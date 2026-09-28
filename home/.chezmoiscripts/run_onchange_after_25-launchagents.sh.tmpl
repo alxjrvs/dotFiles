@@ -1,7 +1,7 @@
 #!/bin/bash
 # Loads the launchd agents when a plist changes; bootout first so the change is read.
-# capslock: {{ include "Library/LaunchAgents/com.alxjrvs.capslock.plist" | sha256sum }}
-# upkeep: {{ include "Library/LaunchAgents/com.alxjrvs.upkeep.plist" | sha256sum }}
+# capslock: {{ include "Library/exact_LaunchAgents/com.alxjrvs.capslock.plist" | sha256sum }}
+# upkeep: {{ include "Library/exact_LaunchAgents/com.alxjrvs.upkeep.plist" | sha256sum }}
 set -euo pipefail
 for label in com.alxjrvs.capslock com.alxjrvs.upkeep; do
   # A job that boots itself out dies before its bootstrap (upkeep applying a plist change): leave

@@ -28,6 +28,8 @@ run = [
   # template executes a command and chezmoi runs no hook.
   "! git grep -nE '\\{\\{[^}]*[[:space:](|](exec|output|outputList|onepassword[A-Za-z]*)[[:space:]})]' -- home",
   "! grep -n '^\\[hooks' home/.chezmoi.toml.tmpl",
+  # ~/.zshenv's shims serve every shell: an activate in .zshrc pins the desktop app's agents.
+  "! grep -n '^[^#]*mise activate' home/dot_zshrc",
   "actionlint",
   "zizmor --offline .github/",
 ]
