@@ -1,7 +1,7 @@
 # The Mac's apps, its one service, and three CLIs kept as casks (1password-cli, gcloud-cli and
 # ngrok); every other CLI is mise's. chezmoi and mise are their own installers' (~/.local/bin);
-# git is Xcode's. Apply never upgrades (a cask upgrade quits the running app): `brew upgrade
-# --cask <name>` when it must. When this file changes, apply uninstalls whatever it does not name.
+# git is Xcode's. Apply never upgrades; upkeep does, nightly, leaving apps that update themselves
+# to it and quitting none. When this file changes, apply uninstalls whatever it does not name.
 
 # ── Services ──────────────────────────────────────────────────────────
 # A launchd service, not a CLI: apply starts it and restarts it when the formula changes, and

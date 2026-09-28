@@ -1,0 +1,3 @@
+# A missing or month-old page cache downloads on first use: no `tldr --update` by hand.
+[updates]
+auto_update = true

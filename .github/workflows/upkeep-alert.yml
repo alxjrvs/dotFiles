@@ -1,0 +1,26 @@
+name: upkeep-alert
+
+# The upkeep LaunchAgent opens its failure issue with the owner's own token, and GitHub notifies no
+# one of their own activity; a mention from the Actions bot is a GitHub Mobile push.
+on:
+  issues:
+    types: [opened]
+
+permissions: {}
+
+jobs:
+  mention:
+    if: >-
+      github.event.issue.user.login == github.repository_owner &&
+      startsWith(github.event.issue.title, 'upkeep failed')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - run: gh issue comment "$ISSUE" --repo "$REPO" --body "@$OWNER"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
