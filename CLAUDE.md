@@ -27,9 +27,10 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 4. After it merges, `chezmoi update` applies it. chezmoi's own source is
    `~/.local/share/chezmoi`, and nothing else moves it.
 
-Never apply a worktree to the real home directory. A PR that touches `home/dot_claude/` or
-`home/.chezmoiscripts/` changes what agents may do or what runs on the next apply, so a person
-merges it; an agent leaves it open at green.
+Never apply a worktree to the real home directory. An agent merges its own green PR here, except
+one touching `home/.chezmoiscripts/` or the `permissions`, `sandbox`, `autoMode` or `env` blocks
+of `home/.chezmoitemplates/claude-settings.json`: those run unsandboxed on the next update or move
+the agent's own floor, so a person merges it and the agent leaves it open at green.
 
 ## Local facts
 

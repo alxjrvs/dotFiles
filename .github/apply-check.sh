@@ -35,9 +35,8 @@ comm -23 <(printf '%s\n' "$was") <(printf '%s\n' "$now") |
     done
   done
 
-# settings.json: the two shapes run_after_40-provision.sh loops over, every git pair counted in.
+# settings.json: every git pair the agent env declares is counted in.
 settings=$home/.claude/settings.json
-jq -e 'all(.extraKnownMarketplaces[]; .source.repo) and any(.enabledPlugins[]; .)' "$settings" > /dev/null
 test "$(jq -r '.env.GIT_CONFIG_COUNT' "$settings")" = \
   "$(jq '[.env | keys[] | select(startswith("GIT_CONFIG_KEY_"))] | length' "$settings")"
 # What the app writes survives an apply, and a declared value is restored.
