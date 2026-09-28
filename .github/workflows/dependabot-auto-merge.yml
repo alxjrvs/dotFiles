@@ -1,9 +1,12 @@
 name: dependabot-auto-merge
 
-# Hands Dependabot's minor and patch action bumps to GitHub's auto-merge, which still waits for the
-# required `lint` check. `pull_request`, never `pull_request_target`: the job never checks out the
-# PR, and a Dependabot run's token takes the permissions granted here.
-on: pull_request
+# Hands Dependabot's minor and patch bumps to GitHub's auto-merge, which still waits for the
+# required check. `pull_request`, never `pull_request_target`: the job never checks out the PR, and
+# a Dependabot run's token takes the permissions granted here. Other repos call it rather than copy
+# it, granting `contents: write` and `pull-requests: write`.
+on:
+  pull_request:
+  workflow_call:
 
 permissions: {}
 
