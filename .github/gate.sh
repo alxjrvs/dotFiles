@@ -2,7 +2,8 @@
 # The repo settings that are not files, as one idempotent command run by the owner:
 #   .github/gate.sh [owner/repo]     (defaults to the checkout's repo)
 # GitHub is the gate: the default branch takes pull requests only, squash-merged once the check
-# named `lint` passes on an up-to-date branch, with no bypass for anyone, the owner included.
+# named `lint` passes, with no bypass for anyone, the owner included. The branch need not be up to
+# date: parallel agent PRs would otherwise wait behind each other, and a push to main re-runs lint.
 # The squash commit carries the PR's body, and a branch that fell behind can be updated from the
 # PR. Secret scanning and push protection stop a token before it lands. Rulesets on a private repo
 # need a paid plan; everything here is free on a public one.
@@ -38,7 +39,7 @@ ruleset=$(
     { "type": "deletion" },
     { "type": "non_fast_forward" },
     { "type": "required_status_checks", "parameters": {
-        "strict_required_status_checks_policy": true,
+        "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [{ "context": "lint" }] } },
     { "type": "pull_request", "parameters": {
