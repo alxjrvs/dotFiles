@@ -2,3 +2,5 @@
 # task runner. The literal shims path, not `mise activate --shims`: no process per script.
 typeset -U path PATH
 path=("$HOME/.local/bin" "$HOME/.local/share/mise/shims" $path)
+# rg reads a config only through this variable, so every zsh exports it: an agent's rg too.
+export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc

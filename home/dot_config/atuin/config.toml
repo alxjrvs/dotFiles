@@ -1,6 +1,9 @@
 # Atuin: only divergences from defaults. https://docs.atuin.sh/configuration/config/
 
-keymap_mode = "vim-normal"
+# Search opens in the vi mode Ctrl-R was pressed from.
+keymap_mode = "auto"
+# Enter runs the pick, Tab edits it. The code default is false; the sample file only seeds installs.
+enter_accept = true
 inline_height = 20
 # Adds the current repo to the filter modes Ctrl-R cycles through.
 workspaces = true
@@ -10,5 +13,5 @@ workspaces = true
 # Anthropic) keys. Top-level, not [history].
 history_filter = [
   "(?i)(password|secret|token|apikey|api[_-]?key)\\s*[:=]\\s*\\S+",
-  "sk-[A-Za-z0-9_-]{20,}",
+  "\\bsk-[A-Za-z0-9_-]{20,}",
 ]
