@@ -10,7 +10,7 @@ signingKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKjF9JmW396EbH0n1zWeU7eT+2VvMF
 signingItem = { item = "GitHubSSH", vault = "Private" }
 # GitHub orgs whose repos commit as workEmail (~/.config/git/work); every other repo commits as
 # email. Adding an org is one entry here; workEmail may equal email.
-workOrgs = ["Criterium", "massgov", "TheGnarCo"]
+workOrgs = ["Criterium-Engineers", "massgov-eotss", "TheGnarCo"]
 workEmail = "alex@thegnar.co"
 # Claude desktop accounts beyond the one the stock app holds, until Claude desktop signs in to
 # several itself. Each becomes "~/Applications/Claude <name>.app", its icon the stock one with the
