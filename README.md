@@ -51,8 +51,8 @@ A push that changes `.github/workflows/` needs the `workflow` scope; its rejecti
 branch protection.
 
 GitHub is the gate: `main` takes only squash-merged pull requests with the `lint` check green,
-and push protection stops a secret before it lands. Agents act as you: `gh auth login` is the one
-credential and `gh` is the one tool.
+and push protection stops a secret before it lands. Agents act as you, through `gh` or any connector
+available.
 
 ## Layout
 
