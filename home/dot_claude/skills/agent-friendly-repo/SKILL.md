@@ -33,8 +33,9 @@ repository's settings or rulesets, so the skill ends with `!` commands, which ru
 6. **Verify** after the owner's run by repeating step 2, and report the merge settings, the ruleset
    and its required check, whether classic protection is gone, and stack readiness.
 
-Never require a human review or add a bypass actor: either one stops the unattended path. Never
-offer a merge queue as the cure for waiting on CI: GitHub has queues only on organization-owned
-repos, and `GITHUB_TOKEN` cannot enqueue Dependabot's PRs. Never claim auto-merge lands a stack:
-watch every layer green (`gh pr checks <pr> --watch`), then `gh stack merge --squash --yes`.
-Only `github/gh-stack`, never a same-named community fork.
+The constraints: never require a human review or add a bypass actor, since either one stops the
+unattended path; only `github/gh-stack`, never a same-named community fork. Everything else the
+checklist says about GitHub (what auto-merge does to a stack, where merge queues exist, what
+`GITHUB_TOKEN` can enqueue) is what was true when its PR landed. It is the record of traps already
+hit, not a substitute for looking: when a run contradicts it, trust the run, check GitHub's current
+docs, and fix the checklist in the same PR.
