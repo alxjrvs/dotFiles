@@ -73,33 +73,7 @@
   },
   "outputStyle": "Proactive",
   "sandbox": {
-    "enabled": true,
-    "autoAllowBashIfSandboxed": false,
-    "enableWeakerNetworkIsolation": true,
-    "network": {
-      "allowLocalBinding": true,
-      "allowedDomains": [
-        "github.com",
-        "api.github.com",
-        "objects.githubusercontent.com",
-        "release-assets.githubusercontent.com",
-        "mise-versions.jdx.dev"
-      ],
-      "allowMachLookup": [
-        "2BUA8C4S2C.com.1password.browser-helper"
-      ]
-    },
-    "filesystem": {
-      "allowWrite": [
-        "~/Code/*/.git/hooks",
-        "~/Library/Caches/mise",
-        "~/.local/share/mise",
-        "~/.local/state/mise"
-      ]
-    },
-    "excludedCommands": [
-      "chezmoi update --force"
-    ]
+    "enabled": false
   },
   "disableAgentView": true,
   "autoMemoryEnabled": false,
@@ -119,7 +93,7 @@
   "autoMode": {
     "allow": [
       "$defaults",
-      "`chezmoi update --force` is allowed: it applies main of {{ .github }}/dotFiles, which only changes through a merged pull request, and it runs outside the sandbox by design.",
+      "`chezmoi update --force` is allowed: it applies main of {{ .github }}/dotFiles, which only changes through a merged pull request.",
       "Turning on auto-merge (`gh pr merge --auto --squash`, `gh stack merge --squash`) for a pull request the agent opened, or whose branch it is working on, in a repository named under Source control is allowed when its base branch requires a status check: GitHub merges only after that check passes, so the ruleset is the gate, not a human approval. A pull request someone else opened stays under the default rule.",
       "Force-pushing with a lease (`git push --force-with-lease`, or `gh stack sync`, `gh stack rebase` or `gh stack push`) to a non-default branch of a pull request the agent opened, in a repository named under Source control, is allowed: it rewrites only the agent's own unmerged work, and the lease refuses to overwrite a push it has not seen."
     ],

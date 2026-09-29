@@ -26,7 +26,7 @@ Nothing goes in this file that fits elsewhere.
 | | |
 |---|---|
 | a procedure | a skill: user-wide in dotFiles' `home/dot_claude/skills/`, or project-local in `.claude/skills/` |
-| it must hold | the sandbox, or `autoMode.hard_deny`: a deny rule stops one spelling, not a program |
+| it must hold | `autoMode.hard_deny`: a deny rule stops one spelling, not a program |
 | it can fail a build | a check in the repo's lint or CI |
 | already enforced | nowhere. Describing a control is not the control. |
 
