@@ -77,13 +77,23 @@
     "autoAllowBashIfSandboxed": false,
     "enableWeakerNetworkIsolation": true,
     "network": {
+      "allowLocalBinding": true,
+      "allowedDomains": [
+        "github.com",
+        "api.github.com",
+        "objects.githubusercontent.com",
+        "release-assets.githubusercontent.com",
+        "mise-versions.jdx.dev"
+      ],
       "allowMachLookup": [
         "2BUA8C4S2C.com.1password.browser-helper"
       ]
     },
     "filesystem": {
       "allowWrite": [
+        "~/Code/*/.git/hooks",
         "~/Library/Caches/mise",
+        "~/.local/share/mise",
         "~/.local/state/mise"
       ]
     },
@@ -91,6 +101,7 @@
       "chezmoi update --force"
     ]
   },
+  "disableAgentView": true,
   "autoMemoryEnabled": false,
   "skipWorkflowUsageWarning": true,
   "theme": "auto",
