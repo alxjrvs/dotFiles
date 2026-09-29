@@ -91,6 +91,7 @@
     },
     "filesystem": {
       "allowWrite": [
+        "~/Code/*/.git/hooks",
         "~/Library/Caches/mise",
         "~/.local/share/mise",
         "~/.local/state/mise"
