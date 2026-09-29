@@ -6,8 +6,6 @@ file to refuse them.
 
 bun for JS.
 
-**GitHub is one identity, the user's, and one tool: `gh`** on the `gh auth login` token.
-
 After opening a PR, let its watcher carry it (the app's CI monitor with auto-fix; Auto-fix in a
 cloud session) instead of scheduling a check-in to poll it.
 
