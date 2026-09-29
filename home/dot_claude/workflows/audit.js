@@ -3,6 +3,7 @@ export const meta = {
   description: 'Deep audit of a repo: an advocate and an adversary per lens, an evidence judge each, then a critic',
   whenToUse: 'A fresh, evidence-backed audit of one repo. args: { repo?, focus?, profile?, lenses? }',
   phases: [
+    { title: 'Survey', detail: 'one agent reads the repo and names the lenses it warrants' },
     { title: 'Review', detail: 'an advocate and an adversary per lens, in parallel' },
     { title: 'Judge', detail: 'one judge per lens re-runs the evidence and refutes what it cannot' },
     { title: 'Critic', detail: 'conflicts, duplicates, gaps, and the ordering' },
@@ -10,7 +11,9 @@ export const meta = {
 }
 
 // args: repo (a path; defaults to the session's), focus (what the owner wants weighted), profile (a
-// path to what is known about the owner), lenses ([{ key, name, brief }] to replace the defaults).
+// path to what is known about the owner), lenses ([{ key, name, brief }] to skip the survey).
+// The lenses come from the repo, not from here: a fixed list is one year's opinion of what matters,
+// and the model reading the repo outgrows it. What stays fixed is the verification.
 const A = args ?? {}
 const REPO = A.repo ?? 'the current working directory'
 
@@ -21,18 +24,24 @@ Already litigated: read CLAUDE.md or AGENTS.md and \`git log --oneline -300\` fi
 Evidence: every finding cites a checkable source (a path:line, a command you ran and what it printed, or a primary doc or changelog URL). Prefer results over files: run the thing when you can. No source, no finding.
 Style: titles under 10 words, claims under 3 sentences, proposals concrete enough to become a PR.`
 
-const LENSES = A.lenses ?? [
-  { key: 'architecture', name: 'Architecture', brief: 'Structure, dependencies and dead weight: hand-rolled code where a native built-in exists, abstractions that do not earn their keep, what can be deleted.' },
-  { key: 'correctness', name: 'Correctness', brief: 'Bugs, broken invariants, and claims in docs, comments or names that are false today. Reproduce each one.' },
-  { key: 'security', name: 'Security', brief: 'Secrets, supply chain (pins, cooldowns, install scripts), token and workflow permissions, and what a prompt-injected agent could reach.' },
-  { key: 'delivery', name: 'Delivery', brief: 'CI, tests, releases and the required check: can a PR land unattended, and does anything strand it (strict up-to-date, path-filtered checks, a red main)?' },
-  { key: 'agents', name: 'Agent readiness', brief: 'CLAUDE.md or AGENTS.md, .claude settings, skills and hooks, and cloud-session bootstrap: what an agent trips on, waits for, or cannot run.' },
-  { key: 'dx', name: 'Developer experience', brief: 'What a newcomer or a fresh clone trips on: setup, scripts, docs that are wrong or missing, slow feedback.' },
-]
+const LENS_SCHEMA = {
+  type: 'object',
+  properties: {
+    lenses: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { key: { type: 'string' }, name: { type: 'string' }, brief: { type: 'string' } },
+        required: ['key', 'name', 'brief'],
+      },
+    },
+  },
+  required: ['lenses'],
+}
 
 const LENS = {
-  advocate: 'You are the ADVOCATE. Name what is exemplary and must be kept (kind "keep"), then hunt for capability left on the table: native features of tools already in use and proven tools that delete manual work or waiting. 4 to 10 findings.',
-  adversary: 'You are the ADVERSARY. Break it: things that are wrong or silently do not work, fragility, dead weight, hand-rolled code with a native replacement, security holes, false claims. Be harsh. 4 to 10 findings, each reproduced or doc-cited.',
+  advocate: 'You are the ADVOCATE. Name what is exemplary and must be kept (kind "keep"), then hunt for capability left on the table: native features of tools already in use and proven tools that delete manual work or waiting. As many findings as the evidence supports, and no padding.',
+  adversary: 'You are the ADVERSARY. Break it: things that are wrong or silently do not work, fragility, dead weight, hand-rolled code with a native replacement, security holes, false claims. Be harsh. As many findings as you can reproduce or doc-cite, and no padding.',
 }
 
 const FINDING = {
@@ -57,7 +66,6 @@ const JUDGED = {
   type: 'object',
   properties: {
     lens: { type: 'string' },
-    grade: { type: 'string', enum: ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'] },
     summary: { type: 'string' },
     survivors: {
       type: 'array',
@@ -69,7 +77,7 @@ const JUDGED = {
     },
     refuted: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, why: { type: 'string' } }, required: ['id', 'why'] } },
   },
-  required: ['lens', 'grade', 'summary', 'survivors', 'refuted'],
+  required: ['lens', 'summary', 'survivors', 'refuted'],
 }
 const CRITIC = {
   type: 'object',
@@ -85,6 +93,16 @@ const CRITIC = {
   required: ['now', 'next', 'consider', 'drop', 'conflicts', 'gaps', 'bigIdea'],
 }
 
+phase('Survey')
+const LENSES =
+  A.lenses ??
+  (
+    await agent(
+      `${SHARED}\nYou are the SURVEYOR. Read the repo (its docs, layout, tooling, CI and history) and name the lenses this audit warrants: each one an axis on which a reviewer could find something worth keeping, cutting, fixing or adding in this repo, with a key (a short slug), a name and a one-sentence brief that tells a reviewer where to look. Lenses come from what the repo is and does, not from a generic checklist; a lens that would yield nothing here is not one.`,
+      { label: 'survey', phase: 'Survey', schema: LENS_SCHEMA },
+    )
+  ).lenses
+
 const judged = await pipeline(
   LENSES,
   (l) =>
@@ -95,7 +113,7 @@ const judged = await pipeline(
     ),
   ([adv, opp], l) =>
     agent(
-      `${SHARED}\nLENS: ${l.name}. ${l.brief}\n\nYou are the JUDGE. Re-run each finding's evidence yourself. CONFIRMED means you reproduced it, PLAUSIBLE means partial but credible evidence, and anything you cannot verify is refuted. Merge duplicates, decide explicitly where the advocate and the adversary collide, and grade the lens.\n\nADVOCATE:\n${JSON.stringify(adv)}\n\nADVERSARY:\n${JSON.stringify(opp)}`,
+      `${SHARED}\nLENS: ${l.name}. ${l.brief}\n\nYou are the JUDGE. Re-run each finding's evidence yourself. CONFIRMED means you reproduced it, PLAUSIBLE means partial but credible evidence, and anything you cannot verify is refuted. Merge duplicates, decide explicitly where the advocate and the adversary collide, and summarise the lens.\n\nADVOCATE:\n${JSON.stringify(adv)}\n\nADVERSARY:\n${JSON.stringify(opp)}`,
       { label: `${l.key}:judge`, phase: 'Judge', schema: JUDGED, effort: 'high' },
     ),
 )
