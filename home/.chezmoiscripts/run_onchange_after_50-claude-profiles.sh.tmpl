@@ -11,8 +11,9 @@ profiles='{{ .claudeProfiles | toJson }}'
 stock=/Applications/Claude.app/Contents
 lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 
-jq -r '.[] | [.name, .hue, .saturation] | @tsv' <<< "$profiles" |
-  while IFS=$'\t' read -r name hue saturation; do
+jq -c '.[]' <<< "$profiles" |
+  while read -r profile; do
+    name=$(jq -r .name <<< "$profile")
     id=$(tr '[:upper:]' '[:lower:]' <<< "$name")
     app="$HOME/Applications/Claude $name.app"
     mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
@@ -47,20 +48,70 @@ EOF
 </plist>
 EOF
     # Pillow reads the largest rendition and writes every size from it.
-    uv run --quiet --no-project --with pillow python - "$stock/Resources/electron.icns" \
-      "$app/Contents/Resources/app.icns" "$hue" "$saturation" << 'EOF'
-import sys
-from PIL import Image
+    uv run --quiet --no-project --with pillow --with numpy python - "$stock/Resources/electron.icns" \
+      "$app/Contents/Resources/app.icns" "$profile" << 'EOF'
+import json, sys
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
-stock, out = sys.argv[1:3]
-hue, saturation = map(float, sys.argv[3:])
+stock, out, profile = sys.argv[1], sys.argv[2], json.loads(sys.argv[3])
 icon = Image.open(stock).convert("RGBA")
+alpha = icon.getchannel("A")
+rgb = np.asarray(icon.convert("RGB"), dtype=float) / 255
+
+def to_hsv(c):
+    mx, mn = c.max(-1), c.min(-1)
+    d = mx - mn
+    s = np.where(mx > 0, d / np.where(mx > 0, mx, 1), 0)
+    dd = np.where(d > 0, d, 1)
+    r, g, b = c[..., 0], c[..., 1], c[..., 2]
+    h = np.select([d == 0, mx == r, mx == g], [0, ((g - b) / dd) % 6, (b - r) / dd + 2], (r - g) / dd + 4) / 6
+    return h, s, mx
+
+def to_rgb(h, s, v):
+    i = np.floor(h * 6) % 6
+    f = h * 6 - np.floor(h * 6)
+    p, q, t = v * (1 - s), v * (1 - s * f), v * (1 - s * (1 - f))
+    return np.stack([np.choose(i.astype(int), x) for x in
+                     ((v, q, p, p, t, v), (t, v, v, q, p, p), (p, p, t, v, v, q))], -1)
+
+h, s, v = to_hsv(rgb)
 # White has no saturation, so the glyph stays white and only the plate changes colour.
-h, s, v = icon.convert("RGB").convert("HSV").split()
-h = h.point(lambda x: (x + round(hue / 360 * 256)) % 256)
-s = s.point(lambda x: min(255, round(x * saturation)))
-tinted = Image.merge("HSV", (h, s, v)).convert("RGB")
-tinted.putalpha(icon.getchannel("A"))
+if "color" in profile:
+    # An exact colour: find the plate's own colour, then move hue, saturation and value so that
+    # it lands on the target exactly; anti-aliased edges move in proportion to their saturation.
+    plate = rgb[(np.asarray(alpha) == 255) & (s > 0.3)]
+    ph, ps, pv = (x.item() for x in to_hsv(np.median(plate, 0)))
+    target = np.array([int(profile["color"].lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)]) / 255
+    th, ts, tv = (x.item() for x in to_hsv(target))
+    w = np.clip(s / ps, 0, 1)
+    h = (h + th - ph) % 1
+    s = np.clip(s * ts / ps, 0, 1)
+    v = np.clip(v * (1 + w * (tv / pv - 1)), 0, 1)
+else:
+    h = (h + profile["hue"] / 360) % 1
+    s = np.clip(s * profile["saturation"], 0, 1)
+tinted = Image.fromarray(np.round(to_rgb(h, s, v) * 255).astype(np.uint8), "RGB")
+tinted.putalpha(alpha)
+
+if "letter" in profile:
+    # A large white letter over the glyph, outlined in the plate colour so it reads against it.
+    left, top, right, bottom = alpha.point(lambda a: 255 if a > 200 else 0).getbbox()
+    size = right - left
+    fill = profile.get("color", "#000000")
+    for path, index in (("/System/Library/Fonts/Helvetica.ttc", 1), ("/System/Library/Fonts/SFNS.ttf", 0)):
+        try:
+            font = ImageFont.truetype(path, round(size * 0.82), index=index)
+            break
+        except OSError:
+            continue
+    else:
+        font = ImageFont.load_default(round(size * 0.82))
+    stroke = round(size * 0.035)
+    draw = ImageDraw.Draw(tinted)
+    x0, y0, x1, y1 = draw.textbbox((0, 0), profile["letter"], font=font, stroke_width=stroke)
+    at = ((left + right - (x1 - x0)) / 2 - x0, (top + bottom - (y1 - y0)) / 2 - y0)
+    draw.text(at, profile["letter"], font=font, fill="white", stroke_width=stroke, stroke_fill=fill)
 tinted.save(out)
 EOF
     # Finder and the Dock cache a bundle's icon until it is touched and registered again.

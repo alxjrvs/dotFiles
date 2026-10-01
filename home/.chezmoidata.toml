@@ -13,6 +13,11 @@ signingItem = { item = "GitHubSSH", vault = "Private" }
 workOrgs = ["Criterium-Engineers", "massgov-eotss", "TheGnarCo"]
 workEmail = "alex@thegnar.co"
 # Claude desktop accounts beyond the one the stock app holds, until Claude desktop signs in to
-# several itself. Each becomes "~/Applications/Claude <name>.app", its icon the stock one with the
-# hue turned `hue` degrees and the saturation times `saturation`. One account: [].
-claudeProfiles = [{ name = "Binfinite", hue = -21, saturation = 1.3 }]
+# several itself. Each becomes "~/Applications/Claude <name>.app", its
+# icon the stock one with the hue turned `hue` degrees and the saturation times `saturation`,
+# or its plate recoloured to exactly `color`; `letter` lays a large white letter over it.
+# One account: [].
+claudeProfiles = [
+  { name = "Binfinite", hue = -21, saturation = 1.3 },
+  { name = "Gnar", color = "#000000", letter = "G" },
+]
