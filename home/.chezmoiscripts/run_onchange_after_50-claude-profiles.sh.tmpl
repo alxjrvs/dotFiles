@@ -52,7 +52,7 @@ EOF
       "$app/Contents/Resources/app.icns" "$profile" << 'EOF'
 import json, sys
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageColor, ImageDraw, ImageFont
 
 stock, out, profile = sys.argv[1], sys.argv[2], json.loads(sys.argv[3])
 icon = Image.open(stock).convert("RGBA")
@@ -82,7 +82,7 @@ if "color" in profile:
     # it lands on the target exactly; anti-aliased edges move in proportion to their saturation.
     plate = rgb[(np.asarray(alpha) == 255) & (s > 0.3)]
     ph, ps, pv = (x.item() for x in to_hsv(np.median(plate, 0)))
-    target = np.array([int(profile["color"].lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)]) / 255
+    target = np.array(ImageColor.getrgb(profile["color"])) / 255
     th, ts, tv = (x.item() for x in to_hsv(target))
     w = np.clip(s / ps, 0, 1)
     h = (h + th - ph) % 1
@@ -98,7 +98,7 @@ if "letter" in profile:
     # A large white letter over the glyph, outlined in the plate colour so it reads against it.
     left, top, right, bottom = alpha.point(lambda a: 255 if a > 200 else 0).getbbox()
     size = right - left
-    fill = profile.get("color", "#000000")
+    fill = profile.get("color", "black")
     for path, index in (("/System/Library/Fonts/Helvetica.ttc", 1), ("/System/Library/Fonts/SFNS.ttf", 0)):
         try:
             font = ImageFont.truetype(path, round(size * 0.82), index=index)
