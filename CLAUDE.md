@@ -52,7 +52,8 @@ asked for it. The workflow never switches those on, and lint bans templates that
   issue here. It converges only a main whose `lint` passed on Actions, then installs main's linter
   pins and runs `gate.sh --check` over every owned repo. When the Brewfile changes, apply
   uninstalls every Homebrew package it does not name, and upkeep does the same nightly, on a
-  personal Mac only: `personal` is asked once at init, and a work Mac keeps its employer's.
+  Mac that said it is personal: `personal` is asked once at init (a terminal-less init passes
+  `--promptBool "personal Mac=..."` or fails), and a work Mac keeps its employer's.
 - Machine setup is `home/.chezmoiscripts/`. Homebrew and provisioning run on every apply behind a
   guard. mise, the launchd agents and the Brewfile re-run when their files
   change, and the macOS defaults when the script itself changes. Last, the extra Claude desktop

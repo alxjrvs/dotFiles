@@ -9,7 +9,7 @@ home=$tmp/home
 mkdir "$home"
 cz=(chezmoi --source "$root" --config "$tmp/chezmoi.toml" --persistent-state "$tmp/chezmoi.db" --destination "$home")
 
-"${cz[@]}" init
+"${cz[@]}" init --promptBool "personal Mac=true"
 data=$("${cz[@]}" data --format json)
 personal=$(jq -r .email <<< "$data")
 work=$(jq -r .workEmail <<< "$data")
