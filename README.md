@@ -43,7 +43,7 @@ To hack on this repo, clone it to `~/Code/dotFiles`; chezmoi keeps its own copy.
 | upgrade | nightly: `mise run upkeep` upgrades, converges a green main and checks every gated repo against gate.sh; a failure opens an issue here that pings your phone. Apps update themselves (gcloud: `gcloud components update`) |
 | a pin | monthly: a Routine follows [`.claude/bump.md`](.claude/bump.md) |
 | add a work org | one entry in `home/.chezmoidata.toml` |
-| the repo settings | [`.github/gate.sh`](.github/gate.sh), run by the owner; upkeep names any drift |
+| the repo settings | [`.github/gate.sh`](.github/gate.sh), run by the owner; upkeep names any drift, and `gate.sh --apply <owner>` converges every repo it safely can |
 
 The Claude app keeps the Mac awake while a session works; closing the lid still sleeps it. On the
 web, an expired claude.ai login stalls a session until the next `/login`.
