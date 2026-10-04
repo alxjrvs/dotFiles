@@ -41,7 +41,7 @@ To hack on this repo, clone it to `~/Code/dotFiles`; chezmoi keeps its own copy.
 | a PR landed | `chezmoi update` |
 | drift | `chezmoi verify` |
 | upgrade | nightly: `mise run upkeep` upgrades, converges a green main and checks every gated repo against gate.sh; a failure opens an issue here that pings your phone. Apps update themselves (gcloud: `gcloud components update`) |
-| a pin | monthly: a Routine follows [`.claude/bump.md`](.claude/bump.md) |
+| a pin | monthly: a Routine runs `/bump` ([`.claude/skills/bump`](.claude/skills/bump/SKILL.md)) |
 | add a work org | one entry in `home/.chezmoidata.toml` |
 | the repo settings | [`.github/gate.sh`](.github/gate.sh), run by the owner; upkeep names any drift, and `gate.sh --apply <owner>` converges every repo it safely can |
 
@@ -60,7 +60,7 @@ available.
 .chezmoiroot            "home": the source state lives one directory down
 mise.toml               this repo's pinned linters and its two checks, lint and apply-check
 .github/                CI, apply-check.sh, gate.sh (the repo settings that are not files), main-green.sh
-.claude/                this repo's Claude Code config: the monthly bump and a web-session setup hook
+.claude/                this repo's Claude Code config: the verify and bump skills, and a web-session setup hook
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/.chezmoiscripts/   machine setup: Homebrew, mise, launchd agents, macOS defaults, provisioning, apps, and one
                         Claude desktop app per extra account
@@ -74,7 +74,7 @@ home/.chezmoi*          chezmoi's own files: config template, data (who and whic
 Fork it, turn on its Actions (GitHub leaves a fork's workflows off), and edit
 `home/.chezmoidata.toml`: who you are lives there alone. Then run `.github/gate.sh` from your
 clone, and the Fresh Mac command with your fork's name. The monthly bump is a Routine on your own
-account: `/schedule` one whose prompt is `Follow .claude/bump.md`. Keep LICENSE's copyright line;
+account: `/schedule` one whose prompt is `/bump`. Keep LICENSE's copyright line;
 MIT requires it.
 
 MIT — see [`LICENSE`](LICENSE).

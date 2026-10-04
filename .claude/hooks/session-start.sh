@@ -9,18 +9,20 @@ set -euo pipefail
 cd "$CLAUDE_PROJECT_DIR"
 export GOBIN="$HOME/.local/bin" PATH="$HOME/.local/bin:$PATH"
 pin() { sed -n "s/^$1 = \"\(.*\)\"$/\1/p" mise.toml; }
+# Present at the pinned version: a bump re-installs, rather than keep the binary it replaced.
+has() { "$1" --version 2>&1 | grep -qF "$(pin "$1")"; }
 
 command -v zsh > /dev/null || { apt-get update -q && apt-get install -y -q zsh; } > /dev/null
 # A week-old mise, the cooldown everything else keeps (the VM is Ubuntu, so GNU date).
 command -v mise > /dev/null || npm install -g --silent --before "$(date -u -d '7 days ago' +%FT%TZ)" @jdxcode/mise
-command -v shellcheck > /dev/null || uv tool install -q "shellcheck-py==$(pin shellcheck).*"
-command -v zizmor > /dev/null || uv tool install -q "zizmor==$(pin zizmor)"
-command -v shfmt > /dev/null || go install "mvdan.cc/sh/v3/cmd/shfmt@v$(pin shfmt)"
-command -v actionlint > /dev/null || go install "github.com/rhysd/actionlint/cmd/actionlint@v$(pin actionlint)"
+has shellcheck || uv tool install -q --force "shellcheck-py==$(pin shellcheck).*"
+has zizmor || uv tool install -q --force "zizmor==$(pin zizmor)"
+has shfmt || go install "mvdan.cc/sh/v3/cmd/shfmt@v$(pin shfmt)"
+has actionlint || go install "github.com/rhysd/actionlint/cmd/actionlint@v$(pin actionlint)"
 # chezmoi's go.mod has `exclude` directives, which `go install pkg@version` refuses, so it builds
 # as the main module. Only apply-check needs it, so it builds in the background (a minute); an `||`
 # in place of the `if` would keep the hook's stdout open, and the session would wait for it.
-if ! command -v chezmoi > /dev/null; then
+if ! has chezmoi; then
   (
     v=$(pin chezmoi)
     cd "$(go mod download -json "github.com/twpayne/chezmoi/v2@v$v" | jq -r .Dir)"

@@ -13,16 +13,16 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 - Guilty until proven load-bearing: every dependency, wrapper, and line earns its weight.
 - One host, the Mac. A Claude Code web session is Linux and gets this repo, never `~`: lint and
   apply-check run there, and nothing applies. No by-hand step remains that `chezmoi apply` could
-  converge. Upgrades are the nightly `mise run upkeep`; pins are the monthly Routine that follows
-  `.claude/bump.md`.
+  converge. Upgrades are the nightly `mise run upkeep`; pins are the monthly Routine that runs
+  `/bump` (`.claude/skills/bump`).
 - Standard, and agentic-enabled: 1Password, git, ssh, `gh`, MCP stay stock, wired for agents.
 - Keep it legible: one line on the decision, nothing on the mechanism.
 
 ## How a change lands
 
 1. Work in a worktree of a clone (`~/Code/dotFiles` on the Mac).
-2. Prove it with `mise run lint` and `mise run apply-check`. The second applies the source into a
-   temporary home, so it is safe anywhere.
+2. Prove it with the `verify` skill: `mise run lint`, then `mise run apply-check`, which applies the
+   source into a temporary home, so it is safe anywhere. Claude runs it before each commit.
 3. Open a PR. `lint` is the one required check; CI runs the same two tasks on a Mac.
 4. After it merges, `chezmoi update` applies it. chezmoi's own source is
    `~/.local/share/chezmoi`, and nothing else moves it.
