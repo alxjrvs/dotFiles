@@ -75,9 +75,11 @@ run = """
 log=$HOME/Library/Logs/upkeep.log
 host=$(scutil --get LocalHostName)
 source=$(chezmoi source-path)
+# shellcheck disable=SC2016 # backticks are Markdown here, not substitutions
 fence() { printf '```text\\n%s\\n```\\n%s\\n' "$1" "$2"; }
 # The open issues this token opened whose title starts with $1, as `number<TAB>title`.
 issues() {
+  # shellcheck disable=SC2016 # $ENV is jq's
   PREFIX=$1 gh issue list --repo "$repo" --state open --author @me --limit 100 --json number,title \\
     --jq '.[] | select(.title | startswith($ENV.PREFIX)) | "\\(.number)\\t\\(.title)"'
 }

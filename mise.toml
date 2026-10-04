@@ -30,6 +30,8 @@ run = [
   "! grep -n '^\\[hooks' home/.chezmoi.toml.tmpl",
   # ~/.zshenv's shims serve every shell: an activate in .zshrc pins the desktop app's agents.
   "! grep -n '^[^#]*mise activate' home/dot_zshrc",
+  # The upkeep tasks are shell inside TOML, run by mise's `sh -o errexit -c` (bash, on a Mac).
+  "for t in upkeep upkeep:nightly; do mise config get --file home/dot_config/mise/config.toml \"tasks.$t.run\" | shellcheck -s bash - || exit 1; done",
   "actionlint",
   "zizmor --offline .github/",
 ]

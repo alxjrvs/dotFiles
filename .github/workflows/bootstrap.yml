@@ -13,6 +13,9 @@ on:
       - home/.chezmoiscripts/**
       - home/.chezmoi.toml.tmpl
       - home/.chezmoidata.toml
+      - home/.chezmoiignore
+      - home/.chezmoiremove
+      - home/dot_local/**
       - home/dot_config/homebrew/Brewfile
       - home/dot_config/mise/**
       - home/Library/**
@@ -46,6 +49,8 @@ jobs:
           ~/.local/bin/chezmoi init --apply --no-tty --promptBool "personal Mac=$PERSONAL" \
             --source "$GITHUB_WORKSPACE"
       # `init --source` records no source, so every later command names it.
+      - name: The first apply leaves nothing to verify
+        run: ~/.local/bin/chezmoi verify --source "$GITHUB_WORKSPACE"
       - name: The answer is recorded, and a work Mac keeps casks the Brewfile does not name
         run: |
           ~/.local/bin/chezmoi data --source "$GITHUB_WORKSPACE" | jq -e ".personal == $PERSONAL"

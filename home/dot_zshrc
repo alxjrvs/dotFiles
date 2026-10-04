@@ -52,7 +52,8 @@ zstyle ':completion:*:descriptions' format '[%d]'
 zstyle ':completion:*:git-checkout:*' sort false
 
 # --- tools -------------------------------------------------------------------------------------
-if (( $+commands[fzf] )); then
+# A terminal only: its widgets need ZLE, and a shell without one would print errors.
+if [[ -t 1 ]] && (( $+commands[fzf] )); then
   export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40%'
   # fzf's walker ignores .gitignore, so fd lists; the walker is the fallback without fd.
   (( $+commands[fd] )) && export FZF_CTRL_T_COMMAND='fd --type f --hidden --follow'
