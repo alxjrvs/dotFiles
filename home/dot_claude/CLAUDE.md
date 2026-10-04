@@ -6,6 +6,8 @@ file to refuse them.
 
 bun for JS.
 
+A group of changes goes up as a `gh stack`, so each PR stays atomic.
+
 After opening a PR, let its watcher carry it (the app's CI monitor with auto-fix; Auto-fix in a
 cloud session) instead of scheduling a check-in to poll it.
 
