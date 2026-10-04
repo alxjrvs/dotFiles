@@ -17,11 +17,11 @@ run = [
   "for f in $(git ls-files '*.toml'); do mise config get --file \"$f\" > /dev/null || exit 1; done",
   # Rules that would otherwise be prose: a mode comes from the source name, never the checkout;
   # the terminal owns the palette, so no hex colour, with or without Ghostty's bare `RRGGBB`;
-  # scripts stay flat and never call chezmoi (the outer apply holds its lock); a run_onchange_
-  # script never exits early (an early exit records its hash, so it would never retry).
+  # scripts never call chezmoi (the outer apply holds its lock; shellcheck above already fails on a
+  # nested directory); a run_onchange_ script never exits early (an early exit records its hash, so
+  # it would never retry).
   "test -z \"$(git ls-files -s home | awk '$1 != 100644')\"",
   "! git grep -nE '#[0-9a-fA-F]{6}([^0-9a-fA-F]|$)|^[a-z-]+ *= *([0-9]+=)?[0-9a-fA-F]{6} *$' -- home",
-  "test -z \"$(find home/.chezmoiscripts -mindepth 1 -type d)\"",
   "! grep -nE '^[^#]*\\bchezmoi\\b' home/.chezmoiscripts/*",
   "! grep -nE '^[^#]*\\bexit( +0)?( *;|$| *#)' home/.chezmoiscripts/run_onchange_*",
   # The floor is what makes a program run at apply: only the files CLAUDE.md names may, so no
