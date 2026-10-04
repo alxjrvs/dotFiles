@@ -1,2 +1,4 @@
 # The zsh plugins' old home, from when they were chezmoi externals; Homebrew carries them now.
 .local/share/zsh
+# zsh writes no history file now (atuin is the store); the old one held tokens its filter missed.
+.zsh_history

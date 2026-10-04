@@ -9,10 +9,11 @@ inline_height = 20
 workspaces = true
 
 # secrets_filter (default on) already drops known token formats (GitHub, AWS, Slack, Stripe,
-# npm, ...); these are the three it misses: the generic `key: value` form, sk- (OpenAI, Anthropic)
-# keys and ops_ (1Password service-account) tokens. Top-level, not [history].
+# npm, ...); these are the four it misses: the generic `key: value` form, sk- (OpenAI, Anthropic)
+# keys, ops_ (1Password service-account) tokens and a password in a URL. Top-level, not [history].
 history_filter = [
   "(?i)(password|secret|token|apikey|api[_-]?key)\\s*[:=]\\s*\\S+",
   "\\bsk-[A-Za-z0-9_-]{20,}",
   "\\bops_[A-Za-z0-9_-]{20,}",
+  "://[^/\\s:@]+:[^/\\s@]+@",
 ]

@@ -32,7 +32,13 @@
       "Bash(gh gist create*)",
       "Bash(*find-*-password*)",
       "Bash(*dump-keychain*)",
-      "Edit(~/.local/share/chezmoi/**)"
+      "Edit(~/.local/share/chezmoi/**)",
+      "Read(~/.convex/**)",
+      "Read(~/.expo/**)",
+      "Read(~/Library/Preferences/netlify/**)",
+      "Read(~/Library/Preferences/.wrangler/**)",
+      "Read(~/.config/.wrangler/**)",
+      "Read(~/Library/Application Support/ngrok/**)"
     ]
   },
   "enabledPlugins": {
