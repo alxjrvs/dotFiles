@@ -49,10 +49,9 @@ asked for it. The workflow never switches those on, and lint bans templates that
   what this repo declares and `.chezmoiignore` leaves to its owner.
 - This repo's own linters are pinned in the root `mise.toml`, not installed machine-wide.
 - `chezmoi apply` never upgrades anything; `mise run upkeep` does, nightly, and a failure opens an
-  issue here. It converges only a main whose `lint` passed on Actions, then installs main's linter
-  pins and runs `gate.sh --check` over every owned repo. When the Brewfile changes, apply
-  uninstalls every Homebrew package it does not name, and upkeep does the same nightly, on a
-  Mac that said it is personal: `personal` is asked once at init (a terminal-less init passes
+  issue here. It converges only a main whose `lint` passed on Actions, then runs `gate.sh --check`
+  over every owned repo. When the Brewfile changes, apply uninstalls every Homebrew package it
+  does not name, and upkeep does the same nightly, on a Mac that said it is personal: `personal` is asked once at init (a terminal-less init passes
   `--promptBool "personal Mac=..."` or fails), and a work Mac keeps its employer's.
 - Machine setup is `home/.chezmoiscripts/`. Homebrew and provisioning run on every apply behind a
   guard. mise, the launchd agents and the Brewfile re-run when their files
