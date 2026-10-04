@@ -7,7 +7,14 @@
 # stock icon: {{ with stat "/Applications/Claude.app/Contents/Resources/electron.icns" }}{{ .modTime }}{{ end }}
 set -euo pipefail
 export PATH="$HOME/.local/share/mise/shims:$PATH"
-profiles='{{ .claudeProfiles | toJson }}'
+# A name becomes a path, a bundle id and a heredoc line, so it is letters, digits and spaces only:
+# {{ range .claudeProfiles }}{{ if not (regexMatch "^[[:alnum:] ]+$" .name) }}{{ fail (printf "claudeProfiles: %q may hold only letters, digits and spaces" .name) }}{{ end }}{{ end }}
+# A quoted heredoc: the shell reads the JSON as data, whatever it holds.
+profiles=$(
+  cat << 'JSON'
+{{ .claudeProfiles | toJson }}
+JSON
+)
 stock=/Applications/Claude.app/Contents
 lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 
