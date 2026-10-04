@@ -32,7 +32,8 @@ run = "chezmoi upgrade"
 hide = true
 # mise itself waits out the same week as its tools. Formulae and chezmoi ride homebrew-core's
 # review and chezmoi's own releases, with no age gate.
-run = ["mise self-update \"$(mise latest aqua:jdx/mise)\" --yes", "mise upgrade --yes"]
+# --no-plugins: a self-update otherwise git-pulls every plugin, a retired one included.
+run = ["mise self-update \"$(mise latest aqua:jdx/mise)\" --yes --no-plugins", "mise upgrade --yes"]
 
 [tasks."upkeep:gh"]
 hide = true
@@ -60,8 +61,59 @@ source=$(chezmoi source-path)
 # run by name, and everything else lands; --init re-renders a changed .chezmoi.toml.tmpl.
 (cd "$source" && ../.github/main-green.sh) && chezmoi update --init --keep-going --no-tty ||
   failed="$failed converge"
-# Results, not files: every gated repo still matches gate.sh, and drift names its `!` fix.
-chezmoi data | jq -r '.github, .ownedOrgs[]' | xargs "$source/../.github/gate.sh" --check ||
-  failed="$failed gate"
 [ -z "$failed" ] || { echo "upkeep failed:$failed" >&2 && exit 1; }
+"""
+
+# What the LaunchAgent runs: upkeep, then its reports. A Mac's failure is one issue per failing set
+# of steps, edited in place while it holds (an edit pings no one) and closed by the next green run;
+# a new set is a new issue, which pings. Gate drift is the fleet's, not a Mac's, so it is one
+# shared issue whose title carries the count. The repo is public: a body carries only the failure
+# line and public repos' gate lines, fenced so an @name pings no one; the log stays on the Mac.
+[tasks."upkeep:nightly"]
+hide = true
+run = """
+log=$HOME/Library/Logs/upkeep.log
+host=$(scutil --get LocalHostName)
+source=$(chezmoi source-path)
+fence() { printf '```text\\n%s\\n```\\n%s\\n' "$1" "$2"; }
+# The open issues this token opened whose title starts with $1, as `number<TAB>title`.
+issues() {
+  PREFIX=$1 gh issue list --repo "$repo" --state open --author @me --limit 100 --json number,title \\
+    --jq '.[] | select(.title | startswith($ENV.PREFIX)) | "\\(.number)\\t\\(.title)"'
+}
+# Edits the open issue titled $1, else opens it; closes every other open issue titled $2*.
+report() {
+  local title=$1 prefix=$2 body=$3 number
+  number=$(issues "$prefix" | awk -F '\\t' -v t="$title" '$2 == t { print $1; exit }')
+  if [ -n "$number" ]; then gh issue edit "$number" --repo "$repo" --body "$body" > /dev/null
+  else gh issue create --repo "$repo" --title "$title" --body "$body" > /dev/null; fi
+  issues "$prefix" | awk -F '\\t' -v t="$title" '$2 != t { print $1 }' |
+    xargs -I{} gh issue close {} --repo "$repo" --comment "superseded: $title" > /dev/null
+}
+# The task shell runs with errexit, so each status that may be non-zero is caught.
+status=0
+mise run upkeep > "$log" 2>&1 || status=$?
+repo=$(cd "$source" && gh repo view --json nameWithOwner --jq .nameWithOwner)
+if [ "$status" -eq 0 ]; then
+  issues "upkeep failed on $host:" | cut -f1 | xargs -I{} gh issue close {} --repo "$repo" --comment green > /dev/null
+else
+  steps=$(sed -n 's/^upkeep failed: *//p' "$log" | tail -1)
+  report "upkeep failed on $host: ${steps:-unknown}" "upkeep failed on $host:" \\
+    "$(fence "$(grep '^upkeep failed' "$log")" "Full log: ~/Library/Logs/upkeep.log on $host.")"
+fi
+# Every gated repo still matches gate.sh. A read that fails twice skips tonight's report.
+gate=$(chezmoi data | jq -r '.github, .ownedOrgs[]' | xargs "$source/../.github/gate.sh" --check 2> /dev/null || true)
+if grep -q '^gate (unreadable)' <<< "$gate"; then
+  echo "$gate" >> "$log"
+else
+  drifted=$(grep -c '^gate' <<< "$gate" || true)
+  if [ "$drifted" -eq 0 ]; then
+    issues "gate: " | cut -f1 | xargs -I{} gh issue close {} --repo "$repo" --comment clean > /dev/null
+  else
+    private=$(grep -c '^gate (private)' <<< "$gate" || true)
+    report "gate: $drifted repos drifted" "gate: " "$(fence "$(grep '^gate: ' <<< "$gate")" \\
+      "Private repos drifted: $private. \\`.github/gate.sh --check\\` names them locally; \\`--apply\\` converges.")"
+  fi
+fi
+exit "$status"
 """
