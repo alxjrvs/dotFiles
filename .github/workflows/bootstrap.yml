@@ -48,14 +48,16 @@ jobs:
         run: |
           ~/.local/bin/chezmoi init --apply --no-tty --promptBool "personal Mac=$PERSONAL" \
             --source "$GITHUB_WORKSPACE"
-      # `init --source` records no source, so every later command names it.
+      # `init --source` records no source, so every later command names it. From here chezmoi is
+      # mise's: the first apply removed the installer's copy.
       - name: The first apply leaves nothing to verify
-        run: ~/.local/bin/chezmoi verify --source "$GITHUB_WORKSPACE"
-      - name: The answer is recorded, and a work Mac keeps casks the Brewfile does not name
+        run: ~/.local/share/mise/shims/chezmoi verify --source "$GITHUB_WORKSPACE"
+      - name: The answer is recorded, a work Mac keeps casks the Brewfile does not name, and only mise's chezmoi is left
         run: |
-          ~/.local/bin/chezmoi data --source "$GITHUB_WORKSPACE" | jq -e ".personal == $PERSONAL"
+          [ ! -e ~/.local/bin/chezmoi ]
+          ~/.local/share/mise/shims/chezmoi data --source "$GITHUB_WORKSPACE" | jq -e ".personal == $PERSONAL"
           [ "$PERSONAL" = true ] || brew list --cask firefox
       - name: A second apply changes nothing, and verify agrees
         run: |
-          ~/.local/bin/chezmoi apply --no-tty --source "$GITHUB_WORKSPACE"
-          ~/.local/bin/chezmoi verify --source "$GITHUB_WORKSPACE"
+          ~/.local/share/mise/shims/chezmoi apply --no-tty --source "$GITHUB_WORKSPACE"
+          ~/.local/share/mise/shims/chezmoi verify --source "$GITHUB_WORKSPACE"

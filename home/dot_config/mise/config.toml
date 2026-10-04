@@ -19,18 +19,18 @@ uv = "latest"
 # `tsc`, and with TypeScript 7 its `tsc --lsp`, the language server the ts-native skills-directory
 # plugin (~/.claude/skills/ts-native) runs for every repo's TS and JS edits.
 "npm:typescript" = "latest"
+# chezmoi's installer bootstraps it into ~/.local/bin; from the first apply on, this copy, checked
+# by aqua's signature and held the week like every other tool, is the only one (exact_bin removes
+# the bootstrap copy) and `mise upgrade` moves it.
+chezmoi = "latest"
 
 # What apply never does, run nightly by the upkeep LaunchAgent: each upgrade, then the converge.
 # One that fails stops neither the rest nor the converge, and still fails the run into its issue.
 # Apps that update themselves are left to it, and no running app is quit.
-[tasks."upkeep:chezmoi"]
-hide = true
-run = "chezmoi upgrade"
-
 [tasks."upkeep:mise"]
 hide = true
-# mise itself waits out the same week as its tools. Formulae and chezmoi ride homebrew-core's
-# review and chezmoi's own releases, with no age gate.
+# mise itself waits out the same week as its tools, chezmoi among them. Formulae ride
+# homebrew-core's review, with no age gate.
 # --no-plugins: a self-update otherwise git-pulls every plugin, a retired one included.
 run = ["mise self-update \"$(mise latest aqua:jdx/mise)\" --yes --no-plugins", "mise upgrade --yes"]
 
@@ -62,10 +62,10 @@ run = [
 ]
 
 [tasks.upkeep]
-description = "Upgrade chezmoi, mise, its tools, gh extensions, formulae and casks, then converge"
+description = "Upgrade mise and its tools (chezmoi among them), gh-stack, formulae and casks, then converge"
 run = """
 failed=
-for task in upkeep:chezmoi upkeep:mise upkeep:gh upkeep:brew; do
+for task in upkeep:mise upkeep:gh upkeep:brew; do
   mise run "$task" || failed="$failed $task"
 done
 source=$(chezmoi source-path)

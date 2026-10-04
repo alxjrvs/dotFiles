@@ -1,5 +1,5 @@
-# The Mac's apps, the two zsh plugins, the everyday CLIs, and three more CLIs kept as casks (1password-cli, gcloud-cli and ngrok). Runtimes are mise's; chezmoi and mise are their
-# own installers' (~/.local/bin); git is Xcode's. Apply never upgrades; upkeep does, nightly, leaving
+# The Mac's apps, the two zsh plugins, the everyday CLIs, and three more CLIs kept as casks (1password-cli, gcloud-cli and ngrok). Runtimes and chezmoi are mise's;
+# mise is its own installer's (~/.local/bin); git is Xcode's. Apply never upgrades; upkeep does, nightly, leaving
 # apps that update themselves to it and quitting none. When this file changes, apply uninstalls
 # whatever it does not name.
 

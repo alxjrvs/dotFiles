@@ -3,8 +3,8 @@
 Library/LaunchAgents/sh.brew.*
 Library/LaunchAgents/com.valvesoftware.*
 Library/LaunchAgents/com.google.GoogleUpdater.*
-# and chezmoi, mise and the Claude Code CLI are their own installers'.
-.local/bin/chezmoi
+# and mise and the Claude Code CLI are their own installers'. chezmoi's installer copy is not: mise
+# owns chezmoi after the first apply.
 .local/bin/mise
 .local/bin/claude
 # A work Mac keeps what its employer puts in those two directories: there, only this repo's own
@@ -14,4 +14,5 @@ Library/LaunchAgents/*
 !Library/LaunchAgents/com.{{ .github }}.*
 .local/bin/*
 !.local/bin/ghostty
+!.local/bin/chezmoi
 {{ end -}}
