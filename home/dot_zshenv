@@ -8,3 +8,6 @@ export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
 # macOS man runs MANPAGER even when piped: col strips mandoc's overstrikes, so an agent reads clean
 # text, and less pages for a person (off a terminal it acts as cat).
 export MANPAGER="sh -c 'col -bx | less'"
+# npm waits the week mise, bun and Dependabot wait. An env var, not ~/.npmrc, which `npm login`
+# writes tokens into.
+export NPM_CONFIG_MIN_RELEASE_AGE=7

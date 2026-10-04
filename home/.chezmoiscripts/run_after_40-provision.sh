@@ -10,9 +10,11 @@ export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 command -v claude > /dev/null 2>&1 || curl -fsSL https://claude.ai/install.sh | bash ||
   echo "provision: could not install the Claude Code CLI" >&2
 
-# The one gh extension, owner-qualified because same-named community forks exist. The local list
-# first: `gh auth status` is a network round trip.
+# The one gh extension, owner-qualified because same-named community forks exist, pinned to the
+# newest release a week old (upkeep advances it). The local list first: `gh auth status` is a
+# network round trip.
 if command -v gh > /dev/null 2>&1 && ! gh extension list 2> /dev/null | grep -qw github/gh-stack &&
   gh auth status > /dev/null 2>&1; then
-  gh extension install github/gh-stack || echo "provision: could not install gh-stack" >&2
+  gh extension install github/gh-stack --pin "v$(mise latest github:github/gh-stack)" ||
+    echo "provision: could not install gh-stack" >&2
 fi

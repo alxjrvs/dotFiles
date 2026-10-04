@@ -1,0 +1,3 @@
+# The week mise and Dependabot wait, for every bun install; `--minimum-release-age 0` skips it once.
+[install]
+minimumReleaseAge = 604800

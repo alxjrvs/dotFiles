@@ -35,9 +35,19 @@ hide = true
 # --no-plugins: a self-update otherwise git-pulls every plugin, a retired one included.
 run = ["mise self-update \"$(mise latest aqua:jdx/mise)\" --yes --no-plugins", "mise upgrade --yes"]
 
+# gh-stack moves to the newest release a week old, the cooldown everything else keeps, and never
+# back: a pin only ever advances.
 [tasks."upkeep:gh"]
 hide = true
-run = "gh extension upgrade --all"
+run = """
+v=$(mise latest github:github/gh-stack)
+have=$(gh extension list | awk -F '\\t' '$2 == "github/gh-stack" { sub(/^v/, "", $3); print $3 }')
+# `install --force` takes gh's upgrade path, which installs the newest release and ignores --pin.
+[ "$(printf '%s\\n%s\\n' "$v" "${have:-0}" | sort -V | tail -1)" = "$have" ] || {
+  gh extension remove gh-stack 2> /dev/null || true
+  gh extension install github/gh-stack --pin "v$v"
+}
+"""
 
 # Upgrades what the Brewfile names and nothing else, so a work Mac's employer packages stay the
 # employer's. A Mac that said it is personal also removes what the Brewfile does not name: installed
@@ -46,7 +56,10 @@ run = "gh extension upgrade --all"
 hide = true
 run = [
   "brew update --quiet",
-  "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 HOMEBREW_NO_UPGRADE_QUIT_CASKS=1 brew bundle upgrade --quiet --file=$HOME/.config/homebrew/Brewfile $(chezmoi data | jq -e '.personal == true' > /dev/null && echo --force-cleanup) < /dev/null",
+  # Bottles must carry their build attestation; then a known high-severity CVE in what the Brewfile
+  # names fails the run into its issue.
+  "HOMEBREW_VERIFY_ATTESTATIONS=1 HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 HOMEBREW_NO_UPGRADE_QUIT_CASKS=1 brew bundle upgrade --quiet --file=$HOME/.config/homebrew/Brewfile $(chezmoi data | jq -e '.personal == true' > /dev/null && echo --force-cleanup) < /dev/null",
+  "brew vulns --severity=high --brewfile=$HOME/.config/homebrew/Brewfile",
 ]
 
 [tasks.upkeep]
