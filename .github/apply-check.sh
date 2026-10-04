@@ -143,4 +143,7 @@ fi
     "export \(.key)=\(.value | @sh)"' "$settings")"
   test "$(git config --get commit.gpgSign)" = false
 )
+# A skills-directory plugin lands (a source name starting with `.` would be ignored).
+test -f "$home/.claude/skills/ts-native/.claude-plugin/plugin.json" ||
+  { echo "apply-check: the ts-native plugin did not land" >&2 && exit 1; }
 echo "apply-check: ok"

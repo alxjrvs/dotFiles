@@ -1,0 +1,21 @@
+{
+  "name": "ts-native",
+  "description": "TypeScript and JavaScript code intelligence from TypeScript 7's own language server, `tsc --lsp`: TS 7 ships no tsserver.js, so typescript-language-server cannot start.",
+  "version": "1.0.0",
+  "lspServers": {
+    "typescript": {
+      "command": "tsc",
+      "args": ["--lsp", "--stdio"],
+      "extensionToLanguage": {
+        ".ts": "typescript",
+        ".tsx": "typescriptreact",
+        ".js": "javascript",
+        ".jsx": "javascriptreact",
+        ".mts": "typescript",
+        ".cts": "typescript",
+        ".mjs": "javascript",
+        ".cjs": "javascript"
+      }
+    }
+  }
+}
