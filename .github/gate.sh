@@ -52,6 +52,8 @@ ruleset() {
         "require_code_owner_review": false,
         "require_last_push_approval": false,
         "required_review_thread_resolution": false,
+        "required_reviewers": [],
+        "require_extra_approval_for_unattributed_changes": true,
         "allowed_merge_methods": ["squash"] } }
   ]
 }
@@ -72,13 +74,19 @@ guards() {
   done
 }
 
-# Whether $1 holds $2: every array and scalar $2 declares, with rules compared by type.
+# Whether $1 holds $2: the live state, projected onto the keys $2 declares, equals $2. A key GitHub
+# adds on its own (a ruleset's newer pull_request parameters) is not drift; an array keeps its
+# exact length, so an extra rule, required check, merge method or bypass actor is.
 holds() {
   jq -e --argjson want "$2" '
     def norm: if type == "object" and has("rules") then .rules |= sort_by(.type) else . end;
-    (norm) as $have | ($want | norm) as $w
-    | all($w | paths(type != "object"); . as $p | ($have | getpath($p)) == ($w | getpath($p)))
-    and (if $w | has("rules") then ($have.rules | map(.type)) == ($w.rules | map(.type)) else true end)
+    def proj($w):
+      if ($w | type) == "object" and type == "object" then
+        . as $h | reduce ($w | keys[]) as $k ({}; .[$k] = ($h[$k] | proj($w[$k])))
+      elif ($w | type) == "array" and type == "array" and length == ($w | length) then
+        . as $h | [range(length) as $i | $h[$i] | proj($w[$i])]
+      else . end;
+    ($want | norm) as $w | (norm | proj($w)) == $w
   ' <<< "$1" > /dev/null
 }
 
