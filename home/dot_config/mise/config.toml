@@ -39,14 +39,14 @@ run = ["mise self-update \"$(mise latest aqua:jdx/mise)\" --yes --no-plugins", "
 hide = true
 run = "gh extension upgrade --all"
 
+# Upgrades what the Brewfile names and nothing else, so a work Mac's employer packages stay the
+# employer's. A Mac that said it is personal also removes what the Brewfile does not name: installed
+# by hand is drift. No running app is quit, and stdin is closed: an uninstaller may prompt.
 [tasks."upkeep:brew"]
 hide = true
 run = [
   "brew update --quiet",
-  "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --no-quit --quiet",
-  # A formula installed by hand is drift, removed on a Mac that said it is personal. stdin is
-  # closed: an uninstaller may prompt.
-  "if chezmoi data | jq -e '.personal == true' > /dev/null; then brew bundle cleanup --force --file=$HOME/.config/homebrew/Brewfile < /dev/null; fi",
+  "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 HOMEBREW_NO_UPGRADE_QUIT_CASKS=1 brew bundle upgrade --quiet --file=$HOME/.config/homebrew/Brewfile $(chezmoi data | jq -e '.personal == true' > /dev/null && echo --force-cleanup) < /dev/null",
 ]
 
 [tasks.upkeep]
