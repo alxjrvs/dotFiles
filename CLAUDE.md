@@ -62,8 +62,7 @@ asked for it. The workflow never switches those on, and lint bans templates that
   apps re-run when `claudeProfiles` or Claude's icon changes; they go once Claude desktop holds
   several accounts itself.
 - The macOS defaults are applied, not converged: `verify` runs no script and never sees them.
-- `~/Code/.metadata_never_index` keeps Spotlight out of every repo; its indexer never settled
-  under `~/Code`. Search code with `rg` and `fd`.
+- Search code with `rg` and `fd`.
 - One GitHub login: `gh auth login`, stored in the login keychain. Never `--insecure-storage`.
 - Who this is (name, emails, signing key, GitHub user and orgs) lives in `home/.chezmoidata.toml`
   alone; repos in its work orgs commit as the work email.

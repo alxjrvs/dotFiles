@@ -9,7 +9,7 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.alxjrvs.upkeep</string>
+  <string>local.dotfiles.upkeep</string>
   <key>ProgramArguments</key>
   <array>
     <string>/bin/zsh</string>
