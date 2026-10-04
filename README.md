@@ -44,7 +44,7 @@ To hack on this repo, clone it to `~/Code/dotFiles`; chezmoi keeps its own copy.
 | change something | in a worktree: edit, `mise run lint`, `mise run apply-check`, commit, PR; an agent's `claude/` PR merges itself on green unless it touches the floor |
 | a PR landed | `chezmoi update` |
 | drift | `chezmoi verify` |
-| upgrade | nightly: `mise run upkeep` upgrades, converges a green main and checks every gated repo against gate.sh; a failure opens an issue here that pings your phone. Apps update themselves (gcloud: `gcloud components update`) |
+| upgrade | nightly: `mise run upkeep` upgrades, converges a green main and checks every gated repo against gate.sh; a failure opens an issue here that pings your phone. Apps update themselves |
 | a pin | monthly: a Routine runs `/bump` ([`.claude/skills/bump`](.claude/skills/bump/SKILL.md)) |
 | add a work org | one entry in `home/.chezmoidata.toml` |
 | the repo settings | [`.github/gate.sh`](.github/gate.sh), run by the owner; upkeep names any drift, and `gate.sh --apply <owner>` converges every repo it safely can |

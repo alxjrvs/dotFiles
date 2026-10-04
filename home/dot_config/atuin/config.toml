@@ -5,6 +5,8 @@ keymap_mode = "auto"
 # Enter runs the pick, Tab edits it. The code default is false; the sample file only seeds installs.
 enter_accept = true
 inline_height = 20
+# Homebrew upgrades it nightly; it need not ask a server on every start.
+update_check = false
 # Adds the current repo to the filter modes Ctrl-R cycles through.
 workspaces = true
 

@@ -1,11 +1,12 @@
 # The empty helper drops the osxkeychain helper Apple's system gitconfig starts with, so gh's
-# token is the only credential git keeps, for every form of GitHub URL.
+# token is the only credential git keeps, for every form of GitHub URL. gh by absolute path, as
+# `gh auth setup-git` writes it: a launchd job's git has no Homebrew on PATH.
 [credential]
 	helper =
 [credential "https://github.com"]
-	helper = !gh auth git-credential
+	helper = !/opt/homebrew/bin/gh auth git-credential
 [credential "https://gist.github.com"]
-	helper = !gh auth git-credential
+	helper = !/opt/homebrew/bin/gh auth git-credential
 [url "https://github.com/"]
 	insteadOf = git@github.com:
 	insteadOf = ssh://git@github.com/

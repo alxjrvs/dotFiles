@@ -132,7 +132,7 @@ fi
   # git parses the rendered file, its empty helper drops the system's osxkeychain, gh is the last
   # github.com helper in it, and commits sign.
   git config --global --get-all credential.helper | grep -qx ''
-  test "$(git config --global --get-all credential.https://github.com.helper | tail -1)" = '!gh auth git-credential'
+  test "$(git config --global --get-all credential.https://github.com.helper | tail -1)" = '!/opt/homebrew/bin/gh auth git-credential'
   test "$(git config --global --get commit.gpgSign)" = true
   grep -q 'Group Containers' "$home/.ssh/config"
   # Every work org's GitHub remote commits as workEmail, in any URL form and either case; anything
