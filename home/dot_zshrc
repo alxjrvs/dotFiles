@@ -1,82 +1,15 @@
-# ~/.zshrc: interactive shells. ~/.zshenv's mise shims serve every shell, this one included: the
-# desktop app reads its agents' PATH from an interactive login shell, so a `mise activate` here
-# would pin every agent to one directory's versions. Every tool is guarded, so a machine that lacks
-# one still gets a working prompt. A non-interactive shell that sources this stops here.
+# ~/.zshrc: interactive shells, kept near stock. This Mac is driven from the Claude desktop app,
+# which reads its agents' PATH from an interactive login shell, so nothing here slows or bends that.
+# ~/.zshenv's mise shims serve every shell, this one included: a `mise activate` here would pin
+# every agent to one directory's versions. A non-interactive shell that sources this stops here.
 [[ -o interactive ]] || return
 
-# --- options -----------------------------------------------------------------------------------
-setopt AUTO_CD CORRECT INTERACTIVE_COMMENTS NO_BEEP NO_FLOWCONTROL
-# `cd <repo>` from anywhere: every repo lives under ~/Code, or one org directory down.
-typeset -U cdpath
-cdpath=(~/Code ~/Code/*/*/.git(N:h:h))
-# History: atuin is the one store (Ctrl-R, autosuggestions, every session) and its secrets_filter
-# guards it, so zsh keeps this session's lines in memory and writes no file for a token to land in.
+# History: atuin is the one store (Ctrl-R, every session) and its secrets_filter guards it, so zsh
+# keeps this session's lines in memory and writes no file for a token to land in.
 unset HISTFILE
 HISTSIZE=10000
 setopt HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE HIST_VERIFY HIST_REDUCE_BLANKS
 
-# --- vi mode -----------------------------------------------------------------------------------
-bindkey -v
-KEYTIMEOUT=1
-# /etc/zshrc binds Home, End and Delete in emacs mode only, so vi mode binds them here, in the
-# application-mode form below. Ghostty's macOS defaults send ^A/^E for Cmd-Left/Right, Esc-b/f for
-# Option-Left/Right, Esc-DEL for Option-Delete and ^U for Cmd-Delete.
-for m (viins vicmd) {
-  (( ${+terminfo[khome]} )) && bindkey -M $m "$terminfo[khome]" beginning-of-line \
-    "$terminfo[kend]" end-of-line "$terminfo[kdch1]" delete-char
-  bindkey -M $m '^A' beginning-of-line '^E' end-of-line '^[b' backward-word '^[f' forward-word \
-    '^[^?' backward-kill-word
-}
-# vi insert mode's own deletes stop where insert began; these delete past it, as emacs mode does.
-bindkey -M viins '^?' backward-delete-char '^H' backward-delete-char '^W' backward-kill-word \
-  '^U' backward-kill-line
-zle-line-init()   { (( ${+terminfo[smkx]} )) && printf '%s' ${terminfo[smkx]} }
-zle-line-finish() { (( ${+terminfo[rmkx]} )) && printf '%s' ${terminfo[rmkx]} }
-zle -N zle-line-init
-zle -N zle-line-finish
-
-# --- environment -------------------------------------------------------------------------------
 export EDITOR=nvim
 
-# --- plugins: two Brewfile formulae; `source` is the plugin manager ---------------------------
-_zsh_plugins=/opt/homebrew/share
-_zsh_plugin=$_zsh_plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-# Bind once: syntax highlighting 0.8 hooks zle-line-pre-redraw and wraps no widget to outlive.
-ZSH_AUTOSUGGEST_MANUAL_REBIND=1
-[[ -r $_zsh_plugin ]] && source $_zsh_plugin
-
-# --- completion: Homebrew's site-functions, which only a login shell's brew shellenv adds -----
-typeset -U fpath
-fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
-autoload -Uz compinit
-compinit -i # an insecure site-functions directory must not block every new shell on y/n
-zstyle ':completion:*' menu select
-zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
-zstyle ':completion:*:descriptions' format '[%d]'
-zstyle ':completion:*:git-checkout:*' sort false
-
-# --- tools -------------------------------------------------------------------------------------
-# A terminal only: its widgets need ZLE, and a shell without one would print errors.
-if [[ -t 1 ]] && (( $+commands[fzf] )); then
-  export FZF_DEFAULT_OPTS='--layout=reverse --border --height=40%'
-  # fzf's walker ignores .gitignore, so fd lists; the walker is the fallback without fd.
-  (( $+commands[fd] )) && export FZF_CTRL_T_COMMAND='fd --type f --hidden --follow'
-  export FZF_CTRL_T_OPTS="--walker=file,follow,hidden"
-  eval "$(fzf --zsh)"
-fi
-if (( $+commands[atuin] )); then
-  # Up/Down stay plain history, and `?` stays a character. In vicmd atuin binds `/`, so Ctrl-R
-  # there is ours.
-  eval "$(atuin init zsh --disable-up-arrow --disable-ai)"
-  bindkey -M vicmd '^R' atuin-search-vicmd
-fi
-(( $+commands[starship] )) && eval "$(starship init zsh)"
-
-# --- aliases -----------------------------------------------------------------------------------
-alias gs='git status' gp='git push' gpr='git pull --rebase' gco='git checkout'
-(( $+commands[nvim] )) && alias vim='nvim'
-
-# --- syntax highlighting: last, because it wraps the ZLE widgets defined above ----------------
-_zsh_plugin=$_zsh_plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-[[ -r $_zsh_plugin ]] && source $_zsh_plugin
-unset _zsh_plugin _zsh_plugins m
+(( $+commands[atuin] )) && eval "$(atuin init zsh --disable-up-arrow --disable-ai)"

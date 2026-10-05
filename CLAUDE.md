@@ -43,18 +43,19 @@ asked for it. The workflow never switches those on, and lint bans templates that
 - `~/.claude/settings.json` is a modify template: chezmoi enforces the keys declared in
   `home/.chezmoitemplates/claude-settings.json` and leaves every other key to the app.
 - Every runtime is a mise tool (`home/dot_config/mise/config.toml`), and every CLI a Brewfile
-  formula, so its completions and man pages come with it; `1password-cli`, `gcloud-cli` and
-  `ngrok` are casks. The Brewfile also holds the two zsh plugins and the apps. mise and the Claude
-  Code CLI come from their own installers into `~/.local/bin`, and chezmoi's installer only
-  bootstraps it: mise owns it from the first apply. git is the system's.
+  formula, so its man page comes with it; `1password-cli`, `gcloud-cli` and `ngrok` are casks.
+  The Brewfile also holds the apps. mise and the Claude Code CLI come from their own installers
+  into `~/.local/bin`, and chezmoi's installer only bootstraps it: mise owns it from the first
+  apply. git is the system's.
 - `~/.local/bin` and `~/Library/LaunchAgents` are exact: apply deletes whatever they hold beyond
   what this repo declares and `.chezmoiignore` leaves to its owner.
 - This repo's own linters are pinned in the root `mise.toml`, not installed machine-wide.
 - `chezmoi apply` never upgrades anything; `mise run upkeep` does, nightly, and a failure opens an
   issue here, one per Mac and failing set of steps, closed by the next green run. It converges only
   a main whose `lint` passed on Actions; the nightly run then checks every owned repo against
-  `gate.sh` and keeps one shared `gate:` issue. When the Brewfile changes, apply uninstalls every Homebrew package it
-  does not name, and upkeep does the same nightly, on a Mac that said it is personal: `personal` is asked once at init (a terminal-less init passes
+  `gate.sh` and keeps one shared `gate:` issue. When the Brewfile changes, apply uninstalls every
+  Homebrew package it does not name, and upkeep does the same nightly, on a Mac that said it is
+  personal: `personal` is asked once at init (a terminal-less init passes
   `--promptBool "personal Mac=..."` or fails), and a work Mac keeps its employer's.
 - Machine setup is `home/.chezmoiscripts/`. Homebrew and provisioning run on every apply behind a
   guard. mise, the launchd agents and the Brewfile re-run when their files
