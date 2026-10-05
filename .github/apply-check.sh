@@ -13,7 +13,19 @@ cz=(chezmoi --source "$root" --config "$tmp/chezmoi.toml" --persistent-state "$t
 data=$("${cz[@]}" data --format json)
 personal=$(jq -r .email <<< "$data")
 work=$(jq -r .workEmail <<< "$data")
+# What the exact_ directories, .chezmoiignore and the remove lists must leave alone, seeded first and
+# checked after: one dropped ignore line once deleted ~/.local/bin/claude with every check green.
+survivors=(.local/bin/chezmoi .local/bin/mise .local/bin/claude Code/repo/work .ssh/known_hosts
+  Library/LaunchAgents/sh.brew.x.plist Library/LaunchAgents/com.valvesoftware.x.plist
+  Library/LaunchAgents/com.google.GoogleUpdater.x.plist)
+for f in "${survivors[@]}"; do
+  mkdir -p "$home/${f%/*}"
+  echo '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict/></plist>' > "$home/$f"
+done
 "${cz[@]}" apply --exclude scripts
+for f in "${survivors[@]}"; do
+  [ -e "$home/$f" ] || { echo "apply-check: apply deleted ~/$f" >&2 && exit 1; }
+done
 "${cz[@]}" verify --exclude scripts
 # `--exclude scripts` skips rendering them; this renders every script and runs none.
 "${cz[@]}" apply --dry-run
@@ -27,6 +39,13 @@ git -C "$root" archive "$(git -C "$root" merge-base HEAD origin/main)" | tar -x 
 was=$(chezmoi --source "$base" --destination "$home" managed --exclude scripts,externals,remove,dirs | sort)
 now=$("${cz[@]}" managed --exclude scripts,externals,dirs | sort)
 removed=$("${cz[@]}" managed --include remove)
+# A Mac's config was rendered by main's template: HEAD must apply over it (#449 did not).
+upgrade=(chezmoi --source "$root" --config "$tmp/upgrade.toml" --persistent-state "$tmp/upgrade.db"
+  --destination "$tmp/upgrade")
+mkdir "$tmp/upgrade"
+chezmoi --source "$base" --config "$tmp/upgrade.toml" --persistent-state "$tmp/upgrade.db" \
+  --destination "$tmp/upgrade" init --promptBool "personal Mac=true" > /dev/null
+"${upgrade[@]}" apply --dry-run > /dev/null
 comm -23 <(printf '%s\n' "$was") <(printf '%s\n' "$now") |
   while read -r target; do
     path=$target
@@ -72,8 +91,10 @@ fi
 (
   export HOME="$home" XDG_CONFIG_HOME="$home/.config"
   unset GIT_CONFIG_COUNT
-  # The applied login shell starts; an rc file that exits fails here (lint's `zsh -n` has syntax).
-  zsh -l -i -c 'echo shell ok' > /dev/null
+  # The applied login shell starts and says nothing on stderr: an rc file that exits or complains
+  # fails here (lint's `zsh -n` has syntax).
+  err=$(zsh -l -i -c true 2>&1 > /dev/null)
+  [ -z "$err" ] || { printf 'apply-check: the shell said:\n%s\n' "$err" >&2 && exit 1; }
   # git parses the rendered file, its empty helper drops the system's osxkeychain, gh is the last
   # github.com helper in it, and commits sign.
   git config --global --get-all credential.helper | grep -qx ''
