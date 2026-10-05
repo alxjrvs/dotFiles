@@ -4,12 +4,20 @@
 # every agent to one directory's versions. A non-interactive shell that sources this stops here.
 [[ -o interactive ]] || return
 
-# History: atuin is the one store (Ctrl-R, every session) and its secrets_filter guards it, so zsh
-# keeps this session's lines in memory and writes no file for a token to land in.
-unset HISTFILE
+# History: plain zsh, in the file macOS's /etc/zshrc names. A line holding a secret stays out of it:
+# a `key: value` or `key=value` secret, the token prefixes of GitHub, AWS, Slack, GitLab, Stripe,
+# npm, OpenAI, Anthropic and 1Password, and a password in a URL. A leading space skips one line.
 HISTSIZE=10000
-setopt HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE HIST_VERIFY HIST_REDUCE_BLANKS
+SAVEHIST=10000
+setopt INC_APPEND_HISTORY_TIME HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE HIST_VERIFY EXTENDED_HISTORY HIST_REDUCE_BLANKS
+_history_filter() {
+  setopt local_options extended_glob
+  [[ $1 != (#i)*(password|secret|token|apikey|api(|_|-)key)[[:space:]]#[:=]* &&
+    $1 != *(gh[pousr]_[[:alnum:]](#c36)|github_pat_[[:alnum:]_](#c22,)|AKIA[[:upper:][:digit:]](#c16)|xox[abprs]-|glpat-|[rs]k_(live|test)_|npm_[[:alnum:]](#c36))* &&
+    $1 != (|*[^[:alnum:]_])(sk|ops)[-_][[:alnum:]_-](#c20,)* &&
+    $1 != *://[^/[:space:]:@]##:[^/[:space:]@]##@* ]] || return 2
+}
+autoload -Uz add-zsh-hook && add-zsh-hook zshaddhistory _history_filter
 
 export EDITOR=nvim
 
-(( $+commands[atuin] )) && eval "$(atuin init zsh --disable-up-arrow --disable-ai)"
