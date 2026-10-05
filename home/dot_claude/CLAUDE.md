@@ -6,10 +6,14 @@ file to refuse them.
 
 bun for JS.
 
-A group of changes goes up as a `gh stack`, so each PR stays atomic.
+A group of changes goes up as a `gh stack`, so each PR stays atomic: `gh stack submit --auto
+--open`. GitHub has no auto-merge for a stack, so a stack the user asked to land lands in the same
+session from one background shell: `for n in <layers>; do gh pr checks "$n" --watch --required
+--fail-fast || exit 1; done && gh stack merge --squash --yes`. On red, fix that layer and run
+`gh stack sync`.
 
-After opening a PR, let its watcher carry it (the app's CI monitor with auto-fix; Auto-fix in a
-cloud session) instead of scheduling a check-in to poll it.
+After opening a PR, turn on its Auto-fix (the app's PR monitor; Auto-fix in a cloud session), then
+stop: never schedule a check-in to poll it.
 
 ## Rules
 
