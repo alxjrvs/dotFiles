@@ -60,7 +60,7 @@ jq '{appFirst: true} + .' "$settings" > "$tmp/edited" && cat "$tmp/edited" > "$s
 mise config get --file "$home/.config/1Password/ssh/agent.toml" > /dev/null
 
 # On a Mac: the LaunchAgents parse and every Brewfile entry resolves, so a typo fails here and not
-# halfway through an apply. Homebrew's cache goes under $tmp, which a sandboxed session can write.
+# halfway through an apply. Homebrew's cache goes under $tmp, so the check writes nowhere else.
 if [ "$(uname -s)" = Darwin ]; then
   export HOMEBREW_CACHE=$tmp/brew HOMEBREW_NO_ANALYTICS=1
   plutil -lint -s "$home"/Library/LaunchAgents/*.plist

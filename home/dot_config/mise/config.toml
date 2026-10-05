@@ -60,8 +60,6 @@ source=$(chezmoi source-path)
 # run by name, and everything else lands; --init re-renders a changed .chezmoi.toml.tmpl.
 (cd "$source" && ../.github/main-green.sh) && chezmoi update --init --keep-going --no-tty ||
   failed="$failed converge"
-# main's own linter pins, installed here outside the sandbox, so an agent's `mise run lint` runs.
-mise -C "$source/.." install --yes || failed="$failed pins"
 # Results, not files: every gated repo still matches gate.sh, and drift names its `!` fix.
 chezmoi data | jq -r '.github, .ownedOrgs[]' | xargs "$source/../.github/gate.sh" --check ||
   failed="$failed gate"
