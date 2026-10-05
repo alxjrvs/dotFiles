@@ -4,7 +4,7 @@
      chezmoi cloned, whose Actions mention reaches the phone; the log alone went unread (#242).
      launchd expands no `~` (#116), so the paths are the shell's $HOME. A run missed asleep fires in
      the next dark wake, which sleeps again within seconds, so it waits for a full wake (Graphics is
-     on) and holds the Mac awake while it runs. The exit status is upkeep's.
+     on). The exit status is upkeep's.
      Loaded by .chezmoiscripts/25-launchagents.sh when this file changes. -->
 <plist version="1.0">
 <dict>
@@ -14,7 +14,7 @@
   <array>
     <string>/bin/zsh</string>
     <string>-lc</string>
-    <string>until pmset -g systemstate | grep -q Graphics; do sleep 60; done; caffeinate -i mise run upkeep:nightly &gt;&gt; "$HOME/Library/Logs/upkeep-report.log" 2&gt;&amp;1</string>
+    <string>until pmset -g systemstate | grep -q Graphics; do sleep 60; done; mise run upkeep:nightly &gt;&gt; "$HOME/Library/Logs/upkeep-report.log" 2&gt;&amp;1</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict>
