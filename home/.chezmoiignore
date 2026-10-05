@@ -7,3 +7,11 @@ Library/LaunchAgents/com.google.GoogleUpdater.*
 .local/bin/chezmoi
 .local/bin/mise
 .local/bin/claude
+# A work Mac keeps what its employer puts in those two directories: there, only this repo's own
+# agents and links are managed. Anything short of a yes counts as a work Mac.
+{{ if ne (get . "personal" | toString) "true" -}}
+Library/LaunchAgents/*
+!Library/LaunchAgents/com.{{ .github }}.*
+.local/bin/*
+!.local/bin/ghostty
+{{ end -}}

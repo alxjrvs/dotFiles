@@ -26,6 +26,26 @@ done
 for f in "${survivors[@]}"; do
   [ -e "$home/$f" ] || { echo "apply-check: apply deleted ~/$f" >&2 && exit 1; }
 done
+# An employer's agent and CLI: a personal Mac's exact_ directories remove them, a work Mac's keep
+# them.
+employer=(Library/LaunchAgents/com.employer.agent.plist .local/bin/employer-cli)
+seed() { for f in "${employer[@]}"; do echo '<plist version="1.0"><dict/></plist>' > "$1/$f"; done; }
+seed "$home"
+"${cz[@]}" apply --exclude scripts
+for f in "${employer[@]}"; do
+  [ ! -e "$home/$f" ] || { echo "apply-check: a personal Mac kept ~/$f" >&2 && exit 1; }
+done
+office=$tmp/office
+mkdir -p "$office/Library/LaunchAgents" "$office/.local/bin"
+oz=(chezmoi --source "$root" --config "$tmp/office.toml" --persistent-state "$tmp/office.db" --destination "$office")
+"${oz[@]}" init --promptBool "personal Mac=false"
+seed "$office"
+"${oz[@]}" apply --exclude scripts
+for f in "${employer[@]}"; do
+  [ -e "$office/$f" ] || { echo "apply-check: a work Mac lost ~/$f" >&2 && exit 1; }
+done
+[ -e "$office/Library/LaunchAgents/com.$(jq -r .github <<< "$data").upkeep.plist" ] ||
+  { echo "apply-check: a work Mac lost this repo's own agents" >&2 && exit 1; }
 "${cz[@]}" verify --exclude scripts
 # `--exclude scripts` skips rendering them; this renders every script and runs none.
 "${cz[@]}" apply --dry-run
