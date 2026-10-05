@@ -1,4 +1,4 @@
-# Login shells. /etc/zprofile's path_helper rebuilds PATH after ~/.zshenv, so the two tool
-# directories go back in front; brew shellenv also exports FPATH.
-[[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv)"
-path=("$HOME/.local/bin" "$HOME/.local/share/mise/shims" $path)
+# Login shells. /etc/zprofile's path_helper rebuilds PATH after ~/.zshenv, so the tool directories
+# go back in front: the paths `brew shellenv` would add, without its process (9 ms, not 32).
+# ~/.zshrc adds Homebrew's completions itself.
+path=("$HOME/.local/bin" "$HOME/.local/share/mise/shims" /opt/homebrew/bin /opt/homebrew/sbin $path)

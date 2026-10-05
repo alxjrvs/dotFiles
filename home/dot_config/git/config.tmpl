@@ -45,6 +45,9 @@
 [gc]
 	# Agent worktrees churn daily; forget a hand-deleted one after a week, not three months.
 	worktreePruneExpire = 1.week.ago
+[maintenance "worktree-prune"]
+	# Auto-maintenance after a commit or fetch applies that week; no scheduler, no `maintenance start`.
+	enabled = true
 
 [merge]
 	conflictstyle = zdiff3

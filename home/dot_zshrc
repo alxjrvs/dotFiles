@@ -6,8 +6,9 @@
 
 # --- options -----------------------------------------------------------------------------------
 setopt AUTO_CD CORRECT INTERACTIVE_COMMENTS NO_BEEP NO_FLOWCONTROL
-# `cd RANDSUM` from anywhere: every repo lives under ~/Code.
-cdpath=(~/Code)
+# `cd BinfiniteApp` from anywhere: every repo lives under ~/Code, or one org directory down.
+typeset -U cdpath
+cdpath=(~/Code ~/Code/*/*/.git(N:h:h))
 # History: atuin is the one store (Ctrl-R, autosuggestions, every session) and its secrets_filter
 # guards it, so zsh keeps this session's lines in memory and writes no file for a token to land in.
 unset HISTFILE
@@ -19,13 +20,16 @@ bindkey -v
 KEYTIMEOUT=1
 # /etc/zshrc binds Home, End and Delete in emacs mode only, so vi mode binds them here, in the
 # application-mode form below. Ghostty's macOS defaults send ^A/^E for Cmd-Left/Right, Esc-b/f for
-# Option-Left/Right and Esc-DEL for Option-Delete.
+# Option-Left/Right, Esc-DEL for Option-Delete and ^U for Cmd-Delete.
 for m (viins vicmd) {
   (( ${+terminfo[khome]} )) && bindkey -M $m "$terminfo[khome]" beginning-of-line \
     "$terminfo[kend]" end-of-line "$terminfo[kdch1]" delete-char
   bindkey -M $m '^A' beginning-of-line '^E' end-of-line '^[b' backward-word '^[f' forward-word \
     '^[^?' backward-kill-word
 }
+# vi insert mode's own deletes stop where insert began; these delete past it, as emacs mode does.
+bindkey -M viins '^?' backward-delete-char '^H' backward-delete-char '^W' backward-kill-word \
+  '^U' backward-kill-line
 zle-line-init()   { (( ${+terminfo[smkx]} )) && printf '%s' ${terminfo[smkx]} }
 zle-line-finish() { (( ${+terminfo[rmkx]} )) && printf '%s' ${terminfo[rmkx]} }
 zle -N zle-line-init
