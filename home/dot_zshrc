@@ -6,7 +6,7 @@
 
 # --- options -----------------------------------------------------------------------------------
 setopt AUTO_CD CORRECT INTERACTIVE_COMMENTS NO_BEEP NO_FLOWCONTROL
-# `cd BinfiniteApp` from anywhere: every repo lives under ~/Code, or one org directory down.
+# `cd <repo>` from anywhere: every repo lives under ~/Code, or one org directory down.
 typeset -U cdpath
 cdpath=(~/Code ~/Code/*/*/.git(N:h:h))
 # History: atuin is the one store (Ctrl-R, autosuggestions, every session) and its secrets_filter

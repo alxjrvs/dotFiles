@@ -83,11 +83,11 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: alxjrvs/dotFiles/.github/workflows/dependabot-auto-merge.yml@main
+    uses: {{ .github }}/dotFiles/.github/workflows/dependabot-auto-merge.yml@main
 ```
 
 `@main` is deliberate: the callee has no tags for Dependabot to bump, and the owner controls it, so
-a repo that runs `zizmor` allows `alxjrvs/*` in its `unpinned-uses` policy. Before promising it:
+a repo that runs `zizmor` allows `{{ .github }}/*` in its `unpinned-uses` policy. Before promising it:
 
 - **`pull_request`, never `pull_request_target`**: the job never checks out PR code, and a
   Dependabot run's token takes the `permissions:` granted.

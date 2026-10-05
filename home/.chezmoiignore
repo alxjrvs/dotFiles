@@ -1,6 +1,7 @@
 # The two exact_ directories keep only what this repo declares, less what these own:
 # brew services, Steam and Google's updater write LaunchAgents of their own,
 Library/LaunchAgents/sh.brew.*
+Library/LaunchAgents/homebrew.mxcl.*
 Library/LaunchAgents/com.valvesoftware.*
 Library/LaunchAgents/com.google.GoogleUpdater.*
 # and mise and the Claude Code CLI are their own installers'. chezmoi's installer copy is not: mise
@@ -8,9 +9,11 @@ Library/LaunchAgents/com.google.GoogleUpdater.*
 .local/bin/mise
 .local/bin/claude
 # A work Mac keeps what its employer puts in those two directories: there, only this repo's own
-# agents and links are managed. Anything short of a yes counts as a work Mac.
+# agents (local.dotfiles.*) and links are managed. Anything short of a yes counts as a work Mac.
 {{ if ne (get . "personal" | toString) "true" -}}
 Library/LaunchAgents/*
+!Library/LaunchAgents/local.dotfiles.*
+# The labels before local.dotfiles: managed one more release, so the exact directory removes them.
 !Library/LaunchAgents/com.{{ .github }}.*
 .local/bin/*
 !.local/bin/ghostty

@@ -6,7 +6,7 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.alxjrvs.capslock</string>
+  <string>local.dotfiles.capslock</string>
   <key>ProgramArguments</key>
   <array>
     <string>/usr/bin/hidutil</string>

@@ -3,7 +3,17 @@
 # Every plist this repo declares, hashed, so adding or changing one re-runs this:
 # {{ range glob (joinPath .chezmoi.sourceDir "Library/exact_LaunchAgents/*.plist") }}{{ include . | sha256sum }} {{ end }}
 set -euo pipefail
-for plist in "$HOME/Library/LaunchAgents/com.{{ .github }}".*.plist; do
+# Jobs still loaded under the old labels (com.<github>.*) whose plists are gone go too. A running
+# one is upkeep applying this: booting it out would kill the apply, so it is disabled instead and
+# never starts again (its cached command posted the whole log publicly).
+for label in $(launchctl list | awk -v p="com.{{ .github }}." 'index($3, p) == 1 { print $3 }'); do
+  if [[ $(launchctl print "gui/$(id -u)/$label" 2> /dev/null) == *"state = running"* ]]; then
+    launchctl disable "gui/$(id -u)/$label"
+  else
+    launchctl bootout "gui/$(id -u)/$label" 2> /dev/null || true
+  fi
+done
+for plist in "$HOME"/Library/LaunchAgents/local.dotfiles.*.plist; do
   [ -e "$plist" ] || continue
   label=$(basename "$plist" .plist)
   # A job that boots itself out dies before its bootstrap (upkeep applying a plist change): leave

@@ -24,12 +24,16 @@ that needs `gh auth login` lands on the second. The `workflow` scope lets a push
 Between the two commands:
 
 - Sign in to 1Password. Under Settings › Developer, turn on Use the SSH Agent and Integrate with
-  1Password CLI. Commits sign through the agent. Registering its key on GitHub needs
-  `admin:ssh_signing_key`, a scope that could mint Verified commits as you: grant it for that one
-  `gh ssh-key add --type signing` (`gh auth refresh -s admin:ssh_signing_key`), then drop it
-  (`gh auth refresh -r admin:ssh_signing_key`).
+  1Password CLI. Commits sign through the agent.
 - Run `claude` once to log in.
 - Log out and back in once, for the keyboard defaults.
+
+After the second, register the commit-signing key once. That needs `admin:ssh_signing_key`, a
+scope that could mint Verified commits as you, so it is granted for this one command and dropped:
+
+```bash
+gh auth refresh -s admin:ssh_signing_key && chezmoi data | jq -r .signingKey | gh ssh-key add - --type signing && gh auth refresh -r admin:ssh_signing_key
+```
 
 To hack on this repo, clone it to `~/Code/dotFiles`; chezmoi keeps its own copy.
 
@@ -71,8 +75,11 @@ home/.chezmoi*          chezmoi's own files: config template, data (who and whic
 
 ## Forking
 
-Fork it, turn on its Actions (GitHub leaves a fork's workflows off), and edit
-`home/.chezmoidata.toml`: who you are lives there alone. Then run `.github/gate.sh` from your
+Use this template, or fork it to keep pulling upstream (then turn on its Actions, which GitHub
+leaves off in a fork). Edit `home/.chezmoidata.toml`: who you are lives there alone, and lint fails
+on your GitHub user anywhere else. Apply empties `~/.local/bin` and `~/Library/LaunchAgents` of
+anything undeclared, so list what you keep there in `home/.chezmoiignore` first. It also deletes
+`~/.zsh_history`, since atuin is the history store: run `atuin import zsh` before the first apply. Then run `.github/gate.sh` from your
 clone, and the Fresh Mac command with your fork's name. The monthly bump is a Routine on your own
 account: `/schedule` one whose prompt is `/bump`. Give it a cloud environment whose setup script is
 `cd <repo dir> && CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR=$PWD .claude/hooks/session-start.sh`,

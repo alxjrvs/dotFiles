@@ -3,7 +3,9 @@
 # Writes only under a temp directory, so it is safe anywhere: a Mac, CI and a web session.
 set -euo pipefail
 root=$(git rev-parse --show-toplevel)
-tmp=$(mktemp -d "${TMPDIR:-/tmp}/apply-check.XXXXXX")
+# No trailing slash from TMPDIR: chezmoi prints targets with single slashes, and $home must match.
+tmp=${TMPDIR:-/tmp}
+tmp=$(mktemp -d "${tmp%/}/apply-check.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
 home=$tmp/home
 mkdir "$home"
@@ -44,12 +46,15 @@ oz=(chezmoi --source "$root" --config "$tmp/office.toml" --persistent-state "$tm
 "${oz[@]}" init --promptBool "personal Mac=false"
 seed "$office"
 touch "$office/.local/bin/chezmoi"
+legacy=Library/LaunchAgents/com.$(jq -r .github <<< "$data").upkeep.plist
+echo '<plist version="1.0"><dict/></plist>' > "$office/$legacy"
 "${oz[@]}" apply --exclude scripts
+[ ! -e "$office/$legacy" ] || { echo "apply-check: a work Mac kept the old ~/$legacy" >&2 && exit 1; }
 for f in "${employer[@]}"; do
   [ -e "$office/$f" ] || { echo "apply-check: a work Mac lost ~/$f" >&2 && exit 1; }
 done
 [ ! -e "$office/.local/bin/chezmoi" ] || { echo "apply-check: a work Mac kept the installer's chezmoi" >&2 && exit 1; }
-[ -e "$office/Library/LaunchAgents/com.$(jq -r .github <<< "$data").upkeep.plist" ] ||
+[ -e "$office/Library/LaunchAgents/local.dotfiles.upkeep.plist" ] ||
   { echo "apply-check: a work Mac lost this repo's own agents" >&2 && exit 1; }
 "${cz[@]}" verify --exclude scripts
 # `--exclude scripts` skips rendering them; this renders every script and runs none.
@@ -64,6 +69,10 @@ git -C "$root" archive "$(git -C "$root" merge-base HEAD origin/main)" | tar -x 
 was=$(chezmoi --source "$base" --destination "$home" managed --exclude scripts,externals,remove,dirs | sort)
 now=$("${cz[@]}" managed --exclude scripts,externals,dirs | sort)
 removed=$("${cz[@]}" managed --include remove)
+# An exact_ directory deletes whatever it stops declaring, so its old entries need no remove_.
+while read -r dir; do
+  removed+=$'\n'$("${cz[@]}" target-path "$dir" | sed "s|^$home/||")
+done < <(find "$root/home" -type d -name 'exact_*')
 # A Mac's config was rendered by main's template: HEAD must apply over it (#449 did not).
 upgrade=(chezmoi --source "$root" --config "$tmp/upgrade.toml" --persistent-state "$tmp/upgrade.db"
   --destination "$tmp/upgrade")
