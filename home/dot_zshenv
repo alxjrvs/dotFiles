@@ -11,3 +11,5 @@ export MANPAGER="sh -c 'col -bx | less'"
 # npm waits the week mise, bun and Dependabot wait. An env var, not ~/.npmrc, which `npm login`
 # writes tokens into.
 export NPM_CONFIG_MIN_RELEASE_AGE=7
+# gh sends usage telemetry, tagged when an agent calls it; every shell turns it off.
+export GH_TELEMETRY=false

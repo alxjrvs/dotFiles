@@ -59,6 +59,9 @@ run = [
   # names fails the run into its issue.
   "HOMEBREW_VERIFY_ATTESTATIONS=1 HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 HOMEBREW_NO_UPGRADE_QUIT_CASKS=1 brew bundle upgrade --quiet --file=$HOME/.config/homebrew/Brewfile $(chezmoi data | jq -e '.personal == true' > /dev/null && echo --force-cleanup) < /dev/null",
   "brew vulns --severity=high --brewfile=$HOME/.config/homebrew/Brewfile",
+  # gcloud's cask updates itself only through its own command, which the cask upgrade skips. The one
+  # upgrade without the week's hold: gcloud's updater has no age gate.
+  "if command -v gcloud > /dev/null; then gcloud components update --quiet; fi",
 ]
 
 [tasks.upkeep]
