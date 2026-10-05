@@ -1,9 +1,11 @@
 #!/bin/bash
 # Loads the launchd agents when a plist changes; bootout first so the change is read.
-# capslock: {{ include "Library/exact_LaunchAgents/com.alxjrvs.capslock.plist" | sha256sum }}
-# upkeep: {{ include "Library/exact_LaunchAgents/com.alxjrvs.upkeep.plist" | sha256sum }}
+# Every plist this repo declares, hashed, so adding or changing one re-runs this:
+# {{ range glob (joinPath .chezmoi.sourceDir "Library/exact_LaunchAgents/*.plist") }}{{ include . | sha256sum }} {{ end }}
 set -euo pipefail
-for label in com.alxjrvs.capslock com.alxjrvs.upkeep; do
+for plist in "$HOME/Library/LaunchAgents/com.{{ .github }}".*.plist; do
+  [ -e "$plist" ] || continue
+  label=$(basename "$plist" .plist)
   # A job that boots itself out dies before its bootstrap (upkeep applying a plist change): leave
   # a running job alone, and the next login loads the new plist.
   [[ $(launchctl print "gui/$(id -u)/$label" 2> /dev/null) == *"state = running"* ]] && continue
