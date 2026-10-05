@@ -3,7 +3,7 @@ export const meta = {
   description: 'Deep audit of a repo: an advocate and an adversary per lens, an evidence judge each, then a critic',
   whenToUse: 'A fresh, evidence-backed audit of one repo. args: { repo?, focus?, profile?, lenses? }',
   phases: [
-    { title: 'Survey', detail: 'one agent reads the repo and names the lenses it warrants' },
+    { title: 'Survey', detail: 'one agent names the lenses the repo warrants; another profiles the owner unless a profile is passed' },
     { title: 'Review', detail: 'an advocate and an adversary per lens, in parallel' },
     { title: 'Judge', detail: 'one judge per lens re-runs the evidence and refutes what it cannot' },
     { title: 'Critic', detail: 'conflicts, duplicates, gaps, and the ordering' },
@@ -11,18 +11,21 @@ export const meta = {
 }
 
 // args: repo (a path; defaults to the session's), focus (what the owner wants weighted), profile (a
-// path to what is known about the owner), lenses ([{ key, name, brief }] to skip the survey).
+// path to what is known about the owner; without one, a profiler builds it alongside the survey),
+// lenses ([{ key, name, brief }] to skip the survey).
 // The lenses come from the repo, not from here: a fixed list is one year's opinion of what matters,
 // and the model reading the repo outgrows it. What stays fixed is the verification.
 const A = args ?? {}
 const REPO = A.repo ?? 'the current working directory'
 
-const SHARED = `
+const shared = (owner) => `
 You are one member of a team auditing the repository at ${REPO}. Read-only: never edit, commit or
-push, never change a setting, and never print a secret.${A.focus ? `\nThe owner's weighting: ${A.focus}` : ''}${A.profile ? `\nWhat is known about the owner: read ${A.profile} first.` : ''}
-Already litigated: read CLAUDE.md or AGENTS.md and \`git log --oneline -300\` first. A finding that re-proposes something the history added and then removed must name the new evidence that overturns the recorded reason, or it is dropped.
+push, never change a setting, and never print a secret.${A.focus ? `\nThe owner's weighting: ${A.focus}` : ''}${owner}
+Already litigated: read CLAUDE.md or AGENTS.md and \`git log -300 --format='%h %s%n%b'\` first: the reasons live in the squash bodies, an earlier audit's "Declined" section among them. A finding that re-proposes something the history added and then removed, or that an audit declined, must name the new evidence that overturns the recorded reason, or it is dropped.
 Evidence: every finding cites a checkable source (a path:line, a command you ran and what it printed, or a primary doc or changelog URL). Prefer results over files: run the thing when you can. No source, no finding.
 Style: titles under 10 words, claims under 3 sentences, proposals concrete enough to become a PR.`
+
+const PROFILE_SCHEMA = { type: 'object', properties: { profile: { type: 'string' } }, required: ['profile'] }
 
 const LENS_SCHEMA = {
   type: 'object',
@@ -89,19 +92,32 @@ const CRITIC = {
     conflicts: { type: 'array', items: { type: 'string' } },
     gaps: { type: 'array', items: { type: 'string' } },
     bigIdea: { type: 'string' },
+    prBody: { type: 'string' },
   },
-  required: ['now', 'next', 'consider', 'drop', 'conflicts', 'gaps', 'bigIdea'],
+  required: ['now', 'next', 'consider', 'drop', 'conflicts', 'gaps', 'bigIdea', 'prBody'],
 }
 
 phase('Survey')
-const LENSES =
-  A.lenses ??
-  (
-    await agent(
-      `${SHARED}\nYou are the SURVEYOR. Read the repo (its docs, layout, tooling, CI and history) and name the lenses this audit warrants: each one an axis on which a reviewer could find something worth keeping, cutting, fixing or adding in this repo, with a key (a short slug), a name and a one-sentence brief that tells a reviewer where to look. Lenses come from what the repo is and does, not from a generic checklist; a lens that would yield nothing here is not one.`,
-      { label: 'survey', phase: 'Survey', schema: LENS_SCHEMA },
-    )
-  ).lenses
+const handed = A.profile ? `\nWhat is known about the owner: read ${A.profile} first.` : ''
+const [built, surveyed] = await parallel([
+  () =>
+    A.profile
+      ? Promise.resolve(null)
+      : agent(
+          `${shared('')}\nYou are the PROFILER. Build an evidence-based profile of the repo's owner, so the reviewers know what they value, how they work and what they have already rejected. Sources, this repo's only, since the profile reaches reviewers and a published PR body and another project may be an employer's: ~/.claude/history.jsonl entries whose project is this repo or one of its worktrees, their own messages and AskUserQuestion answers in this repo's directories under ~/.claude/projects/ (named after its path; search them, never read one whole) and the memory files there, merged PR bodies (\`gh pr list --state merged --limit 200 --json number,title,body\`), and the repo's docs. Return Markdown under 150 lines: who they are (no emails or keys), their values with short quoted evidence, how they work, their daily tools, hard rejections with the PR and its reason, recurring pain points, and open tensions. Every claim cites its source; write "unknown" rather than guess. Refer to the owner as they/them.`,
+          { label: 'profile', phase: 'Survey', schema: PROFILE_SCHEMA },
+        ),
+  () =>
+    A.lenses
+      ? Promise.resolve(null)
+      : agent(
+          `${shared(handed)}\nYou are the SURVEYOR. Read the repo (its docs, layout, tooling, CI and history) and name the lenses this audit warrants: each one an axis on which a reviewer could find something worth keeping, cutting, fixing or adding in this repo, with a key (a short slug), a name and a one-sentence brief that tells a reviewer where to look. Lenses come from what the repo is and does, not from a generic checklist; a lens that would yield nothing here is not one.`,
+          { label: 'survey', phase: 'Survey', schema: LENS_SCHEMA },
+        ),
+])
+const SHARED = shared(built?.profile ? `\nWhat is known about the owner, profiled for this run:\n${built.profile}` : handed)
+const LENSES = A.lenses ?? surveyed?.lenses ?? []
+if (!LENSES.length) throw new Error('The survey named no lenses; nothing to review.')
 
 const judged = await pipeline(
   LENSES,
@@ -121,7 +137,7 @@ const judged = await pipeline(
 phase('Critic')
 const lenses = judged.filter(Boolean)
 const critic = await agent(
-  `${SHARED}\nYou are the CRITIC over every lens's judged findings. Resolve conflicts, merge duplicates, check any cheap gap now, re-verify the evidence behind what you put in NOW, and order everything: NOW (at most 8, confirmed, cheap), NEXT (at most 8), CONSIDER, and DROP (with why, so it is not re-pitched). bigIdea: the one structural idea the repo is missing, or "none".\n\n${JSON.stringify(lenses)}`,
+  `${SHARED}\nYou are the CRITIC over every lens's judged findings. Resolve conflicts, merge duplicates, check any cheap gap now, re-verify the evidence behind what you put in NOW, and order everything: NOW (at most 8, confirmed, cheap), NEXT (at most 8), CONSIDER, and DROP (with why, so it is not re-pitched). bigIdea: the one structural idea the repo is missing, or "none". prBody: Markdown for the first pull request this audit produces: the NOW list, then a "Declined" section with every DROP and its reason, so the squash body records it and the next audit's git log reads it.\n\n${JSON.stringify(lenses)}`,
   { label: 'critic', phase: 'Critic', schema: CRITIC, effort: 'high' },
 )
 return { lenses, critic }
