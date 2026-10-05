@@ -74,7 +74,9 @@ home/.chezmoi*          chezmoi's own files: config template, data (who and whic
 Fork it, turn on its Actions (GitHub leaves a fork's workflows off), and edit
 `home/.chezmoidata.toml`: who you are lives there alone. Then run `.github/gate.sh` from your
 clone, and the Fresh Mac command with your fork's name. The monthly bump is a Routine on your own
-account: `/schedule` one whose prompt is `/bump`. Keep LICENSE's copyright line;
-MIT requires it.
+account: `/schedule` one whose prompt is `/bump`. Give it a cloud environment whose setup script is
+`cd <repo dir> && CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR=$PWD .claude/hooks/session-start.sh`,
+so its VM snapshot holds the linters and chezmoi rather than building them on every run. Keep
+LICENSE's copyright line; MIT requires it.
 
 MIT — see [`LICENSE`](LICENSE).

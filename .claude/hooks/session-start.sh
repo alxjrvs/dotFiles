@@ -20,17 +20,25 @@ has zizmor || uv tool install -q --force "zizmor==$(pin zizmor)"
 has shfmt || go install "mvdan.cc/sh/v3/cmd/shfmt@v$(pin shfmt)"
 has actionlint || go install "github.com/rhysd/actionlint/cmd/actionlint@v$(pin actionlint)"
 # chezmoi's go.mod has `exclude` directives, which `go install pkg@version` refuses, so it builds
-# as the main module. Only apply-check needs it, so it builds in the background (a minute); an `||`
-# in place of the `if` would keep the hook's stdout open, and the session would wait for it.
+# as the main module. Only apply-check needs it, so at session start it builds in the background (a
+# minute); an `||` in place of the `if` would keep the hook's stdout open, and the session would
+# wait for it. Run as a cloud environment's setup script (no CLAUDE_ENV_FILE), which the VM
+# snapshot caches, it builds in the foreground.
+build_chezmoi() {
+  v=$(pin chezmoi)
+  cd "$(go mod download -json "github.com/twpayne/chezmoi/v2@v$v" | jq -r .Dir)"
+  go build -ldflags "-X main.version=$v" -o "$GOBIN/chezmoi" .
+}
 if ! has chezmoi; then
-  (
-    v=$(pin chezmoi)
-    cd "$(go mod download -json "github.com/twpayne/chezmoi/v2@v$v" | jq -r .Dir)"
-    go build -ldflags "-X main.version=$v" -o "$GOBIN/chezmoi" .
-  ) > /dev/null 2>&1 &
+  if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+    (build_chezmoi) > /dev/null 2>&1 &
+  else
+    (build_chezmoi)
+  fi
 fi
 mise trust --quiet
 
+[ -n "${CLAUDE_ENV_FILE:-}" ] || exit 0
 {
   echo "export PATH=\"$HOME/.local/bin:\$PATH\""
   echo "export MISE_DISABLE_TOOLS=chezmoi,shellcheck,shfmt,actionlint,zizmor"

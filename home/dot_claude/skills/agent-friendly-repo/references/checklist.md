@@ -47,7 +47,8 @@ syntax) into every worktree it creates: `--worktree`, `isolation: worktree` suba
 parallel sessions. It copies, it does not link, so a plaintext secret gains a copy per worktree;
 a `.env` of `op://` references costs nothing. Never hand-roll this as a SessionStart hook: a
 `SubagentStart` hook carries the parent's cwd, and a `WorktreeCreate` hook replaces the built-in
-entirely. Add it only where a build needs gitignored files.
+entirely. Add it only where a build needs gitignored files. A cloud session or Routine has no
+`op`: its secret is an API credential on its environment, never an environment variable.
 
 ## Stacked PRs
 

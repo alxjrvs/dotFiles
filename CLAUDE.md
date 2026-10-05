@@ -23,7 +23,8 @@ over-engineered personal artifact.** When a rule and a principle collide, surfac
 1. Work in a worktree of a clone (`~/Code/dotFiles` on the Mac).
 2. Prove it with the `verify` skill: `mise run lint`, then `mise run apply-check`, which applies the
    source into a temporary home, so it is safe anywhere. Claude runs it before each commit.
-3. Open a PR. `lint` is the one required check; CI runs the same two tasks on a Mac.
+3. Open a PR. `lint` is the one required check; CI runs the same two tasks on a Mac. In a cloud
+   session, turn on the PR's Auto-fix and stop.
 4. After it merges, `chezmoi update` applies it. chezmoi's own source is
    `~/.local/share/chezmoi`, and nothing else moves it.
 
@@ -69,7 +70,9 @@ asked for it. The workflow never switches those on, and lint bans templates that
 - nvim is `$EDITOR` and nothing more: no plugins, no language servers.
 - Employer config is the employer's marketplace, installed by its tooling; nothing here enables
   it.
-- Secrets: `op://` references only, never a plaintext token, and nothing here prints one.
+- Secrets: `op://` references through `op run` on the Mac; in a cloud session or Routine, an API
+  credential on its environment, never an environment variable. Never a plaintext token, and
+  nothing here prints one.
 - The repo settings that are not files are `.github/gate.sh`, which the owner runs and upkeep
   checks read-only.
 - A rule that can fail the build is a check in `mise.toml` or `.github/apply-check.sh`, and a

@@ -12,8 +12,8 @@ session from one background shell: `for n in <layers>; do gh pr checks "$n" --wa
 --fail-fast || exit 1; done && gh stack merge --squash --yes`. On red, fix that layer and run
 `gh stack sync`.
 
-After opening a PR, turn on its Auto-fix (the app's PR monitor; Auto-fix in a cloud session), then
-stop: never schedule a check-in to poll it.
+After opening a PR, turn on its Auto-fix (the app's PR monitor), then stop: never schedule a
+check-in to poll it.
 
 ## Rules
 
@@ -30,8 +30,8 @@ Nothing goes in this file that fits elsewhere.
 
 | | |
 |---|---|
-| a procedure | a skill: user-wide in dotFiles' `home/dot_claude/skills/`, or project-local in `.claude/skills/` |
-| it must hold | `autoMode.hard_deny`: a deny rule stops one spelling, not a program |
+| a procedure | a skill: the repo's `.claude/skills/` when a cloud session or Routine needs it (they never read `~/.claude`); dotFiles' `home/dot_claude/skills/` when it is Mac-only |
+| it must hold | `autoMode.hard_deny` on the Mac: a deny rule stops one spelling, not a program. On every host, a cloud session or Routine included, the repo's GitHub ruleset: they never load autoMode |
 | it can fail a build | a check in the repo's lint or CI |
 | already enforced | nowhere. Describing a control is not the control. |
 
