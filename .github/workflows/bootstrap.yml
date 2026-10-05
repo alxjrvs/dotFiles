@@ -2,8 +2,8 @@ name: bootstrap
 
 # A fresh Mac, rehearsed: the README's installer and first apply on a clean runner, then a second
 # apply and verify for idempotency. Weekly, and when machine setup changes. Not a required check: it
-# installs every cask and takes a while. The runner answers `personal` no, so Homebrew cleanup
-# leaves the runner image's own formulae alone.
+# installs every cask and takes a while. Once as a personal Mac and once as a work Mac: the work leg
+# proves Homebrew cleanup leaves the runner image's own casks alone.
 on:
   schedule:
     - cron: "17 10 * * 1"
@@ -29,6 +29,12 @@ jobs:
   bootstrap:
     runs-on: macos-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        personal: [true, false]
+    env:
+      PERSONAL: ${{ matrix.personal }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -36,8 +42,14 @@ jobs:
       - name: The README's installer
         run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
       - name: The first apply, from this checkout
-        run: ~/.local/bin/chezmoi init --apply --no-tty --promptBool personal=false --source "$GITHUB_WORKSPACE"
+        run: |
+          ~/.local/bin/chezmoi init --apply --no-tty --promptBool "personal Mac=$PERSONAL" \
+            --source "$GITHUB_WORKSPACE"
       # `init --source` records no source, so every later command names it.
+      - name: The answer is recorded, and a work Mac keeps casks the Brewfile does not name
+        run: |
+          ~/.local/bin/chezmoi data --source "$GITHUB_WORKSPACE" | jq -e ".personal == $PERSONAL"
+          [ "$PERSONAL" = true ] || brew list --cask firefox
       - name: A second apply changes nothing, and verify agrees
         run: |
           ~/.local/bin/chezmoi apply --no-tty --source "$GITHUB_WORKSPACE"
