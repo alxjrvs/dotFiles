@@ -31,4 +31,6 @@ jobs:
           # Anonymous GitHub API calls hit the rate limit and turned main red; contents: read only.
           MISE_GITHUB_TOKEN: ${{ github.token }}
       - run: mise run lint
+        env:
+          GH_TOKEN: ${{ github.token }}
       - run: mise run apply-check

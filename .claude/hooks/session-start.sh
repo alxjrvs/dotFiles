@@ -11,7 +11,8 @@ export GOBIN="$HOME/.local/bin" PATH="$HOME/.local/bin:$PATH"
 pin() { sed -n "s/^$1 = \"\(.*\)\"$/\1/p" mise.toml; }
 
 command -v zsh > /dev/null || { apt-get update -q && apt-get install -y -q zsh; } > /dev/null
-command -v mise > /dev/null || npm install -g --silent @jdxcode/mise
+# A week-old mise, the cooldown everything else keeps (the VM is Ubuntu, so GNU date).
+command -v mise > /dev/null || npm install -g --silent --before "$(date -u -d '7 days ago' +%FT%TZ)" @jdxcode/mise
 command -v shellcheck > /dev/null || uv tool install -q "shellcheck-py==$(pin shellcheck).*"
 command -v zizmor > /dev/null || uv tool install -q "zizmor==$(pin zizmor)"
 command -v shfmt > /dev/null || go install "mvdan.cc/sh/v3/cmd/shfmt@v$(pin shfmt)"
