@@ -43,8 +43,9 @@ asked for it. The workflow never switches those on, and lint bans templates that
   `home/.chezmoitemplates/claude-settings.json` and leaves every other key to the app.
 - Every runtime is a mise tool (`home/dot_config/mise/config.toml`), and every CLI a Brewfile
   formula, so its completions and man pages come with it; `1password-cli`, `gcloud-cli` and
-  `ngrok` are casks. The Brewfile also holds the two zsh plugins and the apps. chezmoi, mise and
-  the Claude Code CLI come from their own installers into `~/.local/bin`; git is the system's.
+  `ngrok` are casks. The Brewfile also holds the two zsh plugins and the apps. mise and the Claude
+  Code CLI come from their own installers into `~/.local/bin`, and chezmoi's installer only
+  bootstraps it: mise owns it from the first apply. git is the system's.
 - `~/.local/bin` and `~/Library/LaunchAgents` are exact: apply deletes whatever they hold beyond
   what this repo declares and `.chezmoiignore` leaves to its owner.
 - This repo's own linters are pinned in the root `mise.toml`, not installed machine-wide.

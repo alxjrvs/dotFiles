@@ -36,3 +36,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
       - run: mise run apply-check
+      # The Macs run the newest week-old chezmoi, not the pin above.
+      - name: apply-check under the chezmoi the Macs run
+        run: mise x chezmoi@latest -- .github/apply-check.sh
+        env:
+          # The machine's mise config, so `latest` waits the week the Macs' copy waits.
+          MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/home/dot_config/mise/config.toml
+          # Resolving `latest` is a GitHub API call; anonymous ones hit the rate limit.
+          MISE_GITHUB_TOKEN: ${{ github.token }}

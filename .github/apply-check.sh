@@ -15,7 +15,8 @@ personal=$(jq -r .email <<< "$data")
 work=$(jq -r .workEmail <<< "$data")
 # What the exact_ directories, .chezmoiignore and the remove lists must leave alone, seeded first and
 # checked after: one dropped ignore line once deleted ~/.local/bin/claude with every check green.
-survivors=(.local/bin/chezmoi .local/bin/mise .local/bin/claude Code/repo/work .ssh/known_hosts
+mkdir -p "$home/.local/bin" && touch "$home/.local/bin/chezmoi"
+survivors=(.local/bin/mise .local/bin/claude Code/repo/work .ssh/known_hosts
   Library/LaunchAgents/sh.brew.x.plist Library/LaunchAgents/com.valvesoftware.x.plist
   Library/LaunchAgents/com.google.GoogleUpdater.x.plist)
 for f in "${survivors[@]}"; do
@@ -26,6 +27,8 @@ done
 for f in "${survivors[@]}"; do
   [ -e "$home/$f" ] || { echo "apply-check: apply deleted ~/$f" >&2 && exit 1; }
 done
+# chezmoi's installer copy is the one exception: mise owns chezmoi after the first apply.
+[ ! -e "$home/.local/bin/chezmoi" ] || { echo "apply-check: the installer's chezmoi survived" >&2 && exit 1; }
 # An employer's agent and CLI: a personal Mac's exact_ directories remove them, a work Mac's keep
 # them.
 employer=(Library/LaunchAgents/com.employer.agent.plist .local/bin/employer-cli)
@@ -40,10 +43,12 @@ mkdir -p "$office/Library/LaunchAgents" "$office/.local/bin"
 oz=(chezmoi --source "$root" --config "$tmp/office.toml" --persistent-state "$tmp/office.db" --destination "$office")
 "${oz[@]}" init --promptBool "personal Mac=false"
 seed "$office"
+touch "$office/.local/bin/chezmoi"
 "${oz[@]}" apply --exclude scripts
 for f in "${employer[@]}"; do
   [ -e "$office/$f" ] || { echo "apply-check: a work Mac lost ~/$f" >&2 && exit 1; }
 done
+[ ! -e "$office/.local/bin/chezmoi" ] || { echo "apply-check: a work Mac kept the installer's chezmoi" >&2 && exit 1; }
 [ -e "$office/Library/LaunchAgents/com.$(jq -r .github <<< "$data").upkeep.plist" ] ||
   { echo "apply-check: a work Mac lost this repo's own agents" >&2 && exit 1; }
 "${cz[@]}" verify --exclude scripts
