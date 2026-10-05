@@ -67,7 +67,6 @@ asked for it. The workflow never switches those on, and lint bans templates that
 - One GitHub login: `gh auth login`, stored in the login keychain. Never `--insecure-storage`.
 - Who this is (name, emails, signing key, GitHub user and orgs) lives in `home/.chezmoidata.toml`
   alone; repos in its work orgs commit as the work email.
-- nvim is `$EDITOR` and nothing more: no plugins, no language servers.
 - Employer config is the employer's marketplace, installed by its tooling; nothing here enables
   it.
 - Secrets: `op://` references through `op run` on the Mac; in a cloud session or Routine, an API

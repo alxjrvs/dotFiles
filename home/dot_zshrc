@@ -18,6 +18,3 @@ _history_filter() {
     $1 != *://[^/[:space:]:@]##:[^/[:space:]@]##@* ]] || return 2
 }
 autoload -Uz add-zsh-hook && add-zsh-hook zshaddhistory _history_filter
-
-export EDITOR=nvim
-
