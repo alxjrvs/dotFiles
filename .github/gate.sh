@@ -91,7 +91,7 @@ holds() {
 }
 
 check() {
-  local repo=$1 ids id live name drift=()
+  local repo=$1 ids id live name meta drift=()
   ids=$(guards "$repo")
   [ -n "$ids" ] || return 0
   [ "$(wc -l <<< "$ids")" -eq 1 ] || drift+=("$(wc -l <<< "$ids" | tr -d ' ') rulesets guard the default branch")
@@ -104,9 +104,10 @@ check() {
   done
   name=${name:-<required check>}
   holds "$live" "$(ruleset "$name")" || drift+=("ruleset")
-  holds "$(gh api "repos/$repo")" "$settings" || drift+=("merge settings")
-  if [ "$(gh api "repos/$repo" --jq .visibility)" = public ]; then
-    holds "$(gh api "repos/$repo")" "$security" || drift+=("push protection")
+  meta=$(gh api "repos/$repo")
+  holds "$meta" "$settings" || drift+=("merge settings")
+  if [ "$(jq -r .visibility <<< "$meta")" = public ]; then
+    holds "$meta" "$security" || drift+=("push protection")
     holds "$(gh api "repos/$repo/private-vulnerability-reporting")" '{"enabled": true}' ||
       drift+=("private reporting")
   fi
@@ -116,8 +117,10 @@ check() {
   holds "$(gh api "repos/$repo/automated-security-fixes")" '{"enabled": true, "paused": false}' ||
     drift+=("security updates")
   [ ${#drift[@]} -eq 0 ] && return 0
-  local IFS=,
-  echo "gate: $repo drifted (${drift[*]}); fix: ! .github/gate.sh $repo \"$name\""
+  # A private repo's gaps are tagged, so upkeep's public issue can leave them out.
+  local IFS=, tag=gate
+  [ "$(jq -r .visibility <<< "$meta")" = public ] || tag="gate (private)"
+  echo "$tag: $repo drifted (${drift[*]}); fix: ! .github/gate.sh $repo \"$name\""
   return 1
 }
 

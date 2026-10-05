@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- Nightly `mise run upkeep`, what apply never does. A failure opens an issue in the repo chezmoi
-     cloned, whose Actions mention reaches the phone; the log alone went unread (#242). launchd
-     expands no `~` (#116), so the paths are the shell's $HOME. A run missed asleep runs at wake.
+     cloned, whose Actions mention reaches the phone; the log alone went unread (#242). That repo
+     is public, so the issue carries only the failure line and public repos' gate lines, fenced so
+     no @name in them pings anyone; the full log stays here. launchd expands no `~` (#116), so the
+     paths are the shell's $HOME. A run missed asleep runs at wake.
      Loaded by .chezmoiscripts/25-launchagents.sh when this file changes. -->
 <plist version="1.0">
 <dict>
@@ -12,7 +14,7 @@
   <array>
     <string>/bin/zsh</string>
     <string>-lc</string>
-    <string>log=$HOME/Library/Logs/upkeep.log; mise run upkeep &gt; "$log" 2&gt;&amp;1 || { cd "$HOME/.local/share/chezmoi" &amp;&amp; gh issue create --title "upkeep failed on $(scutil --get LocalHostName)" --body "$(tail -c 60000 "$log")"; }</string>
+    <string>log=$HOME/Library/Logs/upkeep.log; mise run upkeep &gt; "$log" 2&gt;&amp;1 || { cd "$HOME/.local/share/chezmoi" &amp;&amp; gh issue create --title "upkeep failed on $(scutil --get LocalHostName)" --body "$(printf '```text\n%s\n```\nFull log: ~/Library/Logs/upkeep.log on this Mac.\n' "$(grep -E '^(upkeep failed|gate: )' "$log")")"; }</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict>
