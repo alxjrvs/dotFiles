@@ -6,8 +6,8 @@
 # GitHub is the gate: the default branch takes pull requests only, squash-merged once GitHub
 # Actions (app 15368) reports the one required check passing, with no bypass for anyone, the owner
 # included; a status anyone else posts under that name blocks the merge. The branch need not be up
-# to date: parallel agent PRs would otherwise wait behind each other, and a push to main re-runs
-# the check. The squash commit carries the PR's body, a branch that fell behind can be updated from
+# to date: parallel agent PRs would otherwise wait behind each other, and main-green.sh holds the
+# nightly converge until main itself has passed. The squash commit carries the PR's body, a branch that fell behind can be updated from
 # the PR, and Issues stay on for upkeep's failure reports. Actions tokens read by default, never
 # approve a pull request, and run only SHA-pinned actions. Secret scanning and push protection stop
 # a token before it lands, a reporter can file a vulnerability privately, and Dependabot's security

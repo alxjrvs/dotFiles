@@ -20,7 +20,9 @@ file is why, and the traps around it.
   and re-enable rather than keep a standing bypass. Stack merges cannot bypass rules at all.
 - **Not strict.** Requiring branches to be up to date serializes parallel PRs: each merge marks
   every other open PR out of date, and each one rebases and re-runs CI. A push to the default
-  branch re-runs the check instead.
+  branch re-runs the check instead, except a merge made with `GITHUB_TOKEN` (auto-merge a workflow
+  armed), which starts no run: give the check `workflow_dispatch` and run it on the branch when a
+  green default branch matters.
 
 ## One aggregate required check
 
