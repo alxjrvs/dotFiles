@@ -5,7 +5,6 @@
 
 # ── CLIs ──────────────────────────────────────────────────────────────
 # Formulae, for the man pages that mise's installs lack.
-brew "atuin"
 brew "fd"
 brew "gh"
 brew "jq"

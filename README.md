@@ -78,8 +78,7 @@ home/.chezmoi*          chezmoi's own files: config template, data (who and whic
 Use this template, or fork it to keep pulling upstream (then turn on its Actions, which GitHub
 leaves off in a fork). Edit `home/.chezmoidata.toml`: who you are lives there alone, and lint fails
 on your GitHub user anywhere else. Apply empties `~/.local/bin` and `~/Library/LaunchAgents` of
-anything undeclared, so list what you keep there in `home/.chezmoiignore` first. It also deletes
-`~/.zsh_history`, since atuin is the history store: run `atuin import zsh` before the first apply. Then run `.github/gate.sh` from your
+anything undeclared, so list what you keep there in `home/.chezmoiignore` first. Then run `.github/gate.sh` from your
 clone, and the Fresh Mac command with your fork's name. The monthly bump is a Routine on your own
 account: `/schedule` one whose prompt is `/bump`. Give it a cloud environment whose setup script is
 `cd <repo dir> && CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR=$PWD .claude/hooks/session-start.sh`,
