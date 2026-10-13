@@ -9,6 +9,7 @@ brew "fd"
 brew "gh"
 brew "jq"
 brew "ripgrep"
+brew "starship"
 
 # ── 1Password CLI + desktop ───────────────────────────────────────────
 cask "1password-cli"
@@ -18,6 +19,8 @@ cask "1password"
 # The Claude desktop app. The Claude Code CLI is the native installer (40-provision), never brew.
 cask "claude"
 cask "discord"
+cask "font-fira-code"
+cask "ghostty"
 cask "google-chrome"
 cask "notunes"
 cask "gcloud-cli"
