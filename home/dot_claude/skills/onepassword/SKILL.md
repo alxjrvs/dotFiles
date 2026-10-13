@@ -31,8 +31,13 @@ argument.
   literal name. Never reference an item by ID: `op item move` gives it a new one, and the
   reference breaks silently.
 - **Retire, don't delete.** A dead item gets tagged `status/dormant` and moves to `Archive`. Deleting
-  an item or a vault is the owner's call.
+  an item or a vault is the owner's call. Before retiring an item, rename it (`<name> (retired)`).
+  `op run` also resolves a name against archived items, so an archived item and its replacement
+  under the same name make the reference fail.
 - A "Sign in with" login can't be moved by the CLI. Say so and let the owner move it in the app.
+- **Creating an item with values:** `op item create --title T --vault V --template <(jq …)`.
+  The pipe keeps the values off disk and out of argv. `op item create -` (stdin) silently ignores
+  the JSON and creates an empty item.
 
 ## How a repo references one
 
