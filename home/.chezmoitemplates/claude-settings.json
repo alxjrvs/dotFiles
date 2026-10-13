@@ -79,7 +79,7 @@
   },
   "outputStyle": "Proactive",
   "sandbox": {
-    "enabled": false
+    "enabled": true
   },
   "disableAgentView": true,
   "autoMemoryEnabled": false,
