@@ -16,6 +16,5 @@ Library/LaunchAgents/*
 # The labels before local.dotfiles: managed one more release, so the exact directory removes them.
 !Library/LaunchAgents/com.{{ .github }}.*
 .local/bin/*
-!.local/bin/ghostty
 !.local/bin/chezmoi
 {{ end -}}

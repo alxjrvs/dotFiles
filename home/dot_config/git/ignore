@@ -5,7 +5,7 @@
 .DS_Store
 ._*
 
-# nvim's write backup
+# Editors' write backups
 *~
 
 # Claude Code machine-local state

@@ -7,8 +7,7 @@ disable-model-invocation: true
 # dotFiles: the monthly bump
 
 What a scheduled Routine runs here (`/bump`). It moves the pins nothing else moves: the five
-linters in `mise.toml`. Dependabot owns the workflow actions; Homebrew's nightly upgrade owns the
-zsh plugins.
+linters in `mise.toml`. Dependabot owns the workflow actions.
 
 1. Take only a release at least 7 days old, the cooldown `dependabot.yml` keeps.
 2. Bump each pin in `mise.toml` that moved. Versions come from the registries

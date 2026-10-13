@@ -85,13 +85,11 @@
   "autoMemoryEnabled": false,
   "skipWorkflowUsageWarning": true,
   "theme": "auto",
-  "editorMode": "vim",
-  "vimInsertModeRemaps": {
-    "jj": "<Esc>"
-  },
+  "editorMode": null,
+  "vimInsertModeRemaps": null,
   "verbose": true,
-  "showTurnDuration": false,
-  "terminalProgressBarEnabled": false,
+  "showTurnDuration": null,
+  "terminalProgressBarEnabled": null,
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
   "remoteControlAtStartup": true,
