@@ -40,7 +40,9 @@ while IFS= read -r ref; do
   vault=${rest%%/*}
   item=${rest#*/}
   # Placeholders in docs and examples, not references.
-  case $vault/$item in *'<'* | *'…'* | *'...'* | *'$'* | *'{'* | V/* | vault/* | VAULT/*) continue ;; esac
+  # Placeholders and test fixtures (op://x/y, op://a/b): a real vault name is never one letter.
+  case $vault/$item in *'<'* | *'…'* | *'...'* | *'$'* | *'{'* | ?/* | vault/* | VAULT/*) continue ;; esac
+  case $item in ? | *[[:space:]]*) continue ;; esac
   if [[ $item =~ ^[a-z0-9]{26}$ ]]; then
     echo "  $ref  (an item ID: it breaks when the item moves; use the name)"
   elif ! jq -e --arg v "$vault" 'any(.[]; .name == $v)' "$tmp/vaults.json" > /dev/null; then
