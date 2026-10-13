@@ -1,2 +1,7 @@
-# A mise plugin no tool names any more; self-update pulled it nightly until --no-plugins.
-.local/share/mise/plugins/eza
+# chezmoi's installer bootstraps into ~/.local/bin; from the first apply mise owns chezmoi.
+.local/bin/chezmoi
+# Retired from ~/.claude: nothing used them.
+.claude/workflows/audit.js
+.claude/skills/agent-friendly-repo
+# fd skips hidden files and honours .gitignore by default; the old global ignore added nothing.
+.config/fd/ignore

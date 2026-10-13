@@ -20,117 +20,41 @@ uv = "latest"
 # plugin (~/.claude/skills/ts-native) runs for every repo's TS and JS edits.
 "npm:typescript" = "latest"
 # chezmoi's installer bootstraps it into ~/.local/bin; from the first apply on, this copy, checked
-# by aqua's signature and held the week like every other tool, is the only one (exact_bin removes
-# the bootstrap copy) and `mise upgrade` moves it.
+# by aqua's signature and held the week like every other tool, is the only one (.chezmoiremove
+# deletes the bootstrap copy) and `mise upgrade` moves it.
 chezmoi = "latest"
 
-# What apply never does, run nightly by the upkeep LaunchAgent: each upgrade, then the converge.
-# One that fails stops neither the rest nor the converge, and still fails the run into its issue.
-# Apps that update themselves are left to it, and no running app is quit.
+# What apply never does, run nightly by the upkeep LaunchAgent: each upgrade. One that fails stops
+# none of the rest, and still fails the run. Apps that update themselves are left to it, and no
+# running app is quit. Applying main stays `chezmoi update`, run by hand: nothing lands unattended.
 [tasks."upkeep:mise"]
 hide = true
 # mise itself waits out the same week as its tools, chezmoi among them. Formulae ride
 # homebrew-core's review, with no age gate.
 # --no-plugins: a self-update otherwise git-pulls every plugin, a retired one included.
-run = ["mise self-update \"$(mise latest aqua:jdx/mise)\" --yes --no-plugins", "mise upgrade --yes"]
+# reshim: a shim left by a retired tool shadows Homebrew's binary of the same name (a dead `gh`
+# shim failed the bottle attestation check, every night from 2026-10-07).
+run = ["mise self-update \"$(mise latest aqua:jdx/mise)\" --yes --no-plugins", "mise upgrade --yes", "mise reshim"]
 
-# gh-stack moves to the newest release a week old, the cooldown everything else keeps, and never
-# back: a pin only ever advances.
-[tasks."upkeep:gh"]
-hide = true
-run = """
-v=$(mise latest github:github/gh-stack)
-have=$(gh extension list | awk -F '\\t' '$2 == "github/gh-stack" { sub(/^v/, "", $3); print $3 }')
-# `install --force` takes gh's upgrade path, which installs the newest release and ignores --pin.
-[ "$(printf '%s\\n%s\\n' "$v" "${have:-0}" | sort -V | tail -1)" = "$have" ] || {
-  gh extension remove gh-stack 2> /dev/null || true
-  gh extension install github/gh-stack --pin "v$v"
-}
-"""
-
-# Upgrades what the Brewfile names and nothing else, so a work Mac's employer packages stay the
-# employer's. A Mac that said it is personal also removes what the Brewfile does not name: installed
-# by hand is drift. No running app is quit, and stdin is closed: an uninstaller may prompt.
+# Upgrades what the Brewfile names and nothing else, uninstalling nothing. No running app is quit,
+# and stdin is closed: a cask may prompt.
 [tasks."upkeep:brew"]
 hide = true
 run = [
   "brew update --quiet",
-  # Bottles must carry their build attestation; then a known high-severity CVE in what the Brewfile
-  # names fails the run into its issue.
-  "HOMEBREW_VERIFY_ATTESTATIONS=1 HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 HOMEBREW_NO_UPGRADE_QUIT_CASKS=1 brew bundle upgrade --quiet --file=$HOME/.config/homebrew/Brewfile $(chezmoi data | jq -e '.personal == true' > /dev/null && echo --force-cleanup) < /dev/null",
-  "brew vulns --severity=high --brewfile=$HOME/.config/homebrew/Brewfile",
+  # Bottles must carry their build attestation.
+  "HOMEBREW_VERIFY_ATTESTATIONS=1 HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 HOMEBREW_NO_UPGRADE_QUIT_CASKS=1 brew bundle upgrade --quiet --file=$HOME/.config/homebrew/Brewfile < /dev/null",
   # gcloud's cask updates itself only through its own command, which the cask upgrade skips. The one
   # upgrade without the week's hold: gcloud's updater has no age gate.
   "if command -v gcloud > /dev/null; then gcloud components update --quiet; fi",
 ]
 
 [tasks.upkeep]
-description = "Upgrade mise and its tools (chezmoi among them), gh-stack, formulae and casks, then converge"
+description = "Upgrade mise and its tools (chezmoi among them), formulae and casks"
 run = """
 failed=
-for task in upkeep:mise upkeep:gh upkeep:brew; do
+for task in upkeep:mise upkeep:brew; do
   mise run "$task" || failed="$failed $task"
 done
-source=$(chezmoi source-path)
-# Never a main whose lint did not pass on Actions. A file edited by hand is skipped and fails the
-# run by name, and everything else lands; --init re-renders a changed .chezmoi.toml.tmpl.
-(cd "$source" && ../.github/main-green.sh) && chezmoi update --init --keep-going --no-tty ||
-  failed="$failed converge"
 [ -z "$failed" ] || { echo "upkeep failed:$failed" >&2 && exit 1; }
-"""
-
-# What the LaunchAgent runs: upkeep, then its reports. A Mac's failure is one issue per failing set
-# of steps, edited in place while it holds (an edit pings no one) and closed by the next green run;
-# a new set is a new issue, which pings. Gate drift is the fleet's, not a Mac's, so it is one
-# shared issue whose title carries the count. The repo is public: a body carries only the failure
-# line and public repos' gate lines, fenced so an @name pings no one; the log stays on the Mac.
-[tasks."upkeep:nightly"]
-hide = true
-run = """
-log=$HOME/Library/Logs/upkeep.log
-host=$(scutil --get LocalHostName)
-source=$(chezmoi source-path)
-# shellcheck disable=SC2016 # backticks are Markdown here, not substitutions
-fence() { printf '```text\\n%s\\n```\\n%s\\n' "$1" "$2"; }
-# The open issues this token opened whose title starts with $1, as `number<TAB>title`.
-issues() {
-  # shellcheck disable=SC2016 # $ENV is jq's
-  PREFIX=$1 gh issue list --repo "$repo" --state open --author @me --limit 100 --json number,title \\
-    --jq '.[] | select(.title | startswith($ENV.PREFIX)) | "\\(.number)\\t\\(.title)"'
-}
-# Edits the open issue titled $1, else opens it; closes every other open issue titled $2*.
-report() {
-  local title=$1 prefix=$2 body=$3 number
-  number=$(issues "$prefix" | awk -F '\\t' -v t="$title" '$2 == t { print $1; exit }')
-  if [ -n "$number" ]; then gh issue edit "$number" --repo "$repo" --body "$body" > /dev/null
-  else gh issue create --repo "$repo" --title "$title" --body "$body" > /dev/null; fi
-  issues "$prefix" | awk -F '\\t' -v t="$title" '$2 != t { print $1 }' |
-    xargs -I{} gh issue close {} --repo "$repo" --comment "superseded: $title" > /dev/null
-}
-# The task shell runs with errexit, so each status that may be non-zero is caught.
-status=0
-mise run upkeep > "$log" 2>&1 || status=$?
-repo=$(cd "$source" && gh repo view --json nameWithOwner --jq .nameWithOwner)
-if [ "$status" -eq 0 ]; then
-  issues "upkeep failed on $host:" | cut -f1 | xargs -I{} gh issue close {} --repo "$repo" --comment green > /dev/null
-else
-  steps=$(sed -n 's/^upkeep failed: *//p' "$log" | tail -1)
-  report "upkeep failed on $host: ${steps:-unknown}" "upkeep failed on $host:" \\
-    "$(fence "$(grep '^upkeep failed' "$log")" "Full log: ~/Library/Logs/upkeep.log on $host.")"
-fi
-# Every gated repo still matches gate.sh. A read that fails twice skips tonight's report.
-gate=$(chezmoi data | jq -r '.github, .ownedOrgs[]' | xargs "$source/../.github/gate.sh" --check 2> /dev/null || true)
-if grep -q '^gate (unreadable)' <<< "$gate"; then
-  echo "$gate" >> "$log"
-else
-  drifted=$(grep -c '^gate' <<< "$gate" || true)
-  if [ "$drifted" -eq 0 ]; then
-    issues "gate: " | cut -f1 | xargs -I{} gh issue close {} --repo "$repo" --comment clean > /dev/null
-  else
-    private=$(grep -c '^gate (private)' <<< "$gate" || true)
-    report "gate: $drifted repos drifted" "gate: " "$(fence "$(grep '^gate: ' <<< "$gate")" \\
-      "Private repos drifted: $private. \\`.github/gate.sh --check\\` names them locally; \\`--apply\\` converges.")"
-  fi
-fi
-exit "$status"
 """

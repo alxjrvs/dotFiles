@@ -1,7 +1,3 @@
-{{- /* A work Mac keeps what its employer installed: Homebrew cleanup runs only where the answer is
-       yes. Asked once and kept, so the nightly `update --init` never asks; an init with no terminal
-       passes `--promptBool "personal Mac=..."` or fails, rather than guess. */ -}}
-{{- $personal := promptBoolOnce . "personal" "personal Mac" -}}
 # An every-apply script is not drift.
 [verify]
     exclude = ["always"]
@@ -9,5 +5,3 @@
     exclude = ["always"]
 [diff]
     exclude = ["always"]
-[data]
-    personal = {{ $personal }}

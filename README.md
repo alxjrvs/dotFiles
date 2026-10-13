@@ -2,7 +2,7 @@
 
 macOS dotfiles for [alxjrvs](https://github.com/alxjrvs), managed by
 [chezmoi](https://www.chezmoi.io). `home/` is the source state. Principles:
-[`CLAUDE.md`](CLAUDE.md#principles).
+[`CLAUDE.md`](CLAUDE.md).
 
 ## Fresh Mac
 
@@ -16,9 +16,7 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply --use-built
 gh auth login --scopes workflow && chezmoi apply
 ```
 
-The first apply asks for your password once, for Homebrew, and whether this is your personal Mac:
-a work Mac keeps the apps its employer installs, because Homebrew cleanup never runs there. Anything
-that needs `gh auth login` lands on the second. The `workflow` scope lets a push change
+The first apply asks for your password once, for Homebrew. Anything that needs `gh auth login` lands on the second. The `workflow` scope lets a push change
 `.github/workflows/`.
 
 Between the two commands:
@@ -44,10 +42,10 @@ To hack on this repo, clone it to `~/Code/dotFiles`; chezmoi keeps its own copy.
 | change something | in a worktree: edit, `mise run lint`, `mise run apply-check`, commit, PR; an agent's `claude/` PR merges itself on green unless it touches the floor |
 | a PR landed | `chezmoi update` |
 | drift | `chezmoi verify` |
-| upgrade | nightly: `mise run upkeep` upgrades, converges a green main and checks every gated repo against gate.sh; a failure opens an issue here that pings your phone. Apps update themselves |
+| upgrade | nightly: `mise run upkeep` upgrades; a failure is a notification pointing at `~/Library/Logs/upkeep.log`. Apps update themselves |
 | a pin | monthly: a Routine runs `/bump` ([`.claude/skills/bump`](.claude/skills/bump/SKILL.md)) |
 | add a work org | one entry in `home/.chezmoidata.toml` |
-| the repo settings | [`.github/gate.sh`](.github/gate.sh), run by the owner; upkeep names any drift, and `gate.sh --apply <owner>` converges every repo it safely can |
+| the repo settings | [`.github/gate.sh`](.github/gate.sh), run by the owner |
 
 The Claude app keeps the Mac awake while a session works; closing the lid still sleeps it. On the
 web, an expired claude.ai login stalls a session until the next `/login`.
@@ -63,22 +61,21 @@ available.
 ```
 .chezmoiroot            "home": the source state lives one directory down
 mise.toml               this repo's pinned linters and its two checks, lint and apply-check
-.github/                CI, apply-check.sh, gate.sh (the repo settings that are not files), main-green.sh
+.github/                CI, apply-check.sh, gate.sh (the repo settings that are not files)
 .claude/                this repo's Claude Code config: the verify and bump skills, and a web-session setup hook
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/.chezmoiscripts/   machine setup: Homebrew, mise, launchd agents, macOS defaults, provisioning, apps, and one
                         Claude desktop app per extra account
 home/.chezmoitemplates/ the declared keys of ~/.claude/settings.json
-home/dot_claude/        user-global Claude Code config, skills, and the `audit` workflow
-home/.chezmoi*          chezmoi's own files: config template, data (who and which orgs), version floor, ignore and remove lists
+home/dot_claude/        user-global Claude Code config and skills
+home/.chezmoi*          chezmoi's own files: config template, data (who and which orgs), version floor and remove list
 ```
 
 ## Forking
 
 Use this template, or fork it to keep pulling upstream (then turn on its Actions, which GitHub
 leaves off in a fork). Edit `home/.chezmoidata.toml`: who you are lives there alone, and lint fails
-on your GitHub user anywhere else. Apply empties `~/.local/bin` and `~/Library/LaunchAgents` of
-anything undeclared, so list what you keep there in `home/.chezmoiignore` first. Then run `.github/gate.sh` from your
+on your GitHub user anywhere else. Then run `.github/gate.sh` from your
 clone, and the Fresh Mac command with your fork's name. The monthly bump is a Routine on your own
 account: `/schedule` one whose prompt is `/bump`. Give it a cloud environment whose setup script is
 `cd <repo dir> && CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR=$PWD .claude/hooks/session-start.sh`,

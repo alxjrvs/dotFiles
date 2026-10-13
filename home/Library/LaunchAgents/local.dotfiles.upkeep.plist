@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Nightly `mise run upkeep`: the upgrades apply never does. A failure is a macOS notification
+     pointing at the log. launchd expands no `~`, so the paths are the shell's $HOME. A run missed
+     asleep fires in the next dark wake, which sleeps again within seconds, so it waits for a full
+     wake (Graphics is on).
+     Loaded by .chezmoiscripts/25-launchagents.sh when this file changes. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>local.dotfiles.upkeep</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>until pmset -g systemstate | grep -q Graphics; do sleep 60; done; mise run upkeep &gt; "$HOME/Library/Logs/upkeep.log" 2&gt;&amp;1 || osascript -e 'display notification "~/Library/Logs/upkeep.log" with title "upkeep failed"'</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>4</integer>
+    <key>Minute</key>
+    <integer>17</integer>
+  </dict>
+</dict>
+</plist>

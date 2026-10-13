@@ -1,8 +1,0 @@
-# fd's global ignore.
-# .git/ for `fd --hidden`; ripgrep's half is in ~/.ripgreprc.
-.git/
-node_modules
-.pytest_cache
-__pycache__
-venv
-.venv

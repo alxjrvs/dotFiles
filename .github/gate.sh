@@ -1,23 +1,17 @@
 #!/bin/bash
 # The repo settings that are not files, as one idempotent command run by the owner:
 #   .github/gate.sh [owner/repo] [check]      (defaults: origin's repo, and `lint`)
-#   .github/gate.sh --check <owner/repo | owner>...   read-only; exits 1 on drift, naming the fix
-#   .github/gate.sh --apply <owner/repo | owner>...   converges every drifted repo it safely can
 # GitHub is the gate: the default branch takes pull requests only, squash-merged once GitHub
 # Actions (app 15368) reports the one required check passing, with no bypass for anyone, the owner
 # included; a status anyone else posts under that name blocks the merge. The branch need not be up
-# to date: parallel agent PRs would otherwise wait behind each other, and main-green.sh holds the
-# nightly converge until main itself has passed. The squash commit carries the PR's body, a branch that fell behind can be updated from
-# the PR, and Issues stay on for upkeep's failure reports. Actions tokens read by default, never
-# approve a pull request, and run only SHA-pinned actions. Secret scanning and push protection stop
-# a token before it lands, a reporter can file a vulnerability privately, and Dependabot's security
-# updates skip its version cooldown. Rulesets on a private repo need a paid plan; everything here is
-# free on a public one.
+# to date, so parallel agent PRs never wait behind each other. The squash commit carries the PR's
+# body, and a branch that fell behind can be updated from the PR. Actions tokens read by default,
+# never approve a pull request, and run only SHA-pinned actions. Secret scanning and push
+# protection stop a token before it lands, a reporter can file a vulnerability privately, and
+# Dependabot's security updates skip its version cooldown. Rulesets on a private repo need a paid
+# plan; everything here is free on a public one.
 set -euo pipefail
 
-# Named from the clone's root: fix lines reach upkeep's public issue, and an absolute path would
-# name the Mac's account.
-self=.github/gate.sh
 settings='{
   "has_issues": true,
   "allow_auto_merge": true,
@@ -113,111 +107,7 @@ unpinned() {
   echo "$n"
 }
 
-# Whether $1 holds $2: the live state, projected onto the keys $2 declares, equals $2. A key GitHub
-# adds on its own (a ruleset's newer pull_request parameters) is not drift; an array keeps its
-# exact length, so an extra rule, required check, merge method or bypass actor is.
-holds() {
-  jq -e --argjson want "$2" '
-    def norm: if type == "object" and has("rules") then .rules |= sort_by(.type) else . end;
-    def proj($w):
-      if ($w | type) == "object" and type == "object" then
-        . as $h | reduce ($w | keys[]) as $k ({}; .[$k] = ($h[$k] | proj($w[$k])))
-      elif ($w | type) == "array" and type == "array" and length == ($w | length) then
-        . as $h | [range(length) as $i | $h[$i] | proj($w[$i])]
-      else . end;
-    ($want | norm) as $w | (norm | proj($w)) == $w
-  ' <<< "$1" > /dev/null
-}
-
-# One line for a repo that does not hold: its drift and fix, an active public repo with no ruleset,
-# or a read that failed. A private repo's line is tagged, so upkeep's public issue leaves it out.
-# Sets `state` (ok, drift, unreadable) and `name` (the required check, when one is known).
-check() {
-  local repo=$1 ids id live meta tag=gate perms va n drift=()
-  local unreadable="gate (unreadable): $repo; run $self --check $repo again"
-  state=unreadable name=
-  if ! meta=$(api "repos/$repo") || ! ids=$(guards "$repo"); then
-    echo "$unreadable"
-    return 1
-  fi
-  [ "$(jq -r .visibility <<< "$meta")" = public ] || tag="gate (private)"
-  if [ -z "$ids" ]; then
-    state=ok
-    # Rulesets are free on a public repo: one pushed to this half-year with none takes direct pushes.
-    [ "$tag" = gate ] && jq -e '(.pushed_at // "1970-01-01T00:00:00Z" | fromdateiso8601) > (now - 180 * 86400)' <<< "$meta" > /dev/null || return 0
-    state=drift
-    echo "gate: $repo has no ruleset; pick its aggregate check, then run $self $repo <check>"
-    return 1
-  fi
-  [ "$(wc -l <<< "$ids")" -eq 1 ] || drift+=("$(wc -l <<< "$ids" | tr -d ' ') rulesets guard the default branch")
-  # The ruleset that requires a check names it; with none, the owner picks the aggregate job.
-  for id in $ids; do
-    live=$(api "repos/$repo/rulesets/$id") || {
-      echo "$unreadable"
-      return 1
-    }
-    name=$(jq -r '[.rules[] | select(.type == "required_status_checks")
-      | .parameters.required_status_checks[0].context][0] // empty' <<< "$live")
-    [ -z "$name" ] || break
-  done
-  holds "$live" "$(ruleset "$name")" || drift+=("ruleset")
-  holds "$meta" "$settings" || drift+=("merge settings")
-  if [ "$tag" = gate ]; then
-    holds "$meta" "$security" || drift+=("push protection")
-    live=$(api "repos/$repo/private-vulnerability-reporting") || {
-      echo "$unreadable"
-      return 1
-    }
-    holds "$live" '{"enabled": true}' || drift+=("private reporting")
-  fi
-  perms=$(api "repos/$repo/actions/permissions") || {
-    echo "$unreadable"
-    return 1
-  }
-  if ! holds "$perms" "$actions"; then
-    n=$(unpinned "$repo")
-    if [ "$n" -gt 0 ]; then drift+=("action pinning: pin $n uses: to SHAs first"); else drift+=("action pinning"); fi
-  fi
-  live=$(api "repos/$repo/actions/permissions/workflow") || {
-    echo "$unreadable"
-    return 1
-  }
-  holds "$live" "$tokens" || drift+=("token permissions")
-  # 204 when on, 404 when off; anything else is a failed read.
-  if ! va=$(api --silent "repos/$repo/vulnerability-alerts" 2>&1); then
-    grep -q 'HTTP 404' <<< "$va" || {
-      echo "$unreadable"
-      return 1
-    }
-    drift+=("Dependabot alerts")
-  fi
-  live=$(api "repos/$repo/automated-security-fixes") || {
-    echo "$unreadable"
-    return 1
-  }
-  holds "$live" '{"enabled": true, "paused": false}' || drift+=("security updates")
-  state=ok
-  [ ${#drift[@]} -eq 0 ] && return 0
-  state=drift
-  local IFS=,
-  if [ -n "$name" ]; then
-    echo "$tag: $repo drifted (${drift[*]}); fix: ! $self $repo \"$name\""
-  else
-    echo "$tag: $repo drifted (${drift[*]}); pick its aggregate check, then run $self $repo <check>"
-  fi
-  return 1
-}
-
-repos() {
-  if [[ $1 == */* ]]; then
-    echo "$1"
-  else
-    gh repo list "$1" --no-archived --source --limit 500 --json nameWithOwner --jq '.[].nameWithOwner'
-  fi
-}
-
-# One write; a failure names itself and fails the repo. converge runs where errexit is off (after
-# `&&`), so each write is checked here.
+# One write; a failure names itself.
 write() { gh api "$@" > /dev/null || { echo "gate: $repo: gh api $* failed" >&2 && return 1; }; }
 
 # The writes, for one repo and its required check. SHA pinning waits while a workflow still names a
@@ -255,30 +145,6 @@ converge() {
   done
   echo "gate: $repo converged"
 }
-
-case ${1:-} in
-  --check | --apply)
-    mode=$1
-    shift
-    failed=0
-    for target in "$@"; do
-      # A listing that fails is not an owner with nothing to check.
-      if ! list=$(repos "$target"); then
-        echo "gate (unreadable): $target"
-        failed=1
-        continue
-      fi
-      for repo in $list; do
-        check "$repo" && continue
-        if [ "$mode" = --apply ] && [ "$state" = drift ] && [ -n "$name" ]; then
-          converge "$repo" "$name" && continue
-        fi
-        failed=1
-      done
-    done
-    exit "$failed"
-    ;;
-esac
 
 repo=${1:-$(gh repo view "$(git remote get-url origin)" --json nameWithOwner --jq .nameWithOwner)}
 converge "$repo" "${2:-lint}"
