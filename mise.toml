@@ -22,7 +22,7 @@ run = [
   "test -z \"$(git ls-files -s home | awk '$1 != 100644')\"",
   "! grep -nE '^[^#]*\\bchezmoi\\b' home/.chezmoiscripts/*",
   "! grep -nE '^[^#]*\\bexit( +0)?( *;|$| *#)' home/.chezmoiscripts/run_onchange_*",
-  # The floor is what makes a program run at apply: only the files CLAUDE.md names may, so no
+  # The floor is what makes a program run at apply: only agent-auto-merge.yml's floor files may, so no
   # template executes a command and chezmoi runs no hook.
   "! git grep -nE '\\{\\{[^}]*[[:space:](|](exec|output|outputList|onepassword[A-Za-z]*)[[:space:]})]' -- home",
   "! grep -n '^\\[hooks' home/.chezmoi.toml.tmpl",

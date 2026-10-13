@@ -2,7 +2,7 @@
 
 macOS dotfiles for [alxjrvs](https://github.com/alxjrvs), managed by
 [chezmoi](https://www.chezmoi.io). `home/` is the source state. Principles:
-[`CLAUDE.md`](CLAUDE.md#principles).
+[`CLAUDE.md`](CLAUDE.md).
 
 ## Fresh Mac
 
@@ -69,7 +69,7 @@ home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/…
 home/.chezmoiscripts/   machine setup: Homebrew, mise, launchd agents, macOS defaults, provisioning, apps, and one
                         Claude desktop app per extra account
 home/.chezmoitemplates/ the declared keys of ~/.claude/settings.json
-home/dot_claude/        user-global Claude Code config, skills, and the `audit` workflow
+home/dot_claude/        user-global Claude Code config and skills
 home/.chezmoi*          chezmoi's own files: config template, data (who and which orgs), version floor, ignore and remove lists
 ```
 
