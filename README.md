@@ -2,7 +2,7 @@
 
 macOS dotfiles for [alxjrvs](https://github.com/alxjrvs), managed by
 [chezmoi](https://www.chezmoi.io). `home/` is the source state. Principles:
-[`CLAUDE.md`](CLAUDE.md#principles).
+[`CLAUDE.md`](CLAUDE.md).
 
 ## Fresh Mac
 

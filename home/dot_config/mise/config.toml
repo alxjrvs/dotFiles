@@ -36,10 +36,6 @@ hide = true
 # shim failed the bottle attestation check, every night from 2026-10-07).
 run = ["mise self-update \"$(mise latest aqua:jdx/mise)\" --yes --no-plugins", "mise upgrade --yes", "mise reshim"]
 
-[tasks."upkeep:gh"]
-hide = true
-run = "gh extension upgrade gh-stack"
-
 # Upgrades what the Brewfile names and nothing else, uninstalling nothing. No running app is quit,
 # and stdin is closed: a cask may prompt.
 [tasks."upkeep:brew"]
@@ -54,10 +50,10 @@ run = [
 ]
 
 [tasks.upkeep]
-description = "Upgrade mise and its tools (chezmoi among them), gh-stack, formulae and casks"
+description = "Upgrade mise and its tools (chezmoi among them), formulae and casks"
 run = """
 failed=
-for task in upkeep:mise upkeep:gh upkeep:brew; do
+for task in upkeep:mise upkeep:brew; do
   mise run "$task" || failed="$failed $task"
 done
 [ -z "$failed" ] || { echo "upkeep failed:$failed" >&2 && exit 1; }

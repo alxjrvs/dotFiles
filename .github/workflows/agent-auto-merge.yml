@@ -2,7 +2,7 @@ name: agent-auto-merge
 
 # An agent's pull request merges itself once `lint` passes, so no agent has to remember to ask for
 # it: from a `claude/` branch of this repo, opened with the owner's token, into main, not a draft.
-# One that touches what `chezmoi update` or upkeep runs outside the sandbox (CLAUDE.md's floor) is
+# One that touches what `chezmoi update` or upkeep runs outside the sandbox (the floor) is
 # never switched on here, and a later push that adds such a file switches this workflow's own
 # auto-merge back off; an agent the owner asked may still turn it on.
 on:
