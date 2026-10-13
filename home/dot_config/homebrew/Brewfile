@@ -1,7 +1,7 @@
 # The Mac's apps, the everyday CLIs, and three more CLIs kept as casks (1password-cli, gcloud-cli and ngrok). Runtimes and chezmoi are mise's;
 # mise is its own installer's (~/.local/bin); git is Xcode's. Apply never upgrades; upkeep does, nightly, leaving
-# apps that update themselves to it and quitting none. When this file changes, apply uninstalls
-# whatever it does not name.
+# apps that update themselves to it and quitting none. Nothing uninstalls what it stops naming:
+# `brew bundle cleanup` is run by hand.
 
 # ── CLIs ──────────────────────────────────────────────────────────────
 # Formulae, for the man pages that mise's installs lack.

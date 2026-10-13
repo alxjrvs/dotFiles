@@ -29,7 +29,7 @@ run = [
   # ~/.zshenv's shims serve every shell: an activate in .zshrc pins the desktop app's agents.
   "! grep -n '^[^#]*mise activate' home/dot_zshrc",
   # The upkeep tasks are shell inside TOML, run by mise's `sh -o errexit -c` (bash, on a Mac).
-  "for t in upkeep upkeep:nightly; do mise config get --file home/dot_config/mise/config.toml \"tasks.$t.run\" | shellcheck -s bash - || exit 1; done",
+  "for t in upkeep upkeep:gh; do mise config get --file home/dot_config/mise/config.toml \"tasks.$t.run\" | shellcheck -s bash - || exit 1; done",
   # Who this is lives in .chezmoidata.toml alone, so a fork edits one file: no other path or line
   # names its GitHub user.
   "who=$(mise config get --file home/.chezmoidata.toml github) && ! git grep -nIi -e \"$who\" -- home .github .claude ':!home/.chezmoidata.toml' && ! git ls-files home | grep -i \"$who\"",

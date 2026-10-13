@@ -2,8 +2,7 @@ name: bootstrap
 
 # A fresh Mac, rehearsed: the README's installer and first apply on a clean runner, then a second
 # apply and verify for idempotency. Weekly, and when machine setup changes. Not a required check: it
-# installs every cask and takes a while. Once as a personal Mac and once as a work Mac: the work leg
-# proves Homebrew cleanup leaves the runner image's own casks alone.
+# installs every cask and takes a while.
 on:
   schedule:
     - cron: "17 10 * * 1"
@@ -13,9 +12,7 @@ on:
       - home/.chezmoiscripts/**
       - home/.chezmoi.toml.tmpl
       - home/.chezmoidata.toml
-      - home/.chezmoiignore
       - home/.chezmoiremove
-      - home/dot_local/**
       - home/dot_config/homebrew/Brewfile
       - home/dot_config/mise/**
       - home/Library/**
@@ -32,12 +29,6 @@ jobs:
   bootstrap:
     runs-on: macos-latest
     timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        personal: [true, false]
-    env:
-      PERSONAL: ${{ matrix.personal }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -46,17 +37,14 @@ jobs:
         run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
       - name: The first apply, from this checkout
         run: |
-          ~/.local/bin/chezmoi init --apply --no-tty --promptBool "personal Mac=$PERSONAL" \
+          ~/.local/bin/chezmoi init --apply --no-tty \
             --source "$GITHUB_WORKSPACE"
       # `init --source` records no source, so every later command names it. From here chezmoi is
       # mise's: the first apply removed the installer's copy.
       - name: The first apply leaves nothing to verify
         run: ~/.local/share/mise/shims/chezmoi verify --source "$GITHUB_WORKSPACE"
-      - name: The answer is recorded, a work Mac keeps casks the Brewfile does not name, and only mise's chezmoi is left
-        run: |
-          [ ! -e ~/.local/bin/chezmoi ]
-          ~/.local/share/mise/shims/chezmoi data --source "$GITHUB_WORKSPACE" | jq -e ".personal == $PERSONAL"
-          [ "$PERSONAL" = true ] || brew list --cask firefox
+      - name: Only mise's chezmoi is left
+        run: '[ ! -e ~/.local/bin/chezmoi ]'
       - name: A second apply changes nothing, and verify agrees
         run: |
           ~/.local/share/mise/shims/chezmoi apply --no-tty --source "$GITHUB_WORKSPACE"
