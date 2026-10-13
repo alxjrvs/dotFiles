@@ -111,12 +111,13 @@
       "$defaults",
       "Never push directly to a repository's default branch, and never merge into it locally",
       "Never apply a chezmoi source to the real home directory other than through `chezmoi update` (no `chezmoi apply --source`, no `chezmoi init --apply`), and never edit files under `chezmoi source-path`: that runs unreviewed scripts and rewrites the agent's own settings outside the sandbox. An apply into a temporary `--destination` is a test and is fine.",
-      "Never change a repository's own settings, rulesets or branch protection (`gh repo edit`, `gh api` writes to `repos/OWNER/REPO` itself, `.../rulesets` or `.../branches/*/protection`): the gate is the owner's, and an agent blocked by it does not get to loosen it. Nor does it bypass push protection (a blocked push's bypass link, or `gh api` writes to `.../secret-scanning/push-protection-bypasses`). Issues, pull requests and comments are not settings."
+      "Never change a repository's own settings, rulesets or branch protection (`gh repo edit`, `gh api` writes to `repos/OWNER/REPO` itself, `.../rulesets` or `.../branches/*/protection`): the gate is the owner's, and an agent blocked by it does not get to loosen it. Nor does it bypass push protection (a blocked push's bypass link, or `gh api` writes to `.../secret-scanning/push-protection-bypasses`). Issues, pull requests and comments are not settings.",
+      "Never put a secret value where it can be read back: stdout, a file, a commit, a command argument, or a second 1Password item. A value goes from its one vault item to the program that consumes it through `op run`, `op inject` into a pipe, or stdin. Never delete a 1Password item or vault: retiring one is a move to `Archive`, and deleting is the owner's."
     ],
     "environment": [
       "$defaults",
       "Source control: github.com/{{ .github }} and every repository under it{{ with .ownedOrgs }}, plus the GitHub organizations the user administers: {{ join ", " . }}{{ end }}. Pushes to a non-default branch of any of these are the user's own work landing through pull requests; the default-branch rule above still holds.",
-      "Secrets management: 1Password, through op:// references passed with `op run` and, for agents, ~/.config/claude-agent/.env when that mounted Environment exists; the gh token lives in the login keychain; vendor CLI logins live in their own config files (~/.convex, ~/.expo, netlify, wrangler, ngrok). An agent passes a secret to the program that consumes it, and never reads, prints, copies or re-encodes one."
+      "Secrets management: 1Password, through op:// references passed with `op run` and, for agents, ~/.config/claude-agent/.env when that mounted Environment exists; the gh token lives in the login keychain; vendor CLI logins live in their own config files (~/.convex, ~/.expo, netlify, wrangler, ngrok). An agent passes a secret to the program that consumes it, and never reads, prints, copies or re-encodes one. Where a secret lives (one vault per project, one source of truth) is the `onepassword` skill."
     ],
     "classifyAllShell": true
   }
