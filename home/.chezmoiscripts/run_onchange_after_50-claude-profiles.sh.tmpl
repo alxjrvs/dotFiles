@@ -54,49 +54,20 @@ EOF
 </dict>
 </plist>
 EOF
-    # Pillow reads the largest rendition, tints it in its own HSV mode and writes every size.
+    # Pillow turns the largest rendition's hue and scales its saturation; white has none, so the
+    # glyph stays white and only the plate changes colour.
     uv run --quiet --no-project --with pillow python - "$stock/Resources/electron.icns" \
       "$app/Contents/Resources/app.icns" "$profile" << 'EOF'
 import json, sys
-from PIL import Image, ImageChops, ImageColor, ImageDraw, ImageFont, ImageMath, ImageStat
+from PIL import Image
 
 stock, out, profile = sys.argv[1], sys.argv[2], json.loads(sys.argv[3])
 icon = Image.open(stock).convert("RGBA")
-alpha = icon.getchannel("A")
 h, s, v = icon.convert("RGB").convert("HSV").split()
-# White has no saturation, so the glyph stays white and only the plate changes colour.
-if "color" in profile:
-    # An exact colour: find the plate's own colour, then move hue, saturation and value so that
-    # it lands on the target exactly; anti-aliased edges move in proportion to their saturation.
-    plate = ImageChops.multiply(alpha.point(lambda a: 255 * (a == 255)), s.point(lambda x: 255 * (x > 76)))
-    ph, ps, pv = ImageStat.Stat(Image.merge("RGB", (h, s, v)), plate).median
-    th, ts, tv = Image.new("RGB", (1, 1), profile["color"]).convert("HSV").getpixel((0, 0))
-    v = ImageMath.unsafe_eval("convert(float(v) * (1 + min(float(s) / ps, 1.0) * k), 'L')", v=v, s=s, ps=float(ps), k=tv / pv - 1)
-    h = h.point(lambda x: (x + th - ph) % 256)
-    s = s.point(lambda x: min(255, round(x * ts / ps)))
-else:
-    h = h.point(lambda x: (x + round(profile["hue"] / 360 * 256)) % 256)
-    s = s.point(lambda x: min(255, round(x * profile["saturation"])))
+h = h.point(lambda x: (x + round(profile["hue"] / 360 * 256)) % 256)
+s = s.point(lambda x: min(255, round(x * profile["saturation"])))
 tinted = Image.merge("HSV", (h, s, v)).convert("RGB")
-tinted.putalpha(alpha)
-if "letter" in profile:
-    # A large white letter over the glyph, outlined in the plate colour so it reads against it.
-    left, top, right, bottom = alpha.point(lambda a: 255 if a > 200 else 0).getbbox()
-    size = right - left
-    fill = profile.get("color", "black")
-    for path, index in (("/System/Library/Fonts/Helvetica.ttc", 1), ("/System/Library/Fonts/SFNS.ttf", 0)):
-        try:
-            font = ImageFont.truetype(path, round(size * 0.82), index=index)
-            break
-        except OSError:
-            continue
-    else:
-        font = ImageFont.load_default(round(size * 0.82))
-    stroke = round(size * 0.035)
-    draw = ImageDraw.Draw(tinted)
-    x0, y0, x1, y1 = draw.textbbox((0, 0), profile["letter"], font=font, stroke_width=stroke)
-    at = ((left + right - (x1 - x0)) / 2 - x0, (top + bottom - (y1 - y0)) / 2 - y0)
-    draw.text(at, profile["letter"], font=font, fill="white", stroke_width=stroke, stroke_fill=fill)
+tinted.putalpha(icon.getchannel("A"))
 tinted.save(out)
 EOF
     # Finder and the Dock cache a bundle's icon until it is touched and registered again.

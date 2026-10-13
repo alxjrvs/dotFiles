@@ -3,3 +3,5 @@
 # Retired from ~/.claude: nothing used them.
 .claude/workflows/audit.js
 .claude/skills/agent-friendly-repo
+# fd skips hidden files and honours .gitignore by default; the old global ignore added nothing.
+.config/fd/ignore

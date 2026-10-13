@@ -1,11 +1,9 @@
 name: bootstrap
 
 # A fresh Mac, rehearsed: the README's installer and first apply on a clean runner, then a second
-# apply and verify for idempotency. Weekly, and when machine setup changes. Not a required check: it
+# apply and verify for idempotency, when machine setup changes. Not a required check: it
 # installs every cask and takes a while.
 on:
-  schedule:
-    - cron: "17 10 * * 1"
   workflow_dispatch:
   pull_request:
     paths:
