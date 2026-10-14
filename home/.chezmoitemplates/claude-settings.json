@@ -79,7 +79,20 @@
   },
   "outputStyle": "Proactive",
   "sandbox": {
-    "enabled": true
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "network": {
+      "allowedDomains": ["*.1password.com"],
+      "allowMachLookup": ["com.apple.trustd.agent", "2BUA8C4S2C.com.1password.browser-helper"]
+    },
+    "credentials": {
+      "envVars": [
+        { "name": "GH_TOKEN", "mode": "deny" },
+        { "name": "GITHUB_TOKEN", "mode": "deny" },
+        { "name": "OP_SERVICE_ACCOUNT_TOKEN", "mode": "deny" }
+      ]
+    }
   },
   "disableAgentView": true,
   "autoMemoryEnabled": false,
