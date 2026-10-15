@@ -1,13 +1,12 @@
-# A starting point for the R9700's noise, to tune by ear: nothing applies this file. LACT keys each
-# GPU by its PCI ids and slot, which exist only once the card is in, so the block goes into
-# /etc/lact/config.yaml by hand under `gpus:` (MAIA.md has the steps), or the same values go in
-# through LACT's window.
+# The R9700's starting point for noise, to tune by ear. maia-gpu-tune applies it through LACT:
+# the power cap every run, the fan curve once, into /etc/lact/config.yaml under the GPU's real id
+# (LACT keys each GPU by its PCI ids and slot). After that, LACT's window is the place to tune.
 #
 # The power cap is maia.powerCap from ~/.config/chezmoi/chezmoi.toml. RDNA3 and later take exactly
-# five curve points, speed 0 to 1, and a custom curve needs amdgpu.ppfeaturemask (maia.ppfeaturemask).
+# five curve points, speed 0 to 1, and a custom curve needs overdrive (maia.ppfeaturemask).
 # A blower is loud at any speed: these hold it low until the card is genuinely warm.
 gpus:
-  "GPU_ID": # from `lact cli list-gpus`, e.g. 1002:7551-1458:xxxx-0000:03:00.0
+  "GPU_ID": # maia-gpu-tune puts these under the id `lact cli list` prints
     power_cap: {{ dig "maia" "powerCap" 230 . }}.0
     performance_level: auto
     fan_control_enabled: true
