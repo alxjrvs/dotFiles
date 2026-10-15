@@ -46,7 +46,11 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - run: sudo apt-get install -y -q zsh
+      # Ubuntu's /etc/zsh/zshrc runs compinit, which stops to ask about the runner's group-writable
+      # completion directories; a real install has none.
+      - run: |
+          sudo apt-get install -y -q zsh
+          zsh -fc 'autoload -Uz compaudit; compaudit' | xargs -r sudo sh -c 'chown root:root "$@" && chmod g-w,o-w "$@"' _
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         env:
           MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/home/dot_config/mise/config.toml
