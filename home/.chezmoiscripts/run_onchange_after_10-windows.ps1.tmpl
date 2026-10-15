@@ -8,11 +8,14 @@ $maia = @'
 {{ dig "maia" dict . | toJson }}
 '@ | ConvertFrom-Json
 
-# Steam; git and gh for the shared git config; 1Password, whose agent and signer that config uses;
-# VS Code and the CLIs that have Windows builds. AMD Software: Adrenalin has no winget package:
-# MAIA.md says which version to download.
+# Steam; Claude desktop and Claude Code; git and gh for the shared git config; 1Password, whose
+# agent and signer that config uses; VS Code and the CLIs that have Windows builds. Claude Code's
+# settings stay stock here: the shared ones require a sandbox native Windows has not got. AMD
+# Software: Adrenalin has no winget package: MAIA.md says which version to download.
 $packages = @(
   'Valve.Steam',
+  'Anthropic.Claude',
+  'Anthropic.ClaudeCode',
   'Git.Git',
   'GitHub.cli',
   'AgileBits.1Password',

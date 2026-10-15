@@ -28,7 +28,6 @@ Screenshots
 {{- if not (and $ubuntu $maia) }}
 # MAIA's hardware: the GPU, the data drive, the dock and the monitor.
 .chezmoiscripts/60-maia.sh
-.config/display-switch
 .config/systemd/user/display-switch.service
 .config/maia
 .local/bin/maia-*
@@ -39,7 +38,7 @@ Screenshots
 AppData
 {{- else }}
 # Windows is for games: git's config and the dock follower. Its bash scripts, zsh, ssh (1Password's
-# agent is the system pipe there), mise and Claude Code stay on the Mac and Linux.
+# agent is the system pipe there), mise and the shared Claude Code settings stay on the Mac and Linux.
 .chezmoiscripts/*.sh
 .zshenv
 .zprofile

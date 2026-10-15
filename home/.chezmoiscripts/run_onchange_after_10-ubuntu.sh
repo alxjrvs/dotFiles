@@ -84,7 +84,7 @@ Signed-By: /usr/share/keyrings/microsoft.gpg"
 say "packages"
 sudo apt-get update -q
 sudo apt-get install -y \
-  zsh git curl jq ripgrep fd-find starship wl-clipboard xdg-utils unzip fonts-firacode \
+  zsh git curl jq ripgrep fd-find starship wl-clipboard xdg-utils unzip usbutils fonts-firacode \
   gh 1password 1password-cli code obs-studio \
   claude-code claude-desktop bubblewrap socat
 
@@ -104,6 +104,13 @@ profile bwrap /usr/bin/bwrap flags=(unconfined) {
 PROFILE
   sudo systemctl reload apparmor
 fi
+
+# Cowork's VM talks over vhost-vsock: the module at every boot, as Claude desktop's docs give it.
+if [ ! -e /etc/modules-load.d/vhost_vsock.conf ]; then
+  say "loading vhost_vsock at boot, for Cowork"
+  echo vhost_vsock | sudo tee /etc/modules-load.d/vhost_vsock.conf > /dev/null
+fi
+sudo modprobe vhost_vsock || say "no vhost_vsock in this kernel; Cowork will say what it lacks"
 
 # Cowork opens /dev/vhost-vsock, which only kvm members can. Groups apply from the next login.
 if ! id -nG "$USER" | grep -qw kvm; then
