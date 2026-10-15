@@ -19,4 +19,6 @@ _history_filter() {
 }
 autoload -Uz add-zsh-hook && add-zsh-hook zshaddhistory _history_filter
 
+alias gs='git status' gp='git push' gpr='git pull --rebase' gco='git checkout'
+
 (( $+commands[starship] )) && eval "$(starship init zsh)"
