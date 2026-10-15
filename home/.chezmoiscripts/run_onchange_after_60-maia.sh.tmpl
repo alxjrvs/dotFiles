@@ -41,9 +41,11 @@ if [ "$(value kisakMesa)" = true ]; then
   sudo add-apt-repository -y ppa:kisak/kisak-mesa
   sudo apt-get upgrade -y
 fi
-say "Steam, its udev rules, ddcutil, rocminfo"
+# 32-bit Mesa by name, so Proton's 32-bit games find RADV whatever Steam's own dependencies pull.
+say "Steam, its udev rules, 32-bit Mesa, ddcutil, rocminfo, vulkan-tools (maia-check reads with it)"
 sudo apt-get update -q
-sudo apt-get install -y steam-installer steam-devices ddcutil rocminfo
+sudo apt-get install -y steam-installer steam-devices mesa-vulkan-drivers:i386 libgl1-mesa-dri:i386 \
+  ddcutil rocminfo vulkan-tools
 
 # ── Local AI ──────────────────────────────────────────────────────────
 group render "the GPU's compute nodes"
@@ -52,12 +54,21 @@ if [ "$(value rocm)" = true ]; then
   say "ROCm from Ubuntu's archive (maia.rocm): several GB"
   sudo apt-get install -y rocm
 fi
-# Ollama's own installer and service; it brings its own ROCm libraries. Its models move to
+# Ollama's own installer and service; it brings its own ROCm (v7) libraries and installs no kernel
+# module, so Secure Boot is untouched. Its models move to
 # /data/models when maia-data-mount runs.
 if ! command -v ollama > /dev/null; then
   say "Ollama, by its official installer"
   curl -fsSL https://ollama.com/install.sh | sh
 fi
+# Its service runs as ollama, which reaches the card only through render and video.
+for g in render video; do
+  if getent passwd ollama > /dev/null && ! id -nG ollama | grep -qw "$g"; then
+    say "adding the ollama service user to $g"
+    sudo usermod -aG "$g" ollama
+    sudo systemctl restart ollama
+  fi
+done
 
 # ── Desk: the monitor follows the dock ────────────────────────────────
 # DDC/CI over i2c-dev, loaded every boot, for the i2c group (display-switch's README's rule).

@@ -9,7 +9,35 @@ None of this has run on the real machine yet. It renders and lints in CI. The fi
 
 ## Before the first boot
 
-In the BIOS, turn on **SVM** (AMD virtualization), which ASUS boards ship with off. Cowork needs it.
+In the BIOS:
+
+- Turn on **SVM Mode** (Advanced › CPU Configuration). ASUS ships it off, and Cowork needs it.
+- Leave **CPPC** on, so Linux drives the CPU with amd-pstate.
+- Keep **Secure Boot** on.
+
+Plug the dock into a rear 10Gbps USB-C port.
+
+## Compatibility
+
+Researched on 2026-10-15, before the hardware exists. `maia-check` confirms each of these on the
+machine itself.
+
+| Part | On Ubuntu 26.04 (kernel 7.0, Mesa 26.0.3) | On Windows 11 |
+|---|---|---|
+| R9700 (Navi 48, gfx1201) | In-kernel `amdgpu` (6.14+) and RADV (Mesa 25+): stock is enough, so Secure Boot needs no MOK. Never install `amdgpu-dkms` or AMD's `amdgpu-install`. | Adrenalin from amd.com |
+| ROCm on gfx1201 | Supported upstream since ROCm 6.4.2. Ubuntu's archive has 7.1; whether that build includes gfx1201 is unverified, and the `rocm` flag tests it. Ollama ships its own ROCm 7 and lists the R9700. | Ollama's Windows ROCm list stops at RX 7000; its Vulkan backend is the route there |
+| Ryzen 7 7800X3D | `amd-pstate` (needs CPPC) and `k10temp`. Single CCD, so no V-Cache driver needed | AMD chipset driver from amd.com |
+| 2x 5GbE (Realtek RTL8126) | `r8169` | ASUS support page |
+| Wi-Fi 7 (Realtek RTL8922AE) | `rtw89_8922ae` | ASUS support page |
+| Bluetooth (RTL8922A over USB) | `btusb` and `btrtl` | ASUS support page |
+| Audio (Realtek ALC1220P) | `snd_hda_intel` | Windows Update |
+| Board sensors (fans, voltages) | `asus_ec_sensors` doesn't list this board, and `nct6775` may not load. Cosmetic: CPU and GPU temperatures don't depend on it | ASUS Armoury Crate |
+| CalDigit TS4 over 10Gbps USB-C | USB, audio and card readers work. **Its 2.5GbE port doesn't** (Thunderbolt hosts only), and it can't charge the PC. Neither matters here | Same |
+| BenQ GW3290QT | DDC/CI through `ddcutil`. The USB-C input code isn't published, so `maia-desk` measures it | display-switch reads the measured code |
+| Steam | `steam-installer` from multiverse, with 32-bit Mesa installed by name. Proton runs on RDNA4 with Mesa 25+ | Valve.Steam |
+
+On Windows, install AMD's chipset driver first, then the Realtek LAN, Wi-Fi and Bluetooth drivers
+from the ASUS support page for the ProArt B850-Creator WiFi NEO.
 
 ## Ubuntu: one command
 
@@ -56,13 +84,14 @@ On `maia` (`run_onchange_after_60-maia.sh.tmpl`):
 
 - **Gaming:** adds i386, enables multiverse, and installs `steam-installer` and `steam-devices`
   (Valve's .deb, not the Snap).
-- **Local AI:** adds you to `render` and `video`, installs `rocminfo`, and installs Ollama with its
-  official installer.
+- **Local AI:** adds you, and Ollama's service user, to `render` and `video`. Installs `rocminfo` and
+  `vulkan-tools`, and installs Ollama with its official installer, which adds no kernel module.
 - **Desk:** installs ddcutil, loads `i2c-dev` at boot, adds the `i2c` group and its udev rule, and
   installs display-switch 1.4.1 (pinned). Then it runs `maia-desk`, which measures the dock and the
   monitor's USB-C input, writes display-switch's config, and starts its user service.
 - **Data drive:** runs `maia-data-mount` when `dataUuid` is set.
-- **Commands** in `~/.local/bin`: `maia-gpu-check`, `maia-desk` and `maia-data-mount`. Each is safe to run again by hand.
+- **Commands** in `~/.local/bin`: `maia-check` (read-only), `maia-desk` and `maia-data-mount`. Each
+  is safe to run again by hand.
 
 Nothing partitions, formats, or touches GRUB, BIOS or a DKMS driver. Every
 step prints what it's about to do. A re-run skips whatever is already in place.
@@ -101,7 +130,7 @@ because the shared ones require a sandbox that native Windows doesn't have. zsh,
 stay on the Mac and Linux.
 
 - **AMD Software: Adrenalin** has no winget package. Download it from amd.com: **26.2.1 or later**
-  (26.1.1 broke monitor control on this chip).
+  (26.1.1 broke monitor control on this chip). AMD's R9700 page offers 26.8.1 as of 2026-10.
 - Nothing here touches boot order, BitLocker or the Linux drives. **Windows updates can reset the
   boot order:** "ubuntu" must stay first in the BIOS boot list.
 
@@ -153,9 +182,9 @@ debounce, which is why it isn't the default.
 
 ## First-boot checklist
 
-- [ ] `mokutil --sb-state` says `SecureBoot enabled`
-- [ ] `maia-gpu-check`: `rocminfo` shows `gfx1201`, and `ollama ps` shows `100% GPU` with a model
-      loaded (run `ollama run <model> hello` first)
+- [ ] `maia-check` passes. It covers Secure Boot, SVM and Cowork, amdgpu and RADV on gfx1201, ROCm,
+      Ollama and its groups, both NICs, Wi-Fi, Bluetooth, the dock, DDC to the BenQ and `/data`.
+- [ ] `ollama run <model> hello`, then `ollama ps` shows `100% GPU`
 - [ ] Steam launches a Proton game. Turn on Steam Play for all titles under Steam › Settings ›
       Compatibility; it's a GUI setting, so the setup can't do it.
 - [ ] The monitor switches when the dock cable moves to a laptop and back. If it doesn't,
