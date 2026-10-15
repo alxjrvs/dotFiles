@@ -5,3 +5,24 @@
     exclude = ["always"]
 [diff]
     exclude = ["always"]
+{{- if eq .chezmoi.os "windows" }}
+# Windows 11 Home runs no unsigned script by default; this repo's one PowerShell script it may.
+[interpreters.ps1]
+    command = "powershell"
+    args = ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]
+{{- end }}
+{{- if eq (lower .chezmoi.hostname) "maia" }}
+
+# MAIA (MAIA.md): the values measured on day one and, on Ubuntu, the opt-ins, each off until asked
+# for. Asked once at `chezmoi init` and kept only here, on the machine: change one in this file,
+# then `chezmoi apply`. An empty value waits to be measured; the step that needs it says so.
+[data.maia]
+    dockUsb = {{ promptStringOnce . "maia.dockUsb" "MAIA: the TS4's USB id, vendor:product (lsusb -d 2188:), empty until measured" "" | quote }}
+    usbcInput = {{ promptStringOnce . "maia.usbcInput" "MAIA: the BenQ's USB-C input code (ddcutil capabilities, feature 60), empty until measured" "" | quote }}
+{{-   if eq .chezmoi.os "linux" }}
+    powerCap = {{ promptIntOnce . "maia.powerCap" "MAIA: the GPU's power cap in watts, for LACT" 230 }}
+    rocm = {{ promptBoolOnce . "maia.rocm" "MAIA: install ROCm from Ubuntu's archive (several GB)" false }}
+    kisakMesa = {{ promptBoolOnce . "maia.kisakMesa" "MAIA: add the kisak Mesa PPA and upgrade to its Mesa" false }}
+    ppfeaturemask = {{ promptBoolOnce . "maia.ppfeaturemask" "MAIA: add amdgpu.ppfeaturemask=0xffffffff to GRUB, for LACT's fan curve" false }}
+{{-   end }}
+{{- end }}
