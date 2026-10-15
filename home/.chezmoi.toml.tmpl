@@ -15,11 +15,13 @@
 
 # MAIA (MAIA.md): the values measured on day one and, on Ubuntu, the opt-ins, each off until asked
 # for. Asked once at `chezmoi init` and kept only here, on the machine: change one in this file,
-# then `chezmoi apply`. An empty value waits to be measured; the step that needs it says so.
+# then `chezmoi apply`. An empty value is measured where it can be, and waits where it cannot;
+# the step that needs it says which.
 [data.maia]
-    dockUsb = {{ promptStringOnce . "maia.dockUsb" "MAIA: the TS4's USB id, vendor:product (lsusb -d 2188:), empty until measured" "" | quote }}
-    usbcInput = {{ promptStringOnce . "maia.usbcInput" "MAIA: the BenQ's USB-C input code (ddcutil capabilities, feature 60), empty until measured" "" | quote }}
+    dockUsb = {{ promptStringOnce . "maia.dockUsb" "MAIA: the TS4's USB id, vendor:product (empty: measured from lsusb on Ubuntu)" "" | quote }}
+    usbcInput = {{ promptStringOnce . "maia.usbcInput" "MAIA: the BenQ's USB-C input code (empty: measured over DDC on Ubuntu)" "" | quote }}
 {{-   if eq .chezmoi.os "linux" }}
+    dataUuid = {{ promptStringOnce . "maia.dataUuid" "MAIA: the 2TB's ext4 partition UUID (lsblk -f), empty until partitioned" "" | quote }}
     powerCap = {{ promptIntOnce . "maia.powerCap" "MAIA: the GPU's power cap in watts, for LACT" 230 }}
     rocm = {{ promptBoolOnce . "maia.rocm" "MAIA: install ROCm from Ubuntu's archive (several GB)" false }}
     kisakMesa = {{ promptBoolOnce . "maia.kisakMesa" "MAIA: add the kisak Mesa PPA and upgrade to its Mesa" false }}
