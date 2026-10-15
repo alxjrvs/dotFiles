@@ -22,9 +22,7 @@
     usbcInput = {{ promptStringOnce . "maia.usbcInput" "MAIA: the BenQ's USB-C input code (empty: measured over DDC on Ubuntu)" "" | quote }}
 {{-   if eq .chezmoi.os "linux" }}
     dataUuid = {{ promptStringOnce . "maia.dataUuid" "MAIA: the 2TB's ext4 partition UUID (lsblk -f), empty until partitioned" "" | quote }}
-    powerCap = {{ promptIntOnce . "maia.powerCap" "MAIA: the GPU's power cap in watts, for LACT" 230 }}
     rocm = {{ promptBoolOnce . "maia.rocm" "MAIA: install ROCm from Ubuntu's archive (several GB)" false }}
     kisakMesa = {{ promptBoolOnce . "maia.kisakMesa" "MAIA: add the kisak Mesa PPA and upgrade to its Mesa" false }}
-    ppfeaturemask = {{ promptBoolOnce . "maia.ppfeaturemask" "MAIA: add amdgpu.ppfeaturemask=0xffffffff to GRUB, for LACT's fan curve" false }}
 {{-   end }}
 {{- end }}

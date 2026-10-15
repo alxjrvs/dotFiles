@@ -29,7 +29,6 @@ Screenshots
 # MAIA's hardware: the GPU, the data drive, the dock and the monitor.
 .chezmoiscripts/60-maia.sh
 .config/systemd/user/display-switch.service
-.config/maia
 .local/bin/maia-*
 {{- end }}
 

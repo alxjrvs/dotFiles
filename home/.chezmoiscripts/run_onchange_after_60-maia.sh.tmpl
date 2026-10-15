@@ -1,9 +1,9 @@
 #!/bin/bash
-# MAIA on Ubuntu (MAIA.md): Steam, the R9700's groups and tools, Ollama, LACT, and the monitor
-# following the dock. Re-runs when this script or a [data.maia] value changes; installs, never
-# upgrades. Nothing here partitions, formats, or touches GRUB, BIOS or a DKMS driver unless its flag
-# is on, and each step says what it does first. The tuning, the desk and the data drive are the
-# maia-* commands in ~/.local/bin, run from here and safe to run again by hand.
+# MAIA on Ubuntu (MAIA.md): Steam, the R9700's groups and tools, Ollama, and the monitor following
+# the dock. Re-runs when this script or a [data.maia] value changes; installs, never upgrades.
+# Nothing here partitions, formats, or touches GRUB, BIOS or a DKMS driver, and each step says what
+# it does first. The desk and the data drive are maia-* commands in ~/.local/bin, run from here and
+# safe to run again by hand.
 set -euo pipefail
 say() { printf 'maia: %s\n' "$*"; }
 # A quoted heredoc: the shell reads the values as data, whatever they hold.
@@ -41,9 +41,9 @@ if [ "$(value kisakMesa)" = true ]; then
   sudo add-apt-repository -y ppa:kisak/kisak-mesa
   sudo apt-get upgrade -y
 fi
-say "Steam, its udev rules, ddcutil, rocminfo, and what the maia-* commands read with"
+say "Steam, its udev rules, ddcutil, rocminfo"
 sudo apt-get update -q
-sudo apt-get install -y steam-installer steam-devices ddcutil rocminfo python3-yaml
+sudo apt-get install -y steam-installer steam-devices ddcutil rocminfo
 
 # ── Local AI ──────────────────────────────────────────────────────────
 group render "the GPU's compute nodes"
@@ -58,28 +58,6 @@ if ! command -v ollama > /dev/null; then
   say "Ollama, by its official installer"
   curl -fsSL https://ollama.com/install.sh | sh
 fi
-
-# ── GPU noise ─────────────────────────────────────────────────────────
-# LACT from its release, pinned and checked; maia-gpu-tune gives it ~/.config/maia/lact.yaml.
-if ! dpkg-query -W lact > /dev/null 2>&1; then
-  say "LACT 0.10.1, Ubuntu 26.04 build"
-  fetch https://github.com/ilya-zlobintsev/LACT/releases/download/v0.10.1/lact-0.10.1-0.amd64.ubuntu-2604.deb \
-    b8006a0d7e414de08f193760a82d346c7308675747ae928501941ac714b59fd3 "$tmp/lact.deb"
-  sudo apt-get install -y "$tmp/lact.deb"
-fi
-say "LACT: enabling lactd"
-sudo systemctl enable --now lactd
-# A drop-in, so `sudo rm` of it and `sudo update-grub` undo it; LACT's fan curve needs overdrive.
-grub=/etc/default/grub.d/99-maia-ppfeaturemask.cfg
-if [ "$(value ppfeaturemask)" = true ] && [ ! -e "$grub" ]; then
-  say "GRUB (maia.ppfeaturemask): adding amdgpu.ppfeaturemask=0xffffffff in $grub, then update-grub; reboot to apply"
-  # shellcheck disable=SC2016 # GRUB's own shell expands it
-  echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT amdgpu.ppfeaturemask=0xffffffff"' |
-    sudo tee "$grub" > /dev/null
-  sudo update-grub
-fi
-say "LACT: the power cap, and the fan curve once overdrive is on (maia-gpu-tune)"
-"$HOME/.local/bin/maia-gpu-tune" || say "maia-gpu-tune failed; run it again once lactd sees the card"
 
 # ── Desk: the monitor follows the dock ────────────────────────────────
 # DDC/CI over i2c-dev, loaded every boot, for the i2c group (display-switch's README's rule).

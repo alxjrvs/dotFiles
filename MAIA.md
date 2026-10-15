@@ -58,17 +58,13 @@ On `maia` (`run_onchange_after_60-maia.sh.tmpl`):
   (Valve's .deb, not the Snap).
 - **Local AI:** adds you to `render` and `video`, installs `rocminfo`, and installs Ollama with its
   official installer.
-- **GPU noise:** installs LACT 0.10.1 (Ubuntu 26.04 build, SHA-256 pinned), enables `lactd`, and
-  runs `maia-gpu-tune`. That sets the power cap and adds the fan curve once overdrive is on (see
-  [LACT](#lact-the-fan-curve-and-power-cap)).
 - **Desk:** installs ddcutil, loads `i2c-dev` at boot, adds the `i2c` group and its udev rule, and
   installs display-switch 1.4.1 (pinned). Then it runs `maia-desk`, which measures the dock and the
   monitor's USB-C input, writes display-switch's config, and starts its user service.
 - **Data drive:** runs `maia-data-mount` when `dataUuid` is set.
-- **Commands** in `~/.local/bin`: `maia-gpu-check`, `maia-gpu-tune`, `maia-desk` and
-  `maia-data-mount`. Each is safe to run again by hand.
+- **Commands** in `~/.local/bin`: `maia-gpu-check`, `maia-desk` and `maia-data-mount`. Each is safe to run again by hand.
 
-Nothing partitions, formats, or touches GRUB, BIOS or a DKMS driver unless its flag is on. Every
+Nothing partitions, formats, or touches GRUB, BIOS or a DKMS driver. Every
 step prints what it's about to do. A re-run skips whatever is already in place.
 
 **Not installed on Ubuntu,** because there's no clean official apt route:
@@ -121,14 +117,10 @@ and run `chezmoi apply`; the step that uses it re-runs. To set them without prom
 | `dockUsb` | empty | the TS4's USB id, vendor:product | measured by `maia-desk`: the first device `lsusb -d 2188:` lists |
 | `usbcInput` | empty | the BenQ's USB-C input code | measured by `maia-desk` over DDC, when exactly one input (feature 60) is neither DisplayPort-1 nor HDMI; otherwise it lists the candidates (likely `0x10` or `0x1b`) |
 | `dataUuid` | empty | the 2TB's ext4 partition UUID (`lsblk -f`) | the data drive waits; run `maia-data-mount UUID` by hand later |
-| `powerCap` | 230 | GPU power cap in watts | |
 | `rocm` | false | `apt install rocm` from Ubuntu's archive (several GB) | |
 | `kisakMesa` | false | ppa:kisak/kisak-mesa and an upgrade to its Mesa, for game issues (only if the PPA publishes for 26.04) | |
-| `ppfeaturemask` | false | `amdgpu.ppfeaturemask=0xffffffff` via a GRUB drop-in, then `update-grub`. LACT needs it for a custom fan curve on RDNA3 and later | |
 
-A value you set always wins over a measured one. The GRUB flag writes
-`/etc/default/grub.d/99-maia-ppfeaturemask.cfg`. To undo it, delete that file and run
-`sudo update-grub`.
+A value you set always wins over a measured one.
 
 ## The data drive
 
@@ -145,17 +137,6 @@ It adds a `nofail` fstab entry for `/data`, backing up the old fstab to `/etc/fs
 first, and mounts it. It creates `/data/models` and `/data/steam`, owned by you, and points Ollama
 at `/data/models` with a drop-in that waits for the mount. A partition that isn't ext4 is refused.
 Then add `/data/steam` as a library under Steam › Settings › Storage.
-
-## LACT: the fan curve and power cap
-
-`~/.config/maia/lact.yaml` is the starting point to tune by ear: a 230 W cap (from `powerCap`) and
-a five-point curve that keeps the blower low until the card is warm. `maia-gpu-tune` applies it
-through LACT, under the GPU's real id.
-
-- **Power cap:** set on every run, with `lact cli power-limit set`.
-- **Fan curve:** written into `/etc/lact/config.yaml` once, while the GPU has no curve yet, so a
-  curve you later tune in LACT's window stays. It needs overdrive: turn on `ppfeaturemask`, apply,
-  reboot, then run `maia-gpu-tune`.
 
 ## Desk: the monitor follows the dock
 
@@ -181,6 +162,5 @@ debounce, which is why it isn't the default.
       `maia-desk --dry-run` shows what it measured.
 - [ ] Claude desktop's Cowork tab opens (it needs SVM, kvm and vhost_vsock)
 - [ ] Data partition: set `dataUuid` and apply
-- [ ] Fan curve: turn on `ppfeaturemask`, reboot, run `maia-gpu-tune`, then listen and tune
 - [ ] Windows: Adrenalin 26.2.1 or later, display-switch switches there too, and "ubuntu" is still
       first in the BIOS boot order after Windows updates
