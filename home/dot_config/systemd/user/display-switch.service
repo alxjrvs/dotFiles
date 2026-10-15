@@ -1,6 +1,6 @@
-# The monitor follows the dock (~/.config/display-switch/display-switch.ini). Enabled by the maia
-# setup script once maia.dockUsb is measured; DDC needs the i2c group, so it starts working from the
-# first login after the setup added it.
+# The monitor follows the dock (~/.config/display-switch/display-switch.ini). maia-desk writes that
+# file and enables this once it knows the dock; DDC needs the i2c group, which applies from the next
+# login, and until then a failed switch just retries.
 [Unit]
 Description=display-switch: the monitor follows the dock
 

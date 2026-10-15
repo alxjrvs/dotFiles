@@ -1,0 +1,63 @@
+#!/bin/bash
+# The monitor follows the dock: writes ~/.config/display-switch/display-switch.ini and starts
+# display-switch's user service. The maia setup runs it at apply; run it again any time, with
+# --dry-run to print the config and change nothing.
+# The TS4's USB id and the BenQ's USB-C input code are [data.maia]'s dockUsb and usbcInput when set
+# there, and measured otherwise: the dock as the first device lsusb lists for vendor 2188, and the
+# input as the one value of the monitor's input feature (60) that is neither DisplayPort-1 nor HDMI.
+set -euo pipefail
+dry=
+if [ "${1:-}" = --dry-run ]; then dry=1; fi
+# A quoted heredoc: the shell reads the values as data, whatever they hold.
+maia=$(
+  cat << 'JSON'
+{{ dig "maia" dict . | toJson }}
+JSON
+)
+value() { jq -r --arg k "$1" '.[$k] // empty' <<< "$maia"; }
+lower() { tr '[:upper:]' '[:lower:]'; }
+
+dock=$(value dockUsb | lower)
+if [ -z "$dock" ]; then
+  dock=$(lsusb -d 2188: 2> /dev/null | awk '{ print $6 }' | sort | head -n 1 | lower || true)
+  [ -z "$dock" ] || echo "maia-desk: measured the dock as $dock (maia.dockUsb)"
+fi
+usbc=$(value usbcInput)
+if [ -z "$usbc" ]; then
+  # DDC needs the i2c group, which applies from the next login; until then, through sudo.
+  ddc=(ddcutil)
+  id -nG | grep -qw i2c || ddc=(sudo ddcutil)
+  inputs=$("${ddc[@]}" capabilities 2> /dev/null |
+    awk '/Feature: 60/ { f = 1; next } /Feature:/ { f = 0 } f && /^ +[0-9a-fA-F]{2}:/ { print tolower($1) }' |
+    tr -d : | grep -vxE '0f|11|12' || true)
+  if [ "$(wc -w <<< "$inputs")" = 1 ]; then
+    usbc=0x$inputs
+    echo "maia-desk: measured the USB-C input as $usbc (maia.usbcInput)"
+  elif [ -n "$inputs" ]; then
+    echo "maia-desk: the monitor offers $(tr '\n' ' ' <<< "$inputs")besides DisplayPort and HDMI; set maia.usbcInput to the USB-C one" >&2
+  fi
+fi
+
+ini=$(
+  echo "; Written by maia-desk; [data.maia]'s dockUsb and usbcInput override what it measured."
+  if [ -n "$dock" ]; then echo "usb_device = \"$dock\""; else echo "; usb_device: no TS4 (vendor 2188) on USB"; fi
+  echo "on_usb_connect = 0x0f"
+  if [ -n "$usbc" ]; then echo "on_usb_disconnect = $usbc"; else echo "; on_usb_disconnect: the USB-C input is unknown"; fi
+)
+file=$HOME/.config/display-switch/display-switch.ini
+if [ -n "$dry" ]; then
+  printf '%s\n' "$ini"
+elif [ "$ini" != "$(cat "$file" 2> /dev/null)" ]; then
+  mkdir -p "${file%/*}"
+  printf '%s\n' "$ini" > "$file"
+  echo "maia-desk: wrote $file"
+fi
+
+if [ -z "$dock" ]; then
+  echo "maia-desk: display-switch waits for the dock; plug it in and run maia-desk again" >&2
+elif [ -z "$dry" ]; then
+  systemctl --user daemon-reload
+  systemctl --user enable display-switch.service
+  systemctl --user restart display-switch.service
+  echo "maia-desk: display-switch is running"
+fi
