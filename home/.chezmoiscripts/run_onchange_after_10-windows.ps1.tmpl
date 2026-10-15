@@ -1,0 +1,65 @@
+# Windows on MAIA, the games side (MAIA.md): winget installs and the monitor following the dock.
+# Re-runs when this script or a [data.maia] value changes; installs, never upgrades. It touches no
+# boot order, BitLocker, or Linux drive. Each step says what it does first.
+$ErrorActionPreference = 'Stop'
+function Say($message) { Write-Host "windows: $message" }
+# A single-quoted here-string: PowerShell reads the values as data, whatever they hold.
+$maia = @'
+{{ dig "maia" dict . | toJson }}
+'@ | ConvertFrom-Json
+
+# Steam; Claude desktop and Claude Code; git and gh for the shared git config; 1Password, whose
+# agent and signer that config uses; VS Code and the CLIs that have Windows builds. Claude Code's
+# settings stay stock here: the shared ones require a sandbox native Windows has not got. AMD
+# Software: Adrenalin has no winget package: MAIA.md says which version to download.
+$packages = @(
+  'Valve.Steam',
+  'Anthropic.Claude',
+  'Anthropic.ClaudeCode',
+  'Git.Git',
+  'GitHub.cli',
+  'AgileBits.1Password',
+  'AgileBits.1Password.CLI',
+  'Microsoft.VisualStudioCode',
+  'BurntSushi.ripgrep.MSVC',
+  'sharkdp.fd',
+  'jqlang.jq'
+)
+foreach ($id in $packages) {
+  winget list --id $id --exact --accept-source-agreements | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    Say "winget: $id"
+    winget install --id $id --exact --silent --accept-package-agreements --accept-source-agreements
+    if ($LASTEXITCODE -ne 0) { throw "winget could not install $id" }
+  }
+}
+
+# display-switch from its release, pinned and checked, started at login from the Startup folder.
+# Its config is %APPDATA%\display-switch\display-switch.ini, the same as Linux's.
+$dir = Join-Path $env:LOCALAPPDATA 'Programs\display-switch'
+$exe = Join-Path $dir 'display_switch.exe'
+if (-not (Test-Path $exe)) {
+  Say 'display-switch 1.4.1'
+  $zip = Join-Path $env:TEMP 'display-switch.zip'
+  Invoke-WebRequest -UseBasicParsing -OutFile $zip `
+    -Uri 'https://github.com/haimgel/display-switch/releases/download/1.4.1/display_switch-v1.4.1-windows-amd64.zip'
+  $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+  if ($hash -ne '020efe807d421d2f3134d6631328f7a92a8e7457205c77b41fcb5ba6ba270e58') {
+    Remove-Item $zip
+    throw "display-switch's zip is not the pinned release ($hash)"
+  }
+  Expand-Archive -Force $zip $dir
+  Remove-Item $zip
+}
+$startup = Join-Path ([Environment]::GetFolderPath('Startup')) 'display-switch.lnk'
+if ($maia.dockUsb) {
+  if (-not (Test-Path $startup)) {
+    Say 'display-switch: a Startup shortcut, and starting it now'
+    $link = (New-Object -ComObject WScript.Shell).CreateShortcut($startup)
+    $link.TargetPath = $exe
+    $link.Save()
+    Start-Process $exe -WindowStyle Hidden
+  }
+} else {
+  Say 'display-switch waits for maia.dockUsb, a day-one value (MAIA.md)'
+}

@@ -1,12 +1,22 @@
-# The empty helper drops the osxkeychain helper Apple's system gitconfig starts with, so gh's
-# token is the only credential git keeps, for every form of GitHub URL. gh by absolute path, as
-# `gh auth setup-git` writes it: a launchd job's git has no Homebrew on PATH.
+{{- /* gh and 1Password's signer, where each OS's installer puts them. */ -}}
+{{- $gh := "/opt/homebrew/bin/gh" -}}
+{{- $sign := "/Applications/1Password.app/Contents/MacOS/op-ssh-sign" -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   $gh = "/usr/bin/gh" -}}
+{{-   $sign = "/opt/1Password/op-ssh-sign" -}}
+{{- else if eq .chezmoi.os "windows" -}}
+{{-   $gh = "'C:/Program Files/GitHub CLI/gh.exe'" -}}
+{{-   $sign = printf "%s/AppData/Local/1Password/app/8/op-ssh-sign.exe" .chezmoi.homeDir | replace "\\" "/" -}}
+{{- end -}}
+# The empty helper drops the one the system gitconfig starts with (Apple's osxkeychain, Git for
+# Windows' manager), so gh's token is the only credential git keeps, for every form of GitHub URL.
+# gh by absolute path, as `gh auth setup-git` writes it: a launchd job's git has no Homebrew on PATH.
 [credential]
 	helper =
 [credential "https://github.com"]
-	helper = !/opt/homebrew/bin/gh auth git-credential
+	helper = !{{ $gh }} auth git-credential
 [credential "https://gist.github.com"]
-	helper = !/opt/homebrew/bin/gh auth git-credential
+	helper = !{{ $gh }} auth git-credential
 [url "https://github.com/"]
 	insteadOf = git@github.com:
 	insteadOf = ssh://git@github.com/
@@ -18,7 +28,7 @@
 [gpg]
 	format = ssh
 [gpg "ssh"]
-	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+	program = {{ $sign }}
 [commit]
 	gpgSign = true
 	verbose = true

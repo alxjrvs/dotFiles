@@ -1,0 +1,57 @@
+#!/bin/bash
+# MAIA's data drive, once, by hand:  maia-data-mount [--dry-run] UUID
+# Mounts the 2TB's ext4 partition at /data (nofail: a missing drive never stops a boot), makes
+# /data/models and /data/steam for $USER, and points Ollama's models at /data/models. The UUID is
+# the ext4 partition's, from `lsblk -f` on day one. Partitions nothing and formats nothing; safe to
+# re-run. --dry-run prints each step and changes nothing.
+set -euo pipefail
+die() { echo "maia-data-mount: $*" >&2 && exit 1; }
+dry=
+if [ "${1:-}" = --dry-run ]; then dry=1 && shift; fi
+uuid=${1:-}
+[[ $uuid =~ ^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$ ]] ||
+  die "usage: maia-data-mount [--dry-run] UUID (the ext4 partition's, from lsblk -f)"
+dev=/dev/disk/by-uuid/$uuid
+[ -e "$dev" ] || die "no partition has UUID $uuid"
+fs=$(lsblk -no FSTYPE "$dev")
+[ "$fs" = ext4 ] || die "$uuid is ${fs:-unformatted}, not ext4; this formats nothing"
+
+# Each step says what it does; a dry run stops there.
+run() {
+  echo "+ $*" >&2
+  [ -n "$dry" ] || "$@"
+}
+
+entry="UUID=$uuid /data ext4 defaults,nofail,x-systemd.device-timeout=10s 0 2"
+current=$(awk '!/^[[:space:]]*#/ && $2 == "/data"' /etc/fstab)
+if [ -z "$current" ]; then
+  [ -e /etc/fstab.pre-maia ] || run sudo cp /etc/fstab /etc/fstab.pre-maia
+  run sudo tee -a /etc/fstab <<< "$entry" > /dev/null
+elif [[ $current != "UUID=$uuid "* ]]; then
+  die "/etc/fstab already mounts something else at /data; edit it by hand: $current"
+fi
+run sudo mkdir -p /data
+run sudo findmnt --verify --tab-file /etc/fstab
+run sudo systemctl daemon-reload
+mountpoint -q /data || run sudo mount /data
+
+# Owned by $USER; Ollama's service user writes models through its group.
+group=$USER
+getent group ollama > /dev/null && group=ollama
+run sudo install -d -o "$USER" -g "$group" -m 2775 /data/models
+run sudo install -d -o "$USER" -g "$USER" /data/steam
+
+# Ollama waits for /data, so models never land on the Ubuntu drive when the 2TB is missing.
+dropin=/etc/systemd/system/ollama.service.d/maia-models.conf
+if [ ! -e "$dropin" ]; then
+  run sudo mkdir -p "${dropin%/*}"
+  run sudo tee "$dropin" > /dev/null << 'UNIT'
+[Unit]
+RequiresMountsFor=/data
+[Service]
+Environment="OLLAMA_MODELS=/data/models"
+UNIT
+  run sudo systemctl daemon-reload
+  if systemctl list-unit-files ollama.service > /dev/null 2>&1; then run sudo systemctl restart ollama; fi
+fi
+echo "maia-data-mount: /data is ready. Add /data/steam as a library in Steam › Settings › Storage."

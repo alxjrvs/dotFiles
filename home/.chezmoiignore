@@ -1,0 +1,54 @@
+# What lands on which machine. A template; a script is named by its target (`.chezmoiscripts/`
+# and the name without `run_…_` or `.tmpl`). The Mac takes everything but the other platforms' own.
+{{- $os := .chezmoi.os }}
+{{- $ubuntu := and (eq $os "linux") (eq (dig "osRelease" "id" "" .chezmoi) "ubuntu") }}
+{{- $maia := eq (lower .chezmoi.hostname) "maia" }}
+
+{{- if ne $os "darwin" }}
+# The Mac's own: Homebrew, launchd, defaults, the native Claude installer, the extra Claude apps.
+Library
+Screenshots
+.config/homebrew
+.config/ghostty
+.chezmoiscripts/00-homebrew.sh
+.chezmoiscripts/25-launchagents.sh
+.chezmoiscripts/30-macos-defaults.sh
+.chezmoiscripts/40-provision.sh
+.chezmoiscripts/45-brew.sh
+.chezmoiscripts/50-claude-profiles.sh
+{{- end }}
+
+{{- if not $ubuntu }}
+# Ubuntu, any host: apt, and Debian's name for fd.
+.chezmoiscripts/05-ubuntu-upgrade.sh
+.chezmoiscripts/10-ubuntu.sh
+.local/bin/fd
+{{- end }}
+
+{{- if not (and $ubuntu $maia) }}
+# MAIA's hardware: the GPU, the data drive, the dock and the monitor.
+.chezmoiscripts/60-maia.sh
+.config/systemd/user/display-switch.service
+.local/bin/maia-*
+{{- end }}
+
+{{- if ne $os "windows" }}
+.chezmoiscripts/10-windows.ps1
+AppData
+{{- else }}
+# Windows is for games: git's config and the dock follower. Its bash scripts, zsh, ssh (1Password's
+# agent is the system pipe there), mise and the shared Claude Code settings stay on the Mac and Linux.
+.chezmoiscripts/*.sh
+.zshenv
+.zprofile
+.zshrc
+.ssh
+.claude
+.config/1Password
+.config/mise
+.bunfig.toml
+.ripgreprc
+{{-   if not $maia }}
+AppData
+{{-   end }}
+{{- end }}

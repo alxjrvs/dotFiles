@@ -1,6 +1,8 @@
 # dotFiles
 
-A [chezmoi](https://www.chezmoi.io) source repo for one Mac; there is no engine code. `home/` is
+A [chezmoi](https://www.chezmoi.io) source repo for one Mac, and for MAIA, a desktop on Ubuntu and
+Windows ([`MAIA.md`](MAIA.md)); there is no engine code. `home/.chezmoiignore` decides what lands
+on which OS and host. `home/` is
 the source state (chezmoi's `dot_`/`private_` naming); everything else is repo plumbing.
 
 Small and legible beats clever: native over custom, and every file earns its place. Comments say

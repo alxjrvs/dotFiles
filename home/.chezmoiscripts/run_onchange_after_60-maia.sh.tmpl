@@ -1,0 +1,107 @@
+#!/bin/bash
+# MAIA on Ubuntu (MAIA.md): Steam, the R9700's groups and tools, Ollama, and the monitor following
+# the dock. Re-runs when this script or a [data.maia] value changes; installs, never upgrades.
+# Nothing here partitions, formats, or touches GRUB, BIOS or a DKMS driver, and each step says what
+# it does first. The desk and the data drive are maia-* commands in ~/.local/bin, run from here and
+# safe to run again by hand.
+set -euo pipefail
+say() { printf 'maia: %s\n' "$*"; }
+# A quoted heredoc: the shell reads the values as data, whatever they hold.
+maia=$(
+  cat << 'JSON'
+{{ dig "maia" dict . | toJson }}
+JSON
+)
+value() { jq -r --arg k "$1" '.[$k] // empty' <<< "$maia"; }
+group() {
+  if ! id -nG "$USER" | grep -qw "$1"; then
+    say "adding $USER to $1 ($2); it applies from the next login"
+    sudo usermod -aG "$1" "$USER"
+  fi
+}
+# fetch URL SHA256 FILE: a pinned release, refused unless it is the one this script names.
+fetch() {
+  curl -fsSL "$1" -o "$3"
+  sha256sum -c --quiet <<< "$2  $3"
+}
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+sudo -v
+
+# ── Gaming ────────────────────────────────────────────────────────────
+# Valve's Steam from multiverse, which needs i386. Proton for every title is Steam's own setting.
+if ! dpkg --print-foreign-architectures | grep -qx i386; then
+  say "dpkg: adding i386, for Steam"
+  sudo dpkg --add-architecture i386
+fi
+say "apt: enabling multiverse"
+sudo add-apt-repository -y multiverse
+if [ "$(value kisakMesa)" = true ]; then
+  say "kisak Mesa (maia.kisakMesa): adding ppa:kisak/kisak-mesa and upgrading to its Mesa"
+  sudo add-apt-repository -y ppa:kisak/kisak-mesa
+  sudo apt-get upgrade -y
+fi
+# 32-bit Mesa by name, so Proton's 32-bit games find RADV whatever Steam's own dependencies pull.
+say "Steam, its udev rules, 32-bit Mesa, ddcutil, rocminfo, vulkan-tools (maia-check reads with it)"
+sudo apt-get update -q
+sudo apt-get install -y steam-installer steam-devices mesa-vulkan-drivers:i386 libgl1-mesa-dri:i386 \
+  ddcutil rocminfo vulkan-tools
+
+# ── Local AI ──────────────────────────────────────────────────────────
+group render "the GPU's compute nodes"
+group video "the GPU"
+if [ "$(value rocm)" = true ]; then
+  say "ROCm from Ubuntu's archive (maia.rocm): several GB"
+  sudo apt-get install -y rocm
+fi
+# Ollama's own installer and service; it brings its own ROCm (v7) libraries and installs no kernel
+# module, so Secure Boot is untouched. Its models move to
+# /data/models when maia-data-mount runs.
+if ! command -v ollama > /dev/null; then
+  say "Ollama, by its official installer"
+  curl -fsSL https://ollama.com/install.sh | sh
+fi
+# Its service runs as ollama, which reaches the card only through render and video.
+for g in render video; do
+  if getent passwd ollama > /dev/null && ! id -nG ollama | grep -qw "$g"; then
+    say "adding the ollama service user to $g"
+    sudo usermod -aG "$g" ollama
+    sudo systemctl restart ollama
+  fi
+done
+
+# ── Desk: the monitor follows the dock ────────────────────────────────
+# DDC/CI over i2c-dev, loaded every boot, for the i2c group (display-switch's README's rule).
+if [ ! -e /etc/modules-load.d/i2c-dev.conf ]; then
+  say "loading i2c-dev at boot"
+  echo i2c-dev | sudo tee /etc/modules-load.d/i2c-dev.conf > /dev/null
+fi
+sudo modprobe i2c-dev
+sudo groupadd -f --system i2c
+rule=/etc/udev/rules.d/10-local_i2c_group.rules
+if [ ! -e "$rule" ]; then
+  say "udev: i2c devices to the i2c group"
+  echo 'KERNEL=="i2c-[0-9]*", GROUP="i2c"' | sudo tee "$rule" > /dev/null
+  sudo udevadm control --reload-rules
+  sudo udevadm trigger --subsystem-match=i2c-dev
+fi
+group i2c "DDC to the monitor"
+if [ ! -x "$HOME/.local/bin/display_switch" ]; then
+  say "display-switch 1.4.1 into ~/.local/bin"
+  fetch https://github.com/haimgel/display-switch/releases/download/1.4.1/display_switch-v1.4.1-linux-amd64.zip \
+    0de34d3e8799188834a9a2758a5c47e99d7ffa6a52961c0c9f10334c54eee5a7 "$tmp/display-switch.zip"
+  unzip -q -o "$tmp/display-switch.zip" display_switch -d "$tmp"
+  install -D -m 0755 "$tmp/display_switch" "$HOME/.local/bin/display_switch"
+fi
+say "display-switch: the dock and the USB-C input, measured or from [data.maia] (maia-desk)"
+"$HOME/.local/bin/maia-desk"
+
+# ── Data drive ────────────────────────────────────────────────────────
+# Only with maia.dataUuid, the ext4 partition's UUID: maia-data-mount formats nothing.
+uuid=$(value dataUuid)
+if [ -n "$uuid" ]; then
+  say "data drive (maia.dataUuid): /data, /data/models, /data/steam (maia-data-mount)"
+  "$HOME/.local/bin/maia-data-mount" "$uuid"
+else
+  say "the data drive waits for maia.dataUuid, or run maia-data-mount UUID by hand (MAIA.md)"
+fi

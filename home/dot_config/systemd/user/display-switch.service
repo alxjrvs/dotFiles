@@ -1,0 +1,13 @@
+# The monitor follows the dock (~/.config/display-switch/display-switch.ini). maia-desk writes that
+# file and enables this once it knows the dock; DDC needs the i2c group, which applies from the next
+# login, and until then a failed switch just retries.
+[Unit]
+Description=display-switch: the monitor follows the dock
+
+[Service]
+ExecStart=%h/.local/bin/display_switch
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

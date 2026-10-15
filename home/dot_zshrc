@@ -19,4 +19,11 @@ _history_filter() {
 }
 autoload -Uz add-zsh-hook && add-zsh-hook zshaddhistory _history_filter
 
+# Linux: no /etc/zshrc names a history file, and the Mac's open, pbcopy and pbpaste are GNOME's
+# xdg-open and Wayland's clipboard.
+if [[ $OSTYPE == linux* ]]; then
+  HISTFILE=${HISTFILE:-$HOME/.zsh_history}
+  alias open=xdg-open pbcopy=wl-copy pbpaste=wl-paste
+fi
+
 (( $+commands[starship] )) && eval "$(starship init zsh)"

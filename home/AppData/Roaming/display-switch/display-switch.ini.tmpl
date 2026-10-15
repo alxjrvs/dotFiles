@@ -1,0 +1,16 @@
+{{- $usb := dig "maia" "dockUsb" "" . | lower -}}
+{{- $usbc := dig "maia" "usbcInput" "" . -}}
+; display-switch (github.com/haimgel/display-switch): the BenQ GW3290QT follows the CalDigit TS4.
+; The dock on this PC means the PC's input, DisplayPort (0x0f); the dock gone means a laptop has it,
+; on USB-C. Both values are [data.maia]'s, the ones maia-desk printed on Ubuntu (MAIA.md).
+{{- if $usb }}
+usb_device = "{{ $usb }}"
+{{- else }}
+; usb_device waits for maia.dockUsb.
+{{- end }}
+on_usb_connect = 0x0f
+{{- if $usbc }}
+on_usb_disconnect = {{ $usbc }}
+{{- else }}
+; on_usb_disconnect waits for maia.usbcInput.
+{{- end }}

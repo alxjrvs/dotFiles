@@ -24,8 +24,8 @@ mkdir -p "$home/.local/bin" && touch "$home/.local/bin/chezmoi"
 "${cz[@]}" apply --dry-run
 
 # A deleted source leaves its target behind, so every file main manages is still managed here,
-# if only as a `remove_` entry that deletes it. Dropping a `remove_` entry later is fine: once
-# applied it has done its work.
+# if only as a `remove_` entry that deletes it, or is one this OS ignores. Dropping a `remove_`
+# entry later is fine: once applied it has done its work.
 base=$tmp/base
 mkdir "$base"
 git -C "$root" archive "$(git -C "$root" merge-base HEAD origin/main)" | tar -x -C "$base"
@@ -35,6 +35,7 @@ now=$("${cz[@]}" managed --exclude scripts,externals,dirs | sort)
 stub=$tmp/stub
 while read -r target; do mkdir -p "$stub/$(dirname "$target")" && touch "$stub/$target"; done <<< "$was"
 removed=$(chezmoi --source "$root" --config "$tmp/chezmoi.toml" --destination "$stub" managed --include remove)
+removed+=$'\n'$("${cz[@]}" ignored)
 # A Mac's config was rendered by main's template: HEAD must apply over it (#449 did not).
 upgrade=(chezmoi --source "$root" --config "$tmp/upgrade.toml" --persistent-state "$tmp/upgrade.db"
   --destination "$tmp/upgrade")
@@ -93,10 +94,12 @@ fi
   [ -z "$err" ] || { printf 'apply-check: the shell said:\n%s\n' "$err" >&2 && exit 1; }
   # git parses the rendered file, its empty helper drops the system's osxkeychain, gh is the last
   # github.com helper in it, and commits sign.
+  gh=/opt/homebrew/bin/gh agent='Group Containers'
+  [ "$(uname -s)" = Darwin ] || gh=/usr/bin/gh agent=.1password/agent.sock
   git config --global --get-all credential.helper | grep -qx ''
-  test "$(git config --global --get-all credential.https://github.com.helper | tail -1)" = '!/opt/homebrew/bin/gh auth git-credential'
+  test "$(git config --global --get-all credential.https://github.com.helper | tail -1)" = "!$gh auth git-credential"
   test "$(git config --global --get commit.gpgSign)" = true
-  grep -q 'Group Containers' "$home/.ssh/config"
+  grep -qF "$agent" "$home/.ssh/config"
   # Every work org's GitHub remote commits as workEmail, in any URL form and either case; anything
   # else as email.
   repo=$tmp/repo
@@ -119,6 +122,23 @@ fi
     "export \(.key)=\(.value | @sh)"' "$settings")"
   test "$(git config --get commit.gpgSign)" = false
 )
+# The other hosts render too, MAIA on Ubuntu and on Windows, so a template error fails here rather
+# than on a machine this check never runs on: each takes its own scripts and files, and no other's.
+hosts=('{"hostname": "maia", "os": "linux", "osRelease": {"id": "ubuntu"}}' '{"hostname": "MAIA", "os": "windows"}')
+targets() { "${cz[@]}" managed --include scripts,files --override-data "{\"chezmoi\": $1}"; }
+takes() { targets "$1" | grep -qxE "$2" || { echo "apply-check: $1 lacks $2" >&2 && exit 1; }; }
+lacks() { ! targets "$1" | grep -E "$2" || { echo "apply-check: $1 takes the above" >&2 && exit 1; }; }
+takes "${hosts[0]}" '\.chezmoiscripts/(10-ubuntu|60-maia)\.sh'
+takes "${hosts[0]}" '\.local/bin/maia-data-mount'
+lacks "${hosts[0]}" 'homebrew|launchagents|macos|provision|claude-profiles|\.ps1$|^Library|^AppData'
+takes "${hosts[1]}" '\.chezmoiscripts/10-windows\.ps1'
+takes "${hosts[1]}" 'AppData/Roaming/display-switch/display-switch\.ini'
+lacks "${hosts[1]}" '\.sh$|^\.zsh|^\.claude|^\.ssh|^Library'
+lacks '{"os": "darwin", "osRelease": {}}' 'maia|ubuntu|windows|display-switch|^AppData'
+for host in "${hosts[@]}"; do
+  "${cz[@]}" apply --dry-run --override-data "{\"chezmoi\": $host}" > /dev/null
+done
+
 # A skills-directory plugin lands (a source name starting with `.` would be ignored).
 test -f "$home/.claude/skills/ts-native/.claude-plugin/plugin.json" ||
   { echo "apply-check: the ts-native plugin did not land" >&2 && exit 1; }
