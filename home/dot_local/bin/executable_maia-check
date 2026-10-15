@@ -1,0 +1,66 @@
+#!/bin/bash
+# Does MAIA's hardware work on this Ubuntu? Read-only: one line per part, with a hint when not.
+#   maia-check        (after the first apply, and a log out and in)
+# FAIL is something the setup or the BIOS should have done; WARN works, but not as intended.
+set -uo pipefail
+fails=0
+user=${USER:-$(id -un)}
+# check fail|warn NAME HINT COMMAND...: PASS when the command succeeds.
+check() {
+  local level=$1 name=$2 hint=$3
+  shift 3
+  if "$@" > /dev/null 2>&1; then
+    printf 'PASS  %s\n' "$name"
+  else
+    printf '%s  %s: %s\n' "${level^^}" "$name" "$hint"
+    [ "$level" = warn ] || fails=$((fails + 1))
+  fi
+}
+member() { id -nG "${2:-$user}" | grep -qw "$1"; }
+# The output of COMMAND... matches PATTERN.
+has() { "${@:2}" 2>&1 | grep -q "$1"; }
+# The kernel driver bound to the PCI devices with this vendor:device id is $2.
+bound() { lspci -k -d "$1" | grep -q "Kernel driver in use: $2"; }
+present() { [ -n "$(lspci -d "$1")" ]; }
+nic() { ! present 10ec:8126 || bound 10ec:8126 r8169; }
+sensor() { grep -qx "$1" /sys/class/hwmon/hwmon*/name; }
+pstate() { grep -q '^amd-pstate' /sys/devices/system/cpu/cpu0/cpufreq/scaling_driver; }
+ubuntu() { grep -qx 'VERSION_ID="26.04"' /etc/os-release; }
+not() { ! "$@"; }
+gpu_groups() { member render && member video; }
+
+echo "== Platform ($(uname -r))"
+check warn "Ubuntu 26.04" "MAIA's setup was written for 26.04" ubuntu
+check fail "Secure Boot" "turn it on in the BIOS (Boot › Secure Boot)" has 'SecureBoot enabled' mokutil --sb-state
+check fail "no amdgpu-dkms" "it needs a MOK key under Secure Boot, and the in-kernel amdgpu is enough: sudo apt purge amdgpu-dkms" \
+  not dpkg-query -W amdgpu-dkms
+check warn "CPU frequency on amd-pstate" "turn on CPPC in the BIOS" pstate
+check warn "CPU temperature (k10temp)" "no k10temp sensor" sensor k10temp
+check fail "virtualization (/dev/kvm)" "turn on SVM Mode in the BIOS (Advanced › CPU Configuration); Cowork needs it" test -e /dev/kvm
+check fail "Cowork's vhost-vsock" "sudo modprobe vhost_vsock" test -e /dev/vhost-vsock
+check fail "$user in kvm" "log out and in after the setup" member kvm
+
+echo "== GPU"
+check fail "amdgpu drives the Radeon" "lspci -k -d 1002: and sudo dmesg | grep -i amdgpu" bound 1002: amdgpu
+check fail "Vulkan: RADV sees GFX1201" "vulkaninfo --summary" has GFX1201 vulkaninfo --summary
+check fail "32-bit Vulkan, for Steam" "sudo apt install mesa-vulkan-drivers:i386" dpkg-query -W mesa-vulkan-drivers:i386
+check fail "$user in render and video" "log out and in after the setup" gpu_groups
+check fail "ROCm sees gfx1201" "rocminfo; is $user in render?" has gfx1201 rocminfo
+check fail "Ollama is running" "systemctl status ollama" systemctl is-active -q ollama
+check fail "Ollama's user in render" "sudo usermod -aG render,video ollama && sudo systemctl restart ollama" member render ollama
+
+echo "== Board"
+check warn "5GbE (RTL8126) present" "lspci -nn | grep -i ethernet" present 10ec:8126
+check fail "5GbE on r8169" "lspci -k -d 10ec:8126" nic
+check warn "Wi-Fi 7 (RTL8922AE) on rtw89" "lspci -k -d 10ec:8922" bound 10ec:8922 rtw89
+check warn "Bluetooth" "sudo dmesg | grep -i btrtl" test -e /sys/class/bluetooth/hci0
+check warn "board sensors (nct6775)" "fans and voltages only, cosmetic (MAIA.md)" sensor nct6799
+
+echo "== Desk"
+check warn "the TS4 dock on USB" "plug it into the rear 10Gbps USB-C port" has . lsusb -d 2188:
+check fail "DDC reaches the BenQ" "is $user in i2c, and DDC/CI on in the monitor's menu?" has BNQ ddcutil detect
+check warn "display-switch running" "maia-desk" systemctl --user is-active -q display-switch
+check warn "/data mounted" "maia-data-mount UUID (MAIA.md)" mountpoint -q /data
+
+if [ "$fails" = 0 ]; then echo "maia-check: all good. Load a model (ollama run <model> hello) and ollama ps should say 100% GPU"; else echo "maia-check: $fails to fix"; fi
+[ "$fails" = 0 ]
