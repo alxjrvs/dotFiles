@@ -83,6 +83,7 @@
     "failIfUnavailable": true,
     "allowUnsandboxedCommands": false,
     "network": {
+      "allowLocalBinding": true,
       "allowedDomains": [
         "*.1password.com", "*.1password.ca", "*.1password.eu",
         "*.1passwordusercontent.com", "*.1passwordusercontent.ca", "*.1passwordusercontent.eu",
