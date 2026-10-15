@@ -1,8 +1,9 @@
 # dotFiles
 
 macOS dotfiles for [alxjrvs](https://github.com/alxjrvs), managed by
-[chezmoi](https://www.chezmoi.io). `home/` is the source state. Principles:
-[`CLAUDE.md`](CLAUDE.md).
+[chezmoi](https://www.chezmoi.io), which also set up MAIA, the Ubuntu and Windows desktop:
+[`MAIA.md`](MAIA.md). `home/` is the source state; `home/.chezmoiignore` decides what lands on
+which. Principles: [`CLAUDE.md`](CLAUDE.md).
 
 ## Fresh Mac
 
@@ -65,7 +66,7 @@ mise.toml               this repo's pinned linters and its two checks, lint and 
 .claude/                this repo's Claude Code config: the verify and bump skills, and a web-session setup hook
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/.chezmoiscripts/   machine setup: Homebrew, mise, launchd agents, macOS defaults, provisioning, apps, and one
-                        Claude desktop app per extra account
+                        Claude desktop app per extra account; on MAIA, apt and winget (MAIA.md)
 home/.chezmoitemplates/ the declared keys of ~/.claude/settings.json
 home/dot_claude/        user-global Claude Code config and skills
 home/.chezmoi*          chezmoi's own files: config template, data (who and which orgs), version floor and remove list
