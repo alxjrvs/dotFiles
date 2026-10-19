@@ -1,0 +1,19 @@
+#!/bin/bash
+# Reboot into Windows once (BootNext); the boot after that returns to CachyOS.
+# Usage: reboot-to-windows [--dry-run]
+# From a terminal it asks for the password with sudo; from the start menu, with a pkexec dialog
+# (cancelling it cancels the reboot).
+set -euo pipefail
+entry=$(efibootmgr | sed -n 's/^Boot\([0-9A-Fa-f]\{4\}\)\*\? *Windows Boot Manager.*/\1/p' | head -1)
+[[ -n $entry ]] || { echo "reboot-to-windows: no Windows Boot Manager entry" >&2 && exit 1; }
+if [[ -t 0 ]]; then root=sudo; else root=pkexec; fi
+if [[ ${1:-} == --dry-run ]]; then
+  echo "Would run: $root efibootmgr --bootnext $entry && systemctl reboot"
+  exit 0
+fi
+"$root" efibootmgr --bootnext "$entry" | grep -i bootnext
+if [[ -t 0 ]]; then
+  echo "Next boot: Windows (Boot$entry). Rebooting in 3s, Ctrl+C to cancel (then: sudo efibootmgr --delete-bootnext)"
+  sleep 3
+fi
+systemctl reboot

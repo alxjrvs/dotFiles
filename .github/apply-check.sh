@@ -130,10 +130,14 @@ takes() { targets "$1" | grep -qE "$2" || { echo "apply-check: $1 lacks $2" >&2 
 lacks() { ! targets "$1" | grep -E "$2" || { echo "apply-check: $1 takes the above" >&2 && exit 1; }; }
 takes "$mac" '^\.chezmoiscripts/45-brew\.sh$'
 takes "$mac" '^Library/LaunchAgents/local\.dotfiles\.upkeep\.plist$'
-lacks "$mac" 'cachyos|systemd|plasma'
+lacks "$mac" 'cachyos|systemd|plasma|reboot-to'
 for script in 10-cachyos 25-systemd 30-plasma-defaults; do takes "$cachyos" "^\.chezmoiscripts/$script\.sh$"; done
 takes "$cachyos" '^\.config/systemd/user/upkeep\.timer$'
 takes "$cachyos" '^\.config/ghostty/config$'
+for to in windows bios; do
+  takes "$cachyos" "^\.local/bin/reboot-to-$to$"
+  takes "$cachyos" "^\.local/share/applications/reboot-to-$to\.desktop$"
+done
 lacks "$cachyos" 'homebrew|launchagents|macos|claude-profiles|^Library'
 for host in "$mac" "$cachyos"; do
   "${cz[@]}" apply --dry-run --override-data "{\"chezmoi\": $host}" > /dev/null

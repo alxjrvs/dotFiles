@@ -1,0 +1,14 @@
+#!/bin/bash
+# Reboot into the UEFI setup (BIOS) once; the boot after that is normal.
+# Usage: reboot-to-bios [--dry-run]
+# No password: logind allows it for the logged-in user.
+set -euo pipefail
+if [[ ${1:-} == --dry-run ]]; then
+  echo "Would run: systemctl reboot --firmware-setup (logind says: $(busctl call org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager CanRebootToFirmwareSetup))"
+  exit 0
+fi
+if [[ -t 0 ]]; then
+  echo "Next boot: BIOS setup. Rebooting in 3s, Ctrl+C to cancel"
+  sleep 3
+fi
+systemctl reboot --firmware-setup

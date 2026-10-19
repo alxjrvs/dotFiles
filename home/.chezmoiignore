@@ -11,8 +11,11 @@ Library
 .chezmoiscripts/50-claude-profiles.sh
 {{- end }}
 {{- if ne (dig "osRelease" "id" "" .chezmoi) "cachyos" }}
-# CachyOS's own: pacman and the AUR, systemd user units, Plasma's settings.
+# CachyOS's own: pacman and the AUR, systemd user units, Plasma's settings, and the reboots into
+# the dual-booted Windows or the BIOS, with their start-menu entries.
 .config/systemd
+.local/bin/reboot-to-*
+.local/share/applications/reboot-to-*
 .chezmoiscripts/10-cachyos.sh
 .chezmoiscripts/25-systemd.sh
 .chezmoiscripts/30-plasma-defaults.sh

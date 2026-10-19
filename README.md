@@ -38,7 +38,8 @@ gh auth refresh -s admin:ssh_signing_key && chezmoi data | jq -r .signingKey | g
 
 The same environment where Linux allows: zsh, the starship prompt, Ghostty, git signing through
 1Password, mise, Claude Code and desktop, the Brewfile's apps from pacman and the AUR, and Caps Lock
-as Control. KRunner (Alt+Space) stands in for Raycast; noTunes, Tuple, OrbStack (Docker instead)
+as Control. `reboot-to-windows` and `reboot-to-bios` (also in the start menu, under System) restart
+into the dual-booted Windows or the BIOS setup once. KRunner (Alt+Space) stands in for Raycast; noTunes, Tuple, OrbStack (Docker instead)
 and the extra Claude desktop apps are the Mac's alone. Bring the install current first, then the
 same two commands as a Mac:
 
