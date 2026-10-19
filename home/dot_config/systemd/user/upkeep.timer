@@ -1,0 +1,11 @@
+# Nightly, at the Mac's hour. A run missed while off fires at the next login.
+# Enabled by .chezmoiscripts/25-systemd.sh when this file changes.
+[Unit]
+Description=Nightly mise run upkeep
+
+[Timer]
+OnCalendar=*-*-* 04:17
+Persistent=true
+
+[Install]
+WantedBy=timers.target

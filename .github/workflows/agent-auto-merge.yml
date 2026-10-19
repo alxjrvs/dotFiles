@@ -26,7 +26,7 @@ jobs:
       pull-requests: write
     steps:
       - run: |
-          floor='^(home/(\.chezmoiscripts/|Library/|\.chezmoitemplates/|dot_claude/modify_|dot_config/mise/config\.toml$|dot_config/homebrew/Brewfile$|dot_config/git/|dot_z|\.chezmoi\.toml\.tmpl$|\.chezmoiexternal)|\.github/gate\.sh$)'
+          floor='^(home/(\.chezmoiscripts/|Library/|dot_config/systemd/|\.chezmoiignore$|\.chezmoitemplates/|dot_claude/modify_|dot_config/mise/config\.toml$|dot_config/homebrew/Brewfile$|dot_config/git/|dot_z|\.chezmoi\.toml\.tmpl$|\.chezmoiexternal)|\.github/gate\.sh$)'
           if gh pr diff "$PR" --name-only | grep -qE "$floor"; then
             echo "Touches the floor: it merges only when the owner asked."
             by=$(gh pr view "$PR" --json autoMergeRequest --jq '.autoMergeRequest.enabledBy.login // ""')

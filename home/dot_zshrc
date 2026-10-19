@@ -21,4 +21,14 @@ autoload -Uz add-zsh-hook && add-zsh-hook zshaddhistory _history_filter
 
 alias gs='git status' gp='git push' gpr='git pull --rebase' gco='git checkout'
 
+# Linux has no /etc/zshrc: the history file, and Home, End and Delete, are macOS's from there. The
+# Mac's open, pbcopy and pbpaste are xdg-open and Wayland's clipboard.
+if [[ $OSTYPE == linux* ]]; then
+  HISTFILE=${HISTFILE:-$HOME/.zsh_history}
+  bindkey '^[[H' beginning-of-line
+  bindkey '^[[F' end-of-line
+  bindkey '^[[3~' delete-char
+  alias open=xdg-open pbcopy=wl-copy pbpaste=wl-paste
+fi
+
 (( $+commands[starship] )) && eval "$(starship init zsh)"

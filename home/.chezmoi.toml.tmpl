@@ -1,3 +1,11 @@
+{{- /* Which Mac this is, asked once and kept. Nothing reads it yet: it is where a difference between
+       the personal and the work Mac goes. An init with no terminal passes
+       `--promptChoice "Which Mac is this=personal"`. */ -}}
+{{- if eq .chezmoi.os "darwin" }}
+{{-   $mac := promptChoiceOnce . "mac" "Which Mac is this" (list "personal" "work") }}
+[data]
+    mac = {{ $mac | quote }}
+{{- end }}
 # An every-apply script is not drift.
 [verify]
     exclude = ["always"]

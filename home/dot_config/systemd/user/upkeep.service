@@ -1,0 +1,8 @@
+# `mise run upkeep`, the upgrades apply never does, started nightly by upkeep.timer. A failure is a
+# Plasma notification pointing at the log, as the Mac's LaunchAgent does.
+[Unit]
+Description=mise run upkeep
+
+[Service]
+Type=oneshot
+ExecStart=/bin/zsh -lc 'mise run upkeep > %h/.local/state/upkeep.log 2>&1 || notify-send "upkeep failed" "~/.local/state/upkeep.log"'

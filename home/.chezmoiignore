@@ -1,0 +1,19 @@
+# What lands on which OS. A template; a script is named by its target (`.chezmoiscripts/` and the
+# name without `run_…_` or `.tmpl`). Everything else lands on both.
+{{- if ne .chezmoi.os "darwin" }}
+# The Mac's own: Homebrew, launchd, defaults, the extra Claude apps.
+Library
+.config/homebrew
+.chezmoiscripts/00-homebrew.sh
+.chezmoiscripts/25-launchagents.sh
+.chezmoiscripts/30-macos-defaults.sh
+.chezmoiscripts/45-brew.sh
+.chezmoiscripts/50-claude-profiles.sh
+{{- end }}
+{{- if ne (dig "osRelease" "id" "" .chezmoi) "cachyos" }}
+# CachyOS's own: pacman and the AUR, systemd user units, Plasma's settings.
+.config/systemd
+.chezmoiscripts/10-cachyos.sh
+.chezmoiscripts/25-systemd.sh
+.chezmoiscripts/30-plasma-defaults.sh
+{{- end }}
