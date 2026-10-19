@@ -121,7 +121,7 @@
     ],
     "soft_deny": [
       "$defaults",
-      "Landing this Mac's own config unasked: committing or pushing, in this chezmoi source repo ({{ .github }}/dotFiles or a fork of it), a change the user's own messages did not ask for that widens the `permissions`, `sandbox`, `autoMode` or `env` blocks of `home/.chezmoitemplates/claude-settings.json`, or makes a program run outside the sandbox: a script under `home/.chezmoiscripts/`, a LaunchAgent under `home/Library/`, a Brewfile package, a mise task, a shell startup file, a git key naming a program, the chezmoi config, or `.github/gate.sh`. `chezmoi update`, the nightly upkeep and the owner run them outside the sandbox."
+      "Landing this machine's own config unasked: committing or pushing, in this chezmoi source repo ({{ .github }}/dotFiles or a fork of it), a change the user's own messages did not ask for that widens the `permissions`, `sandbox`, `autoMode` or `env` blocks of `home/.chezmoitemplates/claude-settings.json`, or makes a program run outside the sandbox: a script under `home/.chezmoiscripts/`, a LaunchAgent under `home/Library/` or systemd unit under `home/dot_config/systemd/`, what `home/.chezmoiignore` lets run, a Brewfile package, a mise task, a shell startup file, a git key naming a program, the chezmoi config, or `.github/gate.sh`. `chezmoi update`, the nightly upkeep and the owner run them outside the sandbox."
     ],
     "hard_deny": [
       "$defaults",

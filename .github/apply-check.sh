@@ -11,7 +11,7 @@ home=$tmp/home
 mkdir "$home"
 cz=(chezmoi --source "$root" --config "$tmp/chezmoi.toml" --persistent-state "$tmp/chezmoi.db" --destination "$home")
 
-"${cz[@]}" init
+"${cz[@]}" init --promptChoice "Which Mac is this=personal"
 data=$("${cz[@]}" data --format json)
 personal=$(jq -r .email <<< "$data")
 work=$(jq -r .workEmail <<< "$data")
@@ -24,8 +24,8 @@ mkdir -p "$home/.local/bin" && touch "$home/.local/bin/chezmoi"
 "${cz[@]}" apply --dry-run
 
 # A deleted source leaves its target behind, so every file main manages is still managed here,
-# if only as a `remove_` entry that deletes it. Dropping a `remove_` entry later is fine: once
-# applied it has done its work.
+# if only as a `remove_` entry that deletes it, or as one this OS ignores. Dropping a `remove_`
+# entry later is fine: once applied it has done its work.
 base=$tmp/base
 mkdir "$base"
 git -C "$root" archive "$(git -C "$root" merge-base HEAD origin/main)" | tar -x -C "$base"
@@ -35,6 +35,7 @@ now=$("${cz[@]}" managed --exclude scripts,externals,dirs | sort)
 stub=$tmp/stub
 while read -r target; do mkdir -p "$stub/$(dirname "$target")" && touch "$stub/$target"; done <<< "$was"
 removed=$(chezmoi --source "$root" --config "$tmp/chezmoi.toml" --destination "$stub" managed --include remove)
+removed+=$'\n'$("${cz[@]}" ignored)
 # A Mac's config was rendered by main's template: HEAD must apply over it (#449 did not).
 upgrade=(chezmoi --source "$root" --config "$tmp/upgrade.toml" --persistent-state "$tmp/upgrade.db"
   --destination "$tmp/upgrade")
@@ -93,10 +94,12 @@ fi
   [ -z "$err" ] || { printf 'apply-check: the shell said:\n%s\n' "$err" >&2 && exit 1; }
   # git parses the rendered file, its empty helper drops the system's osxkeychain, gh is the last
   # github.com helper in it, and commits sign.
+  gh=/opt/homebrew/bin/gh agent='Group Containers'
+  [ "$(uname -s)" = Darwin ] || gh=/usr/bin/gh agent=.1password/agent.sock
   git config --global --get-all credential.helper | grep -qx ''
-  test "$(git config --global --get-all credential.https://github.com.helper | tail -1)" = '!/opt/homebrew/bin/gh auth git-credential'
+  test "$(git config --global --get-all credential.https://github.com.helper | tail -1)" = "!$gh auth git-credential"
   test "$(git config --global --get commit.gpgSign)" = true
-  grep -q 'Group Containers' "$home/.ssh/config"
+  grep -qF "$agent" "$home/.ssh/config"
   # Every work org's GitHub remote commits as workEmail, in any URL form and either case; anything
   # else as email.
   repo=$tmp/repo
@@ -119,6 +122,27 @@ fi
     "export \(.key)=\(.value | @sh)"' "$settings")"
   test "$(git config --get commit.gpgSign)" = false
 )
+# Every host renders, whichever this is, so a template error fails here and not on a machine this
+# check never runs on: each takes its own scripts and files, and no other's.
+mac='{"os": "darwin", "osRelease": {"id": ""}}' cachyos='{"os": "linux", "osRelease": {"id": "cachyos"}}'
+targets() { "${cz[@]}" managed --include scripts,files --override-data "{\"chezmoi\": $1}"; }
+takes() { targets "$1" | grep -qE "$2" || { echo "apply-check: $1 lacks $2" >&2 && exit 1; }; }
+lacks() { ! targets "$1" | grep -E "$2" || { echo "apply-check: $1 takes the above" >&2 && exit 1; }; }
+takes "$mac" '^\.chezmoiscripts/45-brew\.sh$'
+takes "$mac" '^Library/LaunchAgents/local\.dotfiles\.upkeep\.plist$'
+lacks "$mac" 'cachyos|systemd|plasma|reboot-to'
+for script in 10-cachyos 25-systemd 30-plasma-defaults; do takes "$cachyos" "^\.chezmoiscripts/$script\.sh$"; done
+takes "$cachyos" '^\.config/systemd/user/upkeep\.timer$'
+takes "$cachyos" '^\.config/ghostty/config$'
+for to in windows bios; do
+  takes "$cachyos" "^\.local/bin/reboot-to-$to$"
+  takes "$cachyos" "^\.local/share/applications/reboot-to-$to\.desktop$"
+done
+lacks "$cachyos" 'homebrew|launchagents|macos|claude-profiles|^Library'
+for host in "$mac" "$cachyos"; do
+  "${cz[@]}" apply --dry-run --override-data "{\"chezmoi\": $host}" > /dev/null
+done
+
 # A skills-directory plugin lands (a source name starting with `.` would be ignored).
 test -f "$home/.claude/skills/ts-native/.claude-plugin/plugin.json" ||
   { echo "apply-check: the ts-native plugin did not land" >&2 && exit 1; }

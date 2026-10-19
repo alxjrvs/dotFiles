@@ -1,0 +1,7 @@
+#!/bin/bash
+# Enables the systemd user units when one changes, the launchd agents' counterpart on CachyOS.
+# Every unit this repo declares, hashed, so adding or changing one re-runs this:
+# {{ range glob (joinPath .chezmoi.sourceDir "dot_config/systemd/user/*") }}{{ include . | sha256sum }} {{ end }}
+set -euo pipefail
+systemctl --user daemon-reload
+systemctl --user enable --now upkeep.timer

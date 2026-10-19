@@ -38,7 +38,7 @@ jobs:
         run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
       - name: The first apply, from this checkout
         run: |
-          ~/.local/bin/chezmoi init --apply --no-tty \
+          ~/.local/bin/chezmoi init --apply --no-tty --promptChoice "Which Mac is this=personal" \
             --source "$GITHUB_WORKSPACE"
       # `init --source` records no source, so every later command names it. From here chezmoi is
       # mise's: the first apply removed the installer's copy.

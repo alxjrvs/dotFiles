@@ -1,6 +1,6 @@
 name: lint
 
-# `lint` is the check the ruleset requires. The Mac is the one host, so CI is a Mac.
+# `lint` is the check the ruleset requires, on a Mac; its apply-check renders CachyOS too.
 on:
   push:
     branches: [main]

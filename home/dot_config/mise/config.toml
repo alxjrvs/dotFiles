@@ -24,9 +24,9 @@ uv = "latest"
 # deletes the bootstrap copy) and `mise upgrade` moves it.
 chezmoi = "latest"
 
-# What apply never does, run nightly by the upkeep LaunchAgent: each upgrade. One that fails stops
-# none of the rest, and still fails the run. Apps that update themselves are left to it, and no
-# running app is quit. Applying main stays `chezmoi update`, run by hand: nothing lands unattended.
+# What apply never does, run nightly by the upkeep LaunchAgent (on CachyOS, its systemd timer):
+# each upgrade. One that fails stops none of the rest, and still fails the run. Apps that update
+# themselves are left to it, and no running app is quit. Applying main stays `chezmoi update`, run by hand: nothing lands unattended.
 [tasks."upkeep:mise"]
 hide = true
 # mise itself waits out the same week as its tools, chezmoi among them. Formulae ride
@@ -53,7 +53,10 @@ run = [
 description = "Upgrade mise and its tools (chezmoi among them), formulae and casks"
 run = """
 failed=
-for task in upkeep:mise upkeep:brew; do
+tasks=upkeep:mise
+# Homebrew is the Mac's; CachyOS's packages upgrade through its own `pacman -Syu`.
+[ "$(uname -s)" != Darwin ] || tasks="$tasks upkeep:brew"
+for task in $tasks; do
   mise run "$task" || failed="$failed $task"
 done
 [ -z "$failed" ] || { echo "upkeep failed:$failed" >&2 && exit 1; }

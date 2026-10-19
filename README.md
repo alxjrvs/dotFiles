@@ -1,8 +1,8 @@
 # dotFiles
 
-macOS dotfiles for [alxjrvs](https://github.com/alxjrvs), managed by
-[chezmoi](https://www.chezmoi.io). `home/` is the source state. Principles:
-[`CLAUDE.md`](CLAUDE.md).
+Dotfiles for [alxjrvs](https://github.com/alxjrvs)'s three machines, a personal Mac, a work Mac
+and MAIA, a CachyOS desktop, managed by [chezmoi](https://www.chezmoi.io). `home/` is the source
+state; `home/.chezmoiignore` decides what lands on which OS. Principles: [`CLAUDE.md`](CLAUDE.md).
 
 ## Fresh Mac
 
@@ -16,7 +16,8 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply --use-built
 gh auth login --scopes workflow && chezmoi apply
 ```
 
-The first apply asks for your password once, for Homebrew. Anything that needs `gh auth login` lands on the second. The `workflow` scope lets a push change
+The first apply asks which Mac this is (personal or work), then for your password once, for
+Homebrew. A Mac set up before the question existed answers it with `chezmoi init`. Anything that needs `gh auth login` lands on the second. The `workflow` scope lets a push change
 `.github/workflows/`.
 
 Between the two commands:
@@ -33,6 +34,33 @@ scope that could mint Verified commits as you, so it is granted for this one com
 gh auth refresh -s admin:ssh_signing_key && chezmoi data | jq -r .signingKey | gh ssh-key add - --type signing && gh auth refresh -r admin:ssh_signing_key
 ```
 
+## Fresh CachyOS
+
+The same environment where Linux allows: zsh, the starship prompt, Ghostty, git signing through
+1Password, mise, Claude Code and desktop, the Brewfile's apps from pacman and the AUR, and Caps Lock
+as Control. `reboot-to-windows` and `reboot-to-bios` (also in the start menu, under System) restart
+into the dual-booted Windows or the BIOS setup once. KRunner (Alt+Space) stands in for Raycast; noTunes, Tuple, OrbStack (Docker instead)
+and the extra Claude desktop apps are the Mac's alone. Bring the install current first, then the
+same two commands as a Mac:
+
+```bash
+sudo pacman -Syu
+```
+
+```bash
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply --use-builtin-git=true alxjrvs/dotFiles
+```
+
+```bash
+gh auth login --scopes workflow && chezmoi apply
+```
+
+The first apply asks for your password for pacman, and paru asks before it builds an AUR package.
+It makes zsh the login shell and adds you to `docker` and `kvm`, so log out and back in after it.
+Between the two commands, set up 1Password as on a Mac (Settings › Developer: the SSH agent and the
+CLI integration); its agent socket is `~/.1password/agent.sock`. Upkeep is a systemd user timer;
+a failure is a notification pointing at `~/.local/state/upkeep.log`.
+
 To hack on this repo, clone it to `~/Code/dotFiles`; chezmoi keeps its own copy.
 
 ## Day to day
@@ -42,7 +70,7 @@ To hack on this repo, clone it to `~/Code/dotFiles`; chezmoi keeps its own copy.
 | change something | in a worktree: edit, `mise run lint`, `mise run apply-check`, commit, PR; an agent's `claude/` PR merges itself on green unless it touches the floor |
 | a PR landed | `chezmoi update` |
 | drift | `chezmoi verify` |
-| upgrade | nightly: `mise run upkeep` upgrades; a failure is a notification pointing at `~/Library/Logs/upkeep.log`. Apps update themselves |
+| upgrade | nightly: `mise run upkeep` upgrades; a failure is a notification pointing at `~/Library/Logs/upkeep.log` (CachyOS: `~/.local/state/upkeep.log`, and `sudo pacman -Syu` for packages). Apps update themselves |
 | a pin | monthly: a Routine runs `/bump` ([`.claude/skills/bump`](.claude/skills/bump/SKILL.md)) |
 | add a work org | one entry in `home/.chezmoidata.toml` |
 | the repo settings | [`.github/gate.sh`](.github/gate.sh), run by the owner |
@@ -65,10 +93,11 @@ mise.toml               this repo's pinned linters and its two checks, lint and 
 .claude/                this repo's Claude Code config: the verify and bump skills, and a web-session setup hook
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/.chezmoiscripts/   machine setup: Homebrew, mise, launchd agents, macOS defaults, provisioning, apps, and one
-                        Claude desktop app per extra account
+                        Claude desktop app per extra account; on CachyOS, pacman, systemd units and Plasma
 home/.chezmoitemplates/ the declared keys of ~/.claude/settings.json
 home/dot_claude/        user-global Claude Code config and skills
-home/.chezmoi*          chezmoi's own files: config template, data (who and which orgs), version floor and remove list
+home/.chezmoi*          chezmoi's own files: config template (which Mac), data (who and which orgs), what each OS
+                        ignores, version floor and remove list
 ```
 
 ## Forking
