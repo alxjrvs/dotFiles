@@ -1,0 +1,31 @@
+#!/bin/bash
+# Frees VRAM for games: when a Steam game starts (its `reaper` process appears), unload every
+# model Ollama has loaded. Models reload on the next request after the game.
+# While a game runs, $XDG_RUNTIME_DIR/maia-gaming exists (for batch jobs to wait on).
+# Runs as the systemd user service maia-game-watch.service. Log: journalctl --user -u maia-game-watch
+api=http://127.0.0.1:11434
+flag="${XDG_RUNTIME_DIR:-/run/user/$UID}/maia-gaming"
+rm -f "$flag"
+
+unload_all() {
+  local models m
+  models=$(curl -fs --max-time 5 "$api/api/ps" | jq -r '.models[].name' 2> /dev/null) || return 0
+  for m in $models; do
+    curl -fs --max-time 30 "$api/api/generate" -d "{\"model\":\"$m\",\"keep_alive\":0}" > /dev/null &&
+      echo "unloaded $m"
+  done
+}
+
+while :; do
+  if pgrep -x reaper > /dev/null; then
+    if [[ ! -e $flag ]]; then
+      touch "$flag"
+      echo "game started"
+      unload_all
+    fi
+  elif [[ -e $flag ]]; then
+    rm -f "$flag"
+    echo "game ended"
+  fi
+  sleep 3
+done

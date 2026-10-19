@@ -1,0 +1,58 @@
+#!/bin/bash
+# Steam launch option for Elden Ring / Dark Souls II, by full path (Steam's PATH may lack ~/.local/bin):
+#   /home/<you>/.local/bin/souls-launch %command%
+# Shows a menu on Play: Seamless Co-op (swaps in the mod launcher) or Vanilla (unchanged command).
+# Game files are never modified. Skip the menu with SOULS_MODE=coop|vanilla before the command,
+# e.g. launch option: SOULS_MODE=coop /home/<you>/.local/bin/souls-launch %command%
+# SOULS_DRYRUN=1 prints the final command instead of running it.
+
+log="${XDG_CACHE_HOME:-$HOME/.cache}/souls-launch.log"
+state="${XDG_CONFIG_HOME:-$HOME/.config}/souls-launch"
+mkdir -p "$(dirname "$log")" "$state"
+
+case "$*" in
+  *start_protected_game.exe*)
+    game=eldenring
+    name="Elden Ring"
+    vanilla=start_protected_game.exe
+    mod=ersc_launcher.exe
+    ;;
+  *DarkSoulsII.exe*)
+    game=ds2
+    name="Dark Souls II"
+    vanilla=DarkSoulsII.exe
+    mod=ds2sc_launcher.exe
+    ;;
+  *) exec "$@" ;; # not a game we know: run unchanged
+esac
+
+mode=${SOULS_MODE:-}
+if [[ -z $mode ]]; then
+  last=$(cat "$state/$game" 2> /dev/null || echo coop)
+  on_coop=off
+  on_van=off
+  [[ $last == vanilla ]] && on_van=on || on_coop=on
+  mode=$(kdialog --title "$name" --radiolist "Launch $name as:" \
+    coop "Seamless Co-op" $on_coop \
+    vanilla "Vanilla (official online)" $on_van) || exit 0 # Cancel = don't launch
+  echo "$mode" > "$state/$game"
+fi
+
+args=("$@")
+if [[ $mode == coop ]]; then
+  gamedir=""
+  for a in "${args[@]}"; do [[ $a == *"$vanilla" ]] && gamedir=$(dirname "$a"); done
+  if [[ ! -f "$gamedir/$mod" ]]; then
+    kdialog --title "$name" --error "Seamless Co-op isn't installed ($gamedir/$mod missing)."
+    exit 1
+  fi
+  args=("${args[@]/%$vanilla/$mod}") # replace the exe at the end of the matching argument
+fi
+
+echo "$(date '+%F %T') $name mode=$mode: ${args[*]}" >> "$log"
+if [[ -n ${SOULS_DRYRUN:-} ]]; then
+  printf '%q ' "${args[@]}"
+  echo
+  exit 0
+fi
+exec "${args[@]}"

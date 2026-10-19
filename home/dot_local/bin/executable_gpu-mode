@@ -1,0 +1,18 @@
+#!/bin/bash
+# gpu-mode [auto|full|quiet]  - choose the R9700's LACT profile.
+#   auto  : full power normally, quiet-gaming automatically while a Steam game runs (default)
+#   full  : always full power (300 W, stock fan), even while gaming
+#   quiet : always quiet (230 W, quiet fan curve)
+# No argument: show current state.
+case ${1:-} in
+  auto) lact cli profile set Default > /dev/null && lact cli profile auto-switch enable > /dev/null ;;
+  full) lact cli profile auto-switch disable > /dev/null && lact cli profile set Default > /dev/null ;;
+  quiet) lact cli profile auto-switch disable > /dev/null && lact cli profile set quiet-gaming > /dev/null ;;
+  "") ;;
+  *)
+    echo "usage: gpu-mode [auto|full|quiet]"
+    exit 1
+    ;;
+esac
+echo "profile: $(lact cli profile get)   auto-switch: $(lact cli profile auto-switch get)"
+lact cli power-limit get

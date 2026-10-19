@@ -1,0 +1,11 @@
+# Frees VRAM for games: unloads Ollama's models while a Steam game runs (maia-game-watch).
+# Enabled by .chezmoiscripts/25-systemd.sh when this file changes.
+[Unit]
+Description=MAIA: unload Ollama models when a Steam game starts
+
+[Service]
+ExecStart=%h/.local/bin/maia-game-watch
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
