@@ -7,6 +7,9 @@ adjust-cell-height = -1
 
 mouse-hide-while-typing = true
 
+# zsh even when the desktop session's $SHELL predates chsh (CachyOS ships fish).
+command = /bin/zsh
+
 # apply never upgrades casks; Ghostty fetches its own and installs on the next restart.
 auto-update = download
 # A long command that ends while you are elsewhere says so (Ghostty 1.3+).
