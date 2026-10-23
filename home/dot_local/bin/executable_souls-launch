@@ -40,7 +40,8 @@ if [[ -z $mode ]]; then
     vanilla "Vanilla (official online)" $on_van)
   rc=$?
   ((rc == 1)) && exit 0 # Cancel = don't launch
-  if ((rc != 0)) || [[ -z $mode ]]; then # menu broke: launch the last mode rather than nothing
+  # The menu broke: launch the last mode rather than nothing.
+  if ((rc != 0)) || [[ -z $mode ]]; then
     echo "$(date '+%F %T') $name: menu failed (kdialog exit $rc), using $last" >> "$log"
     mode=$last
   fi
