@@ -40,8 +40,10 @@ removed+=$'\n'$("${cz[@]}" ignored)
 upgrade=(chezmoi --source "$root" --config "$tmp/upgrade.toml" --persistent-state "$tmp/upgrade.db"
   --destination "$tmp/upgrade")
 mkdir "$tmp/upgrade"
+# Both answers: main asks one or the other, and CI has no terminal to ask on.
 chezmoi --source "$base" --config "$tmp/upgrade.toml" --persistent-state "$tmp/upgrade.db" \
-  --destination "$tmp/upgrade" init --promptBool "personal Mac=true" > /dev/null # an older main asked this
+  --destination "$tmp/upgrade" init --promptBool "personal Mac=true" \
+  --promptChoice "Which Mac is this=personal" > /dev/null
 "${upgrade[@]}" apply --dry-run > /dev/null
 comm -23 <(printf '%s\n' "$was") <(printf '%s\n' "$now") |
   while read -r target; do
