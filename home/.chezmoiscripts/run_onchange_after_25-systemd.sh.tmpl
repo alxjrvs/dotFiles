@@ -5,3 +5,6 @@
 set -euo pipefail
 systemctl --user daemon-reload
 systemctl --user enable --now upkeep.timer
+# A restart, so a running watcher picks up its new unit.
+systemctl --user enable maia-game-watch.service
+systemctl --user restart maia-game-watch.service

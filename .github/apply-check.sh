@@ -132,10 +132,12 @@ takes() { targets "$1" | grep -qE "$2" || { echo "apply-check: $1 lacks $2" >&2 
 lacks() { ! targets "$1" | grep -E "$2" || { echo "apply-check: $1 takes the above" >&2 && exit 1; }; }
 takes "$mac" '^\.chezmoiscripts/45-brew\.sh$'
 takes "$mac" '^Library/LaunchAgents/local\.dotfiles\.upkeep\.plist$'
-lacks "$mac" 'cachyos|systemd|plasma|reboot-to'
+lacks "$mac" 'cachyos|systemd|plasma|reboot-to|gpu-mode|maia-|souls-launch'
 for script in 10-cachyos 25-systemd 30-plasma-defaults; do takes "$cachyos" "^\.chezmoiscripts/$script\.sh$"; done
 takes "$cachyos" '^\.config/systemd/user/upkeep\.timer$'
 takes "$cachyos" '^\.config/ghostty/config$'
+for cmd in gpu-mode maia-game-watch souls-launch; do takes "$cachyos" "^\.local/bin/$cmd$"; done
+takes "$cachyos" '^\.config/systemd/user/maia-game-watch\.service$'
 for to in windows bios; do
   takes "$cachyos" "^\.local/bin/reboot-to-$to$"
   takes "$cachyos" "^\.local/share/applications/reboot-to-$to\.desktop$"
