@@ -12,13 +12,16 @@ Library
 {{- end }}
 {{- if ne (dig "osRelease" "id" "" .chezmoi) "cachyos" }}
 # CachyOS's own: pacman and the AUR, systemd user units, Plasma's settings, the reboots into the
-# dual-booted Windows or the BIOS with their start-menu entries, and MAIA's GPU and game commands.
+# dual-booted Windows or the BIOS with their start-menu entries, MAIA's GPU and game commands, and
+# Steam started with -pipewire.
 .config/systemd
 .local/bin/reboot-to-*
 .local/bin/gpu-mode
 .local/bin/maia-game-watch
 .local/bin/souls-launch
 .local/share/applications/reboot-to-*
+.local/share/applications/steam.desktop
+.config/autostart
 .chezmoiscripts/10-cachyos.sh
 .chezmoiscripts/25-systemd.sh
 .chezmoiscripts/30-plasma-defaults.sh

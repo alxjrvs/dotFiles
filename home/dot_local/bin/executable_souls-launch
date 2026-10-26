@@ -2,6 +2,7 @@
 # Steam launch option for Elden Ring / Dark Souls II, by full path (Steam's PATH may lack ~/.local/bin):
 #   /home/<you>/.local/bin/souls-launch %command%
 # Shows a menu on Play: Seamless Co-op (swaps in the mod launcher) or Vanilla (unchanged command).
+# Over Remote Play (SteamStreaming=1) the menu is skipped and the last mode is used.
 # Game files are never modified. Skip the menu with SOULS_MODE=coop|vanilla before the command,
 # e.g. launch option: SOULS_MODE=coop /home/<you>/.local/bin/souls-launch %command%
 # SOULS_DRYRUN=1 prints the final command instead of running it.
@@ -30,6 +31,13 @@ case "$*" in
 esac
 
 mode=${SOULS_MODE:-}
+# Over Steam Remote Play the menu opens on MAIA's own desktop, which the stream can't show
+# (KDE Wayland, no -pipewire): the Deck sees black and the launch waits on a hidden click.
+# Steam sets SteamStreaming=1 for streamed launches, so take the last mode instead.
+if [[ -z $mode && ${SteamStreaming:-0} == 1 ]]; then
+  mode=$(cat "$state/$game" 2> /dev/null || echo coop)
+  echo "$(date '+%F %T') $name: Remote Play, skipping the menu, using $mode" >> "$log"
+fi
 if [[ -z $mode ]]; then
   last=$(cat "$state/$game" 2> /dev/null || echo coop)
   on_coop=off
@@ -53,7 +61,8 @@ if [[ $mode == coop ]]; then
   gamedir=""
   for a in "${args[@]}"; do [[ $a == *"$vanilla" ]] && gamedir=$(dirname "$a"); done
   if [[ ! -f "$gamedir/$mod" ]]; then
-    dialog --title "$name" --error "Seamless Co-op isn't installed ($gamedir/$mod missing)."
+    echo "$(date '+%F %T') $name: Seamless Co-op missing ($gamedir/$mod)" >> "$log"
+    [[ ${SteamStreaming:-0} == 1 ]] || dialog --title "$name" --error "Seamless Co-op isn't installed ($gamedir/$mod missing)."
     exit 1
   fi
   args=("${args[@]/%$vanilla/$mod}") # replace the exe at the end of the matching argument
