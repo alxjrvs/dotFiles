@@ -17,28 +17,12 @@
       "WebSearch"
     ],
     "deny": [
-      "Bash(op read *)",
-      "Bash(op * read *)",
-      "Bash(op item get *)",
-      "Bash(op inject *)",
-      "Bash(op document get *)",
-      "Bash(*--no-masking*)",
       "Bash(gh auth token*)",
       "Bash(gh auth status *-t*)",
       "Bash(gh auth git-credential*)",
-      "Bash(git credential*)",
-      "Bash(git config *user.*)",
-      "Bash(gh release create*)",
       "Bash(gh gist create*)",
       "Bash(*find-*-password*)",
-      "Bash(*dump-keychain*)",
-      "Edit(~/.local/share/chezmoi/**)",
-      "Read(~/.convex/**)",
-      "Read(~/.expo/**)",
-      "Read(~/Library/Preferences/netlify/**)",
-      "Read(~/Library/Preferences/.wrangler/**)",
-      "Read(~/.config/.wrangler/**)",
-      "Read(~/Library/Application Support/ngrok/**)"
+      "Bash(*dump-keychain*)"
     ]
   },
   "enabledPlugins": {
@@ -74,40 +58,17 @@
         "source": "github",
         "repo": "anthropics/claude-plugins-official"
       }
-    },
-    "1password": null
+    }
   },
   "outputStyle": "Proactive",
   "sandbox": {
-    "enabled": true,
-    "failIfUnavailable": true,
-    "allowUnsandboxedCommands": false,
-    "network": {
-      "allowLocalBinding": true,
-      "allowedDomains": [
-        "*.1password.com", "*.1password.ca", "*.1password.eu",
-        "*.1passwordusercontent.com", "*.1passwordusercontent.ca", "*.1passwordusercontent.eu",
-        "*.1passwordservices.com"
-      ],
-      "allowMachLookup": ["com.apple.trustd.agent", "2BUA8C4S2C.com.1password.browser-helper"]
-    },
-    "credentials": {
-      "envVars": [
-        { "name": "GH_TOKEN", "mode": "deny" },
-        { "name": "GITHUB_TOKEN", "mode": "deny" },
-        { "name": "OP_SERVICE_ACCOUNT_TOKEN", "mode": "deny" }
-      ]
-    }
+    "enabled": false
   },
   "disableAgentView": true,
   "autoMemoryEnabled": false,
   "skipWorkflowUsageWarning": true,
   "theme": "auto",
-  "editorMode": null,
-  "vimInsertModeRemaps": null,
   "verbose": true,
-  "showTurnDuration": null,
-  "terminalProgressBarEnabled": null,
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
   "remoteControlAtStartup": true,
@@ -121,12 +82,12 @@
     ],
     "soft_deny": [
       "$defaults",
-      "Landing this machine's own config unasked: committing or pushing, in this chezmoi source repo ({{ .github }}/dotFiles or a fork of it), a change the user's own messages did not ask for that widens the `permissions`, `sandbox`, `autoMode` or `env` blocks of `home/.chezmoitemplates/claude-settings.json`, or makes a program run outside the sandbox: a script under `home/.chezmoiscripts/`, a LaunchAgent under `home/Library/` or systemd unit under `home/dot_config/systemd/`, what `home/.chezmoiignore` lets run, a Brewfile package, a mise task, a shell startup file, a git key naming a program, the chezmoi config, or `.github/gate.sh`. `chezmoi update`, the nightly upkeep and the owner run them outside the sandbox."
+      "Landing this machine's own config unasked: committing or pushing, in this chezmoi source repo ({{ .github }}/dotFiles or a fork of it), a change the user's own messages did not ask for that widens the `permissions`, `sandbox`, `autoMode` or `env` blocks of `home/.chezmoitemplates/claude-settings.json`, or adds to what `chezmoi update` and the nightly upkeep run: a script under `home/.chezmoiscripts/`, a LaunchAgent under `home/Library/` or systemd unit under `home/dot_config/systemd/`, what `home/.chezmoiignore` lets run, a Brewfile package, a mise task, a shell startup file, a git key naming a program, the chezmoi config, or `.github/gate.sh`. `chezmoi update`, the nightly upkeep and the owner run them unattended."
     ],
     "hard_deny": [
       "$defaults",
       "Never push directly to a repository's default branch, and never merge into it locally",
-      "Never apply a chezmoi source to the real home directory other than through `chezmoi update` (no `chezmoi apply --source`, no `chezmoi init --apply`), and never edit files under `chezmoi source-path`: that runs unreviewed scripts and rewrites the agent's own settings outside the sandbox. An apply into a temporary `--destination` is a test and is fine.",
+      "Never apply a chezmoi source to the real home directory other than through `chezmoi update` (no `chezmoi apply --source`, no `chezmoi init --apply`), and never edit files under `chezmoi source-path`: that runs unreviewed scripts and rewrites the agent's own settings. An apply into a temporary `--destination` is a test and is fine.",
       "Never change a repository's own settings, rulesets or branch protection (`gh repo edit`, `gh api` writes to `repos/OWNER/REPO` itself, `.../rulesets` or `.../branches/*/protection`): the gate is the owner's, and an agent blocked by it does not get to loosen it. Nor does it bypass push protection (a blocked push's bypass link, or `gh api` writes to `.../secret-scanning/push-protection-bypasses`). Issues, pull requests and comments are not settings.",
       "Never put a secret value where it can be read back: stdout, a file, a commit, a command argument, or a second 1Password item. A value goes from its one vault item to the program that consumes it through `op run`, `op inject` into a pipe, or stdin. Never delete a 1Password item or vault: retiring one is a move to `Archive`, and deleting is the owner's."
     ],
