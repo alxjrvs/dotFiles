@@ -1,0 +1,3 @@
+# The week mise, bun, npm and Dependabot wait, for uv and uvx (which launch many MCP servers);
+# `--exclude-newer` on one command overrides it.
+exclude-newer = "7 days"

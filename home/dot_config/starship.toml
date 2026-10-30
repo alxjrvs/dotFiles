@@ -1,8 +1,8 @@
-# starship prompt: bold cwd, then muted-bracketed git chips, on one line. Plain characters, no
-# nerd-font glyphs.
+# starship prompt: the host over SSH, bold cwd, muted-bracketed git chips, then a slow command's
+# time and any background jobs, on one line. Plain characters, no nerd-font glyphs.
 
 add_newline = false
-format = "$directory$git_branch$git_state$git_status $character"
+format = "$hostname$directory$git_branch$git_state$git_status$cmd_duration$jobs $character"
 
 # repo_root_style muted so a worktree path stays readable beside the bold part.
 [directory]
@@ -33,3 +33,16 @@ stashed    = '[*$count](purple)'
 ahead      = '[^$count](green)'
 behind     = '[v$count](red)'
 diverged   = '[^$ahead_count](green)[v$behind_count](red)'
+
+# Over SSH only (starship's default), so a shell on MAIA reads as MAIA's.
+[hostname]
+format = '[$hostname](bold purple) '
+
+# A command that took over 2 s says how long.
+[cmd_duration]
+format = ' [$duration](yellow)'
+
+# A suspended or background job; the count from two.
+[jobs]
+symbol = '&'
+format = ' [$symbol$number](blue)'

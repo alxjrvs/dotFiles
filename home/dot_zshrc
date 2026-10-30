@@ -7,8 +7,8 @@
 # History: plain zsh, in the file macOS's /etc/zshrc names. A line holding a secret stays out of it:
 # a `key: value` or `key=value` secret, the token prefixes of GitHub, AWS, Slack, GitLab, Stripe,
 # npm, OpenAI, Anthropic and 1Password, and a password in a URL. A leading space skips one line.
-HISTSIZE=10000
-SAVEHIST=10000
+HISTSIZE=100000
+SAVEHIST=100000
 setopt INC_APPEND_HISTORY_TIME HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE HIST_VERIFY EXTENDED_HISTORY HIST_REDUCE_BLANKS
 _history_filter() {
   setopt local_options extended_glob
@@ -19,7 +19,31 @@ _history_filter() {
 }
 autoload -Uz add-zsh-hook && add-zsh-hook zshaddhistory _history_filter
 
-alias gs='git status' gp='git push' gpr='git pull --rebase' gco='git checkout'
+# A pasted snippet's `# comment` is a comment, not a command.
+setopt INTERACTIVE_COMMENTS
+
+alias gs='git status' gp='git push' gpr='git pull --rebase' gco='git checkout' gsw='git switch'
+alias gd='git diff' gl='git log --oneline --graph -20'
+
+# Completion. Apple's /bin/zsh leaves Homebrew's completions off fpath; -i skips, rather than asks
+# about, a directory another user can write.
+fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
+autoload -Uz compinit && compinit -i
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+zstyle ':completion:*' menu select
+
+# Emacs keys even when $EDITOR names vi, which would otherwise switch zsh to vi mode. Up and Down
+# walk only the history that starts with what is typed (both forms: macOS's /etc/zshrc turns on
+# application mode); Ctrl-X Ctrl-E opens the line in $EDITOR; Ctrl- or Alt-arrows move a word.
+bindkey -e
+autoload -Uz up-line-or-beginning-search down-line-or-beginning-search edit-command-line
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+zle -N edit-command-line
+bindkey '^[[A' up-line-or-beginning-search '^[OA' up-line-or-beginning-search
+bindkey '^[[B' down-line-or-beginning-search '^[OB' down-line-or-beginning-search
+bindkey '^X^E' edit-command-line
+bindkey '^[[1;5D' backward-word '^[[1;5C' forward-word '^[[1;3D' backward-word '^[[1;3C' forward-word
 
 # Linux has no /etc/zshrc: the history file, and Home, End and Delete, are macOS's from there. The
 # Mac's open, pbcopy and pbpaste are xdg-open and Wayland's clipboard.
@@ -29,6 +53,14 @@ if [[ $OSTYPE == linux* ]]; then
   bindkey '^[[F' end-of-line
   bindkey '^[[3~' delete-char
   alias open=xdg-open pbcopy=wl-copy pbpaste=wl-paste
+fi
+
+# fzf: Ctrl-R searches history, Ctrl-T picks a file, Alt-C changes directory, all through fd's view
+# of the tree (hidden files, .gitignore honoured). After `bindkey -e`, which would reset its keys.
+if (( $+commands[fzf] )); then
+  export FZF_DEFAULT_COMMAND='fd --type f --hidden --exclude .git'
+  export FZF_CTRL_T_COMMAND=$FZF_DEFAULT_COMMAND FZF_ALT_C_COMMAND='fd --type d --hidden --exclude .git'
+  source <(fzf --zsh)
 fi
 
 (( $+commands[starship] )) && eval "$(starship init zsh)"
