@@ -1,7 +1,8 @@
 #!/bin/bash
 # CachyOS: the Brewfile's CLIs and apps from pacman, or the AUR where Arch has no package, zsh as
-# the login shell, and what Claude Code's sandbox and Claude desktop's Cowork need. Re-runs when
-# this script changes; installs, never upgrades (that is `sudo pacman -Syu`, CachyOS's own).
+# the login shell, and what Claude desktop's Cowork needs. Re-runs when
+# this script changes; installs, never upgrades (that is `paru -Syu`, by hand: `pacman -Syu` alone
+# skips the AUR packages below).
 # Each step says what it does first.
 set -euo pipefail
 say() { printf 'cachyos: %s\n' "$*"; }
@@ -9,13 +10,22 @@ sudo -v
 
 # Brewfile → pacman: gh is github-cli, Fira Code is ttf-fira-code, OrbStack is Docker's own
 # engine, and Raycast is Plasma's KRunner (Alt+Space), already there. wl-clipboard and xdg-utils
-# back the zshrc's pbcopy, pbpaste and open; bubblewrap and socat are Claude Code's sandbox, which
-# settings.json requires. noTunes is the Mac's alone, and Tuple has no Linux build.
+# back the zshrc's pbcopy, pbpaste and open. noTunes is the Mac's alone, and Tuple has no Linux build.
 say "packages"
 sudo pacman -S --needed --noconfirm \
   zsh git curl jq ripgrep fd github-cli starship wl-clipboard xdg-utils unzip ttf-fira-code \
   ghostty code obs-studio discord claude-desktop docker docker-buildx docker-compose \
-  bubblewrap socat paru
+  paru
+
+# What MAIA's ~/.local/bin commands call: LACT (gpu-mode), Ollama on ROCm and Steam
+# (maia-game-watch), kdialog (souls-launch), efibootmgr (reboot-to-windows). Each only when its
+# command is missing, so a copy installed another way (Ollama's script, lact-git) is left alone.
+say "MAIA's command dependencies"
+missing=()
+for pair in lact:lact ollama:ollama-rocm steam:steam kdialog:kdialog efibootmgr:efibootmgr; do
+  command -v "${pair%%:*}" > /dev/null || missing+=("${pair#*:}")
+done
+if ((${#missing[@]})); then sudo pacman -S --needed --noconfirm "${missing[@]}"; fi
 
 # The AUR's, built by paru, which asks before it builds anything new.
 say "AUR packages"

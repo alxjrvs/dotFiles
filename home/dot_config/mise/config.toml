@@ -54,7 +54,7 @@ description = "Upgrade mise and its tools (chezmoi among them), formulae and cas
 run = """
 failed=
 tasks=upkeep:mise
-# Homebrew is the Mac's; CachyOS's packages upgrade through its own `pacman -Syu`.
+# Homebrew is the Mac's; CachyOS's packages upgrade through `paru -Syu`, run by hand (it asks).
 [ "$(uname -s)" != Darwin ] || tasks="$tasks upkeep:brew"
 for task in $tasks; do
   mise run "$task" || failed="$failed $task"
