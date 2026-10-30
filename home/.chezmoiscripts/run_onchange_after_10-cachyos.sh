@@ -13,7 +13,7 @@ sudo -v
 # settings.json requires. noTunes is the Mac's alone, and Tuple has no Linux build.
 say "packages"
 sudo pacman -S --needed --noconfirm \
-  zsh git curl jq ripgrep fd github-cli starship wl-clipboard xdg-utils unzip ttf-fira-code \
+  zsh git curl jq ripgrep fd fzf github-cli starship wl-clipboard xdg-utils unzip ttf-fira-code \
   ghostty code obs-studio discord claude-desktop docker docker-buildx docker-compose \
   bubblewrap socat paru
 

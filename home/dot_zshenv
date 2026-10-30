@@ -13,3 +13,5 @@ export MANPAGER="sh -c 'col -bx | less'"
 export NPM_CONFIG_MIN_RELEASE_AGE=7
 # gh sends usage telemetry, tagged when an agent calls it; every shell turns it off.
 export GH_TELEMETRY=false
+# git, `git rebase -i`, Claude Code's Ctrl-G: VS Code, never a vi that may not be installed.
+export EDITOR='code --wait' VISUAL='code --wait'
