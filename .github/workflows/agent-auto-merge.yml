@@ -5,8 +5,10 @@ name: agent-auto-merge
 # One that touches what `chezmoi update` or upkeep runs (the floor) is
 # never switched on here, and a later push that adds such a file switches this workflow's own
 # auto-merge back off; an agent the owner asked may still turn it on.
+# `pull_request_target`, so main's copy of this file judges the PR: under `pull_request` a PR that
+# edited the floor below would be judged by its own edit. Safe because no step checks out the PR.
 on:
-  pull_request:
+  pull_request_target: # zizmor: ignore[dangerous-triggers] the job reads the PR's file list and never checks it out
     types: [opened, reopened, ready_for_review, synchronize]
 
 permissions: {}
@@ -26,7 +28,10 @@ jobs:
       pull-requests: write
     steps:
       - run: |
-          floor='^(home/(\.chezmoiscripts/|Library/|dot_config/systemd/|\.chezmoiignore$|\.chezmoitemplates/|dot_claude/modify_|dot_config/mise/config\.toml$|dot_config/homebrew/Brewfile$|dot_config/git/|dot_z|\.chezmoi\.toml\.tmpl$|\.chezmoiexternal)|\.github/gate\.sh$)'
+          # Also what runs a program by another road (ghostty's command, ssh's ProxyCommand, rg's --pre,
+          # starship's custom modules, autostart and .desktop Exec, ~/.local/bin, the agents' own
+          # instructions), what deletes on update (.chezmoiremove, remove_), and this repo's CI and hooks.
+          floor='^(home/(\.chezmoiscripts/|Library/|dot_config/systemd/|\.chezmoiignore$|\.chezmoiremove$|(.*/)?remove_|\.chezmoitemplates/|dot_claude/|dot_config/mise/config\.toml$|dot_config/homebrew/Brewfile$|dot_config/git/|dot_config/ghostty/|dot_config/starship\.toml$|dot_config/autostart/|dot_local/|private_dot_ssh/|dot_ripgreprc$|dot_z|\.chezmoi\.toml\.tmpl$|\.chezmoiexternal)|\.github/|\.claude/)'
           if gh pr diff "$PR" --name-only | grep -qE "$floor"; then
             echo "Touches the floor: it merges only when the owner asked."
             by=$(gh pr view "$PR" --json autoMergeRequest --jq '.autoMergeRequest.enabledBy.login // ""')
