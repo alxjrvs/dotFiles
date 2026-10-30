@@ -22,7 +22,16 @@
       "Bash(gh auth git-credential*)",
       "Bash(gh gist create*)",
       "Bash(*find-*-password*)",
-      "Bash(*dump-keychain*)"
+      "Bash(*dump-keychain*)",
+      "Bash(op read*)",
+      "Bash(op item get*--reveal*)",
+      "Bash(op item get*--fields*)",
+      "Bash(op item get*--format*json*)",
+      "Read(~/.config/*/dev.env)",
+      "Read(~/.config/claude-agent/.env)",
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.*.local)"
     ]
   },
   "enabledPlugins": {
