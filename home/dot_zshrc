@@ -22,8 +22,11 @@ autoload -Uz add-zsh-hook && add-zsh-hook zshaddhistory _history_filter
 # A pasted snippet's `# comment` is a comment, not a command.
 setopt INTERACTIVE_COMMENTS
 
-alias gs='git status' gp='git push' gpr='git pull --rebase' gco='git checkout' gsw='git switch'
-alias gd='git diff' gl='git log --oneline --graph -20'
+alias gs='git status' gst='git status' ga='git add' gc='git commit' gb='git branch'
+alias gco='git checkout' gsw='git switch' gd='git diff' gl='git log --oneline --graph -20'
+alias gp='git push' gpr='git pull --rebase'
+alias ..='cd ..' ...='cd ../..' ....='cd ../../..'
+alias -- -='cd -'
 
 # Completion. Apple's /bin/zsh leaves Homebrew's completions off fpath; -i skips, rather than asks
 # about, a directory another user can write.
