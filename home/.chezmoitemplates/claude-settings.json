@@ -31,11 +31,22 @@
       "Read(~/.config/claude-agent/.env)",
       "Read(**/.env)",
       "Read(**/.env.local)",
-      "Read(**/.env.*.local)"
+      "Read(**/.env.*.local)",
+      "Read(~/Library/Application Support/discord*/**)",
+      "Read(~/.config/discord*/**)",
+      "Bash(*Application Support/discord*)",
+      "Bash(*.config/discord*)",
+      "Bash(*discord.com/api*)",
+      "Bash(*discordapp.com/api*)",
+      "WebFetch(domain:discord.com)",
+      "WebFetch(domain:discordapp.com)",
+      "mcp__discord",
+      "mcp__plugin_discord_discord"
     ]
   },
   "enabledPlugins": {
     "1password@1password": false,
+    "discord@claude-plugins-official": false,
     "commit-commands@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
     "convex@claude-plugins-official": false,
