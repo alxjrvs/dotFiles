@@ -1,20 +1,49 @@
 #!/bin/sh
 # Claude's shells put this ahead of the real op (the SessionStart hook in claude-settings.json).
 # Desktop-app sign-in asks for biometrics in every new shell, and each Claude command is a new
-# shell, so op signs in as the claude-agent service account instead. Its token comes from the
+# shell, so reads sign in as the claude-agent service account instead. Its token comes from the
 # claude-agent 1Password Environment mounted at ~/.config/claude-agent/.env, whose reads 1Password
-# approves once per unlock, and goes only to this one op process. Without that mount (the work
-# Mac, CachyOS) op signs in through the desktop app as before.
-[ -z "${CLAUDE_OP_SHIM-}" ] || { echo "op: the real op is not on PATH" >&2; exit 127; }
-export CLAUDE_OP_SHIM=1
+# approves once per unlock, and goes only to this one op process. Where the service account
+# can't serve a call, op signs in as the owner through the desktop app, as it did before: writes
+# and account admin (the account is read-only), an explicit --account, a machine without the
+# mount (the work Mac, CachyOS), and a plain read the account can't see.
 here=$(cd "$(dirname "$0")" && pwd)
+[ "${CLAUDE_OP_SHIM-}" != "$here" ] || { echo "op: the real op is not on PATH" >&2; exit 127; }
+export CLAUDE_OP_SHIM="$here"
 PATH=$(printf '%s' "$PATH" | tr ':' '\n' | grep -vxF "$here" | paste -sd: -)
 export PATH
+
+# Prints the call's kind: owner (desktop app only), retry (a side-effect-free read worth a second
+# try as the owner) or once (op run and the rest: a second run could repeat a command or lose stdin).
+kind() {
+  for arg; do case $arg in --account | --account=*) echo owner && return ;; esac; done
+  while [ $# -gt 0 ]; do
+    case $1 in
+      --config | --encoding | --format | --session) shift && [ $# -gt 0 ] && shift ;;
+      -*) shift ;;
+      *) break ;;
+    esac
+  done
+  case "${1-} ${2-}" in
+    "item create" | "item edit" | "item delete" | "item move" | "item share" | \
+      "document create" | "document edit" | "document delete" | \
+      "vault create" | "vault edit" | "vault delete" | "vault user" | "vault group") echo owner ;;
+    user\ * | group\ * | connect\ * | service-account\ * | events-api\ * | account\ * | \
+      signin\ * | signout\ *) echo owner ;;
+    "read "* | "item get" | "item list" | "vault get" | "vault list" | "document list" | \
+      "whoami "*) echo retry ;;
+    *) echo once ;;
+  esac
+}
+
 env_file=$HOME/.config/claude-agent/.env
-if [ -z "${OP_SERVICE_ACCOUNT_TOKEN-}" ] && [ -e "$env_file" ] &&
+k=$(kind "$@")
+if [ -z "${OP_SERVICE_ACCOUNT_TOKEN-}" ] && [ "$k" != owner ] && [ -e "$env_file" ] &&
   token=$(sed -n 's/^OP_SERVICE_ACCOUNT_TOKEN=//p' "$env_file") && [ -n "$token" ]; then
   token=${token#[\"\']}
   token=${token%[\"\']}
-  OP_SERVICE_ACCOUNT_TOKEN=$token exec op "$@"
+  [ "$k" = retry ] || OP_SERVICE_ACCOUNT_TOKEN=$token exec op "$@"
+  # A failed read writes nothing to stdout, so its second try starts clean.
+  OP_SERVICE_ACCOUNT_TOKEN=$token op "$@" 2>/dev/null && exit 0
 fi
 exec op "$@"
