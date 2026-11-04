@@ -81,6 +81,18 @@
     }
   },
   "outputStyle": "Proactive",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -z \"$CLAUDE_ENV_FILE\" ] || echo 'export PATH=\"$HOME/.claude/bin:$PATH\"' >> \"$CLAUDE_ENV_FILE\""
+          }
+        ]
+      }
+    ]
+  },
   "sandbox": {
     "enabled": false
   },

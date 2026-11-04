@@ -1,0 +1,16 @@
+#!/bin/sh
+# Claude's shells put this ahead of the real op (the SessionStart hook in claude-settings.json).
+# Desktop-app sign-in asks for biometrics in every new shell, and each Claude command is a new
+# shell, so op signs in as the claude-agent service account instead, which never asks. Its token
+# goes from the login keychain to this one op process. Without that keychain item (the work Mac,
+# CachyOS) op signs in through the desktop app as before.
+[ -z "${CLAUDE_OP_SHIM-}" ] || { echo "op: the real op is not on PATH" >&2; exit 127; }
+export CLAUDE_OP_SHIM=1
+here=$(cd "$(dirname "$0")" && pwd)
+PATH=$(printf '%s' "$PATH" | tr ':' '\n' | grep -vxF "$here" | paste -sd: -)
+export PATH
+if [ -z "${OP_SERVICE_ACCOUNT_TOKEN-}" ] && command -v security >/dev/null 2>&1 &&
+  token=$(security find-generic-password -s op-claude-agent -w 2>/dev/null) && [ -n "$token" ]; then
+  OP_SERVICE_ACCOUNT_TOKEN=$token exec op "$@"
+fi
+exec op "$@"
