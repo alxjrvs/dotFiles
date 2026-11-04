@@ -1,0 +1,20 @@
+#!/bin/sh
+# Claude's shells put this ahead of the real op (the SessionStart hook in claude-settings.json).
+# Desktop-app sign-in asks for biometrics in every new shell, and each Claude command is a new
+# shell, so op signs in as the claude-agent service account instead. Its token comes from the
+# claude-agent 1Password Environment mounted at ~/.config/claude-agent/.env, whose reads 1Password
+# approves once per unlock, and goes only to this one op process. Without that mount (the work
+# Mac, CachyOS) op signs in through the desktop app as before.
+[ -z "${CLAUDE_OP_SHIM-}" ] || { echo "op: the real op is not on PATH" >&2; exit 127; }
+export CLAUDE_OP_SHIM=1
+here=$(cd "$(dirname "$0")" && pwd)
+PATH=$(printf '%s' "$PATH" | tr ':' '\n' | grep -vxF "$here" | paste -sd: -)
+export PATH
+env_file=$HOME/.config/claude-agent/.env
+if [ -z "${OP_SERVICE_ACCOUNT_TOKEN-}" ] && [ -e "$env_file" ] &&
+  token=$(sed -n 's/^OP_SERVICE_ACCOUNT_TOKEN=//p' "$env_file") && [ -n "$token" ]; then
+  token=${token#[\"\']}
+  token=${token%[\"\']}
+  OP_SERVICE_ACCOUNT_TOKEN=$token exec op "$@"
+fi
+exec op "$@"
