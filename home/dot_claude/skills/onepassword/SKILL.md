@@ -57,10 +57,11 @@ argument.
   in the CI provider's secret store. Binfinite's `binfinite-ci-actions` is the example.
 - **Agents on this Mac:** the shared agent service account, read-only on `claude-agent` and the
   project vaults, never `Private`, `Household`, `Archive`, Break Glass or an `— Admin` vault. Its
-  token is in the login keychain as `op-claude-agent`, and in Claude's shells `op` is
-  `~/.claude/bin/op`, which signs in with it, so there are no biometric prompts. An item outside
-  those vaults is the owner's to run in their own terminal. A service account's vaults are fixed when it
-  is created, so giving it a new vault means creating a new one and replacing the keychain entry.
+  token item is linked, as `OP_SERVICE_ACCOUNT_TOKEN`, into the `claude-agent` Environment mounted
+  at `~/.config/claude-agent/.env`. In Claude's shells `op` is `~/.claude/bin/op`, which signs in
+  with it, so 1Password asks once per unlock rather than in every shell. An item outside those
+  vaults is the owner's to run in their own terminal. A service account's vaults are fixed when it
+  is created, so giving it a new vault means creating a new one and relinking the Environment.
   Rotate it before its expiry.
 
 ## Audit
