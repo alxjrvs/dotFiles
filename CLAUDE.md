@@ -17,8 +17,10 @@ why, never how.
    (`agent-auto-merge.yml`) unless it touches the floor: anything `chezmoi update` or upkeep
    runs, the files that workflow's `floor` pattern names. Those land only when the owner
    asked for them.
-4. After it merges, the owner runs `chezmoi update`; nothing applies main unattended. Never apply a
-   worktree to the real home.
+4. After it merges, the nightly upkeep runs `chezmoi update` when main's `lint` is green and no
+   managed file was edited by hand; otherwise it skips, says why, and the owner runs it
+   ([ADR 0002](docs/adr/0002-upkeep-applies-green-main.md)). Never apply a worktree to the real
+   home.
 
 ## Local facts
 
@@ -29,8 +31,8 @@ why, never how.
 - Runtimes are mise tools (`home/dot_config/mise/config.toml`), CLIs and apps are Brewfile entries
   on a Mac and `.chezmoiscripts/10-cachyos.sh` entries on CachyOS (keep the two in step), and this
   repo's own linters are pinned in the root `mise.toml`.
-- Apply installs and never upgrades or uninstalls. The nightly `mise run upkeep` upgrades; a
-  failure is a notification pointing at `~/Library/Logs/upkeep.log` (CachyOS:
+- Apply installs and never upgrades or uninstalls. The nightly `mise run upkeep` upgrades, then
+  applies main; a failure, a skipped apply included, is a notification pointing at `~/Library/Logs/upkeep.log` (CachyOS:
   `~/.local/state/upkeep.log`).
 - Who this is (name, emails, signing key, GitHub user and orgs) lives in `home/.chezmoidata.toml`
   alone.
