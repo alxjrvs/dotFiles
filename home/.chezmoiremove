@@ -3,6 +3,8 @@
 # Retired from ~/.claude: nothing used them.
 .claude/workflows/audit.js
 .claude/skills/agent-friendly-repo
+# Retired: the gnar-1password and 1password plugins cover it.
+.claude/skills/onepassword
 # MAIA's commands moved from ~/bin to ~/.local/bin, which every shell has on PATH.
 bin/gpu-mode
 bin/maia-game-watch

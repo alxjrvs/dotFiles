@@ -127,7 +127,7 @@
     "environment": [
       "$defaults",
       "Source control: github.com/{{ .github }} and every repository under it{{ with .ownedOrgs }}, plus the GitHub organizations the user administers: {{ join ", " . }}{{ end }}. Pushes to a non-default branch of any of these are the user's own work landing through pull requests; the default-branch rule above still holds.",
-      "Secrets management: 1Password, through op:// references passed with `op run` and, for agents, ~/.config/claude-agent/.env when that mounted Environment exists; the gh token lives in the login keychain; vendor CLI logins live in their own config files (~/.convex, ~/.expo, netlify, wrangler, ngrok). An agent passes a secret to the program that consumes it, and never reads, prints, copies or re-encodes one. Where a secret lives (one vault per project, one source of truth) is the `onepassword` skill."
+      "Secrets management: 1Password, through op:// references passed with `op run` and, for agents, ~/.config/claude-agent/.env when that mounted Environment exists; the gh token lives in the login keychain; vendor CLI logins live in their own config files (~/.convex, ~/.expo, netlify, wrangler, ngrok). An agent passes a secret to the program that consumes it, and never reads, prints, copies or re-encodes one."
     ],
     "classifyAllShell": true
   }
