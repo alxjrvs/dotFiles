@@ -31,10 +31,6 @@ why, never how.
 
 ## Local facts
 
-- `home/dot_claude/` is the **user-global** Claude config (`~/.claude/`); the repo-root `.claude/`
-  is this repo's project scope. Don't conflate them.
-- `~/.claude/settings.json` is a modify template: chezmoi enforces only the keys in
-  `home/.chezmoitemplates/claude-settings.json`, and a `null` there retires a key.
 - Runtimes are mise tools (`home/dot_config/mise/config.toml`), CLIs and apps are Brewfile entries
   on a Mac and `.chezmoiscripts/10-cachyos.sh` entries on CachyOS (keep the two in step), and this
   repo's own linters are pinned in the root `mise.toml`.
