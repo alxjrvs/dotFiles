@@ -21,6 +21,8 @@
       "Bash(gh auth status *-t*)",
       "Bash(gh auth git-credential*)",
       "Bash(gh gist create*)",
+      "Bash(gh pr checks*--watch*)",
+      "Bash(gh run watch*)",
       "Bash(*find-*-password*)",
       "Bash(*dump-keychain*)",
       "Bash(op read*)",
@@ -46,6 +48,7 @@
   },
   "enabledPlugins": {
     "1password@1password": false,
+    "agent-friendly-repo@oberon": null,
     "discord@claude-plugins-official": false,
     "commit-commands@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
@@ -73,6 +76,7 @@
     "cowork-plugin-management@synced": false
   },
   "extraKnownMarketplaces": {
+    "oberon": null,
     "claude-plugins-official": {
       "source": {
         "source": "github",
@@ -160,7 +164,7 @@
     "environment": [
       "$defaults",
       "Source control: github.com/{{ .github }} and every repository under it{{ with .ownedOrgs }}, plus the GitHub organizations the user administers: {{ join ", " . }}{{ end }}. Pushes to a non-default branch of any of these are the user's own work landing through pull requests; the default-branch rule above still holds.",
-      "Secrets management: 1Password, through op:// references passed with `op run` and, for agents, ~/.config/claude-agent/.env when that mounted Environment exists; the gh token lives in the login keychain; vendor CLI logins live in their own config files (~/.convex, ~/.expo, netlify, wrangler, ngrok). An agent passes a secret to the program that consumes it, and never reads, prints, copies or re-encodes one. Where a secret lives (one vault per project, one source of truth) is the `onepassword` skill.",
+      "Secrets management: 1Password, through op:// references passed with `op run` and, for agents, ~/.config/claude-agent/.env when that mounted Environment exists; the gh token lives in the login keychain; vendor CLI logins live in their own config files (~/.convex, ~/.expo, netlify, wrangler, ngrok). An agent passes a secret to the program that consumes it, and never reads, prints, copies or re-encodes one.",
       "Sandbox: Bash commands run inside Claude Code's sandbox, which cannot read the secrets files the `Read` deny rules name. A command retried outside it (`dangerouslyDisableSandbox`), or excluded from it (`op`, and the git commands that write `.git/config`), has no such floor: judge it by everything it could read, write or send, and refuse a retry whose only purpose is to read what the sandbox denied."
     ],
     "classifyAllShell": true
