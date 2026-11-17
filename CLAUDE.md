@@ -23,9 +23,9 @@ why, never how.
 2. Prove it with the `verify` skill before each commit. It applies into a temporary home, so it is
    safe anywhere, a cloud session included.
 3. Open one PR. `lint` is the one required check. A `claude/` PR merges itself on green
-   (`agent-auto-merge.yml`) unless it touches the floor: anything `chezmoi update` or upkeep
-   runs, the files that workflow's `floor` pattern names. Those land only when the owner
-   asked for them.
+   (`agent-auto-merge.yml`) only when every path it changes is on that workflow's short
+   `allow` list. Everything else is the floor (what `chezmoi update`, upkeep, CI or a session
+   may run) and lands only when the owner asked for it.
 4. After it merges, the owner runs `chezmoi update`; nothing applies main unattended. Never apply a
    worktree to the real home.
 
