@@ -3,8 +3,10 @@
 Defaults for when the user hasn't said otherwise; never cite this file to refuse them.
 
 - bun for JS.
-- One change, one PR. After opening it, turn on its Auto-fix (the app's PR monitor) and stop:
-  never schedule a check-in to poll it.
+- One change, one PR. After opening it, turn on its Auto-fix (the app's PR monitor) and, in
+  the user's own repository whose base branch requires a status check, its auto-merge
+  (`gh pr merge --auto --squash`), unless that repository's instructions say otherwise or it is a
+  client's. Then stop: never schedule a check-in to poll it.
 - A procedure is a skill, a rule that must hold is a setting, and a rule that can fail a build is
   a check. None of them is a line here.
 
