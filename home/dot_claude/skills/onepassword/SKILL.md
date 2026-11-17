@@ -59,7 +59,9 @@ argument.
   project vaults, never `Private`, `Household`, `Archive`, Break Glass or an `— Admin` vault. Its
   token item is linked, as `OP_SERVICE_ACCOUNT_TOKEN`, into the `claude-agent` Environment mounted
   at `~/.config/claude-agent/.env`. In Claude's shells `op` is `~/.claude/bin/op`, which signs
-  reads in with it, so 1Password asks once per unlock rather than in every shell. Prefer it. Where
+  reads in with it, so 1Password asks once per unlock rather than in every shell. Prefer it, called
+  directly: the sandbox hides the mount, `op` alone is excluded from it, and an `op` started by
+  another sandboxed command (a mise task, a script) signs in as the owner. Where
   it can't serve a call, `op` signs in as the owner through the desktop app, as before, with a
   biometric prompt: a write (`item`/`document` create, edit, delete, move or share, vault
   changes, account admin), a call with `--account`, a machine without the mount, and a plain

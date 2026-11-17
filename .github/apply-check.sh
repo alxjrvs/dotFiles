@@ -58,6 +58,10 @@ comm -23 <(printf '%s\n' "$was") <(printf '%s\n' "$now") |
 settings=$home/.claude/settings.json
 test "$(jq -r '.env.GIT_CONFIG_COUNT' "$settings")" = \
   "$(jq '[.env | keys[] | select(startswith("GIT_CONFIG_KEY_"))] | length' "$settings")"
+# The sandbox is on and cannot read the token the op shim reads; turning it off is a decision
+# docs/adr/0001-claude-sandbox-on.md has to be reopened for.
+jq -e '.sandbox.enabled and (.permissions.deny | index("Read(~/.config/claude-agent/.env)"))' \
+  "$settings" > /dev/null || { echo "apply-check: the sandbox is off; see docs/adr/0001" >&2 && exit 1; }
 # What the app writes survives an apply, and a declared value is restored.
 jq '. + {appWrote: true} | .enabledPlugins += {"toggled@elsewhere": false} | .autoMemoryEnabled = true' \
   "$settings" > "$tmp/edited" && cat "$tmp/edited" > "$settings"
