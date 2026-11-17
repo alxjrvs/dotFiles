@@ -38,10 +38,9 @@ name, or offline. Nothing is passed `--force`, so a hand edit is never overwritt
 - Good: #520's stall cannot recur. A question is found by the dry run, or fails the apply at once
   with stdin closed.
 - Bad: #520's other reason stands. What merges to main runs unattended, outside the sandbox, so
-  this is exactly as safe as the auto-merge floor in `agent-auto-merge.yml`. That floor is a
-  pattern of what may not merge itself, and a path it forgets merges and runs. The sibling pull
-  request on `claude/floor-allowlist` turns it into a list of what may, so it fails closed. **This
-  change should merge after that one.**
+  this is exactly as safe as the auto-merge floor in `agent-auto-merge.yml`. That floor was a
+  pattern of what may not merge itself, where a path it forgot merged and ran. #580 has landed
+  and made it a list of what may, so it fails closed; this decision depends on it staying so.
 - Bad: a hand-edited file blocks every apply, nightly, until the owner settles it.
 - Accepted: main can move between the lint check and `chezmoi update`'s own pull. The ruleset
   already requires a green `lint` to merge, so the window admits nothing the gate would refuse.

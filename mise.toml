@@ -23,8 +23,8 @@ run = [
   "test -z \"$(git ls-files -s home | awk '$1 != 100644')\"",
   "! grep -nE '^[^#]*\\bchezmoi\\b' home/.chezmoiscripts/*",
   "! grep -nE '^[^#]*\\bexit( +0)?( *;|$| *#)' home/.chezmoiscripts/run_onchange_*",
-  # The floor is what makes a program run at apply: only agent-auto-merge.yml's floor files may, so no
-  # template executes a command and chezmoi runs no hook.
+  # An agent's PR lands unasked only on agent-auto-merge.yml's allowlist, so what runs a program at
+  # apply has to be visible in a path: no template executes a command and chezmoi runs no hook.
   "! git grep -nE '\\{\\{[^}]*[[:space:](|](exec|output|outputList|onepassword[A-Za-z]*)[[:space:]})]' -- home",
   "! grep -n '^\\[hooks' home/.chezmoi.toml.tmpl",
   # ~/.zshenv's shims serve every shell: an activate in .zshrc pins the desktop app's agents.

@@ -3,6 +3,9 @@
 # Every plist this repo declares, hashed, so adding or changing one re-runs this:
 # {{ range glob (joinPath .chezmoi.sourceDir "Library/LaunchAgents/*.plist") }}{{ include . | sha256sum }} {{ end }}
 set -euo pipefail
+# The label upkeep had before `local.dotfiles.`: launchd keeps a job whose plist is gone until the
+# next login, and this one ran upkeep in every DarkWake and opened an issue a night.
+launchctl bootout "gui/$(id -u)/com.{{ .github }}.upkeep" 2> /dev/null || true
 for plist in "$HOME"/Library/LaunchAgents/local.dotfiles.*.plist; do
   [ -e "$plist" ] || continue
   label=$(basename "$plist" .plist)

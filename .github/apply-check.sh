@@ -69,6 +69,14 @@ jq -e '[.. | select(. == null)] | length == 0' "$settings" > /dev/null
 # A file already holding every declared value is not drift, in whatever key order the app wrote.
 jq '{appFirst: true} + .' "$settings" > "$tmp/edited" && cat "$tmp/edited" > "$settings"
 "${cz[@]}" verify --exclude scripts
+# No path hands an agent a value (docs/adr/0003): `op read` stays denied, and the shim routes none.
+jq -e '.permissions.deny | index("Bash(op read*)")' "$settings" > /dev/null
+! grep -n '"read ' "$home/.claude/bin/op" ||
+  { echo "apply-check: ~/.claude/bin/op handles op read" >&2 && exit 1; }
+# The SessionStart hook puts that shim on PATH, once however often a session starts or resumes.
+hook=$(jq -r '.hooks.SessionStart[0].hooks[0].command' "$settings")
+for _ in 1 2; do CLAUDE_ENV_FILE=$tmp/env sh -c "$hook"; done
+test "$(cat "$tmp/env")" = "export PATH=\"\$HOME/.claude/bin:\$PATH\""
 # Rendered TOML parses: lint parses only the plain .toml sources, not templates.
 mise config get --file "$home/.config/1Password/ssh/agent.toml" > /dev/null
 
@@ -147,4 +155,9 @@ done
 # A skills-directory plugin lands (a source name starting with `.` would be ignored).
 test -f "$home/.claude/skills/ts-native/.claude-plugin/plugin.json" ||
   { echo "apply-check: the ts-native plugin did not land" >&2 && exit 1; }
+# The standing briefs land as user-global skills.
+for skill in review-and-merge asked-of-me ask-then-fan-out; do
+  test -f "$home/.claude/skills/$skill/SKILL.md" ||
+    { echo "apply-check: the $skill skill did not land" >&2 && exit 1; }
+done
 echo "apply-check: ok"
