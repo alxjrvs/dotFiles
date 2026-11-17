@@ -69,7 +69,7 @@ To hack on this repo, clone it to `~/Code/dotFiles`; chezmoi keeps its own copy.
 
 | | |
 |---|---|
-| change something | in a worktree: edit, `mise run lint`, `mise run apply-check`, commit, PR; an agent's `claude/` PR merges itself on green unless it touches the floor |
+| change something | in a worktree: edit, `mise run lint`, `mise run apply-check`, commit, PR; an agent's `claude/` PR merges itself on green only if it stays on `agent-auto-merge.yml`'s allowlist |
 | a PR landed | `chezmoi update` |
 | drift | `chezmoi verify` |
 | upgrade | nightly: `mise run upkeep` upgrades; a failure is a notification pointing at `~/Library/Logs/upkeep.log` (CachyOS: `~/.local/state/upkeep.log`, and `paru -Syu` for packages: `pacman -Syu` skips the AUR's, 1Password, Chrome and Slack among them). Apps update themselves |
