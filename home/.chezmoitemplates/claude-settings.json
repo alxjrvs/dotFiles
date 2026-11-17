@@ -21,6 +21,8 @@
       "Bash(gh auth status *-t*)",
       "Bash(gh auth git-credential*)",
       "Bash(gh gist create*)",
+      "Bash(gh pr checks*--watch*)",
+      "Bash(gh run watch*)",
       "Bash(*find-*-password*)",
       "Bash(*dump-keychain*)",
       "Bash(op read*)",
