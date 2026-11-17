@@ -8,6 +8,15 @@ everything else is repo plumbing. `home/.chezmoiignore` decides what lands on wh
 Small and legible beats clever: native over custom, and every file earns its place. Comments say
 why, never how.
 
+## Audits, cuts and reversals
+
+- An audit ends in issues, one per finding, never in a PR of cuts.
+- A cut states in its PR the evidence that the thing is unused: shell history, session history or
+  a grep showing no caller.
+- Decisions live in `docs/adr/` as short MADR files with a "Reopen when" section. A PR that
+  reverses one names the ADR it changes and updates it.
+- A commit subject states one change; a subject that needs commas is more than one PR.
+
 ## How a change lands
 
 1. Work in a worktree of a clone (`~/Code/dotFiles` on the Mac), never chezmoi's own source.
