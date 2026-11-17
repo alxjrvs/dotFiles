@@ -147,4 +147,9 @@ done
 # A skills-directory plugin lands (a source name starting with `.` would be ignored).
 test -f "$home/.claude/skills/ts-native/.claude-plugin/plugin.json" ||
   { echo "apply-check: the ts-native plugin did not land" >&2 && exit 1; }
+# The standing briefs land as user-global skills.
+for skill in review-and-merge asked-of-me ask-then-fan-out; do
+  test -f "$home/.claude/skills/$skill/SKILL.md" ||
+    { echo "apply-check: the $skill skill did not land" >&2 && exit 1; }
+done
 echo "apply-check: ok"
