@@ -70,9 +70,9 @@ To hack on this repo, clone it to `~/Code/dotFiles`; chezmoi keeps its own copy.
 | | |
 |---|---|
 | change something | in a worktree: edit, `mise run lint`, `mise run apply-check`, commit, PR; an agent's `claude/` PR merges itself on green only if it stays on `agent-auto-merge.yml`'s allowlist |
-| a PR landed | `chezmoi update` |
+| a PR landed | nothing: the nightly upkeep applies a main whose `lint` is green. `chezmoi update` for it now, or when upkeep skipped it: a red main, a file edited by hand (it names them), or no network |
 | drift | `chezmoi verify` |
-| upgrade | nightly: `mise run upkeep` upgrades; a failure is a notification pointing at `~/Library/Logs/upkeep.log` (CachyOS: `~/.local/state/upkeep.log`, and `paru -Syu` for packages: `pacman -Syu` skips the AUR's, 1Password, Chrome and Slack among them). Apps update themselves |
+| upgrade | nightly: `mise run upkeep` upgrades, then applies main; a failure is a notification pointing at `~/Library/Logs/upkeep.log` (CachyOS: `~/.local/state/upkeep.log`, and `paru -Syu` for packages: `pacman -Syu` skips the AUR's, 1Password, Chrome and Slack among them). Apps update themselves |
 | a pin | monthly: a Routine runs `/bump` ([`.claude/skills/bump`](.claude/skills/bump/SKILL.md)) |
 | add a work org | one entry in `home/.chezmoidata.toml` |
 | the repo settings | [`.github/gate.sh`](.github/gate.sh), run by the owner |
@@ -93,6 +93,7 @@ available.
 mise.toml               this repo's pinned linters and its two checks, lint and apply-check
 .github/                CI, apply-check.sh, gate.sh (the repo settings that are not files)
 .claude/                this repo's Claude Code config: the verify and bump skills, and a web-session setup hook
+docs/adr/               decisions that reversed an earlier one, and when to reopen them
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)
 home/.chezmoiscripts/   machine setup: Homebrew, mise, launchd agents, macOS defaults, provisioning, apps, and one
                         Claude desktop app per extra account; on CachyOS, pacman, systemd units and Plasma
