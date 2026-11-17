@@ -25,8 +25,9 @@ uv = "latest"
 chezmoi = "latest"
 
 # What apply never does, run nightly by the upkeep LaunchAgent (on CachyOS, its systemd timer):
-# each upgrade. One that fails stops none of the rest, and still fails the run. Apps that update
-# themselves are left to it, and no running app is quit. Applying main stays `chezmoi update`, run by hand: nothing lands unattended.
+# each upgrade, then main, when it can land without a question (docs/adr/0002). One step that
+# fails stops none of the rest, and still fails the run. Apps that update themselves are left to
+# it, and no running app is quit.
 [tasks."upkeep:mise"]
 hide = true
 # mise itself waits out the same week as its tools, chezmoi among them. Formulae ride
@@ -50,7 +51,7 @@ run = [
 ]
 
 [tasks.upkeep]
-description = "Upgrade mise and its tools (chezmoi among them), formulae and casks"
+description = "Upgrade mise and its tools (chezmoi among them), formulae and casks, then apply a green main"
 run = """
 failed=
 tasks=upkeep:mise
@@ -59,5 +60,36 @@ tasks=upkeep:mise
 for task in $tasks; do
   mise run "$task" || failed="$failed $task"
 done
+# A merge made with GITHUB_TOKEN (Dependabot's, or an agent's auto-merge) starts no run on main, so
+# its pull request's head answers for it. app_id is GitHub Actions: no other app's check counts.
+lint() {
+  gh api "repos/{owner}/{repo}/commits/$1/check-runs?check_name=lint&app_id=15368" --jq 'if .total_count == 0 then "none" else .check_runs[0].conclusion // "pending" end'
+}
+# Why main stays unapplied tonight; silent when it is safe. Anything unknown counts as unsafe: an
+# API error, a run still going, a file edited by hand, which only its owner can settle.
+blocked() (
+  cd "$(chezmoi source-path)" || { echo "no chezmoi source" && exit; }
+  git fetch --quiet origin main || { echo "offline: fetching main failed" && exit; }
+  sha=$(git rev-parse FETCH_HEAD)
+  state=$(lint "$sha") || state=unknown
+  if [ "$state" = none ]; then
+    head=$(gh api "repos/{owner}/{repo}/commits/$sha/pulls" --jq '.[0].head.sha // empty') || head=
+    [ -z "$head" ] || state=$(lint "$head") || state=unknown
+  fi
+  [ "$state" = success ] || { echo "main is not green: lint is $state on $sha" && exit; }
+  # The apply's own test, writing nothing: with no terminal, each question it would ask is an
+  # error naming the file.
+  asks=$(chezmoi apply --dry-run --keep-going --no-tty < /dev/null 2>&1) ||
+    echo "local conflict: $(printf '%s' "$asks" | sed 's/ has changed since.*//' | paste -sd ' ' -)"
+)
+reason=$(blocked) || reason="the check itself failed"
+if [ -n "$reason" ]; then
+  echo "upkeep: main not applied: $reason" >&2
+  failed="$failed apply"
+else
+  # Never --force: a file edited between the test and here fails the run, and is not overwritten.
+  # --init re-renders a changed .chezmoi.toml.tmpl.
+  chezmoi update --init --no-tty < /dev/null || failed="$failed apply"
+fi
 [ -z "$failed" ] || { echo "upkeep failed:$failed" >&2 && exit 1; }
 """

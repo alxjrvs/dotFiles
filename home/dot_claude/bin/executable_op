@@ -1,12 +1,12 @@
 #!/bin/sh
 # Claude's shells put this ahead of the real op (the SessionStart hook in claude-settings.json).
 # Desktop-app sign-in asks for biometrics in every new shell, and each Claude command is a new
-# shell, so reads sign in as the claude-agent service account instead. Its token comes from the
-# claude-agent 1Password Environment mounted at ~/.config/claude-agent/.env, whose reads 1Password
-# approves once per unlock, and goes only to this one op process. Where the service account
-# can't serve a call, op signs in as the owner through the desktop app, as it did before: writes
-# and account admin (the account is read-only), an explicit --account, a machine without the
-# mount (the work Mac, CachyOS), and a plain read the account can't see.
+# shell, so calls sign in as the read-only claude-agent service account instead. Its token comes
+# from the claude-agent 1Password Environment mounted at ~/.config/claude-agent/.env, whose reads
+# 1Password approves once per unlock, and goes only to this one op process. The owner signs in,
+# through the desktop app, only for what that account can't do: writes and account admin, an
+# explicit --account, a machine without the mount (the work Mac, CachyOS), and a metadata read of
+# a vault it can't see. Why: docs/adr/0003-claude-op-identity.md in the dotFiles repo.
 # The sandbox hides that file from every command, so claude-settings.json excludes `op *` from it;
 # an op that a sandboxed command starts signs in as the owner.
 here=$(cd "$(dirname "$0")" && pwd)
@@ -15,8 +15,9 @@ export CLAUDE_OP_SHIM="$here"
 PATH=$(printf '%s' "$PATH" | tr ':' '\n' | grep -vxF "$here" | paste -sd: -)
 export PATH
 
-# Prints the call's kind: owner (desktop app only), retry (a side-effect-free read worth a second
-# try as the owner) or once (op run and the rest: a second run could repeat a command or lose stdin).
+# Prints the call's kind: owner (desktop app only), retry (a metadata read worth a second try as
+# the owner) or once (op run and the rest: a second run could repeat a command or lose stdin).
+# `op read` is no retry: it prints a value, which settings.json denies an agent.
 kind() {
   for arg; do case $arg in --account | --account=*) echo owner && return ;; esac; done
   while [ $# -gt 0 ]; do
@@ -32,8 +33,7 @@ kind() {
       "vault create" | "vault edit" | "vault delete" | "vault user" | "vault group") echo owner ;;
     user\ * | group\ * | connect\ * | service-account\ * | events-api\ * | account\ * | \
       signin\ * | signout\ *) echo owner ;;
-    "read "* | "item get" | "item list" | "vault get" | "vault list" | "document list" | \
-      "whoami "*) echo retry ;;
+    "item get" | "item list" | "vault get" | "vault list" | "document list") echo retry ;;
     *) echo once ;;
   esac
 }
@@ -45,7 +45,15 @@ if [ -z "${OP_SERVICE_ACCOUNT_TOKEN-}" ] && [ "$k" != owner ] && [ -e "$env_file
   token=${token#[\"\']}
   token=${token%[\"\']}
   [ "$k" = retry ] || OP_SERVICE_ACCOUNT_TOKEN=$token exec op "$@"
-  # A failed read writes nothing to stdout, so its second try starts clean.
-  OP_SERVICE_ACCOUNT_TOKEN=$token op "$@" 2>/dev/null && exit 0
+  { err=$(OP_SERVICE_ACCOUNT_TOKEN=$token op "$@" 2>&1 >&3 3>&-); } 3>&1 && status=0 || status=$?
+  # Only "the service account can't see it" earns the owner's biometric prompt; a typo, a bad flag
+  # or an expired token is reported as it is. A failed read writes nothing to stdout, so the
+  # second try starts clean.
+  case $status:$err in
+    0:*) ;;
+    *"isn't a vault"* | *"isn't an item"* | *permission*) exec op "$@" ;;
+  esac
+  [ -z "$err" ] || printf '%s\n' "$err" >&2
+  exit "$status"
 fi
 exec op "$@"
