@@ -89,7 +89,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -z \"$CLAUDE_ENV_FILE\" ] || echo 'export PATH=\"$HOME/.claude/bin:$PATH\"' >> \"$CLAUDE_ENV_FILE\""
+            "command": "[ -z \"$CLAUDE_ENV_FILE\" ] || grep -qsF .claude/bin \"$CLAUDE_ENV_FILE\" || echo 'export PATH=\"$HOME/.claude/bin:$PATH\"' >> \"$CLAUDE_ENV_FILE\""
           }
         ]
       }
