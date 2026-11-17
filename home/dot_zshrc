@@ -60,7 +60,9 @@ fi
 
 # fzf: Ctrl-R searches history, Ctrl-T picks a file, Alt-C changes directory, all through fd's view
 # of the tree (hidden files, .gitignore honoured). After `bindkey -e`, which would reset its keys.
-if (( $+commands[fzf] )); then
+# Only on a terminal: an interactive shell without one (an agent's) has no line editor to bind,
+# and fzf's script complains there.
+if (( $+commands[fzf] )) && [[ -t 0 ]]; then
   export FZF_DEFAULT_COMMAND='fd --type f --hidden --exclude .git'
   export FZF_CTRL_T_COMMAND=$FZF_DEFAULT_COMMAND FZF_ALT_C_COMMAND='fd --type d --hidden --exclude .git'
   source <(fzf --zsh)
