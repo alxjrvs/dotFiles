@@ -5,6 +5,21 @@
 .claude/skills/agent-friendly-repo
 # Retired: the gnar-1password and 1password plugins cover it.
 .claude/skills/onepassword
+# Links the repo's own earlier engines made into ~/.claude, dangling since their sources went.
+.claude/statusline-command.sh
+.claude/hooks/pr-review-settings.json
+.claude/hooks/pr-review.sh
+.claude/hooks/worktree-checkout-guard.sh
+.claude/hooks/worktree-publish.sh
+.claude/hooks/tests/canary.sh
+.claude/hooks/tests/cases.tsv
+.claude/hooks/tests/freshness.sh
+.claude/hooks/tests/port.sh
+.claude/hooks/tests/publish.sh
+.claude/hooks/tests/run.sh
+.claude/skills/butter-stack
+.claude/skills/hook-authoring
+.claude/skills/worktree-triage
 # MAIA's commands moved from ~/bin to ~/.local/bin, which every shell has on PATH.
 bin/gpu-mode
 bin/maia-game-watch
