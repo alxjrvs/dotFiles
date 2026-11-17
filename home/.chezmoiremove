@@ -10,3 +10,5 @@ bin/souls-launch
 bin/reboot-to-windows
 # fd skips hidden files and honours .gitignore by default; the old global ignore added nothing.
 .config/fd/ignore
+# Bun installs new releases at once again; the global week-long minimumReleaseAge blocked our own fresh packages.
+.bunfig.toml
