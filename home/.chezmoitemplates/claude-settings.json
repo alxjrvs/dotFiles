@@ -70,11 +70,9 @@
   "autoMemoryEnabled": false,
   "theme": "auto",
   "tui": "fullscreen",
-  "verbose": true,
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
   "remoteControlAtStartup": true,
-  "askUserQuestionTimeout": "10m",
   "autoMode": {
     "allow": [
       "$defaults",
