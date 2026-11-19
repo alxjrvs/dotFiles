@@ -38,7 +38,6 @@
       "Read(~/.convex/**)",
       "Read(~/.expo/state.json)",
       "Read(~/.npmrc)",
-      "Read(~/.config/gh/hosts.yml)",
       "Read(~/.docker/config.json)",
       "Read(~/Library/Preferences/netlify/**)",
       "Read(~/.config/netlify/**)",
