@@ -86,6 +86,7 @@
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
   "remoteControlAtStartup": true,
+  "isolatePeerMachines": true,
   "autoMode": {
     "allow": [
       "$defaults",
