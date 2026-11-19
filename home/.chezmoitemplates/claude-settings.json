@@ -81,6 +81,7 @@
   },
   "disableAgentView": true,
   "autoMemoryEnabled": false,
+  "desktopSessionCleanupPeriodDays": 90,
   "theme": "auto",
   "tui": "fullscreen",
   "inputNeededNotifEnabled": true,
