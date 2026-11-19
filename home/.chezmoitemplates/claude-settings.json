@@ -13,6 +13,7 @@
   },
   "permissions": {
     "defaultMode": "auto",
+    "disableBypassPermissionsMode": "disable",
     "allow": [
       "WebSearch"
     ],
@@ -34,6 +35,18 @@
       "Read(**/.env)",
       "Read(**/.env.local)",
       "Read(**/.env.*.local)",
+      "Read(~/.convex/**)",
+      "Read(~/.expo/state.json)",
+      "Read(~/.npmrc)",
+      "Read(~/.config/gh/hosts.yml)",
+      "Read(~/.docker/config.json)",
+      "Read(~/Library/Preferences/netlify/**)",
+      "Read(~/.config/netlify/**)",
+      "Read(~/Library/Preferences/.wrangler/**)",
+      "Read(~/.wrangler/config/**)",
+      "Read(~/.config/.wrangler/**)",
+      "Read(~/Library/Application Support/ngrok/**)",
+      "Read(~/.config/ngrok/**)",
       "Read(~/Library/Application Support/discord*/**)",
       "Read(~/.config/discord*/**)",
       "Bash(*Application Support/discord*)",
@@ -47,42 +60,8 @@
     ]
   },
   "enabledPlugins": {
-    "1password@1password": false,
-    "agent-friendly-repo@oberon": null,
-    "discord@claude-plugins-official": false,
     "commit-commands@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true,
-    "convex@claude-plugins-official": false,
-    "small-business@inline": false,
-    "productivity@inline": false,
-    "engineering@inline": false,
-    "cowork-plugin-management@inline": false,
-    "design@inline": false,
-    "finance@inline": false,
-    "data@inline": false,
-    "product-management@inline": false,
-    "marketing@inline": false,
-    "sales@inline": false,
-    "legal@inline": false,
-    "operations@inline": false,
-    "human-resources@inline": false,
-    "customer-support@inline": false,
-    "ip-legal@inline": false,
-    "privacy-legal@inline": false,
-    "regulatory-legal@inline": false,
-    "small-business@synced": false,
-    "productivity@synced": false,
-    "engineering@synced": false,
-    "cowork-plugin-management@synced": false
-  },
-  "extraKnownMarketplaces": {
-    "oberon": null,
-    "claude-plugins-official": {
-      "source": {
-        "source": "github",
-        "repo": "anthropics/claude-plugins-official"
-      }
-    }
+    "frontend-design@claude-plugins-official": true
   },
   "outputStyle": "Proactive",
   "hooks": {
@@ -102,14 +81,13 @@
   },
   "disableAgentView": true,
   "autoMemoryEnabled": false,
-  "skipWorkflowUsageWarning": true,
+  "desktopSessionCleanupPeriodDays": 90,
   "theme": "auto",
   "tui": "fullscreen",
-  "verbose": true,
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
   "remoteControlAtStartup": true,
-  "askUserQuestionTimeout": "10m",
+  "isolatePeerMachines": true,
   "autoMode": {
     "allow": [
       "$defaults",

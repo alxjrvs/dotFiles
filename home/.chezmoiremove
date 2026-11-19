@@ -29,3 +29,5 @@ bin/reboot-to-windows
 .config/fd/ignore
 # Bun installs new releases at once again; the global week-long minimumReleaseAge blocked our own fresh packages.
 .bunfig.toml
+# The user-level instructions are retired: the owner keeps none.
+.claude/CLAUDE.md
