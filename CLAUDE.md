@@ -33,6 +33,8 @@ why, never how.
 
 ## Local facts
 
+- Claude Code's sandbox is on, on every machine. Why, what it lets through, and the evidence a
+  reversal has to cite: `docs/adr/0001-claude-sandbox-on.md`.
 - Runtimes are mise tools (`home/dot_config/mise/config.toml`), CLIs and apps are Brewfile entries
   on a Mac and `.chezmoiscripts/10-cachyos.sh` entries on CachyOS (keep the two in step), and this
   repo's own linters are pinned in the root `mise.toml`.

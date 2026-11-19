@@ -77,7 +77,40 @@
     ]
   },
   "sandbox": {
-    "enabled": false
+    "enabled": true,
+    "excludedCommands": [
+      "op *",
+      "git config *",
+      "git remote *",
+      "git branch *",
+      "git switch *",
+      "git checkout *",
+      "git push *",
+      "git worktree *"
+    ],
+    "ignoreViolations": {
+      "*": ["/.env"]
+    },
+    "filesystem": {
+      "allowWrite": [
+        "~/.local/share/mise",
+        "~/.local/state/mise",
+        "~/.cache/mise",
+        "~/Library/Caches/mise",
+        "~/.bun/install/cache"
+      ]
+    },
+    "network": {
+      "allowLocalBinding": true,
+      "allowedDomains": [
+        "github.com", "*.github.com", "*.githubusercontent.com",
+        "mise-versions.jdx.dev", "registry.npmjs.org",
+        "*.1password.com", "*.1password.ca", "*.1password.eu",
+        "*.1passwordusercontent.com", "*.1passwordusercontent.ca", "*.1passwordusercontent.eu",
+        "*.1passwordservices.com"
+      ],
+      "allowMachLookup": ["com.apple.trustd.agent", "2BUA8C4S2C.com.1password.browser-helper"]
+    }
   },
   "disableAgentView": true,
   "autoMemoryEnabled": false,
@@ -109,7 +142,8 @@
     "environment": [
       "$defaults",
       "Source control: github.com/{{ .github }} and every repository under it{{ with .ownedOrgs }}, plus the GitHub organizations the user administers: {{ join ", " . }}{{ end }}. Pushes to a non-default branch of any of these are the user's own work landing through pull requests; the default-branch rule above still holds.",
-      "Secrets management: 1Password, through op:// references passed with `op run` and, for agents, ~/.config/claude-agent/.env when that mounted Environment exists; the gh token lives in the login keychain; vendor CLI logins live in their own config files (~/.convex, ~/.expo, netlify, wrangler, ngrok). An agent passes a secret to the program that consumes it, and never reads, prints, copies or re-encodes one."
+      "Secrets management: 1Password, through op:// references passed with `op run` and, for agents, ~/.config/claude-agent/.env when that mounted Environment exists; the gh token lives in the login keychain; vendor CLI logins live in their own config files (~/.convex, ~/.expo, netlify, wrangler, ngrok). An agent passes a secret to the program that consumes it, and never reads, prints, copies or re-encodes one.",
+      "Sandbox: Bash commands run inside Claude Code's sandbox, which cannot read the secrets files the `Read` deny rules name. A command retried outside it (`dangerouslyDisableSandbox`), or excluded from it (`op`, and the git commands that write `.git/config`), has no such floor: judge it by everything it could read, write or send, and refuse a retry whose only purpose is to read what the sandbox denied."
     ],
     "classifyAllShell": true
   }

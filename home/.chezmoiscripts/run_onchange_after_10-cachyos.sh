@@ -1,6 +1,6 @@
 #!/bin/bash
 # CachyOS: the Brewfile's CLIs and apps from pacman, or the AUR where Arch has no package, zsh as
-# the login shell, and what Claude desktop's Cowork needs. Re-runs when
+# the login shell, and what Claude Code's sandbox and Claude desktop's Cowork need. Re-runs when
 # this script changes; installs, never upgrades (that is `paru -Syu`, by hand: `pacman -Syu` alone
 # skips the AUR packages below).
 # Each step says what it does first.
@@ -10,12 +10,13 @@ sudo -v
 
 # Brewfile → pacman: gh is github-cli, Fira Code is ttf-fira-code, OrbStack is Docker's own
 # engine, and Raycast is Plasma's KRunner (Alt+Space), already there. wl-clipboard and xdg-utils
-# back the zshrc's pbcopy, pbpaste and open. noTunes is the Mac's alone, and Tuple has no Linux build.
+# back the zshrc's pbcopy, pbpaste and open; without bubblewrap and socat Claude Code's sandbox
+# cannot start, and commands run outside it. noTunes is the Mac's alone, and Tuple has no Linux build.
 say "packages"
 sudo pacman -S --needed --noconfirm \
   zsh git curl jq ripgrep fd fzf github-cli starship wl-clipboard xdg-utils unzip ttf-fira-code \
   ghostty code obs-studio discord claude-desktop docker docker-buildx docker-compose \
-  paru
+  bubblewrap socat paru
 
 # What MAIA's ~/.local/bin commands call: LACT (gpu-mode), Ollama on ROCm and Steam
 # (maia-game-watch), kdialog (souls-launch), efibootmgr (reboot-to-windows). Each only when its

@@ -92,6 +92,7 @@ available.
 .chezmoiroot            "home": the source state lives one directory down
 mise.toml               this repo's pinned linters and its two checks, lint and apply-check
 .github/                CI, apply-check.sh, gate.sh (the repo settings that are not files)
+docs/adr/               decisions that keep being reopened, each with what would reopen it
 .claude/                this repo's Claude Code config: the verify and bump skills, and a web-session setup hook
 docs/adr/               decisions that reversed an earlier one, and when to reopen them
 home/                   what lands in ~  (dot_zshrc → ~/.zshrc, dot_config/… → ~/.config/…)

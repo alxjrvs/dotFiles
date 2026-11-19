@@ -7,6 +7,8 @@
 # through the desktop app, only for what that account can't do: writes and account admin, an
 # explicit --account, a machine without the mount (the work Mac, CachyOS), and a metadata read of
 # a vault it can't see. Why: docs/adr/0003-claude-op-identity.md in the dotFiles repo.
+# The sandbox hides that file from every command, so claude-settings.json excludes `op *` from it;
+# an op that a sandboxed command starts signs in as the owner.
 here=$(cd "$(dirname "$0")" && pwd)
 [ "${CLAUDE_OP_SHIM-}" != "$here" ] || { echo "op: the real op is not on PATH" >&2; exit 127; }
 export CLAUDE_OP_SHIM="$here"
